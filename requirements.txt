@@ -1,0 +1,27 @@
+# Web Framework & Server
+fastapi
+uvicorn
+python-multipart
+
+# Database & Migrations
+sqlalchemy
+psycopg2-binary
+alembic
+
+# Security & Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+
+# Printing & Barcode (Step 14 - Bill "Speed Light")
+python-barcode
+qrcode
+jinja2
+xhtml2pdf
+
+# Accounting & Export (Step 12 - Đối soát)
+pandas
+openpyxl
+
+# Utilities & Image Processing (Step 16 - Upload POD)
+Pillow
+python-dotenv

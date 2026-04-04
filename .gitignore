@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Database & IDE
+*.sqlite3
+.vscode/
+.idea/
+
+# App specific
+uploads/pod/*
+!uploads/pod/.gitkeep
