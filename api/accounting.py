@@ -13,6 +13,7 @@ from io import BytesIO                         # Sửa lỗi BytesIO
 import pandas as pd                            # Sửa lỗi pd
 import models
 from fastapi.responses import StreamingResponse
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 router = APIRouter(prefix="/api/accounting", tags=["Accounting & Settlement"])
 
@@ -98,11 +99,10 @@ def get_statement_details(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    # Lấy thông tin chi tiết bảng kê kèm danh sách các vận đơn liên quan
-    statement = db.query(models.StatementCOD).filter(models.StatementCOD.id == statement_id).first()
+    # SỬA: Đổi .id thành .statement_id
+    statement = db.query(models.StatementCOD).filter(models.StatementCOD.statement_id == statement_id).first()
     if not statement:
         raise HTTPException(status_code=404, detail="Không tìm thấy bảng kê")
-        
     return statement
 
 @router.get("/cod/{statement_id}/export")
@@ -111,13 +111,12 @@ def export_statement_excel(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    # 1. Kiểm tra quyền (Admin/Kế toán) [cite: 50, 51]
+    # 1. Kiểm tra quyền
     if current_user.get("role_id") not in [1, 4]:
         raise HTTPException(status_code=403, detail="Không có quyền xuất dữ liệu")
 
-    # 2. Truy vấn dữ liệu chi tiết bảng kê kèm thông tin Vận đơn
-    # Chúng ta Join StatementDetails -> TransactionLedger -> Waybills
-    data = db.query(
+    # 2. Truy vấn dữ liệu (Join 3 bảng)
+    raw_data = db.query(
         models.Waybills.waybill_code,
         models.TransactionLedger.amount,
         models.TransactionLedger.entry_type,
@@ -130,21 +129,62 @@ def export_statement_excel(
         models.StatementDetails.statement_id == statement_id
     ).all()
 
-    if not data:
+    if not raw_data:
         raise HTTPException(status_code=404, detail="Bảng kê không có dữ liệu chi tiết")
 
-    # 3. Chuyển đổi sang DataFrame của Pandas
-    df = pd.DataFrame(data, columns=["Mã Vận Đơn", "Số Tiền", "Loại Bút Toán", "Thời Gian"])
-    
-    # 4. Ghi dữ liệu vào bộ nhớ đệm (Buffer) dưới dạng Excel
+    # 3. Xử lý dữ liệu và ép kiểu
+    processed_data = []
+    for item in raw_data:
+        processed_data.append({
+            "Mã Vận Đơn": item.waybill_code,
+            "Số Tiền (VNĐ)": float(item.amount),
+            "Loại Bút Toán": "Tiền COD" if item.entry_type == "DEBIT" else "Phí/Khác",
+            "Thời Gian": item.timestamp.strftime("%d/%m/%Y %H:%M") if item.timestamp else ""
+        })
+
+    df = pd.DataFrame(processed_data)
     output = BytesIO()
+
+    # --- BẮT ĐẦU TRANG TRÍ EXCEL ---
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Doi_Soat_COD')
-    
+        workbook = writer.book
+        worksheet = writer.sheets['Doi_Soat_COD']
+
+        # Định nghĩa các Style
+        header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid") # Xanh đậm
+        header_font = Font(color="FFFFFF", bold=True, size=12) # Chữ trắng, đậm
+        center_alignment = Alignment(horizontal="center", vertical="center")
+        thin_border = Border(
+            left=Side(style='thin'), right=Side(style='thin'), 
+            top=Side(style='thin'), bottom=Side(style='thin')
+        )
+
+        # 4. Áp dụng Style cho Header (Dòng 1)
+        for cell in worksheet[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_alignment
+            cell.border = thin_border
+
+        # 5. Định dạng dữ liệu và Tự động giãn độ rộng cột
+        for column_cells in worksheet.columns:
+            length = max(len(str(cell.value) or "") for cell in column_cells)
+            worksheet.column_dimensions[column_cells[0].column_letter].width = length + 5
+            
+            for cell in column_cells:
+                cell.border = thin_border # Kẻ khung cho tất cả các ô
+                if cell.row > 1:
+                    cell.alignment = Alignment(horizontal="left")
+                
+                # Định dạng số tiền có dấu phẩy phân cách (ví dụ: 1,500,000)
+                if column_cells[0].column == 2 and cell.row > 1: 
+                    cell.number_format = '#,##0'
+
     output.seek(0)
     
-    # 5. Trả về file cho trình duyệt tải xuống
     headers = {
-        'Content-Disposition': f'attachment; filename="Bang_ke_COD_{statement_id}.xlsx"'
+        'Content-Disposition': f'attachment; filename="Bang_ke_COD_{statement_id}.xlsx"',
+        'Access-Control-Expose-Headers': 'Content-Disposition'
     }
     return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

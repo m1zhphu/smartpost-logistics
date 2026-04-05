@@ -2,28 +2,35 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-
 from core.database import get_db
-from core.security import get_current_user
-import models
-import schemas.auth as schema_auth # Giả định bạn dùng chung schema hoặc tạo mới schemas/customers.py
+import crud.customers as crud_customers
 
-router = APIRouter(prefix="/api/customers", tags=["Master Data - Customers"])
-
-@router.get("", response_model=List[dict])
-def get_all_customers(db: Session = Depends(get_db)):
-    """API lấy danh sách khách hàng gửi hàng """
-    customers = db.query(models.Customers).all()
-    return [
-        {"customer_id": c.customer_id, "name": c.full_name, "phone": c.phone} 
-        for c in customers
-    ]
+router = APIRouter(prefix="/api/customers", tags=["Customers"])
 
 @router.post("")
 def create_customer(data: dict, db: Session = Depends(get_db)):
-    """API tạo khách hàng mới phục vụ Master Data """
-    # Bạn có thể bổ sung logic CRUD tại đây
-    new_cust = models.Customers(**data)
-    db.add(new_cust)
-    db.commit()
-    return {"message": "Thành công"}
+    """API tạo khách hàng mới phục vụ Master Data"""
+    # Kiểm tra trùng mã
+    if data.get("customer_code"):
+        existing = crud_customers.get_customer_by_code(db, data["customer_code"])
+        if existing:
+            raise HTTPException(status_code=400, detail="Mã khách hàng đã tồn tại")
+            
+    return crud_customers.create_customer_record(db, data)
+
+@router.get("", response_model=List[dict])
+def list_customers(db: Session = Depends(get_db)):
+    """API lấy danh sách khách hàng (Shop)"""
+    customers = crud_customers.get_all_customers(db)
+    # Trả về các trường thực tế có trong Model Customers của bạn
+    return [
+        {
+            "customer_id": c.customer_id, 
+            "customer_code": c.customer_code,
+            "company_name": c.company_name, 
+            "email": c.email,
+            "customer_type": c.customer_type,
+            "status": c.status
+        } 
+        for c in customers
+    ]

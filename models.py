@@ -178,6 +178,7 @@ class Users(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     phone_number: Mapped[Optional[str]] = mapped_column(String(20))
+    email: Mapped[Optional[str]] = mapped_column(String(150), unique=True, index=True)
     role_id: Mapped[Optional[int]] = mapped_column(Integer)
     department_id: Mapped[Optional[int]] = mapped_column(Integer)
     primary_hub_id: Mapped[Optional[int]] = mapped_column(Integer)
@@ -202,7 +203,8 @@ class Users(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text('true'), default=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, server_default=text('false'), default=False)
-
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text('now()'), default=datetime.utcnow)
+    
 class Vendors(Base):
     __tablename__ = 'vendors'
     __table_args__ = (
@@ -257,6 +259,7 @@ class Customers(Base):
     tax_code: Mapped[Optional[str]] = mapped_column(String(50))
     company_name: Mapped[Optional[str]] = mapped_column(String(255))
     transaction_name: Mapped[Optional[str]] = mapped_column(String(255))
+    email: Mapped[Optional[str]] = mapped_column(String(150), unique=True, index=True)
     identity_no: Mapped[Optional[str]] = mapped_column(String(50))
     representative_name: Mapped[Optional[str]] = mapped_column(String(100))
     province_id: Mapped[Optional[int]] = mapped_column(Integer)
@@ -690,49 +693,59 @@ class AuditLogs(Base):
 
 class StatementCOD(Base):
     __tablename__ = 'statement_cod'
-    __table_args__ = {'extend_existing': True} # Chống lỗi trùng lặp khi reload
+    __table_args__ = {'extend_existing': True}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Sửa từ 'id' thành 'statement_id' cho đúng với ảnh CMD của bạn
+    statement_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    
     statement_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     customer_id: Mapped[int] = mapped_column(Integer, ForeignKey('customers.customer_id'))
     
-    # Số tiền thực trả cho Shop (sau khi trừ phí nếu cần) hoặc tổng COD
-    total_amount: Mapped[decimal.Decimal] = mapped_column(Numeric(15, 2))
+    # Bổ sung các cột đang có trong DB nhưng thiếu trong code
+    total_bills: Mapped[Optional[int]] = mapped_column(Integer, default=0)
+    total_cod_amount: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), default=0)
+    total_amount: Mapped[decimal.Decimal] = mapped_column(Numeric(15, 2), default=0)
     
-    # Theo dõi trạng thái thanh toán
-    status: Mapped[str] = mapped_column(String(20), default="PENDING") # PENDING, PAID
-    
+    # Trạng thái và thời gian
+    status: Mapped[str] = mapped_column(String(50), default="PENDING") 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
-    # Bắt buộc có để biết kế toán nào đã chốt tiền
+    # Người tạo
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey('users.user_id'))
 
-    # Relationships
+    # Relationships (Giữ nguyên)
     customer: Mapped['Customers'] = relationship('Customers', back_populates='statement_cod')
     details: Mapped[list['StatementDetails']] = relationship('StatementDetails', back_populates='statement')
 
 class StatementDetails(Base):
     __tablename__ = 'statement_details'
     __table_args__ = (
-        # Liên kết với bảng kê tổng
-        ForeignKeyConstraint(['statement_id'], ['statement_cod.id'], name='statement_details_statement_id_fkey'),
-        # Liên kết với bút toán trong sổ cái (Ledger)
+        # 1. Sửa ForeignKey trỏ về statement_id của bảng mẹ
+        ForeignKeyConstraint(
+            ['statement_id'], 
+            ['statement_cod.statement_id'], 
+            name='statement_details_statement_id_fkey'
+        ),
         ForeignKeyConstraint(['ledger_id'], ['transaction_ledger.id'], name='statement_details_ledger_id_fkey'),
-        # Liên kết với vận đơn (Bắt buộc để sửa lỗi join condition trong log)
         ForeignKeyConstraint(['waybill_id'], ['waybills.waybill_id'], name='statement_details_waybill_id_fkey'),
-        PrimaryKeyConstraint('id', name='statement_details_pkey'),
+        
+        # 2. QUAN TRỌNG: Sửa PK từ 'id' thành 'mapping_id' cho khớp CMD
+        PrimaryKeyConstraint('mapping_id', name='statement_details_pkey'),
         {'extend_existing': True} 
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # 3. Đổi tên trường ở đây nữa
+    mapping_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    
     statement_id: Mapped[int] = mapped_column(Integer, nullable=False)
     ledger_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     waybill_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
-    # Phân loại: Dòng tiền COD hay dòng thu phí (FEE)
+    # Bổ sung thêm cho đủ bộ với Database của bạn
     type: Mapped[Optional[str]] = mapped_column(String(20))
+    statement_type: Mapped[Optional[str]] = mapped_column(String(20))
 
-    # Relationships
+    # Relationships (Giữ nguyên)
     statement: Mapped['StatementCOD'] = relationship('StatementCOD', back_populates='details')
     waybill: Mapped[Optional['Waybills']] = relationship('Waybills', back_populates='statement_details')
     ledger: Mapped['TransactionLedger'] = relationship('TransactionLedger')

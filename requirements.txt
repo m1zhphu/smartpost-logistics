@@ -1,27 +1,30 @@
-# Web Framework & Server
+# --- Lõi Web & Server ---
 fastapi
 uvicorn
 python-multipart
 
-# Database & Migrations
+# --- Database ---
 sqlalchemy
 psycopg2-binary
 alembic
+redis
 
-# Security & Authentication
+# --- Bảo mật & Auth ---
+PyJWT
+passlib
+bcrypt==4.0.1
 python-jose[cryptography]
-passlib[bcrypt]
 
-# Printing & Barcode (Step 14 - Bill "Speed Light")
+# --- Tiện ích & Xử lý file ---
+python-dotenv
+pandas
+openpyxl
+Pillow
+
+# --- In ấn Bill & Barcode ---
 python-barcode
 qrcode
 jinja2
 xhtml2pdf
 
-# Accounting & Export (Step 12 - Đối soát)
-pandas
-openpyxl
-
-# Utilities & Image Processing (Step 16 - Upload POD)
-Pillow
-python-dotenv
+email-validator

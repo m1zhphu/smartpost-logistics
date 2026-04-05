@@ -1,6 +1,6 @@
 # File: main.py
 from fastapi import FastAPI
-from api import auth, hubs, waybills, warehouse, delivery, accounting, pricing, users, dashboard, printing
+from api import auth, hubs, waybills, warehouse, delivery, accounting, pricing, users, dashboard, printing, customers
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from api.delivery import scan_overdue_waybills
@@ -39,6 +39,7 @@ app.include_router(users.router)
 app.include_router(dashboard.router)
 app.include_router(printing.router)
 app.include_router(uploads.router)
+app.include_router(customers.router)
 
 @app.get("/", tags=["Root"])
 async def root():

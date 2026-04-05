@@ -97,6 +97,10 @@ def create_cod_statement(db: Session, customer_id: int, user_id: int):
         statement_code=f"STM-COD-{int(datetime.utcnow().timestamp())}",
         customer_id=customer_id,
         total_amount=total_sum,
+        # Bổ sung thêm các trường để bảng kê đầy đủ thông tin hơn
+        total_bills=len(pending_ledgers),
+        total_cod_amount=total_sum,
+        status="PENDING",
         created_by=user_id
     )
     db.add(new_statement)
@@ -105,8 +109,12 @@ def create_cod_statement(db: Session, customer_id: int, user_id: int):
     # 3. Ghi chi tiết liên kết
     for ledger in pending_ledgers:
         db.add(models.StatementDetails(
-            statement_id=new_statement.id,
-            ledger_id=ledger.id
+            # CHỖ CẦN SỬA: Đổi .id thành .statement_id
+            statement_id=new_statement.statement_id, 
+            ledger_id=ledger.id,
+            type="COD"
         ))
     
+    db.commit() # Nhớ thêm commit để lưu vĩnh viễn vào DB
+    db.refresh(new_statement)
     return new_statement

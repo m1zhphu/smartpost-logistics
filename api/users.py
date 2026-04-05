@@ -48,11 +48,12 @@ def delete_staff(user_id: int, db: Session = Depends(get_db)):
 
 @router.get("/shippers")
 def get_shippers_by_hub(hub_id: int, db: Session = Depends(get_db)):
-    """API lấy danh sách Shipper tại bưu cục để phân công giao hàng """
-    # Giả định role_id của Shipper là 3
+    """API lấy danh sách Shipper tại bưu cục"""
+    # Role_id = 3 (Shipper)
     shippers = db.query(models.Users).filter(
         models.Users.role_id == 3, 
         models.Users.primary_hub_id == hub_id,
-        models.Users.status == True
+        models.Users.is_active == True, # Dùng is_active cho thống nhất
+        models.Users.is_deleted == False
     ).all()
     return shippers

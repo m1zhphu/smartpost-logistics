@@ -12,19 +12,27 @@ def get_all_users(db: Session, skip: int = 0, limit: int = 100):
 
 def create_user_record(db: Session, user_data: dict):
     """Tạo nhân viên mới và băm mật khẩu"""
-    # Băm mật khẩu trước khi lưu
+    # 1. Băm mật khẩu
     hashed_pwd = get_password_hash(user_data['password'])
     del user_data['password']
     
+    # 2. ĐỔI TÊN TRƯỜNG: Chuyển 'phone' (từ API) thành 'phone_number' (trong DB)
+    if 'phone' in user_data:
+        user_data['phone_number'] = user_data.pop('phone')
+    
+    # 3. Tạo Object
     new_user = models.Users(
         **user_data,
         password_hash=hashed_pwd,
+        # Lưu ý: Trong Model bạn có cả 'status' và 'is_active'. 
+        # Nên gán cả hai để tránh logic bị sai lệch.
+        status=True,
         is_active=True,
         is_deleted=False,
         created_at=datetime.utcnow()
     )
     db.add(new_user)
-    db.flush()
+    db.flush() # Để lấy user_id
     return new_user
 
 def soft_delete_user_record(db: Session, user_id: int):
