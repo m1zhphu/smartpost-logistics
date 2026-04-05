@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 # Chuỗi kết nối tới Database của bạn
 SQLALCHEMY_DATABASE_URL = "postgresql://admin:secret@localhost:5433/smartpost_db"
@@ -10,7 +10,10 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 # Tạo SessionLocal dùng để tương tác với DB trong mỗi API
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Hàm lấy DB session (sẽ dùng làm Dependency trong FastAPI)
+class Base(DeclarativeBase):
+    pass
+# ---------------------
+
 def get_db():
     db = SessionLocal()
     try:

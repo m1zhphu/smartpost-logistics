@@ -7,8 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime # Đảm bảo import đúng class datetime
 
-class Base(DeclarativeBase):
-    pass
+from core.database import Base
 
 
 class Departments(Base):
