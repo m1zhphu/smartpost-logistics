@@ -47,7 +47,7 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElNotification } from 'element-plus';
-import api from '../../../api/axios';
+import api from '../../api/axios';
 
 const router = useRouter();
 const formRef = ref(null);
