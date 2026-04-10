@@ -2,7 +2,8 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 
 const api = axios.create({
-  baseURL: '', // Dùng Vite proxy - không cần hardcode localhost:8000
+  // Tự động lấy URL từ file .env, nếu không có thì để trống (cho proxy)
+  baseURL: import.meta.env.VITE_API_URL || '', 
   timeout: 30000,
 });
 

@@ -378,11 +378,13 @@ const saveWaybill = async (andPrint) => {
       if (andPrint) {
         setTimeout(() => {
           const link = document.createElement('a');
-          link.href = `http://localhost:8000/api/print/${waybill.waybill_code}`;
+          // SỬA Ở ĐÂY: Sử dụng biến môi trường thay vì localhost
+          const baseUrl = import.meta.env.VITE_API_URL || '';
+          link.href = `${baseUrl}/api/print/${waybill.waybill_code}`;
           link.target = '_blank';
           document.body.appendChild(link);
           link.click();
-          document.body.removeChild(link); // Dọn dẹp dấu vết
+          document.body.removeChild(link);
         }, 150);
       }
 

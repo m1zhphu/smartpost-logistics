@@ -337,7 +337,9 @@ const viewTracking = async (code) => {
 };
 
 const handlePrint = (code) => {
-  window.open(`http://localhost:8000/api/print/${code}`, '_blank');
+  // SỬA Ở ĐÂY:
+  const baseUrl = import.meta.env.VITE_API_URL || '';
+  window.open(`${baseUrl}/api/print/${code}`, '_blank');
 };
 
 const openEditDialog = (row) => {
