@@ -1,0 +1,27 @@
+# mọi người tải code về và chạy lệnh sau nhé: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # Cài đặt PostgreSQL
+  db:
+    image: postgres:16
+    container_name: smartpost-postgres-team
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: smartpost_db
+    ports:
+      - "5433:5432" # Máy 2 bạn kia cũng sẽ chạy port 5433
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Cài đặt Redis
+  redis:
+    image: redis:latest
+    container_name: smartpost-redis-team
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

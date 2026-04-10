@@ -1,0 +1,6 @@
+DEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>
+DEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>
+DEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>
+DEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:httpx:HTTP Request: POST http://testserver/api/pricing/rules "HTTP/1.1 401 Unauthorized"

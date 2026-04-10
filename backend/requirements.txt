@@ -1,0 +1,30 @@
+# --- Lõi Web & Server ---
+fastapi
+uvicorn
+python-multipart
+
+# --- Database ---
+sqlalchemy
+psycopg2-binary
+alembic
+redis
+
+# --- Bảo mật & Auth ---
+PyJWT
+passlib
+bcrypt==4.0.1
+python-jose[cryptography]
+
+# --- Tiện ích & Xử lý file ---
+python-dotenv
+pandas
+openpyxl
+Pillow
+
+# --- In ấn Bill & Barcode ---
+python-barcode
+qrcode
+jinja2
+xhtml2pdf
+
+email-validator

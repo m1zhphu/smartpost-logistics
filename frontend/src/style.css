@@ -1,0 +1,226 @@
+:root {
+  /* MISA Professional Color Palette */
+  --misa-primary: #0072BC;          /* Stable MISA Blue */
+  --misa-primary-light: #E6F1F8;    /* Light Blue for backgrounds */
+  --misa-primary-hover: #005A94;
+  
+  --misa-bg: #F0F2f5;               /* Clean app background */
+  --misa-sidebar: #1E293B;          /* Professional navy sidebar */
+  --misa-sidebar-active: #0072BC;   /* Active menu item uses primary color */
+  
+  --misa-text: #111827;             /* High contrast text */
+  --misa-text-muted: #6B7280;       /* Secondary text */
+  --misa-border: #D1D5DB;           /* Discernible borders */
+  
+  /* Status Colors */
+  --misa-success: #28A745;          /* Green for success/approval */
+  --misa-warning: #FFC107;          /* Yellow for temporary/pending */
+  --misa-error: #DC3545;            /* Red for alerts/error/delete */
+  --misa-info: #17A2B8;
+  
+  --el-color-primary: var(--misa-primary);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  /* Sans-serif fonts for clear, clean, and readable text */
+  font-family: 'Inter', 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--misa-bg);
+  color: var(--misa-text);
+  font-size: 14px; /* Standard management app font size */
+  line-height: 1.5;
+}
+
+/* Custom Scrollbar - Minimalist */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Element Plus Global Tweaks */
+.el-button {
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.el-button--primary {
+  background-color: var(--misa-primary) !important;
+  border-color: var(--misa-primary) !important;
+}
+
+.el-button--primary:hover {
+  background-color: var(--misa-primary-hover) !important;
+  border-color: var(--misa-primary-hover) !important;
+}
+
+.el-table {
+  --el-table-header-bg-color: #F8FAFC !important;
+  --el-table-header-text-color: #374151 !important;
+  font-size: 13px !important; /* Slightly smaller for data-heavy grids */
+  border-radius: 4px;
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+}
+
+.el-card {
+  border-radius: 4px !important;
+  border: 1px solid var(--misa-border) !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+}
+
+.el-card__header {
+  padding: 12px 20px !important;
+  background-color: #FFFFFF;
+  border-bottom: 1px solid var(--misa-border) !important;
+}
+
+/* Sidebar Styling */
+.el-menu-item.is-active {
+  background-color: #334155 !important;
+  border-left: 4px solid var(--misa-primary);
+}
+
+/* Titles */
+.misa-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--misa-text);
+  margin-bottom: 0.5rem;
+}
+
+.misa-subtitle {
+  font-size: 0.875rem;
+  color: var(--misa-text-muted);
+}
+
+/* Utilities */
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-center { display: flex; align-items: center; }
+.gap-2 { gap: 0.5rem; }
+.w-full { width: 100%; }
+.mt-4 { margin-top: 1rem; }
+.mb-4 { margin-left: 1rem; }
+
+.text-primary { color: var(--misa-primary); }
+.text-success { color: var(--misa-success); }
+.text-danger { color: var(--misa-error); }
+.text-warning { color: var(--misa-warning); }
+
+.bg-white { background-color: #FFFFFF; }
+
+/* =========================================
+   SMARTPOST 2.0 - DESIGN SYSTEM
+   ========================================= */
+:root {
+  /* Bảng màu chuẩn Logistics */
+  --sp-primary: #1e40af; /* Xanh Navy Đậm */
+  --sp-primary-light: #eff6ff;
+  --sp-success: #10b981; /* Xanh Ngọc */
+  --sp-warning: #f59e0b; /* Vàng Cam */
+  --sp-danger: #ef4444;  /* Đỏ Tươi */
+  
+  --sp-bg-app: #f1f5f9; /* Nền xám xanh cực nhạt, dịu mắt */
+  --sp-surface: #ffffff;
+  
+  --sp-text-main: #1e293b;
+  --sp-text-muted: #64748b;
+  
+  /* Bo góc & Đổ bóng hiện đại */
+  --sp-radius-lg: 16px;
+  --sp-radius-md: 12px;
+  --sp-radius-sm: 8px;
+  --sp-shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
+  --sp-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+body {
+  background-color: var(--sp-bg-app);
+  color: var(--sp-text-main);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+}
+
+/* --- Ép kiểu (Override) Element Plus cho hiện đại hơn --- */
+
+/* Thẻ Card */
+.el-card {
+  border-radius: var(--sp-radius-lg) !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: var(--sp-shadow-card) !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.el-card.is-hover-shadow:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sp-shadow-float) !important;
+}
+.el-card__header {
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 16px 20px !important;
+  background-color: #fafbfc;
+  border-top-left-radius: var(--sp-radius-lg);
+  border-top-right-radius: var(--sp-radius-lg);
+}
+
+/* Nút bấm (Buttons) */
+.el-button {
+  border-radius: var(--sp-radius-sm) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease !important;
+}
+.el-button--primary { background-color: var(--sp-primary) !important; border-color: var(--sp-primary) !important; }
+.el-button--primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3); }
+
+/* Bảng dữ liệu (Tables) */
+.el-table {
+  border-radius: var(--sp-radius-md);
+  overflow: hidden;
+}
+.el-table th.el-table__cell {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: #fcfcfd !important;
+}
+.el-table__row:hover > td { background-color: #f1f5f9 !important; }
+
+/* Input & Select */
+.el-input__wrapper, .el-select-v2__wrapper {
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: 0 0 0 1px #cbd5e1 inset !important;
+}
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 2px var(--sp-primary) inset !important;
+}
+
+/* Tiêu đề trang dùng chung */
+.misa-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--sp-text-main);
+  letter-spacing: -0.5px;
+}
