@@ -4,10 +4,7 @@ import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import UniversalScanner from '../../components/UniversalScanner';
 import { warehouseService } from '../../api/services/warehouseService';
-
-const COLORS = {
-  primary: '#254BE0', background: '#FFFFFF', card: '#FFFFFF', textMain: '#1E293B', textSub: '#64748B', border: '#E2E8F0', success: '#10B981', danger: '#EF4444', warning: '#F59E0B'
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 interface ExpectedBag {
   bag_code: string;
@@ -15,6 +12,9 @@ interface ExpectedBag {
 }
 
 export default function ScanManifestUnloadScreen({ navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
+
   const [isLocked, setIsLocked] = useState(false);
   const [manifestCode, setManifestCode] = useState('');
 
@@ -157,7 +157,7 @@ export default function ScanManifestUnloadScreen({ navigation }: any) {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
-          {isLocked && <View style={styles.liveBadge}><Text style={{ color: COLORS.success, fontSize: 12, fontWeight: 'bold' }}>UNLOADING</Text></View>}
+          {isLocked && <View style={styles.liveBadge}><Text style={{ color: theme.success, fontSize: 12, fontWeight: 'bold' }}>UNLOADING</Text></View>}
         </View>
       </View>
 
@@ -166,16 +166,16 @@ export default function ScanManifestUnloadScreen({ navigation }: any) {
         {!isLocked ? (
           <ScrollView contentContainerStyle={styles.configArea}>
             <View style={styles.cardHeaderRow}>
-              <View style={styles.iconCircleSuccess}><Ionicons name="download" size={20} color={COLORS.success} /></View>
+              <View style={styles.iconCircleSuccess}><Ionicons name="download" size={20} color={theme.success} /></View>
               <Text style={styles.configTitle}>XE TẢI ĐANG CẬP BẾN</Text>
             </View>
 
             <Text style={styles.label}>Chọn mã chuyến xe muốn dỡ hàng:</Text>
             <View style={styles.pickerContainer}>
-              <Picker selectedValue={manifestCode} onValueChange={setManifestCode} dropdownIconColor={COLORS.textSub}>
-                <Picker.Item label="--- Chọn chuyến xe ---" value="" color={COLORS.textSub} />
+              <Picker selectedValue={manifestCode} onValueChange={setManifestCode} dropdownIconColor={theme.textSecondary}>
+                <Picker.Item label="--- Chọn chuyến xe ---" value="" color={theme.textSecondary} />
                 {incomingManifests.map(m => (
-                  <Picker.Item key={m.manifest_code} label={`${m.manifest_code} (${m.vehicle_number || 'N/A'})`} value={m.manifest_code} color={COLORS.textMain} />
+                  <Picker.Item key={m.manifest_code} label={`${m.manifest_code} (${m.vehicle_number || 'N/A'})`} value={m.manifest_code} color={theme.text} />
                 ))}
               </Picker>
             </View>
@@ -195,12 +195,12 @@ export default function ScanManifestUnloadScreen({ navigation }: any) {
               <View>
                 <Text style={styles.sheetTitle}>Tiến độ dỡ hàng</Text>
                 <Text style={styles.sheetSub}>
-                  Đã quét: <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>{scannedCount}</Text> / {expectedBags.length}
+                  Đã quét: <Text style={{ color: theme.primary, fontWeight: 'bold' }}>{scannedCount}</Text> / {expectedBags.length}
                 </Text>
               </View>
               <TouchableOpacity style={styles.unlockBtn} onPress={handleUnlock}>
-                <Ionicons name="refresh" size={16} color={COLORS.danger} style={{ marginRight: 4 }} />
-                <Text style={{ color: COLORS.danger, fontWeight: 'bold', fontSize: 12 }}>ĐỔI XE</Text>
+                <Ionicons name="refresh" size={16} color={theme.danger} style={{ marginRight: 4 }} />
+                <Text style={{ color: theme.danger, fontWeight: 'bold', fontSize: 12 }}>ĐỔI XE</Text>
               </TouchableOpacity>
             </View>
 
@@ -212,12 +212,12 @@ export default function ScanManifestUnloadScreen({ navigation }: any) {
               renderItem={({ item }) => (
                 <View style={[styles.listItem, item.is_scanned ? styles.scannedItem : styles.pendingItem]}>
                   <View style={styles.leftInfo}>
-                    <View style={[styles.iconCircle, { backgroundColor: item.is_scanned ? COLORS.success : '#F1F5F9' }]}>
-                      <Ionicons name={item.is_scanned ? "checkmark" : "time-outline"} size={20} color={item.is_scanned ? '#FFF' : COLORS.textSub} />
+                    <View style={[styles.iconCircle, { backgroundColor: item.is_scanned ? theme.success : '#F1F5F9' }]}>
+                      <Ionicons name={item.is_scanned ? "checkmark" : "time-outline"} size={20} color={item.is_scanned ? '#FFF' : theme.textSecondary} />
                     </View>
                     <View>
-                      <Text style={[styles.itemCode, { color: item.is_scanned ? COLORS.success : COLORS.textSub }]}>{item.is_scanned ? 'ĐÃ DỠ HÀNG' : 'CHỜ QUÉT'}</Text>
-                      <Text style={[styles.itemTime, { color: item.is_scanned ? COLORS.textMain : COLORS.textSub }]}>{item.bag_code}</Text>
+                      <Text style={[styles.itemCode, { color: item.is_scanned ? theme.success : theme.textSecondary }]}>{item.is_scanned ? 'ĐÃ DỠ HÀNG' : 'CHỜ QUÉT'}</Text>
+                      <Text style={[styles.itemTime, { color: item.is_scanned ? theme.text : theme.textSecondary }]}>{item.bag_code}</Text>
                     </View>
                   </View>
                 </View>
@@ -242,47 +242,47 @@ export default function ScanManifestUnloadScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
 
   cameraArea: { height: '50%', position: 'relative' },
   camHeader: { position: 'absolute', top: 50, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  liveBadge: { borderWidth: 1, borderColor: COLORS.success, backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  liveBadge: { borderWidth: 1, borderColor: theme.success, backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
 
   cameraOverlayLock: { ...StyleSheet.absoluteFillObject, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' },
   lockText: { color: 'rgba(255,255,255,0.6)', marginTop: 15, fontWeight: 'bold', letterSpacing: 1 },
 
-  bottomSheet: { flex: 1, backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, position: 'relative' },
+  bottomSheet: { flex: 1, backgroundColor: theme.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, position: 'relative' },
 
   configArea: { padding: 25, paddingBottom: 50 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
   iconCircleSuccess: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  configTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain },
+  configTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text },
 
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMain, marginBottom: 8 },
-  pickerContainer: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, marginBottom: 30, backgroundColor: '#F8FAFC' },
+  label: { fontSize: 13, fontWeight: '600', color: theme.text, marginBottom: 8 },
+  pickerContainer: { borderWidth: 1, borderColor: theme.border, borderRadius: 12, marginBottom: 30, backgroundColor: '#F8FAFC' },
 
-  startBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  startBtn: { flexDirection: 'row', backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 3 },
   startBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 15, borderBottomWidth: 1, borderColor: COLORS.border },
-  sheetTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 2 },
-  sheetSub: { fontSize: 14, color: COLORS.textSub },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 15, borderBottomWidth: 1, borderColor: theme.border },
+  sheetTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginBottom: 2 },
+  sheetSub: { fontSize: 14, color: theme.textSecondary },
   unlockBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEE2E2', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
 
   listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 16, marginBottom: 12, padding: 16, borderWidth: 1 },
-  scannedItem: { backgroundColor: '#ECFDF5', borderColor: COLORS.success, elevation: 2 },
-  pendingItem: { backgroundColor: COLORS.card, borderColor: COLORS.border },
+  scannedItem: { backgroundColor: '#ECFDF5', borderColor: theme.success, elevation: 2 },
+  pendingItem: { backgroundColor: theme.card, borderColor: theme.border },
 
   leftInfo: { flexDirection: 'row', alignItems: 'center' },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   itemCode: { fontSize: 11, fontWeight: 'bold', marginBottom: 2 },
   itemTime: { fontSize: 16, fontWeight: 'bold' },
 
-  emptyText: { textAlign: 'center', color: COLORS.textSub, marginTop: 40, fontStyle: 'italic' },
+  emptyText: { textAlign: 'center', color: theme.textSecondary, marginTop: 40, fontStyle: 'italic' },
 
-  summaryFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.background, padding: 15, borderTopWidth: 1, borderColor: COLORS.border },
-  finishBtn: { flexDirection: 'row', backgroundColor: COLORS.success, paddingVertical: 16, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 2 },
+  summaryFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: theme.background, padding: 15, borderTopWidth: 1, borderColor: theme.border },
+  finishBtn: { flexDirection: 'row', backgroundColor: theme.success, paddingVertical: 16, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 2 },
   finishBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 });

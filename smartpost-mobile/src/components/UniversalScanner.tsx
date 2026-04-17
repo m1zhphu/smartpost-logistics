@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator, Vibration, Animated, Easing } from 'react-native';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '../hooks/useAppTheme';
 
 interface UniversalScannerProps {
   title?: string;
@@ -9,12 +10,10 @@ interface UniversalScannerProps {
   onScan: (code: string) => Promise<void>;
 }
 
-const COLORS = {
-  primary: '#254BE0',
-  laser: '#3B82F6', // Màu xanh lơ sáng cho tia laser và góc
-};
-
 export default function UniversalScanner({ title, instruction, onScan }: UniversalScannerProps) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
+
   const device = useCameraDevice('back');
   const [hasPermission, setHasPermission] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -65,7 +64,7 @@ export default function UniversalScanner({ title, instruction, onScan }: Univers
   });
 
   if (!hasPermission) return <View style={styles.center}><Text style={{ color: '#FFF' }}>Đang chờ cấp quyền Camera...</Text></View>;
-  if (device == null) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  if (device == null) return <View style={styles.center}><ActivityIndicator size="large" color={theme.primary} /></View>;
 
   return (
     <View style={styles.container}>
@@ -82,7 +81,7 @@ export default function UniversalScanner({ title, instruction, onScan }: Univers
 
         {/* KHUNG NGẮM CÓ TIA LASER */}
         <View style={styles.reticleFrame}>
-          {/* 4 Góc xanh chuẩn thiết kế */}
+          {/* 4 Góc chuẩn thiết kế */}
           <View style={[styles.corner, styles.topLeft]} />
           <View style={[styles.corner, styles.topRight]} />
           <View style={[styles.corner, styles.bottomLeft]} />
@@ -107,7 +106,7 @@ export default function UniversalScanner({ title, instruction, onScan }: Univers
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
   container: { flex: 1, position: 'relative' },
   overlay: {
@@ -126,7 +125,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 30
   },
-  corner: { position: 'absolute', width: 30, height: 30, borderColor: COLORS.laser },
+  corner: { position: 'absolute', width: 30, height: 30, borderColor: theme.info }, // Dùng màu info (xanh lơ) cho scanner
   topLeft: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 },
   topRight: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3 },
   bottomLeft: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 },
@@ -136,8 +135,8 @@ const styles = StyleSheet.create({
   laserLine: {
     width: '100%',
     height: 2,
-    backgroundColor: COLORS.laser,
-    shadowColor: COLORS.laser,
+    backgroundColor: theme.info,
+    shadowColor: theme.info,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 10,
@@ -153,7 +152,7 @@ const styles = StyleSheet.create({
 
   processingBadge: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primary,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 30,

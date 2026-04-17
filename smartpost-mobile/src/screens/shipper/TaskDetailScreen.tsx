@@ -5,24 +5,11 @@ import * as Print from 'expo-print';
 import { Ionicons } from '@expo/vector-icons';
 import { waybillService } from '../../api/services/waybillService';
 import { printService } from '../../api/services/printService';
-
-const COLORS = {
-  primary: '#254BE0',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textSub: '#64748B',
-  border: '#E2E8F0',
-  danger: '#EF4444',
-  success: '#10B981',
-  warning: '#F59E0B',
-  expressBg: '#FEF3C7',
-  expressText: '#D97706',
-  codBg: '#FFF3CD',
-  codText: '#92400E',
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function TaskDetailScreen({ route, navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
   const { waybill } = route.params || {};
   const [tracking, setTracking] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,9 +19,9 @@ export default function TaskDetailScreen({ route, navigation }: any) {
 
     setLoading(true);
 
-    axiosClient.get(`/waybills/${waybill.waybill_code}/tracking`)
+    const res = waybillService.getTracking(waybill.waybill_code)
       .then(res => {
-        setTracking(res.data.history || []);
+        setTracking(res || []);
       })
       .catch(err => {
         console.log("Lỗi tải tracking:", err);
@@ -83,7 +70,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
       {/* =========================================
           1. HEADER NỀN XANH
@@ -118,7 +105,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
 
       <View style={styles.customerBar}>
         <View style={styles.customerHeader}>
-          <Ionicons name="person-circle-outline" size={36} color={COLORS.primary} style={{ marginRight: 10 }} />
+          <Ionicons name="person-circle-outline" size={36} color={theme.primary} style={{ marginRight: 10 }} />
           <View style={{ flex: 1 }}>
             <Text style={styles.custName} numberOfLines={1}>{waybill.receiver_name}</Text>
             <Text style={styles.custPhone}>{waybill.receiver_phone}</Text>
@@ -127,14 +114,14 @@ export default function TaskDetailScreen({ route, navigation }: any) {
             <Ionicons name="call" size={18} color="#FFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtnMap} onPress={openMap}>
-            <Ionicons name="location" size={18} color={COLORS.primary} />
+            <Ionicons name="location" size={18} color={theme.primary} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.divider} />
 
         <View style={styles.addressRow}>
-          <Ionicons name="location-outline" size={16} color={COLORS.textSub} style={{ marginTop: 2, marginRight: 8 }} />
+          <Ionicons name="location-outline" size={16} color={theme.textSecondary} style={{ marginTop: 2, marginRight: 8 }} />
           <Text style={styles.addressText} numberOfLines={2}>{waybill.receiver_address}</Text>
         </View>
       </View>
@@ -183,7 +170,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
           </View>
 
           {loading ? (
-            <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 20 }} />
+            <ActivityIndicator color={theme.primary} style={{ marginVertical: 20 }} />
           ) : tracking.length === 0 ? (
             <Text style={styles.emptyText}>Chưa có thông tin hành trình</Text>
           ) : (
@@ -207,7 +194,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                       {!isLast && <View style={styles.timelineLine} />}
                     </View>
                     <View style={styles.trackItem}>
-                      <Text style={[styles.trackStatus, isFirst && { color: COLORS.primary }]}>{t.note}</Text>
+                      <Text style={[styles.trackStatus, isFirst && { color: theme.primary }]}>{t.note}</Text>
                       <Text style={styles.trackTime}>{new Date(t.time).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · {new Date(t.time).toLocaleDateString('vi-VN')}</Text>
                     </View>
                   </View>
@@ -225,7 +212,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
         <View style={styles.bottomBar}>
           {/* NÚT IN VẬN ĐƠN */}
           <TouchableOpacity style={styles.printerBtn} onPress={handlePrint}>
-            <Ionicons name="print-outline" size={24} color={COLORS.textMain} />
+            <Ionicons name="print-outline" size={24} color={theme.text} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.updateBtn} onPress={() => navigation.navigate('UpdateStatus', { waybill })}>
@@ -238,13 +225,13 @@ export default function TaskDetailScreen({ route, navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: theme.background },
 
   // Header
   headerArea: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primary,
     paddingTop: 50,
     paddingBottom: 40,
     position: 'relative',
@@ -257,14 +244,14 @@ const styles = StyleSheet.create({
   headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: 2 },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   badgeRow: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 15, justifyContent: 'center', alignItems: 'center' },
-  expressBadge: { backgroundColor: COLORS.expressBg, paddingHorizontal: 16, paddingVertical: 4, borderRadius: 16, marginRight: 10 },
-  expressText: { color: COLORS.expressText, fontWeight: 'bold', fontSize: 13 },
+  expressBadge: { backgroundColor: theme.warningBackground, paddingHorizontal: 16, paddingVertical: 4, borderRadius: 16, marginRight: 10 },
+  expressText: { color: theme.warning, fontWeight: 'bold', fontSize: 13 },
   statusBadge: { backgroundColor: 'transparent', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
   statusText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
 
   // Customer Bar Nổi Bên Ngoài ScrollView
   customerBar: {
-    backgroundColor: COLORS.card,
+    backgroundColor: theme.card,
     marginHorizontal: 20,
     marginTop: -25, // Đè lên viền Header
     padding: 15,
@@ -275,58 +262,58 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: theme.border,
     zIndex: 10
   },
   customerHeader: { flexDirection: 'row', alignItems: 'center' },
-  custName: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 2 },
-  custPhone: { fontSize: 14, color: COLORS.textSub },
-  actionBtnCall: { width: 40, height: 40, borderRadius: 10, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginLeft: 8, elevation: 1 },
-  actionBtnMap: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
+  custName: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginBottom: 2 },
+  custPhone: { fontSize: 14, color: theme.textSecondary },
+  actionBtnCall: { width: 40, height: 40, borderRadius: 10, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center', marginLeft: 8, elevation: 1 },
+  actionBtnMap: { width: 40, height: 40, borderRadius: 10, backgroundColor: theme.primaryBackground, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  divider: { height: 1, backgroundColor: theme.border, marginVertical: 12 },
   addressRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  addressText: { flex: 1, fontSize: 14, color: COLORS.textMain, lineHeight: 20 },
+  addressText: { flex: 1, fontSize: 14, color: theme.text, lineHeight: 20 },
 
   // Scroll Content
   scrollView: { flex: 1, zIndex: 1 },
   scrollContent: { padding: 15, paddingTop: 15, paddingBottom: 100 },
 
-  card: { backgroundColor: COLORS.card, borderRadius: 16, padding: 20, marginBottom: 15, elevation: 1, borderWidth: 1, borderColor: COLORS.border },
+  card: { backgroundColor: theme.card, borderRadius: 16, padding: 20, marginBottom: 15, elevation: 1, borderWidth: 1, borderColor: theme.border },
 
   // Info Grid
   infoGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  codBox: { flex: 1, backgroundColor: COLORS.codBg, borderRadius: 16, padding: 20, marginRight: 10, justifyContent: 'center', borderWidth: 1, borderColor: '#FEF08A' },
-  codLabel: { fontSize: 11, fontWeight: 'bold', color: COLORS.codText, marginBottom: 8, letterSpacing: 0.5 },
-  codValue: { fontSize: 24, fontWeight: 'bold', color: COLORS.codText },
-  codUnit: { fontSize: 13, color: COLORS.codText, marginTop: 4 },
+  codBox: { flex: 1, backgroundColor: theme.warningBackground, borderRadius: 16, padding: 20, marginRight: 10, justifyContent: 'center', borderWidth: 1, borderColor: '#FEF08A' },
+  codLabel: { fontSize: 11, fontWeight: 'bold', color: theme.warning, marginBottom: 8, letterSpacing: 0.5 },
+  codValue: { fontSize: 24, fontWeight: 'bold', color: theme.warning },
+  codUnit: { fontSize: 13, color: theme.warning, marginTop: 4 },
   rightStats: { flex: 1 },
-  statBox: { backgroundColor: COLORS.card, borderRadius: 16, padding: 15, borderWidth: 1, borderColor: COLORS.border },
-  statLabel: { fontSize: 11, fontWeight: 'bold', color: COLORS.textSub, marginBottom: 4 },
-  statValue: { fontSize: 16, fontWeight: '600', color: COLORS.textMain },
-  statUnitInline: { fontSize: 13, color: COLORS.textSub, fontWeight: 'normal' },
+  statBox: { backgroundColor: theme.card, borderRadius: 16, padding: 15, borderWidth: 1, borderColor: theme.border },
+  statLabel: { fontSize: 11, fontWeight: 'bold', color: theme.textSecondary, marginBottom: 4 },
+  statValue: { fontSize: 16, fontWeight: '600', color: theme.text },
+  statUnitInline: { fontSize: 13, color: theme.textSecondary, fontWeight: 'normal' },
 
-  noteLabel: { fontSize: 13, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 8, letterSpacing: 0.5 },
-  noteText: { fontSize: 15, color: COLORS.textMain, lineHeight: 22 },
+  noteLabel: { fontSize: 13, fontWeight: 'bold', color: theme.text, marginBottom: 8, letterSpacing: 0.5 },
+  noteText: { fontSize: 15, color: theme.text, lineHeight: 22 },
 
   // Timeline
-  timelineHeaderRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingBottom: 15 },
-  dotPrimaryTitle: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary, marginRight: 8 },
-  timelineTitle: { fontSize: 14, fontWeight: 'bold', color: COLORS.primary, letterSpacing: 0.5 },
+  timelineHeaderRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.border, paddingBottom: 15 },
+  dotPrimaryTitle: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.primary, marginRight: 8 },
+  timelineTitle: { fontSize: 14, fontWeight: 'bold', color: theme.primary, letterSpacing: 0.5 },
   trackItemContainer: { flexDirection: 'row' },
   timeline: { alignItems: 'center', width: 30 },
-  timelineDotActiveWrap: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#DBEAFE', justifyContent: 'center', alignItems: 'center', zIndex: 1 },
-  timelineDotActive: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
-  timelineDotPast: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FFF', borderWidth: 2, borderColor: COLORS.success, zIndex: 1, marginTop: 4 },
+  timelineDotActiveWrap: { width: 20, height: 20, borderRadius: 10, backgroundColor: theme.primaryBackground, justifyContent: 'center', alignItems: 'center', zIndex: 1 },
+  timelineDotActive: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.primary },
+  timelineDotPast: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FFF', borderWidth: 2, borderColor: theme.success, zIndex: 1, marginTop: 4 },
   timelineDotStart: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FFF', borderWidth: 2, borderColor: '#D1D5DB', zIndex: 1, marginTop: 4 },
-  timelineLine: { flex: 1, width: 2, backgroundColor: COLORS.border, marginVertical: -4 },
+  timelineLine: { flex: 1, width: 2, backgroundColor: theme.border, marginVertical: -4 },
   trackItem: { paddingLeft: 10, paddingBottom: 25, flex: 1 },
-  trackStatus: { fontSize: 15, fontWeight: '500', color: COLORS.textMain, marginBottom: 4 },
-  trackTime: { fontSize: 13, color: COLORS.textSub },
-  emptyText: { textAlign: 'center', color: COLORS.textSub, fontStyle: 'italic', marginTop: 15 },
+  trackStatus: { fontSize: 15, fontWeight: '500', color: theme.text, marginBottom: 4 },
+  trackTime: { fontSize: 13, color: theme.textSecondary },
+  emptyText: { textAlign: 'center', color: theme.textSecondary, fontStyle: 'italic', marginTop: 15 },
 
   // Bottom Bar
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: COLORS.card, padding: 15, paddingBottom: 25, borderTopWidth: 1, borderColor: COLORS.border, zIndex: 20 },
-  printerBtn: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', marginRight: 15, borderWidth: 1, borderColor: COLORS.border },
-  updateBtn: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.primary, borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 2 },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: theme.card, padding: 15, paddingBottom: 25, borderTopWidth: 1, borderColor: theme.border, zIndex: 20 },
+  printerBtn: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', marginRight: 15, borderWidth: 1, borderColor: theme.border },
+  updateBtn: { flex: 1, flexDirection: 'row', backgroundColor: theme.primary, borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 2 },
   updateBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
 });

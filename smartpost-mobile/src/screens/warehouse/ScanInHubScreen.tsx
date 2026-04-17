@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, Alert, FlatList, TouchableOpacity, StatusBar, T
 import { Ionicons } from '@expo/vector-icons';
 import UniversalScanner from '../../components/UniversalScanner';
 import { warehouseService } from '../../api/services/warehouseService';
-
-const COLORS = {
-  primary: '#254BE0', background: '#FFFFFF', textMain: '#1E293B', textSub: '#64748B', border: '#E2E8F0', success: '#10B981', danger: '#EF4444', warning: '#F59E0B', card: '#FFFFFF'
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function ScanInHubScreen({ navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
+
   const [scannedItems, setScannedItems] = useState<{ code: string, weight: number, time: string }[]>([]);
   const [manualCode, setManualCode] = useState('');
 
@@ -63,7 +63,7 @@ export default function ScanInHubScreen({ navigation }: any) {
             <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 'bold', letterSpacing: 1 }}>NHẬP KHO</Text>
             <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold' }}>In-Hub Scanner</Text>
           </View>
-          <View style={styles.liveBadge}><Text style={{ color: COLORS.success, fontSize: 12, fontWeight: 'bold' }}>LIVE</Text></View>
+          <View style={styles.liveBadge}><Text style={{ color: theme.success, fontSize: 12, fontWeight: 'bold' }}>LIVE</Text></View>
         </View>
 
         {/* Form nhập thủ công đè lên Camera */}
@@ -122,7 +122,7 @@ export default function ScanInHubScreen({ navigation }: any) {
                 <View style={[styles.itemContent, isFirst && { paddingTop: 30 }]}>
                   <View style={styles.leftInfo}>
                     <View style={[styles.iconCircle, isFirst ? { backgroundColor: '#FFF' } : { backgroundColor: '#ECFDF5' }]}>
-                      <Ionicons name="checkmark" size={20} color={isFirst ? COLORS.primary : COLORS.success} />
+                      <Ionicons name="checkmark" size={20} color={isFirst ? theme.primary : theme.success} />
                     </View>
                     <View>
                       <Text style={[styles.itemCode, isFirst && { color: '#FFF' }]}>{item.code}</Text>
@@ -139,8 +139,8 @@ export default function ScanInHubScreen({ navigation }: any) {
           }}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Ionicons name="scan-circle-outline" size={60} color={COLORS.border} />
-              <Text style={{ color: COLORS.textSub, marginTop: 10 }}>Chưa có kiện hàng nào</Text>
+              <Ionicons name="scan-circle-outline" size={60} color={theme.border} />
+              <Text style={{ color: theme.textSecondary, marginTop: 10 }}>Chưa có kiện hàng nào</Text>
             </View>
           }
         />
@@ -155,44 +155,44 @@ export default function ScanInHubScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
 
   // Camera Area
   cameraArea: { height: '52%', position: 'relative' },
   camHeader: { position: 'absolute', top: 50, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  liveBadge: { borderWidth: 1, borderColor: COLORS.success, backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  liveBadge: { borderWidth: 1, borderColor: theme.success, backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
 
   manualInputContainer: { position: 'absolute', bottom: 30, left: 20, right: 20, flexDirection: 'row', alignItems: 'center' },
   inputBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(30, 41, 59, 0.85)', borderRadius: 12, paddingHorizontal: 15, height: 50, marginRight: 10, borderWidth: 1, borderColor: '#334155' },
   input: { flex: 1, color: '#FFF', fontSize: 15 },
-  sendBtn: { width: 50, height: 50, borderRadius: 12, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  sendBtn: { width: 50, height: 50, borderRadius: 12, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' },
 
   // Bottom Sheet
-  bottomSheet: { flex: 1, backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, position: 'relative' },
+  bottomSheet: { flex: 1, backgroundColor: theme.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, position: 'relative' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 10 },
-  sheetTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain },
-  badgeCount: { backgroundColor: COLORS.primary, width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-  outlineBtn: { backgroundColor: '#F1F5F9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
-  outlineBtnText: { color: COLORS.textMain, fontSize: 13, fontWeight: '500' },
+  sheetTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text },
+  badgeCount: { backgroundColor: theme.primary, width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  outlineBtn: { backgroundColor: '#F1F5F9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.border },
+  outlineBtnText: { color: theme.text, fontSize: 13, fontWeight: '500' },
 
   // List Item
-  listItem: { backgroundColor: COLORS.card, borderRadius: 16, marginBottom: 12, elevation: 1, borderWidth: 1, borderColor: COLORS.border, position: 'relative', overflow: 'hidden' },
-  firstItem: { backgroundColor: COLORS.primary, borderColor: COLORS.primary, elevation: 5 },
+  listItem: { backgroundColor: theme.card, borderRadius: 16, marginBottom: 12, elevation: 1, borderWidth: 1, borderColor: theme.border, position: 'relative', overflow: 'hidden' },
+  firstItem: { backgroundColor: theme.primary, borderColor: theme.primary, elevation: 5 },
   firstItemTag: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.15)', flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 15 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF', marginRight: 6 },
 
   itemContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
   leftInfo: { flexDirection: 'row', alignItems: 'center' },
   iconCircle: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  itemCode: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 2 },
-  itemTime: { fontSize: 12, color: COLORS.textSub },
-  itemWeight: { fontSize: 18, fontWeight: 'bold', color: COLORS.textMain },
-  itemWeightSub: { fontSize: 12, color: COLORS.textSub, textAlign: 'right' },
+  itemCode: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginBottom: 2 },
+  itemTime: { fontSize: 12, color: theme.textSecondary },
+  itemWeight: { fontSize: 18, fontWeight: 'bold', color: theme.text },
+  itemWeightSub: { fontSize: 12, color: theme.textSecondary, textAlign: 'right' },
 
   // Footer
-  summaryFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderTopWidth: 1, borderColor: COLORS.border },
-  summaryLabel: { fontSize: 15, color: COLORS.textSub },
-  summaryValue: { fontSize: 18, fontWeight: 'bold', color: COLORS.textMain },
+  summaryFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderTopWidth: 1, borderColor: theme.border },
+  summaryLabel: { fontSize: 15, color: theme.textSecondary },
+  summaryValue: { fontSize: 18, fontWeight: 'bold', color: theme.text },
 });

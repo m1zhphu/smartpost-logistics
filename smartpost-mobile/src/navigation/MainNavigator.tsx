@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
+import { useAppTheme } from '../hooks/useAppTheme'; // Import hook giao diện
 
 // ==========================================
 // 📦 IMPORT TẤT CẢ CÁC SCREEN TẠI ĐÂY
@@ -47,19 +48,13 @@ import PricingRulesScreen from '../screens/accounting/PricingRulesScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const COLORS = {
-  primary: '#254BE0',
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textLight: '#94A3B8',
-};
-
-const tabScreenOptions = ({ route }: any) => ({
+// 🚀 Tạo function bọc ScreenOptions để có thể nhận `theme`
+const getTabScreenOptions = (theme: any) => ({
   headerShown: false,
-  tabBarActiveTintColor: COLORS.primary,
-  tabBarInactiveTintColor: COLORS.textLight,
+  tabBarActiveTintColor: theme.primary,
+  tabBarInactiveTintColor: theme.textSecondary,
   tabBarStyle: {
-    backgroundColor: COLORS.card,
+    backgroundColor: theme.card,
     borderTopWidth: 0,
     elevation: 15,
     shadowColor: '#000',
@@ -78,8 +73,9 @@ const tabScreenOptions = ({ route }: any) => ({
 // ==========================================
 
 function AdminWarehouseTabs() {
+  const theme = useAppTheme();
   return (
-    <Tab.Navigator screenOptions={tabScreenOptions}>
+    <Tab.Navigator screenOptions={getTabScreenOptions(theme)}>
       <Tab.Screen name="WarehouseHome" component={WarehouseMenuScreen} options={{ title: 'Tổng quan', tabBarIcon: ({ color, size }: any) => <Ionicons name="grid" size={size} color={color} /> }} />
       <Tab.Screen name="WaybillList" component={WaybillListScreen} options={{ title: 'Đơn hàng', tabBarIcon: ({ color, size }: any) => <Ionicons name="cube" size={size} color={color} /> }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Cá nhân', tabBarIcon: ({ color, size }: any) => <Ionicons name="person" size={size} color={color} /> }} />
@@ -88,8 +84,9 @@ function AdminWarehouseTabs() {
 }
 
 function AccountantTabs() {
+  const theme = useAppTheme();
   return (
-    <Tab.Navigator screenOptions={tabScreenOptions}>
+    <Tab.Navigator screenOptions={getTabScreenOptions(theme)}>
       <Tab.Screen name="AccHome" component={AccountantMenuScreen} options={{ title: 'Tổng quan', tabBarIcon: ({ color, size }: any) => <Ionicons name="pie-chart" size={size} color={color} /> }} />
       <Tab.Screen name="AccCash" component={CashConfirmScreen} options={{ title: 'Chốt ca', tabBarIcon: ({ color, size }: any) => <Ionicons name="wallet" size={size} color={color} /> }} />
       <Tab.Screen name="AccStatement" component={ShopStatementScreen} options={{ title: 'Đối soát', tabBarIcon: ({ color, size }: any) => <Ionicons name="document-text" size={size} color={color} /> }} />
@@ -99,8 +96,9 @@ function AccountantTabs() {
 }
 
 function ShipperTabs() {
+  const theme = useAppTheme();
   return (
-    <Tab.Navigator screenOptions={tabScreenOptions}>
+    <Tab.Navigator screenOptions={getTabScreenOptions(theme)}>
       <Tab.Screen name="ShipperHome" component={TaskListScreen} options={{ title: 'Công việc', tabBarIcon: ({ color, size }: any) => <Ionicons name="bicycle" size={size} color={color} /> }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Cá nhân', tabBarIcon: ({ color, size }: any) => <Ionicons name="person" size={size} color={color} /> }} />
     </Tab.Navigator>

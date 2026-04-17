@@ -4,22 +4,14 @@ import { jwtDecode } from 'jwt-decode';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../api/services/authService';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 
-const COLORS = {
-  primary: '#254BE0', // Chuẩn màu Deep Blue toàn hệ thống
-  primaryLight: '#4361EE',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textSub: '#64748B',
-  textMuted: '#94A3B8',
-  border: '#E2E8F0',
-  inputBg: '#F1F5F9',
-};
-
 export default function LoginScreen() {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -57,10 +49,10 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: COLORS.background }}
+      style={{ flex: 1, backgroundColor: theme.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
 
@@ -71,7 +63,7 @@ export default function LoginScreen() {
 
           <View style={styles.logoWrapper}>
             <View style={styles.logoIconBg}>
-              <Ionicons name="cube" size={50} color={COLORS.primary} />
+              <Ionicons name="cube" size={50} color={theme.primary} />
             </View>
             <Text style={styles.logoText}>SMARTPOST</Text>
             <Text style={styles.subtitle}>Hệ thống Giao nhận Thông minh</Text>
@@ -85,11 +77,11 @@ export default function LoginScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Tên đăng nhập</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={20} color={COLORS.textSub} style={styles.icon} />
+              <Ionicons name="person-outline" size={20} color={theme.textSecondary} style={styles.icon} />
               <TextInput
                 style={styles.input}
                 placeholder="Nhập tài khoản của bạn..."
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={theme.textMuted}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -101,18 +93,18 @@ export default function LoginScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Mật khẩu</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSub} style={styles.icon} />
+              <Ionicons name="lock-closed-outline" size={20} color={theme.textSecondary} style={styles.icon} />
               <TextInput
                 style={styles.input}
                 placeholder="Nhập mật khẩu..."
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={theme.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 editable={!loading}
               />
               <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={COLORS.textSub} />
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -122,7 +114,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.loginBtn, loading && { backgroundColor: COLORS.primaryLight }]}
+            style={[styles.loginBtn, loading && { backgroundColor: theme.primary + '80' }]}
             activeOpacity={0.8}
             onPress={handleLogin}
             disabled={loading}
@@ -149,12 +141,12 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  scrollContainer: { flexGrow: 1, backgroundColor: COLORS.background, paddingBottom: 30 },
+const getStyles = (theme: any) => StyleSheet.create({
+  scrollContainer: { flexGrow: 1, backgroundColor: theme.background, paddingBottom: 30 },
 
   // HEADER
   headerDecoration: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primary,
     height: 320,
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
@@ -163,7 +155,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -178,7 +170,7 @@ const styles = StyleSheet.create({
 
   // FORM CHÍNH
   formContainer: {
-    backgroundColor: COLORS.card,
+    backgroundColor: theme.card,
     marginHorizontal: 25,
     marginTop: -40, // Kéo form trồi lên trên phần Header xanh
     borderRadius: 24,
@@ -190,36 +182,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 15,
   },
-  welcomeText: { fontSize: 22, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 25, textAlign: 'center' },
+  welcomeText: { fontSize: 22, fontWeight: 'bold', color: theme.text, marginBottom: 25, textAlign: 'center' },
 
   inputGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: COLORS.textMain, marginBottom: 8, marginLeft: 4 },
+  label: { fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 8, marginLeft: 4 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: theme.background,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: theme.border,
     borderRadius: 16,
     height: 56,
     paddingHorizontal: 15,
   },
   icon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 15, color: COLORS.textMain, height: '100%' },
+  input: { flex: 1, fontSize: 15, color: theme.text, height: '100%' },
   eyeIcon: { padding: 10, marginRight: -10 },
 
   forgotPassBtn: { alignSelf: 'flex-end', marginBottom: 25 },
-  forgotPassText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
+  forgotPassText: { color: theme.primary, fontWeight: '600', fontSize: 14 },
 
   loginBtn: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primary,
     height: 56,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: COLORS.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -228,6 +220,6 @@ const styles = StyleSheet.create({
 
   // FOOTER
   footer: { marginTop: 'auto', alignItems: 'center', paddingTop: 30 },
-  footerText: { color: COLORS.textSub, fontSize: 13, fontWeight: '500' },
-  footerVersion: { color: COLORS.textMuted, fontSize: 12, marginTop: 4 },
+  footerText: { color: theme.textSecondary, fontSize: 13, fontWeight: '500' },
+  footerVersion: { color: theme.textMuted, fontSize: 12, marginTop: 4 },
 });

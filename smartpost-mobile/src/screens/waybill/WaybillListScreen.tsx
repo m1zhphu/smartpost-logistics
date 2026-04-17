@@ -6,23 +6,15 @@ import { waybillService } from '../../api/services/waybillService';
 import { useIsFocused } from '@react-navigation/native';
 import WaybillCard from '../../components/WaybillCard';
 import { exportExcel } from '../../api/services/exportExcel';
-
-const COLORS = {
-  primary: '#254BE0',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textSub: '#64748B',
-  border: '#E2E8F0',
-  danger: '#EF4444',
-  success: '#10B981',
-  warning: '#F59E0B',
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 const getStartOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); };
 const getEndOfToday = () => { const d = new Date(); d.setHours(23, 59, 59, 999); return d.toISOString(); };
 
 export default function WaybillListScreen({ navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
+
   const [waybills, setWaybills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
@@ -33,7 +25,7 @@ export default function WaybillListScreen({ navigation }: any) {
     start_date: getStartOfToday(),
     end_date: getEndOfToday(),
     page: 1,
-    size: 50 // Tăng size để xem được nhiều hơn
+    size: 50
   });
 
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -110,7 +102,7 @@ export default function WaybillListScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
       {/* HEADER NỀN XANH SÂU */}
       <View style={styles.headerArea}>
@@ -128,32 +120,32 @@ export default function WaybillListScreen({ navigation }: any) {
 
         {/* SEARCH BAR NỔI TRÊN NỀN XANH */}
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color={COLORS.textSub} style={{ marginLeft: 15 }} />
+          <Ionicons name="search" size={20} color={theme.textSecondary} style={{ marginLeft: 15 }} />
           <TextInput
             style={styles.searchInput}
             placeholder="Nhập mã vận đơn để tìm kiếm..."
-            placeholderTextColor={COLORS.textSub}
+            placeholderTextColor={theme.textSecondary}
             value={filters.waybill_code}
             onChangeText={handleSearchTextChange}
           />
           {filters.waybill_code !== '' && (
             <TouchableOpacity style={{ padding: 5 }} onPress={() => handleSearchTextChange('')}>
-              <Ionicons name="close-circle" size={18} color={COLORS.border} />
+              <Ionicons name="close-circle" size={18} color={theme.border} />
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.scanBtn} onPress={() => navigation.navigate('ScanTask')}>
-            <Ionicons name="barcode-outline" size={22} color={COLORS.primary} />
+            <Ionicons name="barcode-outline" size={22} color={theme.primary} />
           </TouchableOpacity>
           <View style={styles.searchDivider} />
           <TouchableOpacity style={styles.filterBtn} onPress={() => setShowFilterModal(true)}>
-            <Ionicons name="options-outline" size={24} color={COLORS.primary} />
+            <Ionicons name="options-outline" size={24} color={theme.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* DANH SÁCH THẺ (Dùng chung component WaybillCard) */}
+      {/* DANH SÁCH THẺ */}
       {loading ? (
-        <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={waybills}
@@ -162,20 +154,17 @@ export default function WaybillListScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <View style={styles.cardWrapper}>
-              {/* Truyền vào thẻ Component tái sử dụng */}
               <WaybillCard item={item} activeTab="Current" />
-
-              {/* Nút 3 chấm nằm đè lên góc phải của thẻ */}
               <TouchableOpacity style={styles.actionMenuBtn} onPress={() => setActionItem(item)}>
                 <View style={styles.actionMenuBg}>
-                  <Ionicons name="ellipsis-vertical" size={16} color={COLORS.textSub} />
+                  <Ionicons name="ellipsis-vertical" size={16} color={theme.textSecondary} />
                 </View>
               </TouchableOpacity>
             </View>
           )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={60} color={COLORS.border} />
+              <Ionicons name="search-outline" size={60} color={theme.border} />
               <Text style={styles.emptyStateText}>Không tìm thấy đơn hàng nào phù hợp bộ lọc.</Text>
             </View>
           }
@@ -195,19 +184,19 @@ export default function WaybillListScreen({ navigation }: any) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Bộ Lọc Dữ Liệu</Text>
               <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-                <Ionicons name="close" size={28} color={COLORS.textMain} />
+                <Ionicons name="close" size={28} color={theme.text} />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.label}>Trạng thái đơn hàng</Text>
             <View style={styles.pickerContainer}>
-              <Picker selectedValue={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
-                <Picker.Item label="Tất cả trạng thái" value="" />
-                <Picker.Item label="Mới tạo (CREATED)" value="CREATED" />
-                <Picker.Item label="Đã nhập kho (IN_HUB)" value="IN_HUB" />
-                <Picker.Item label="Đang giao (DELIVERING)" value="DELIVERING" />
-                <Picker.Item label="Thành công (SUCCESS)" value="SUCCESS" />
-                <Picker.Item label="Đã hủy (CANCELED)" value="CANCELED" />
+              <Picker selectedValue={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })} dropdownIconColor={theme.textSecondary}>
+                <Picker.Item label="Tất cả trạng thái" value="" color={theme.text} />
+                <Picker.Item label="Mới tạo (CREATED)" value="CREATED" color={theme.text} />
+                <Picker.Item label="Đã nhập kho (IN_HUB)" value="IN_HUB" color={theme.text} />
+                <Picker.Item label="Đang giao (DELIVERING)" value="DELIVERING" color={theme.text} />
+                <Picker.Item label="Thành công (SUCCESS)" value="SUCCESS" color={theme.text} />
+                <Picker.Item label="Đã hủy (CANCELED)" value="CANCELED" color={theme.text} />
               </Picker>
             </View>
 
@@ -243,20 +232,20 @@ export default function WaybillListScreen({ navigation }: any) {
             <Text style={styles.actionTitle}>Thao tác mã: {actionItem?.waybill_code}</Text>
 
             <TouchableOpacity style={styles.actionBtnRow} onPress={() => { setActionItem(null); navigation.navigate('TaskDetail', { waybill: actionItem }); }}>
-              <View style={[styles.actionIconBg, { backgroundColor: '#EFF6FF' }]}><Ionicons name="eye" size={20} color={COLORS.primary} /></View>
+              <View style={[styles.actionIconBg, { backgroundColor: theme.primary + '15' }]}><Ionicons name="eye" size={20} color={theme.primary} /></View>
               <Text style={styles.actionBtnText}>Xem chi tiết vận đơn</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionBtnRow} onPress={() => { setActionItem(null); setShowWeightModal(true); }}>
-              <View style={[styles.actionIconBg, { backgroundColor: '#FEF3C7' }]}><Ionicons name="scale" size={20} color={COLORS.warning} /></View>
+              <View style={[styles.actionIconBg, { backgroundColor: theme.warning + '15' }]}><Ionicons name="scale" size={20} color={theme.warning} /></View>
               <Text style={styles.actionBtnText}>Cập nhật trọng lượng thực tế</Text>
             </TouchableOpacity>
 
             <View style={styles.divider} />
 
             <TouchableOpacity style={styles.actionBtnRow} onPress={handleCancelWaybill}>
-              <View style={[styles.actionIconBg, { backgroundColor: '#FEF2F2' }]}><Ionicons name="trash" size={20} color={COLORS.danger} /></View>
-              <Text style={[styles.actionBtnText, { color: COLORS.danger }]}>Hủy bỏ vận đơn này</Text>
+              <View style={[styles.actionIconBg, { backgroundColor: theme.danger + '15' }]}><Ionicons name="trash" size={20} color={theme.danger} /></View>
+              <Text style={[styles.actionBtnText, { color: theme.danger }]}>Hủy bỏ vận đơn này</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -268,13 +257,13 @@ export default function WaybillListScreen({ navigation }: any) {
           <View style={styles.modalContent}>
 
             <Text style={styles.modalTitle}>Trọng lượng thực tế (kg)</Text>
-            <Text style={{ marginBottom: 20, color: COLORS.textSub, fontSize: 13 }}>Mã đơn: <Text style={{ fontWeight: 'bold', color: COLORS.textMain }}>{actionItem?.waybill_code}</Text></Text>
+            <Text style={{ marginBottom: 20, color: theme.textSecondary, fontSize: 13 }}>Mã đơn: <Text style={{ fontWeight: 'bold', color: theme.text }}>{actionItem?.waybill_code}</Text></Text>
 
             <TextInput
               style={styles.weightInput}
               keyboardType="numeric"
               placeholder="Nhập số kg (VD: 2.5)..."
-              placeholderTextColor={COLORS.textSub}
+              placeholderTextColor={theme.textMuted}
               value={newWeight}
               onChangeText={setNewWeight}
               autoFocus
@@ -282,7 +271,7 @@ export default function WaybillListScreen({ navigation }: any) {
 
             <View style={styles.filterRow}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowWeightModal(false); setActionItem(null); setNewWeight(''); }}>
-                <Text style={{ fontWeight: 'bold', color: COLORS.textSub }}>HỦY BỎ</Text>
+                <Text style={{ fontWeight: 'bold', color: theme.textSecondary }}>HỦY BỎ</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleUpdateWeight}>
                 <Text style={{ fontWeight: 'bold', color: '#fff' }}>LƯU THAY ĐỔI</Text>
@@ -297,11 +286,11 @@ export default function WaybillListScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
 
   // Header
-  headerArea: { backgroundColor: COLORS.primary, paddingTop: 50, paddingBottom: 30, paddingHorizontal: 15, position: 'relative', overflow: 'hidden' },
+  headerArea: { backgroundColor: theme.primary, paddingTop: 50, paddingBottom: 30, paddingHorizontal: 15, position: 'relative', overflow: 'hidden' },
   headerCircleDecoration: { position: 'absolute', top: -30, right: -60, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,255,255,0.05)' },
 
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
@@ -310,50 +299,50 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', letterSpacing: 0.5 },
 
   // Search Bar
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, height: 56, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  searchInput: { flex: 1, paddingHorizontal: 10, fontSize: 15, color: COLORS.textMain },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, borderRadius: 16, height: 56, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+  searchInput: { flex: 1, paddingHorizontal: 10, fontSize: 15, color: theme.text },
   scanBtn: { padding: 10 },
-  searchDivider: { width: 1, height: 25, backgroundColor: COLORS.border },
+  searchDivider: { width: 1, height: 25, backgroundColor: theme.border },
   filterBtn: { padding: 10, paddingRight: 15 },
 
   // List & Cards
   cardWrapper: { position: 'relative' },
   actionMenuBtn: { position: 'absolute', top: 15, right: 10, zIndex: 10 },
-  actionMenuBg: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  actionMenuBg: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: theme.border },
 
   emptyState: { alignItems: 'center', marginTop: 80 },
-  emptyStateText: { color: COLORS.textSub, marginTop: 10, fontSize: 14, fontStyle: 'italic' },
+  emptyStateText: { color: theme.textSecondary, marginTop: 10, fontSize: 14, fontStyle: 'italic' },
 
   // FAB
-  fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 6 },
+  fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: theme.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 6 },
 
   // Modals Overlay & Content
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, paddingBottom: 40 },
+  modalContent: { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textMain },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text },
 
   // Filter Modal
-  label: { fontSize: 14, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 10 },
-  pickerContainer: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, marginBottom: 25, backgroundColor: '#F8FAFC' },
+  label: { fontSize: 14, fontWeight: 'bold', color: theme.text, marginBottom: 10 },
+  pickerContainer: { borderWidth: 1, borderColor: theme.border, borderRadius: 12, marginBottom: 25, backgroundColor: theme.background },
   filterRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-  dateChip: { flex: 1, padding: 14, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, alignItems: 'center', marginHorizontal: 5 },
-  dateChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  dateChipText: { color: COLORS.textMain, fontWeight: '500' },
+  dateChip: { flex: 1, padding: 14, borderWidth: 1, borderColor: theme.border, borderRadius: 12, alignItems: 'center', marginHorizontal: 5 },
+  dateChipActive: { backgroundColor: theme.primary, borderColor: theme.primary },
+  dateChipText: { color: theme.text, fontWeight: '500' },
   dateChipTextActive: { color: '#fff', fontWeight: 'bold' },
-  submitBtn: { backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 2 },
+  submitBtn: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 2 },
   btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
   // Action Menu (Ba chấm) Modal
-  actionSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, paddingBottom: 40 },
-  actionTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 20, textAlign: 'center', letterSpacing: 0.5 },
+  actionSheet: { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, paddingBottom: 40 },
+  actionTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginBottom: 20, textAlign: 'center', letterSpacing: 0.5 },
   actionBtnRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
   actionIconBg: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  actionBtnText: { fontSize: 16, fontWeight: '600', color: COLORS.textMain },
-  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 10 },
+  actionBtnText: { fontSize: 16, fontWeight: '600', color: theme.text },
+  divider: { height: 1, backgroundColor: theme.border, marginVertical: 10 },
 
   // Weight Modal
-  weightInput: { borderWidth: 2, borderColor: COLORS.primary, borderRadius: 16, padding: 20, fontSize: 32, textAlign: 'center', fontWeight: 'bold', color: COLORS.primary, marginBottom: 10, backgroundColor: '#EFF6FF' },
-  cancelBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginRight: 8, backgroundColor: '#F8FAFC' },
-  saveBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 12, backgroundColor: COLORS.primary, marginLeft: 8, elevation: 2 }
+  weightInput: { borderWidth: 2, borderColor: theme.primary, borderRadius: 16, padding: 20, fontSize: 32, textAlign: 'center', fontWeight: 'bold', color: theme.primary, marginBottom: 10, backgroundColor: theme.primary + '10' },
+  cancelBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: theme.border, marginRight: 8, backgroundColor: theme.background },
+  saveBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 12, backgroundColor: theme.primary, marginLeft: 8, elevation: 2 }
 });

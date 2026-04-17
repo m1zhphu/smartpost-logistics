@@ -5,12 +5,12 @@ import { Picker } from '@react-native-picker/picker';
 import UniversalScanner from '../../components/UniversalScanner';
 import { warehouseService } from '../../api/services/warehouseService';
 import { waybillService } from '../../api/services/waybillService';
-
-const COLORS = {
-  primary: '#254BE0', background: '#FFFFFF', card: '#FFFFFF', textMain: '#1E293B', textSub: '#64748B', border: '#E2E8F0', success: '#10B981', danger: '#EF4444', warning: '#F59E0B'
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function ScanBaggingScreen({ navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
+
   const [isLocked, setIsLocked] = useState(false);
   const [destHubId, setDestHubId] = useState<string>('');
   const [hubs, setHubs] = useState<any[]>([]);
@@ -108,18 +108,18 @@ export default function ScanBaggingScreen({ navigation }: any) {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
-          {isLocked && <View style={styles.liveBadge}><Text style={{ color: COLORS.warning, fontSize: 12, fontWeight: 'bold' }}>BAGGING</Text></View>}
+          {isLocked && <View style={styles.liveBadge}><Text style={{ color: theme.warning, fontSize: 12, fontWeight: 'bold' }}>BAGGING</Text></View>}
         </View>
 
         {/* Input nhập tay đè lên Camera */}
         {isLocked && (
           <View style={styles.manualInputContainer}>
             <View style={styles.inputBox}>
-              <Ionicons name="search" size={20} color="#94A3B8" style={{ marginRight: 8 }} />
+              <Ionicons name="search" size={20} color={theme.textMuted} style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.input}
                 placeholder="Nhập mã đơn thủ công..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={theme.textMuted}
                 value={manualCode}
                 onChangeText={setManualCode}
                 onSubmitEditing={handleManualSubmit}
@@ -142,16 +142,16 @@ export default function ScanBaggingScreen({ navigation }: any) {
         {!isLocked ? (
           <View style={styles.configArea}>
             <View style={styles.cardHeaderRow}>
-              <View style={styles.iconCircleWarning}><Ionicons name="briefcase" size={20} color={COLORS.warning} /></View>
+              <View style={styles.iconCircleWarning}><Ionicons name="briefcase" size={20} color={theme.warning} /></View>
               <Text style={styles.configTitle}>THIẾT LẬP ĐÓNG TÚI</Text>
             </View>
 
             <Text style={styles.label}>Túi này sẽ được vận chuyển tới đâu?</Text>
             <View style={styles.pickerContainer}>
-              <Picker selectedValue={destHubId} onValueChange={(val) => setDestHubId(val)} dropdownIconColor={COLORS.textSub}>
-                <Picker.Item label="--- Chọn Bưu Cục Đích ---" value="" color={COLORS.textSub} />
+              <Picker selectedValue={destHubId} onValueChange={(val) => setDestHubId(val)} dropdownIconColor={theme.textSecondary}>
+                <Picker.Item label="--- Chọn Bưu Cục Đích ---" value="" color={theme.textSecondary} />
                 {hubs.map(h => (
-                  <Picker.Item key={h.hub_id} label={`${h.hub_code} - ${h.hub_name}`} value={h.hub_id.toString()} color={COLORS.textMain} />
+                  <Picker.Item key={h.hub_id} label={`${h.hub_code} - ${h.hub_name}`} value={h.hub_id.toString()} color={theme.text} />
                 ))}
               </Picker>
             </View>
@@ -167,7 +167,7 @@ export default function ScanBaggingScreen({ navigation }: any) {
             <View style={styles.sheetHeader}>
               <View>
                 <Text style={styles.sheetTitle}>Chi tiết túi hàng</Text>
-                {bagCode ? <Text style={styles.bagCodeText}>Mã: <Text style={{ color: COLORS.primary }}>{bagCode}</Text></Text> : <Text style={{ color: COLORS.textSub, fontSize: 13 }}>Đang chờ mã túi...</Text>}
+                {bagCode ? <Text style={styles.bagCodeText}>Mã: <Text style={{ color: theme.primary }}>{bagCode}</Text></Text> : <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Đang chờ mã túi...</Text>}
               </View>
               <View style={styles.badgeCount}><Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 15 }}>{scannedItems.length}</Text></View>
             </View>
@@ -182,21 +182,21 @@ export default function ScanBaggingScreen({ navigation }: any) {
                 return (
                   <View style={[styles.listItem, isFirst && styles.firstItem]}>
                     <View style={styles.leftInfo}>
-                      <View style={[styles.iconCircle, isFirst ? { backgroundColor: '#FFF' } : { backgroundColor: '#FEF3C7' }]}>
-                        <Ionicons name="cube" size={20} color={isFirst ? COLORS.warning : COLORS.warning} />
+                      <View style={[styles.iconCircle, isFirst ? { backgroundColor: '#FFF' } : { backgroundColor: theme.warning + '15' }]}>
+                        <Ionicons name="cube" size={20} color={theme.warning} />
                       </View>
                       <View>
                         <Text style={[styles.itemCode, isFirst && { color: '#FFF' }]}>{item.code}</Text>
                         <Text style={[styles.itemTime, isFirst && { color: 'rgba(255,255,255,0.8)' }]}>{item.time} • Đóng túi</Text>
                       </View>
                     </View>
-                    <Ionicons name="checkmark-circle" size={24} color={isFirst ? '#FFF' : COLORS.success} />
+                    <Ionicons name="checkmark-circle" size={24} color={isFirst ? '#FFF' : theme.success} />
                   </View>
                 );
               }}
               ListEmptyComponent={
                 <View style={styles.emptyWrap}>
-                  <Ionicons name="briefcase-outline" size={60} color={COLORS.border} />
+                  <Ionicons name="briefcase-outline" size={60} color={theme.border} />
                   <Text style={styles.emptyText}>Quét mã kiện hàng để cho vào túi</Text>
                 </View>
               }
@@ -218,14 +218,14 @@ export default function ScanBaggingScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
 
   // Camera Area
   cameraArea: { height: '50%', position: 'relative' },
   camHeader: { position: 'absolute', top: 50, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  liveBadge: { borderWidth: 1, borderColor: COLORS.warning, backgroundColor: 'rgba(245, 158, 11, 0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  liveBadge: { borderWidth: 1, borderColor: theme.warning, backgroundColor: theme.warning + '33', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
 
   cameraOverlayLock: { ...StyleSheet.absoluteFillObject, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' },
   lockText: { color: 'rgba(255,255,255,0.6)', marginTop: 15, fontWeight: 'bold', letterSpacing: 1 },
@@ -233,40 +233,40 @@ const styles = StyleSheet.create({
   manualInputContainer: { position: 'absolute', bottom: 30, left: 20, right: 20, flexDirection: 'row', alignItems: 'center' },
   inputBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(30, 41, 59, 0.85)', borderRadius: 12, paddingHorizontal: 15, height: 50, marginRight: 10, borderWidth: 1, borderColor: '#334155' },
   input: { flex: 1, color: '#FFF', fontSize: 15 },
-  sendBtn: { width: 50, height: 50, borderRadius: 12, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  sendBtn: { width: 50, height: 50, borderRadius: 12, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' },
 
   // Bottom Sheet
-  bottomSheet: { flex: 1, backgroundColor: COLORS.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, position: 'relative' },
+  bottomSheet: { flex: 1, backgroundColor: theme.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, position: 'relative' },
 
   // Config Area (Chưa lock)
   configArea: { padding: 25 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
-  iconCircleWarning: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  configTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain },
-  label: { fontSize: 14, fontWeight: '600', color: COLORS.textMain, marginBottom: 10 },
-  pickerContainer: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, marginBottom: 30, backgroundColor: '#F8FAFC' },
-  startBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  iconCircleWarning: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.warning + '15', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  configTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text },
+  label: { fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 10 },
+  pickerContainer: { borderWidth: 1, borderColor: theme.border, borderRadius: 12, marginBottom: 30, backgroundColor: theme.background },
+  startBtn: { flexDirection: 'row', backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 3 },
   startBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 
   // List Area (Đã lock)
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 15, borderBottomWidth: 1, borderColor: COLORS.border },
-  sheetTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 2 },
-  bagCodeText: { fontSize: 14, fontWeight: 'bold', color: COLORS.textMain },
-  badgeCount: { backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 15, borderBottomWidth: 1, borderColor: theme.border },
+  sheetTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginBottom: 2 },
+  bagCodeText: { fontSize: 14, fontWeight: 'bold', color: theme.text },
+  badgeCount: { backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
 
-  listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.card, borderRadius: 16, marginBottom: 12, padding: 16, elevation: 1, borderWidth: 1, borderColor: COLORS.border },
-  firstItem: { backgroundColor: COLORS.warning, borderColor: COLORS.warning, elevation: 4 },
+  listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.card, borderRadius: 16, marginBottom: 12, padding: 16, elevation: 1, borderWidth: 1, borderColor: theme.border },
+  firstItem: { backgroundColor: theme.warning, borderColor: theme.warning, elevation: 4 },
 
   leftInfo: { flexDirection: 'row', alignItems: 'center' },
   iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  itemCode: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 2 },
-  itemTime: { fontSize: 13, color: COLORS.textSub },
+  itemCode: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginBottom: 2 },
+  itemTime: { fontSize: 13, color: theme.textSecondary },
 
   emptyWrap: { alignItems: 'center', marginTop: 40 },
-  emptyText: { color: COLORS.textSub, marginTop: 10, fontSize: 14, fontStyle: 'italic' },
+  emptyText: { color: theme.textSecondary, marginTop: 10, fontSize: 14, fontStyle: 'italic' },
 
   // Footer Button
-  summaryFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.background, padding: 15, borderTopWidth: 1, borderColor: COLORS.border },
-  finishBtn: { flexDirection: 'row', backgroundColor: COLORS.danger, paddingVertical: 16, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 2 },
+  summaryFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: theme.background, padding: 15, borderTopWidth: 1, borderColor: theme.border },
+  finishBtn: { flexDirection: 'row', backgroundColor: theme.danger, paddingVertical: 16, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 2 },
   finishBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
 });

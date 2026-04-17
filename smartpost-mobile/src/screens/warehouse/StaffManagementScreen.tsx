@@ -4,12 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import axiosClient from '../../api/axiosClient';
 import { useAuthStore } from '../../store/authStore';
-
-const COLORS = {
-    primary: '#254BE0', background: '#F8F9FA', card: '#FFFFFF', textMain: '#1E293B', textSub: '#64748B', border: '#E2E8F0', success: '#10B981', danger: '#EF4444', warning: '#F59E0B', inputBg: '#F8FAFC',
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function StaffManagementScreen({ navigation }: any) {
+    const theme = useAppTheme();
+    const styles = getStyles(theme);
+
     const user = useAuthStore((state: any) => state.user);
     const [staffList, setStaffList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -66,14 +66,14 @@ export default function StaffManagementScreen({ navigation }: any) {
     };
 
     const getRoleName = (roleId: number) => {
-        if (roleId === 3) return { name: 'Nhân viên Kho', color: COLORS.primary };
-        if (roleId === 4) return { name: 'Tài xế (Shipper)', color: COLORS.warning };
-        return { name: 'Quản trị viên', color: COLORS.danger };
+        if (roleId === 3) return { name: 'Nhân viên Kho', color: theme.primary };
+        if (roleId === 4) return { name: 'Tài xế (Shipper)', color: theme.warning };
+        return { name: 'Quản trị viên', color: theme.danger };
     };
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+            <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
             {/* HEADER NỀN XANH OVERLAPPING */}
             <View style={styles.headerArea}>
@@ -89,7 +89,7 @@ export default function StaffManagementScreen({ navigation }: any) {
 
             {/* DANH SÁCH NHÂN SỰ */}
             {loading ? (
-                <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
+                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
             ) : (
                 <FlatList
                     style={styles.scrollView}
@@ -100,7 +100,7 @@ export default function StaffManagementScreen({ navigation }: any) {
                     ListHeaderComponent={
                         <View style={styles.summaryCard}>
                             <View style={styles.summaryIconWrap}>
-                                <Ionicons name="people" size={24} color={COLORS.primary} />
+                                <Ionicons name="people" size={24} color={theme.primary} />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.summaryLabel}>Nhân sự thuộc bưu cục</Text>
@@ -118,7 +118,7 @@ export default function StaffManagementScreen({ navigation }: any) {
                                 <View style={styles.cardHeader}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                         <View style={styles.avatar}>
-                                            <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 18 }}>{(item.full_name || item.username).charAt(0).toUpperCase()}</Text>
+                                            <Text style={{ color: theme.primary, fontWeight: 'bold', fontSize: 18 }}>{(item.full_name || item.username).charAt(0).toUpperCase()}</Text>
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.staffName} numberOfLines={1}>{item.full_name || item.username}</Text>
@@ -126,7 +126,7 @@ export default function StaffManagementScreen({ navigation }: any) {
                                         </View>
                                     </View>
                                     <TouchableOpacity onPress={() => toggleStatus(item)}>
-                                        <Ionicons name={item.is_active ? "toggle" : "toggle-outline"} size={42} color={item.is_active ? COLORS.success : COLORS.border} />
+                                        <Ionicons name={item.is_active ? "toggle" : "toggle-outline"} size={42} color={item.is_active ? theme.success : theme.border} />
                                     </TouchableOpacity>
                                 </View>
 
@@ -136,7 +136,7 @@ export default function StaffManagementScreen({ navigation }: any) {
                                     <View style={[styles.roleBadge, { backgroundColor: `${role.color}15` }]}>
                                         <Text style={{ color: role.color, fontWeight: 'bold', fontSize: 12 }}>{role.name}</Text>
                                     </View>
-                                    <Text style={{ color: item.is_active ? COLORS.success : COLORS.danger, fontWeight: '600', fontSize: 13 }}>
+                                    <Text style={{ color: item.is_active ? theme.success : theme.danger, fontWeight: '600', fontSize: 13 }}>
                                         {item.is_active ? 'Đang hoạt động' : 'Đã bị khóa'}
                                     </Text>
                                 </View>
@@ -151,34 +151,34 @@ export default function StaffManagementScreen({ navigation }: any) {
                 <Ionicons name="person-add" size={24} color="#FFF" />
             </TouchableOpacity>
 
-            {/* 🚀 MODAL THÊM NHÂN VIÊN (CHUẨN KEYBOARD AVOIDING) */}
+            {/* MODAL THÊM NHÂN VIÊN */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                     <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowModal(false)}>
                         <View style={styles.modalContainer} onStartShouldSetResponder={() => true}>
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Thêm Nhân Viên Mới</Text>
-                                <TouchableOpacity onPress={() => setShowModal(false)}><Ionicons name="close" size={28} color={COLORS.textMain} /></TouchableOpacity>
+                                <TouchableOpacity onPress={() => setShowModal(false)}><Ionicons name="close" size={28} color={theme.text} /></TouchableOpacity>
                             </View>
 
                             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                                <Text style={styles.label}>Tên đăng nhập <Text style={{ color: COLORS.danger }}>*</Text></Text>
-                                <TextInput style={styles.input} placeholder="VD: nguyenvan_a" autoCapitalize="none" value={form.username} onChangeText={t => setForm({ ...form, username: t })} />
+                                <Text style={styles.label}>Tên đăng nhập <Text style={{ color: theme.danger }}>*</Text></Text>
+                                <TextInput style={styles.input} placeholder="VD: nguyenvan_a" autoCapitalize="none" value={form.username} onChangeText={t => setForm({ ...form, username: t })} placeholderTextColor={theme.textSecondary} />
 
-                                <Text style={styles.label}>Họ và tên thật <Text style={{ color: COLORS.danger }}>*</Text></Text>
-                                <TextInput style={styles.input} placeholder="VD: Nguyễn Văn A" value={form.full_name} onChangeText={t => setForm({ ...form, full_name: t })} />
+                                <Text style={styles.label}>Họ và tên thật <Text style={{ color: theme.danger }}>*</Text></Text>
+                                <TextInput style={styles.input} placeholder="VD: Nguyễn Văn A" value={form.full_name} onChangeText={t => setForm({ ...form, full_name: t })} placeholderTextColor={theme.textSecondary} />
 
                                 <Text style={styles.label}>Số điện thoại</Text>
-                                <TextInput style={styles.input} placeholder="Nhập 10 số" keyboardType="phone-pad" maxLength={10} value={form.phone} onChangeText={t => setForm({ ...form, phone: t.replace(/[^0-9]/g, '') })} />
+                                <TextInput style={styles.input} placeholder="Nhập 10 số" keyboardType="phone-pad" maxLength={10} value={form.phone} onChangeText={t => setForm({ ...form, phone: t.replace(/[^0-9]/g, '') })} placeholderTextColor={theme.textSecondary} />
 
-                                <Text style={styles.label}>Mật khẩu khởi tạo <Text style={{ color: COLORS.danger }}>*</Text></Text>
-                                <TextInput style={styles.input} placeholder="Nhập mật khẩu..." secureTextEntry value={form.password} onChangeText={t => setForm({ ...form, password: t })} />
+                                <Text style={styles.label}>Mật khẩu khởi tạo <Text style={{ color: theme.danger }}>*</Text></Text>
+                                <TextInput style={styles.input} placeholder="Nhập mật khẩu..." secureTextEntry value={form.password} onChangeText={t => setForm({ ...form, password: t })} placeholderTextColor={theme.textSecondary} />
 
                                 <Text style={styles.label}>Vị trí / Chức vụ</Text>
                                 <View style={styles.pickerWrap}>
-                                    <Picker selectedValue={form.role_id} onValueChange={(v) => setForm({ ...form, role_id: v })} dropdownIconColor={COLORS.textSub}>
-                                        <Picker.Item label="Nhân viên Kho (Quét mã, Đóng túi)" value={3} color={COLORS.textMain} />
-                                        <Picker.Item label="Tài xế Shipper (Giao hàng)" value={4} color={COLORS.textMain} />
+                                    <Picker selectedValue={form.role_id} onValueChange={(v) => setForm({ ...form, role_id: v })} dropdownIconColor={theme.textSecondary}>
+                                        <Picker.Item label="Nhân viên Kho (Quét mã, Đóng túi)" value={3} color={theme.text} />
+                                        <Picker.Item label="Tài xế Shipper (Giao hàng)" value={4} color={theme.text} />
                                     </Picker>
                                 </View>
 
@@ -194,10 +194,10 @@ export default function StaffManagementScreen({ navigation }: any) {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
 
-    headerArea: { backgroundColor: COLORS.primary, paddingTop: 50, paddingBottom: 60, position: 'relative', overflow: 'hidden', zIndex: 1 },
+    headerArea: { backgroundColor: theme.primary, paddingTop: 50, paddingBottom: 60, position: 'relative', overflow: 'hidden', zIndex: 1 },
     headerCircleDecoration: { position: 'absolute', top: -30, right: -60, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,255,255,0.08)' },
     headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
@@ -206,35 +206,35 @@ const styles = StyleSheet.create({
     scrollView: { flex: 1, zIndex: 10, marginTop: -35 },
     scrollContent: { padding: 15, paddingBottom: 100 },
 
-    summaryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, padding: 20, borderRadius: 16, marginBottom: 20, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
-    summaryIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-    summaryLabel: { fontSize: 13, color: COLORS.textSub, marginBottom: 4 },
-    summaryValue: { fontSize: 18, fontWeight: 'bold', color: COLORS.textMain },
-    summaryBadge: { backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+    summaryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, padding: 20, borderRadius: 16, marginBottom: 20, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
+    summaryIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E6F2EB', justifyContent: 'center', alignItems: 'center', marginRight: 15 }, // E6F2EB is a light green hint
+    summaryLabel: { fontSize: 13, color: theme.textSecondary, marginBottom: 4 },
+    summaryValue: { fontSize: 18, fontWeight: 'bold', color: theme.text },
+    summaryBadge: { backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
     summaryBadgeText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
 
-    card: { backgroundColor: COLORS.card, borderRadius: 16, padding: 18, marginBottom: 15, elevation: 1, borderWidth: 1, borderColor: COLORS.border },
+    card: { backgroundColor: theme.card, borderRadius: 16, padding: 18, marginBottom: 15, elevation: 1, borderWidth: 1, borderColor: theme.border },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: '#BFDBFE' },
-    staffName: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain },
-    staffUser: { fontSize: 13, color: COLORS.textSub, marginTop: 4 },
+    avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#E6F2EB', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: theme.border },
+    staffName: { fontSize: 16, fontWeight: 'bold', color: theme.text },
+    staffUser: { fontSize: 13, color: theme.textSecondary, marginTop: 4 },
 
-    divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 15 },
+    divider: { height: 1, backgroundColor: theme.border, marginVertical: 15 },
     cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     roleBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
 
-    fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', elevation: 10, shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 6, zIndex: 9999 },
+    fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center', elevation: 10, shadowColor: theme.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 6, zIndex: 9999 },
 
     // Modals
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContainer: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, maxHeight: '85%' },
+    modalContainer: { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, maxHeight: '85%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textMain },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text },
 
-    label: { fontSize: 14, fontWeight: '600', color: COLORS.textMain, marginBottom: 8 },
-    input: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.inputBg, borderRadius: 12, paddingHorizontal: 15, height: 50, fontSize: 15, color: COLORS.textMain, marginBottom: 20 },
-    pickerWrap: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.inputBg, borderRadius: 12, marginBottom: 30 },
+    label: { fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 8 },
+    input: { borderWidth: 1, borderColor: theme.border, backgroundColor: theme.background, borderRadius: 12, paddingHorizontal: 15, height: 50, fontSize: 15, color: theme.text, marginBottom: 20 },
+    pickerWrap: { borderWidth: 1, borderColor: theme.border, backgroundColor: theme.background, borderRadius: 12, marginBottom: 30 },
 
-    submitBtn: { backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 2, marginBottom: 20 },
+    submitBtn: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 2, marginBottom: 20 },
     submitBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 0.5 }
 });

@@ -3,12 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, 
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import axiosClient from '../../api/axiosClient';
-
-const COLORS = {
-    primary: '#254BE0', background: '#F8F9FA', card: '#FFFFFF', textMain: '#1E293B', textSub: '#64748B', border: '#E2E8F0', success: '#10B981', danger: '#EF4444', warning: '#F59E0B', inputBg: '#F8FAFC'
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function PricingRulesScreen({ navigation }: any) {
+    const theme = useAppTheme();
+    const styles = getStyles(theme);
     const [activeTab, setActiveTab] = useState<'MAIN' | 'EXTRA'>('MAIN');
     const [rules, setRules] = useState<any[]>([]);
     const [services, setServices] = useState<any[]>([]);
@@ -178,23 +177,23 @@ export default function PricingRulesScreen({ navigation }: any) {
             <View style={styles.divider} />
 
             <View style={styles.infoRow}>
-                <View style={styles.iconCircle}><Ionicons name="map" size={16} color={COLORS.primary} /></View>
-                <Text style={styles.infoText}>Từ ID <Text style={{ fontWeight: 'bold', color: COLORS.textMain }}>{item.from_province_id}</Text> ➔ Đến ID <Text style={{ fontWeight: 'bold', color: COLORS.textMain }}>{item.to_province_id}</Text></Text>
+                <View style={styles.iconCircle}><Ionicons name="map" size={16} color={theme.primary} /></View>
+                <Text style={styles.infoText}>Từ ID <Text style={{ fontWeight: 'bold', color: theme.text }}>{item.from_province_id}</Text> ➔ Đến ID <Text style={{ fontWeight: 'bold', color: theme.text }}>{item.to_province_id}</Text></Text>
             </View>
             <View style={styles.infoRow}>
-                <View style={styles.iconCircle}><Ionicons name="scale" size={16} color={COLORS.warning} /></View>
-                <Text style={styles.infoText}>Mức cân: <Text style={{ fontWeight: 'bold', color: COLORS.textMain }}>{item.min_weight} kg - {item.max_weight} kg</Text></Text>
+                <View style={[styles.iconCircle, { backgroundColor: theme.warningBackground }]}><Ionicons name="scale" size={16} color={theme.warning} /></View>
+                <Text style={styles.infoText}>Mức cân: <Text style={{ fontWeight: 'bold', color: theme.text }}>{item.min_weight} kg - {item.max_weight} kg</Text></Text>
             </View>
 
             <View style={styles.actionRow}>
-                <SwitchStatus isActive={item.is_active} />
+                <SwitchStatus isActive={item.is_active} theme={theme} />
                 <View style={{ flexDirection: 'row' }}>
                     <TouchableOpacity style={styles.actionBtnEdit} onPress={() => openModalEditRule(item)}>
-                        <Ionicons name="pencil" size={16} color={COLORS.primary} />
-                        <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: 'bold', marginLeft: 4 }}>Sửa</Text>
+                        <Ionicons name="pencil" size={16} color={theme.primary} />
+                        <Text style={{ color: theme.primary, fontSize: 13, fontWeight: 'bold', marginLeft: 4 }}>Sửa</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionBtnDelete} onPress={() => handleDeleteRule(item.rule_id)}>
-                        <Ionicons name="trash" size={16} color={COLORS.danger} />
+                        <Ionicons name="trash" size={16} color={theme.danger} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -208,15 +207,15 @@ export default function PricingRulesScreen({ navigation }: any) {
                     <Text style={styles.cardTitle} numberOfLines={1}>{item.service_name}</Text>
                     <Text style={styles.serviceCode}>Mã dịch vụ: {item.service_code}</Text>
                 </View>
-                <SwitchStatus isActive={item.is_active} />
+                <SwitchStatus isActive={item.is_active} theme={theme} />
             </View>
 
             <View style={styles.divider} />
 
             <View style={styles.rowBetween}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="pricetag-outline" size={18} color={COLORS.textSub} style={{ marginRight: 6 }} />
-                    <Text style={styles.infoText}>Tính phí: <Text style={{ fontWeight: 'bold', color: COLORS.textMain }}>{item.fee_type === 'FIXED' ? 'Cố định' : '% Thu hộ'}</Text></Text>
+                    <Ionicons name="pricetag-outline" size={18} color={theme.textSecondary} style={{ marginRight: 6 }} />
+                    <Text style={styles.infoText}>Tính phí: <Text style={{ fontWeight: 'bold', color: theme.text }}>{item.fee_type === 'FIXED' ? 'Cố định' : '% Thu hộ'}</Text></Text>
                 </View>
                 <Text style={styles.priceText}>{item.fee_type === 'FIXED' ? `${Number(item.fee_value).toLocaleString()} đ` : `${item.fee_value}%`}</Text>
             </View>
@@ -224,8 +223,8 @@ export default function PricingRulesScreen({ navigation }: any) {
             <View style={[styles.divider, { marginTop: 15, marginBottom: 10 }]} />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
                 <TouchableOpacity style={styles.actionBtnEdit} onPress={() => openModalEditService(item)}>
-                    <Ionicons name="pencil" size={16} color={COLORS.primary} />
-                    <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: 'bold', marginLeft: 4 }}>Sửa Dịch Vụ</Text>
+                    <Ionicons name="pencil" size={16} color={theme.primary} />
+                    <Text style={{ color: theme.primary, fontSize: 13, fontWeight: 'bold', marginLeft: 4 }}>Sửa Dịch Vụ</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -233,7 +232,7 @@ export default function PricingRulesScreen({ navigation }: any) {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+            <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
             {/* HEADER NỀN XANH */}
             <View style={styles.headerArea}>
@@ -267,8 +266,8 @@ export default function PricingRulesScreen({ navigation }: any) {
                     ListEmptyComponent={
                         !loading ? (
                             <View style={{ alignItems: 'center', marginTop: 40 }}>
-                                <Ionicons name="document-text-outline" size={60} color={COLORS.border} />
-                                <Text style={{ textAlign: 'center', color: COLORS.textSub, marginTop: 10, fontStyle: 'italic' }}>Chưa có cấu hình bảng giá nào.</Text>
+                                <Ionicons name="document-text-outline" size={60} color={theme.border} />
+                                <Text style={{ textAlign: 'center', color: theme.textSecondary, marginTop: 10, fontStyle: 'italic' }}>Chưa có cấu hình bảng giá nào.</Text>
                             </View>
                         ) : null
                     }
@@ -276,7 +275,7 @@ export default function PricingRulesScreen({ navigation }: any) {
                 />
                 {loading && (
                     <View style={styles.loadingOverlay}>
-                        <ActivityIndicator size="large" color={COLORS.primary} />
+                        <ActivityIndicator size="large" color={theme.primary} />
                     </View>
                 )}
             </View>
@@ -298,7 +297,7 @@ export default function PricingRulesScreen({ navigation }: any) {
                                     {modalMode === 'CREATE' ? 'Thêm Mới ' : 'Cập Nhật '}
                                     {activeTab === 'MAIN' ? 'Bảng Giá' : 'Dịch Vụ'}
                                 </Text>
-                                <TouchableOpacity onPress={() => setShowModal(false)}><Ionicons name="close" size={28} color={COLORS.textMain} /></TouchableOpacity>
+                                <TouchableOpacity onPress={() => setShowModal(false)}><Ionicons name="close" size={28} color={theme.text} /></TouchableOpacity>
                             </View>
 
                             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -308,16 +307,16 @@ export default function PricingRulesScreen({ navigation }: any) {
                                     <>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                             <View style={{ flex: 1, marginRight: 5 }}>
-                                                <Text style={styles.label}>Tỉnh gửi (ID) <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                                <Text style={styles.label}>Tỉnh gửi (ID) <Text style={{ color: theme.danger }}>*</Text></Text>
                                                 <TextInput style={styles.input} keyboardType="numeric" placeholder="VD: 1" value={ruleForm.from_province_id} onChangeText={t => setRuleForm({ ...ruleForm, from_province_id: t })} />
                                             </View>
                                             <View style={{ flex: 1, marginLeft: 5 }}>
-                                                <Text style={styles.label}>Tỉnh nhận (ID) <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                                <Text style={styles.label}>Tỉnh nhận (ID) <Text style={{ color: theme.danger }}>*</Text></Text>
                                                 <TextInput style={styles.input} keyboardType="numeric" placeholder="VD: 79" value={ruleForm.to_province_id} onChangeText={t => setRuleForm({ ...ruleForm, to_province_id: t })} />
                                             </View>
                                         </View>
 
-                                        <Text style={styles.label}>Loại Dịch vụ <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                        <Text style={styles.label}>Loại Dịch vụ <Text style={{ color: theme.danger }}>*</Text></Text>
                                         <View style={styles.pickerWrap}>
                                             <Picker selectedValue={ruleForm.service_type} onValueChange={(v) => setRuleForm({ ...ruleForm, service_type: v })}>
                                                 <Picker.Item label="Tiêu chuẩn (STANDARD)" value="STANDARD" />
@@ -328,21 +327,21 @@ export default function PricingRulesScreen({ navigation }: any) {
 
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                             <View style={{ flex: 1, marginRight: 5 }}>
-                                                <Text style={styles.label}>Từ số kg <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                                <Text style={styles.label}>Từ số kg <Text style={{ color: theme.danger }}>*</Text></Text>
                                                 <TextInput style={styles.input} keyboardType="numeric" placeholder="0" value={ruleForm.min_weight} onChangeText={t => setRuleForm({ ...ruleForm, min_weight: t })} />
                                             </View>
                                             <View style={{ flex: 1, marginLeft: 5 }}>
-                                                <Text style={styles.label}>Đến số kg <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                                <Text style={styles.label}>Đến số kg <Text style={{ color: theme.danger }}>*</Text></Text>
                                                 <TextInput style={styles.input} keyboardType="numeric" placeholder="5" value={ruleForm.max_weight} onChangeText={t => setRuleForm({ ...ruleForm, max_weight: t })} />
                                             </View>
                                         </View>
 
-                                        <Text style={styles.label}>Cước phí (VNĐ) <Text style={{ color: COLORS.danger }}>*</Text></Text>
-                                        <TextInput style={[styles.input, { fontSize: 18, fontWeight: 'bold', color: COLORS.primary }]} keyboardType="numeric" placeholder="15000" value={ruleForm.price} onChangeText={t => setRuleForm({ ...ruleForm, price: t })} />
+                                        <Text style={styles.label}>Cước phí (VNĐ) <Text style={{ color: theme.danger }}>*</Text></Text>
+                                        <TextInput style={[styles.input, { fontSize: 18, fontWeight: 'bold', color: theme.primary }]} keyboardType="numeric" placeholder="15000" value={ruleForm.price} onChangeText={t => setRuleForm({ ...ruleForm, price: t })} />
 
                                         <View style={styles.switchRow}>
-                                            <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.textMain }}>Kích hoạt áp dụng ngay</Text>
-                                            <Switch value={ruleForm.is_active} onValueChange={v => setRuleForm({ ...ruleForm, is_active: v })} trackColor={{ true: COLORS.primary }} />
+                                            <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>Kích hoạt áp dụng ngay</Text>
+                                            <Switch value={ruleForm.is_active} onValueChange={v => setRuleForm({ ...ruleForm, is_active: v })} trackColor={{ true: theme.primary }} />
                                         </View>
 
                                         <TouchableOpacity style={styles.submitBtn} onPress={handleSaveRule} disabled={submitLoading}>
@@ -354,9 +353,9 @@ export default function PricingRulesScreen({ navigation }: any) {
                                 {/* --- FORM DỊCH VỤ --- */}
                                 {activeTab === 'EXTRA' && (
                                     <>
-                                        <Text style={styles.label}>Mã dịch vụ <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                        <Text style={styles.label}>Mã dịch vụ <Text style={{ color: theme.danger }}>*</Text></Text>
                                         <TextInput
-                                            style={[styles.input, modalMode === 'EDIT' && { backgroundColor: '#E2E8F0', color: COLORS.textSub }]}
+                                            style={[styles.input, modalMode === 'EDIT' && { backgroundColor: theme.border, color: theme.textSecondary }]}
                                             placeholder="VD: KHAI_GIA"
                                             autoCapitalize="characters"
                                             value={serviceForm.service_code}
@@ -364,12 +363,12 @@ export default function PricingRulesScreen({ navigation }: any) {
                                             editable={modalMode === 'CREATE'} // Chỉ cho sửa khi Tạo mới
                                         />
 
-                                        <Text style={styles.label}>Tên hiển thị <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                        <Text style={styles.label}>Tên hiển thị <Text style={{ color: theme.danger }}>*</Text></Text>
                                         <TextInput style={styles.input} placeholder="VD: Phí khai giá hàng hóa" value={serviceForm.service_name} onChangeText={t => setServiceForm({ ...serviceForm, service_name: t })} />
 
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                             <View style={{ flex: 1, marginRight: 5 }}>
-                                                <Text style={styles.label}>Loại tính phí <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                                <Text style={styles.label}>Loại tính phí <Text style={{ color: theme.danger }}>*</Text></Text>
                                                 <View style={[styles.pickerWrap, { marginBottom: 15 }]}>
                                                     <Picker selectedValue={serviceForm.fee_type} onValueChange={(v) => setServiceForm({ ...serviceForm, fee_type: v })}>
                                                         <Picker.Item label="Giá Cố Định" value="FIXED" />
@@ -378,14 +377,14 @@ export default function PricingRulesScreen({ navigation }: any) {
                                                 </View>
                                             </View>
                                             <View style={{ flex: 1, marginLeft: 5 }}>
-                                                <Text style={styles.label}>Giá trị phí <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                                                <Text style={styles.label}>Giá trị phí <Text style={{ color: theme.danger }}>*</Text></Text>
                                                 <TextInput style={styles.input} keyboardType="numeric" placeholder="10000 hoặc 1.5" value={serviceForm.fee_value} onChangeText={t => setServiceForm({ ...serviceForm, fee_value: t })} />
                                             </View>
                                         </View>
 
                                         <View style={styles.switchRow}>
-                                            <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.textMain }}>Kích hoạt trên App cho User</Text>
-                                            <Switch value={serviceForm.is_active} onValueChange={v => setServiceForm({ ...serviceForm, is_active: v })} trackColor={{ true: COLORS.primary }} />
+                                            <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>Kích hoạt trên App cho User</Text>
+                                            <Switch value={serviceForm.is_active} onValueChange={v => setServiceForm({ ...serviceForm, is_active: v })} trackColor={{ true: theme.primary }} />
                                         </View>
 
                                         <TouchableOpacity style={styles.submitBtn} onPress={handleSaveService} disabled={submitLoading}>
@@ -404,20 +403,20 @@ export default function PricingRulesScreen({ navigation }: any) {
     );
 }
 
-const SwitchStatus = ({ isActive }: { isActive: boolean }) => (
-    <View style={[styles.statusBadge, { backgroundColor: isActive ? '#ECFDF5' : '#FEF2F2' }]}>
-        <View style={[styles.statusDot, { backgroundColor: isActive ? COLORS.success : COLORS.danger }]} />
-        <Text style={{ color: isActive ? COLORS.success : COLORS.danger, fontSize: 11, fontWeight: 'bold' }}>
+const SwitchStatus = ({ isActive, theme }: { isActive: boolean, theme: any }) => (
+    <View style={[getStyles(theme).statusBadge, { backgroundColor: isActive ? theme.successBackground : theme.dangerBackground }]}>
+        <View style={[getStyles(theme).statusDot, { backgroundColor: isActive ? theme.success : theme.danger }]} />
+        <Text style={{ color: isActive ? theme.success : theme.danger, fontSize: 11, fontWeight: 'bold' }}>
             {isActive ? 'ĐANG KÍCH HOẠT' : 'ĐANG TẠM DỪNG'}
         </Text>
     </View>
 );
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
 
     // Header Overlapping
-    headerArea: { backgroundColor: COLORS.primary, paddingTop: 50, paddingBottom: 60, position: 'relative', overflow: 'hidden', zIndex: 1 },
+    headerArea: { backgroundColor: theme.primary, paddingTop: 50, paddingBottom: 60, position: 'relative', overflow: 'hidden', zIndex: 1 },
     headerCircleDecoration: { position: 'absolute', top: -30, right: -60, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,255,255,0.08)' },
     headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
@@ -429,52 +428,52 @@ const styles = StyleSheet.create({
     loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(248, 249, 250, 0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 20 },
 
     // Floating Tabs
-    tabContainer: { flexDirection: 'row', backgroundColor: COLORS.card, borderRadius: 30, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, padding: 6, marginBottom: 20, borderWidth: 1, borderColor: COLORS.border },
+    tabContainer: { flexDirection: 'row', backgroundColor: theme.card, borderRadius: 30, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, padding: 6, marginBottom: 20, borderWidth: 1, borderColor: theme.border },
     tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 25 },
-    tabActive: { backgroundColor: COLORS.primary, elevation: 2 },
-    tabText: { fontSize: 14, color: COLORS.textSub, fontWeight: '600' },
+    tabActive: { backgroundColor: theme.primary, elevation: 2 },
+    tabText: { fontSize: 14, color: theme.textSecondary, fontWeight: '600' },
     tabTextActive: { color: '#FFF', fontWeight: 'bold' },
 
     // Cards
-    card: { backgroundColor: COLORS.card, borderRadius: 20, padding: 20, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, borderWidth: 1, borderColor: COLORS.border },
+    card: { backgroundColor: theme.card, borderRadius: 20, padding: 20, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, borderWidth: 1, borderColor: theme.border },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 
-    serviceBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
-    serviceBadgeText: { color: COLORS.textMain, fontSize: 13, fontWeight: 'bold' },
-    priceText: { fontSize: 18, fontWeight: 'bold', color: COLORS.danger },
+    serviceBadge: { backgroundColor: theme.background, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+    serviceBadgeText: { color: theme.text, fontSize: 13, fontWeight: 'bold' },
+    priceText: { fontSize: 18, fontWeight: 'bold', color: theme.danger },
 
-    cardTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 4 },
-    serviceCode: { fontSize: 13, color: COLORS.textSub },
+    cardTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginBottom: 4 },
+    serviceCode: { fontSize: 13, color: theme.textSecondary },
 
-    divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 15 },
+    divider: { height: 1, backgroundColor: theme.border, marginVertical: 15 },
     rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 
     infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    iconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-    infoText: { color: COLORS.textSub, fontSize: 14, flex: 1 },
+    iconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: theme.primaryBackground, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+    infoText: { color: theme.textSecondary, fontSize: 14, flex: 1 },
 
     statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
     statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
 
     // Actions (Edit/Delete)
-    actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: COLORS.border },
-    actionBtnEdit: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-    actionBtnDelete: { backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginLeft: 10 },
+    actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: theme.border },
+    actionBtnEdit: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.primaryBackground, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    actionBtnDelete: { backgroundColor: theme.dangerBackground, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginLeft: 10 },
 
     // FAB
-    fab: { position: 'absolute', bottom: 30, right: 20, width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 6, zIndex: 9999 },
+    fab: { position: 'absolute', bottom: 30, right: 20, width: 64, height: 64, borderRadius: 32, backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: theme.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 6, zIndex: 9999 },
 
     // Modals
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContainer: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, maxHeight: '90%' },
+    modalContainer: { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, maxHeight: '90%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textMain },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text },
 
-    label: { fontSize: 14, fontWeight: '600', color: COLORS.textMain, marginBottom: 6 },
-    input: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.inputBg, borderRadius: 12, paddingHorizontal: 15, height: 50, fontSize: 15, color: COLORS.textMain, marginBottom: 15 },
-    pickerWrap: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.inputBg, borderRadius: 12, marginBottom: 15 },
+    label: { fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 6 },
+    input: { borderWidth: 1, borderColor: theme.border, backgroundColor: theme.background, borderRadius: 12, paddingHorizontal: 15, height: 50, fontSize: 15, color: theme.text, marginBottom: 15 },
+    pickerWrap: { borderWidth: 1, borderColor: theme.border, backgroundColor: theme.background, borderRadius: 12, marginBottom: 15 },
 
-    switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 15, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: COLORS.border },
+    switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.background, padding: 15, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: theme.border },
 
-    submitBtn: { backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center', elevation: 2, marginBottom: 20 }
+    submitBtn: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center', elevation: 2, marginBottom: 20 }
 });

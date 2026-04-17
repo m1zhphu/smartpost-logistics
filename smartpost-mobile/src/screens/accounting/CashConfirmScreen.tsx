@@ -2,19 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { accountingService } from '../../api/services/accountingService';
-
-const COLORS = {
-  primary: '#254BE0',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textLight: '#64748B',
-  border: '#E2E8F0',
-  success: '#10B981',
-  danger: '#EF4444'
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function CashConfirmScreen({ navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
   const [shippers, setShippers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -63,7 +55,7 @@ export default function CashConfirmScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
       <View style={styles.headerArea}>
         <View style={styles.headerCircleDecoration} />
@@ -75,7 +67,7 @@ export default function CashConfirmScreen({ navigation }: any) {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
       ) : (
         <View style={styles.listContainer}>
           <FlatList
@@ -85,7 +77,7 @@ export default function CashConfirmScreen({ navigation }: any) {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
-                <Ionicons name="checkmark-done-circle" size={80} color={COLORS.success} />
+                <Ionicons name="checkmark-done-circle" size={80} color={theme.success} />
                 <Text style={styles.emptyText}>Tất cả Shipper đã nộp đủ tiền COD.</Text>
               </View>
             )}
@@ -94,7 +86,7 @@ export default function CashConfirmScreen({ navigation }: any) {
                 <View style={styles.cardHeader}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <View style={styles.avatar}>
-                      <Ionicons name="person" size={20} color={COLORS.primary} />
+                      <Ionicons name="person" size={20} color={theme.primary} />
                     </View>
                     <Text style={styles.shipperName}>{item.shipper_name}</Text>
                   </View>
@@ -112,7 +104,7 @@ export default function CashConfirmScreen({ navigation }: any) {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.confirmBtn, submitting ? { backgroundColor: '#94A3B8' } : {}]}
+                  style={[styles.confirmBtn, submitting ? { backgroundColor: theme.disabled } : {}]}
                   onPress={() => handleConfirmCash(item)}
                   disabled={submitting}
                 >
@@ -128,10 +120,10 @@ export default function CashConfirmScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
   headerArea: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primary,
     paddingTop: 50,
     paddingBottom: 50,
     paddingHorizontal: 15,
@@ -154,10 +146,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40
   },
-  emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 60, backgroundColor: COLORS.card, padding: 40, borderRadius: 20, elevation: 2 },
-  emptyText: { color: COLORS.textLight, marginTop: 15, fontSize: 15, fontWeight: 'bold' },
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 60, backgroundColor: theme.card, padding: 40, borderRadius: 20, elevation: 2 },
+  emptyText: { color: theme.textSecondary, marginTop: 15, fontSize: 15, fontWeight: 'bold' },
   card: {
-    backgroundColor: COLORS.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 20,
     marginBottom: 15,
@@ -167,17 +159,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.border
+    borderColor: theme.border
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: COLORS.border, paddingBottom: 15, marginBottom: 15 },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
-  shipperName: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginLeft: 12 },
-  badgeCount: { backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  badgeText: { color: COLORS.primary, fontSize: 13, fontWeight: 'bold' },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: theme.border, paddingBottom: 15, marginBottom: 15 },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.primaryBackground, justifyContent: 'center', alignItems: 'center' },
+  shipperName: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginLeft: 12 },
+  badgeCount: { backgroundColor: theme.primaryBackground, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  badgeText: { color: theme.primary, fontSize: 13, fontWeight: 'bold' },
   cardBody: { alignItems: 'center', marginBottom: 20 },
-  label: { color: COLORS.textLight, fontSize: 13, fontWeight: '500' },
-  codAmount: { fontSize: 36, fontWeight: 'bold', color: COLORS.danger },
-  codCurrency: { fontSize: 20, fontWeight: 'bold', color: COLORS.danger, marginLeft: 4, marginTop: 4 },
-  confirmBtn: { flexDirection: 'row', backgroundColor: COLORS.success, paddingVertical: 16, borderRadius: 14, justifyContent: 'center', alignItems: 'center', elevation: 2 },
+  label: { color: theme.textSecondary, fontSize: 13, fontWeight: '500' },
+  codAmount: { fontSize: 36, fontWeight: 'bold', color: theme.danger },
+  codCurrency: { fontSize: 20, fontWeight: 'bold', color: theme.danger, marginLeft: 4, marginTop: 4 },
+  confirmBtn: { flexDirection: 'row', backgroundColor: theme.success, paddingVertical: 16, borderRadius: 14, justifyContent: 'center', alignItems: 'center', elevation: 2 },
   btnText: { color: '#fff', fontWeight: 'bold', fontSize: 15, letterSpacing: 0.5 }
 });

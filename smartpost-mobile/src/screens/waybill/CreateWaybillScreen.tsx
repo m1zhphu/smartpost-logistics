@@ -5,24 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { waybillService } from '../../api/services/waybillService';
 import { pricingService } from '../../api/services/pricingService';
 import { useAuthStore } from '../../store/authStore';
-
-const COLORS = {
-  primary: '#254BE0',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textSub: '#64748B',
-  border: '#E2E8F0',
-  inputBg: '#F1F5F9',
-  danger: '#EF4444',
-  success: '#10B981',
-  codBg: '#FEF3C7',
-  codText: '#D97706',
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 const TABS = ['Gửi & nhận', 'Hàng hóa', 'Dịch vụ', 'Cước phí'];
 
 export default function CreateWaybillScreen({ navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
   const user = useAuthStore((state: any) => state.user);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -227,12 +216,12 @@ export default function CreateWaybillScreen({ navigation }: any) {
     (h.hub_code || '').toLowerCase().includes(hubSearch.toLowerCase())
   );
 
-  if (dataLoading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  if (dataLoading) return <View style={styles.center}><ActivityIndicator size="large" color={theme.primary} /></View>;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+        <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
         {/* HEADER */}
         <View style={styles.blueHeader}>
@@ -265,7 +254,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
           {/* KHỐI 1: THÔNG TIN GỬI NHẬN */}
           <View style={styles.card} onLayout={(e) => sectionLayouts.current['Gửi & nhận'] = e.nativeEvent.layout.y}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.dot, { backgroundColor: COLORS.primary }]} />
+              <View style={[styles.dot, { backgroundColor: theme.primary }]} />
               <Text style={styles.sectionTitle}>THÔNG TIN GỬI & NHẬN</Text>
             </View>
 
@@ -274,7 +263,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
               <Text style={form.customer_id ? styles.textMain : styles.textMuted}>
                 {form.customer_id ? customers.find(c => c.customer_id.toString() === form.customer_id)?.name : 'Tìm tên, SĐT, mã khách...'}
               </Text>
-              <Ionicons name="search" size={20} color={COLORS.textSub} />
+              <Ionicons name="search" size={20} color={theme.textSecondary} />
             </TouchableOpacity>
 
             <Text style={styles.label}>Dịch vụ vận chuyển</Text>
@@ -297,10 +286,10 @@ export default function CreateWaybillScreen({ navigation }: any) {
                   onPress={() => { setHubTarget('origin'); setHubSearch(''); setShowHubModal(true); }}
                 >
                   <Text style={styles.textMain} numberOfLines={1}>{hubs.find(h => h.hub_id.toString() === form.origin_hub_id)?.hub_code || 'Chọn'}</Text>
-                  <Ionicons name="caret-down" size={16} color={COLORS.textSub} />
+                  <Ionicons name="caret-down" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
-              <View style={{ justifyContent: 'center', marginTop: -5 }}><Ionicons name="arrow-forward" size={20} color={COLORS.textSub} /></View>
+              <View style={{ justifyContent: 'center', marginTop: -5 }}><Ionicons name="arrow-forward" size={20} color={theme.textSecondary} /></View>
               <View style={{ flex: 1, marginLeft: 5 }}>
                 <Text style={styles.label}>Bưu cục nhận <Text style={styles.req}>*</Text></Text>
                 <TouchableOpacity
@@ -310,15 +299,15 @@ export default function CreateWaybillScreen({ navigation }: any) {
                   <Text style={form.dest_hub_id ? styles.textMain : styles.textMuted} numberOfLines={1}>
                     {hubs.find(h => h.hub_id.toString() === form.dest_hub_id)?.hub_code || 'Tìm BC...'}
                   </Text>
-                  <Ionicons name="search" size={16} color={COLORS.textSub} />
+                  <Ionicons name="search" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
             </View>
 
-            <Text style={[styles.label, { marginTop: 15, color: COLORS.textSub, fontSize: 13 }]}>NGƯỜI NHẬN</Text>
+            <Text style={[styles.label, { marginTop: 15, color: theme.textSecondary, fontSize: 13 }]}>NGƯỜI NHẬN</Text>
             <Text style={styles.label}>Số điện thoại <Text style={styles.req}>*</Text></Text>
             <View style={styles.inputWrap}>
-              <Ionicons name="call-outline" size={18} color={COLORS.textSub} style={{ marginLeft: 10, marginRight: 5 }} />
+              <Ionicons name="call-outline" size={18} color={theme.textSecondary} style={{ marginLeft: 10, marginRight: 5 }} />
               <TextInput style={styles.inputFlex} placeholder="Nhập 10 số (VD: 0901234567)" keyboardType="phone-pad" maxLength={10} value={form.receiver_phone} onChangeText={(t) => setForm({ ...form, receiver_phone: t.replace(/[^0-9]/g, '') })} />
             </View>
 
@@ -332,7 +321,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
           {/* KHỐI 2: HÀNG HÓA & THANH TOÁN */}
           <View style={styles.card} onLayout={(e) => sectionLayouts.current['Hàng hóa'] = e.nativeEvent.layout.y}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />
+              <View style={[styles.dot, { backgroundColor: theme.warning }]} />
               <Text style={styles.sectionTitle}>HÀNG HÓA & THANH TOÁN</Text>
             </View>
 
@@ -341,7 +330,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
                 <Text style={styles.label}>Khối lượng (Lớn hơn 0)</Text>
                 <View style={styles.inputWrap}>
                   <TextInput style={[styles.inputFlex, { fontWeight: 'bold', paddingLeft: 10 }]} keyboardType="numeric" value={form.actual_weight} onChangeText={(t) => setForm({ ...form, actual_weight: t })} />
-                  <Text style={{ marginRight: 10, color: COLORS.textSub, fontWeight: 'bold' }}>kg</Text>
+                  <Text style={{ marginRight: 10, color: theme.textSecondary, fontWeight: 'bold' }}>kg</Text>
                 </View>
               </View>
               <View style={{ flex: 0.6 }}>
@@ -367,7 +356,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
                   <TextInput style={styles.codInput} keyboardType="numeric" value={form.cod_amount} onChangeText={(t) => setForm({ ...form, cod_amount: t.replace(/[^0-9]/g, '') })} />
                   <Text style={styles.codCurrency}>đ</Text>
                 </View>
-                <View style={styles.codIconWrap}><Ionicons name="pencil" size={16} color={COLORS.codText} /></View>
+                <View style={styles.codIconWrap}><Ionicons name="pencil" size={16} color={theme.warning} /></View>
               </View>
             </View>
 
@@ -383,7 +372,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
             </View>
 
             {availableServices.length === 0 ? (
-              <Text style={{ color: COLORS.textSub, fontStyle: 'italic' }}>Chưa có dịch vụ tiện ích nào được cấu hình.</Text>
+              <Text style={{ color: theme.textSecondary, fontStyle: 'italic' }}>Chưa có dịch vụ tiện ích nào được cấu hình.</Text>
             ) : (
               availableServices.map((srv) => {
                 const isChecked = form.extra_services.includes(srv.service_code);
@@ -399,7 +388,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
                         if (val) setForm({ ...form, extra_services: [...form.extra_services, srv.service_code] });
                         else setForm({ ...form, extra_services: form.extra_services.filter(s => s !== srv.service_code) });
                       }}
-                      trackColor={{ false: '#E2E8F0', true: COLORS.primary }}
+                      trackColor={{ false: theme.border, true: theme.primary }}
                       thumbColor={'#FFF'}
                     />
                   </View>
@@ -412,14 +401,14 @@ export default function CreateWaybillScreen({ navigation }: any) {
           <View style={styles.card} onLayout={(e) => sectionLayouts.current['Cước phí'] = e.nativeEvent.layout.y}>
             <View style={styles.rowBetween}>
               <View style={styles.sectionHeader}>
-                <View style={[styles.dot, { backgroundColor: COLORS.success }]} />
+                <View style={[styles.dot, { backgroundColor: theme.success }]} />
                 <Text style={styles.sectionTitle}>TẠM TÍNH CƯỚC PHÍ</Text>
               </View>
               {pricingSource && pricingSource !== 'chưa có bảng giá' && <View style={styles.badge}><Text style={styles.badgeText}>Hợp lệ</Text></View>}
             </View>
 
-            {feeLoading && <Text style={{ color: COLORS.primary, marginBottom: 15, fontStyle: 'italic' }}>Đang tính cước phí...</Text>}
-            {pricingSource === 'chưa có bảng giá' && <Text style={{ color: COLORS.danger, marginBottom: 15, fontWeight: 'bold' }}>Tuyến này chưa có bảng giá!</Text>}
+            {feeLoading && <Text style={{ color: theme.primary, marginBottom: 15, fontStyle: 'italic' }}>Đang tính cước phí...</Text>}
+            {pricingSource === 'chưa có bảng giá' && <Text style={{ color: theme.danger, marginBottom: 15, fontWeight: 'bold' }}>Tuyến này chưa có bảng giá!</Text>}
 
             <View style={styles.feeRow}><Text style={styles.feeLabel}>Cước chính</Text><Text style={styles.feeValue}>{fees.main_fee.toLocaleString()} đ</Text></View>
             <View style={styles.feeRow}><Text style={styles.feeLabel}>Dịch vụ</Text><Text style={styles.feeValue}>{fees.extra_fee.toLocaleString()} đ</Text></View>
@@ -467,7 +456,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
                 </View>
 
                 <View style={styles.searchWrap}>
-                  <Ionicons name="search" size={20} color={COLORS.textSub} style={{ marginHorizontal: 10 }} />
+                  <Ionicons name="search" size={20} color={theme.textSecondary} style={{ marginHorizontal: 10 }} />
                   <TextInput style={{ flex: 1, height: 50 }} placeholder="SĐT, Tên, Mã KH..." value={custSearch} onChangeText={setCustSearch} autoFocus />
                 </View>
 
@@ -478,10 +467,10 @@ export default function CreateWaybillScreen({ navigation }: any) {
                   renderItem={({ item }) => (
                     <TouchableOpacity style={styles.searchItem} onPress={() => { setForm({ ...form, customer_id: item.customer_id.toString() }); setShowCustModal(false); }}>
                       <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{item.name}</Text>
-                      <Text style={{ color: COLORS.textSub }}>{item.phone} | {item.customer_code}</Text>
+                      <Text style={{ color: theme.textSecondary }}>{item.phone} | {item.customer_code}</Text>
                     </TouchableOpacity>
                   )}
-                  ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textSub }}>Không tìm thấy kết quả.</Text>}
+                  ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: theme.textSecondary }}>Không tìm thấy kết quả.</Text>}
                 />
 
                 <TouchableOpacity style={styles.createNewBtn} onPress={() => setShowCreateCustModal(true)}>
@@ -533,7 +522,7 @@ export default function CreateWaybillScreen({ navigation }: any) {
                 </View>
 
                 <View style={styles.searchWrap}>
-                  <Ionicons name="search" size={20} color={COLORS.textSub} style={{ marginHorizontal: 10 }} />
+                  <Ionicons name="search" size={20} color={theme.textSecondary} style={{ marginHorizontal: 10 }} />
                   <TextInput style={{ flex: 1, height: 50 }} placeholder="Mã BC, Tên BC..." value={hubSearch} onChangeText={setHubSearch} autoFocus />
                 </View>
 
@@ -548,10 +537,10 @@ export default function CreateWaybillScreen({ navigation }: any) {
                       setShowHubModal(false);
                     }}>
                       <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{item.hub_code}</Text>
-                      <Text style={{ color: COLORS.textSub }}>{item.hub_name}</Text>
+                      <Text style={{ color: theme.textSecondary }}>{item.hub_name}</Text>
                     </TouchableOpacity>
                   )}
-                  ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textSub }}>Không tìm thấy kết quả.</Text>}
+                  ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: theme.textSecondary }}>Không tìm thấy kết quả.</Text>}
                 />
               </View>
             </TouchableOpacity>
@@ -563,11 +552,11 @@ export default function CreateWaybillScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: theme.background },
 
-  blueHeader: { backgroundColor: COLORS.primary, paddingTop: 50 },
+  blueHeader: { backgroundColor: theme.primary, paddingTop: 50 },
   headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingBottom: 15 },
   backCircleBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   headerTitleWrap: { flex: 1, paddingHorizontal: 15 },
@@ -579,68 +568,68 @@ const styles = StyleSheet.create({
   tabActive: { color: '#FFF', fontWeight: 'bold', borderBottomWidth: 2, borderBottomColor: '#FFF', paddingBottom: 4 },
 
   scrollContent: { padding: 15, paddingBottom: 100 },
-  card: { backgroundColor: COLORS.card, borderRadius: 16, padding: 15, paddingVertical: 20, marginBottom: 15, elevation: 1, borderColor: '#F1F5F9', borderWidth: 1 },
+  card: { backgroundColor: theme.card, borderRadius: 16, padding: 15, paddingVertical: 20, marginBottom: 15, elevation: 1, borderColor: theme.background, borderWidth: 1 },
 
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  sectionTitle: { fontSize: 14, fontWeight: 'bold', color: COLORS.textMain, letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 14, fontWeight: 'bold', color: theme.text, letterSpacing: 0.5 },
 
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMain, marginBottom: 8 },
-  req: { color: COLORS.danger },
+  label: { fontSize: 13, fontWeight: '600', color: theme.text, marginBottom: 8 },
+  req: { color: theme.danger },
 
-  mockInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.inputBg, borderRadius: 10, padding: 14, marginBottom: 15 },
-  textMain: { color: COLORS.textMain, fontSize: 15 },
-  textMuted: { color: COLORS.textSub, fontSize: 15 },
+  mockInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.background, borderRadius: 10, padding: 14, marginBottom: 15 },
+  textMain: { color: theme.text, fontSize: 15 },
+  textMuted: { color: theme.textSecondary, fontSize: 15 },
 
-  input: { backgroundColor: COLORS.inputBg, borderRadius: 10, padding: 14, fontSize: 15, color: COLORS.textMain, marginBottom: 15 },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.inputBg, borderRadius: 10, marginBottom: 15 },
-  inputFlex: { flex: 1, padding: 14, fontSize: 15, color: COLORS.textMain },
+  input: { backgroundColor: theme.background, borderRadius: 10, padding: 14, fontSize: 15, color: theme.text, marginBottom: 15 },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.background, borderRadius: 10, marginBottom: 15 },
+  inputFlex: { flex: 1, padding: 14, fontSize: 15, color: theme.text },
 
   row: { flexDirection: 'row' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dividerDashed: { height: 1, borderWidth: 1, borderColor: COLORS.border, borderStyle: 'dashed', marginVertical: 15 },
+  dividerDashed: { height: 1, borderWidth: 1, borderColor: theme.border, borderStyle: 'dashed', marginVertical: 15 },
 
   serviceTypeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  serviceBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 8, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: COLORS.border, marginHorizontal: 2 },
-  serviceBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  serviceBtnText: { fontSize: 13, color: COLORS.textSub, fontWeight: '500' },
+  serviceBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 8, backgroundColor: theme.background, borderWidth: 1, borderColor: theme.border, marginHorizontal: 2 },
+  serviceBtnActive: { backgroundColor: theme.primary, borderColor: theme.primary },
+  serviceBtnText: { fontSize: 13, color: theme.textSecondary, fontWeight: '500' },
   serviceBtnTextActive: { color: '#FFF', fontWeight: 'bold' },
 
   paymentRow: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 4, marginBottom: 20 },
   payBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 8 },
-  payBtnActive: { backgroundColor: COLORS.primary, elevation: 1 },
-  payBtnText: { fontSize: 14, color: COLORS.textSub, fontWeight: '500' },
+  payBtnActive: { backgroundColor: theme.primary, elevation: 1 },
+  payBtnText: { fontSize: 14, color: theme.textSecondary, fontWeight: '500' },
   payBtnTextActive: { color: '#FFF', fontWeight: 'bold' },
 
-  codBox: { backgroundColor: COLORS.codBg, padding: 15, borderRadius: 12, marginBottom: 20 },
-  codLabel: { fontSize: 12, fontWeight: 'bold', color: COLORS.codText, marginBottom: 5 },
-  codInput: { fontSize: 24, fontWeight: 'bold', color: COLORS.textMain, minWidth: 100, padding: 0 },
-  codCurrency: { fontSize: 20, fontWeight: 'bold', color: COLORS.textMain, marginLeft: 5 },
-  codIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FDE68A', justifyContent: 'center', alignItems: 'center' },
+  codBox: { backgroundColor: theme.warningBackground, padding: 15, borderRadius: 12, marginBottom: 20 },
+  codLabel: { fontSize: 12, fontWeight: 'bold', color: theme.warning, marginBottom: 5 },
+  codInput: { fontSize: 24, fontWeight: 'bold', color: theme.text, minWidth: 100, padding: 0 },
+  codCurrency: { fontSize: 20, fontWeight: 'bold', color: theme.text, marginLeft: 5 },
+  codIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.warning, justifyContent: 'center', alignItems: 'center' },
 
-  serviceBox: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: COLORS.inputBg, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: 'transparent' },
-  serviceBoxActive: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
-  serviceName: { fontSize: 14, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 3 },
-  serviceDesc: { fontSize: 12, color: COLORS.textSub },
+  serviceBox: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: theme.background, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: 'transparent' },
+  serviceBoxActive: { backgroundColor: theme.primaryBackground, borderColor: theme.primary },
+  serviceName: { fontSize: 14, fontWeight: 'bold', color: theme.text, marginBottom: 3 },
+  serviceDesc: { fontSize: 12, color: theme.textSecondary },
 
-  badge: { backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { color: COLORS.success, fontSize: 12, fontWeight: 'bold' },
+  badge: { backgroundColor: theme.successBackground, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  badgeText: { color: theme.success, fontSize: 12, fontWeight: 'bold' },
   feeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  feeLabel: { color: COLORS.textSub, fontSize: 14 },
-  feeValue: { color: COLORS.textMain, fontSize: 14, fontWeight: '600' },
-  totalLabel: { fontSize: 16, color: COLORS.textMain },
-  totalValue: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary },
+  feeLabel: { color: theme.textSecondary, fontSize: 14 },
+  feeValue: { color: theme.text, fontSize: 14, fontWeight: '600' },
+  totalLabel: { fontSize: 16, color: theme.text },
+  totalValue: { fontSize: 24, fontWeight: 'bold', color: theme.primary },
 
-  bottomFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.background, padding: 15, paddingBottom: 25 },
-  submitBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  bottomFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: theme.background, padding: 15, paddingBottom: 25 },
+  submitBtn: { flexDirection: 'row', backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   submitBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
 
   // --- Modals Styles ---
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContainer: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' },
+  modalContainer: { backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textMain },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 10, marginBottom: 15 },
-  searchItem: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  createNewBtn: { flexDirection: 'row', backgroundColor: COLORS.success, padding: 15, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 15 }
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: theme.text },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.background, borderRadius: 10, marginBottom: 15 },
+  searchItem: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: theme.border },
+  createNewBtn: { flexDirection: 'row', backgroundColor: theme.success, padding: 15, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 15 }
 });

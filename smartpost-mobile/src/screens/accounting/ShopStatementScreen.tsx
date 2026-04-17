@@ -4,12 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { waybillService } from '../../api/services/waybillService';
 import { accountingService } from '../../api/services/accountingService';
 import { useAuthStore } from '../../store/authStore';
-
-const COLORS = {
-    primary: '#254BE0', background: '#F8F9FA', card: '#FFFFFF', textMain: '#1E293B', textSub: '#64748B', border: '#E2E8F0', success: '#10B981', danger: '#EF4444', warning: '#F59E0B'
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function ShopStatementScreen({ navigation }: any) {
+    const theme = useAppTheme();
+    const styles = getStyles(theme);
     const token = useAuthStore((state: any) => state.token); // Cần token để truyền vào URL tải Excel
 
     const [customers, setCustomers] = useState<any[]>([]);
@@ -70,7 +69,7 @@ export default function ShopStatementScreen({ navigation }: any) {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+            <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
             {/* HEADER NỀN XANH OVERLAPPING */}
             <View style={styles.headerArea}>
@@ -88,29 +87,29 @@ export default function ShopStatementScreen({ navigation }: any) {
 
                 {/* KHỐI 1: CHỌN SHOP */}
                 <View style={styles.card}>
-                    <Text style={styles.label}>Chọn Shop (Khách hàng) <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                    <Text style={styles.label}>Chọn Shop (Khách hàng) <Text style={{ color: theme.danger }}>*</Text></Text>
 
                     <TouchableOpacity style={styles.mockInput} onPress={() => setShowSearchModal(true)} activeOpacity={0.8}>
                         <View style={{ flex: 1 }}>
-                            <Text style={[styles.textMain, !selectedShop && { color: COLORS.textSub, fontWeight: 'normal' }]} numberOfLines={1}>
+                            <Text style={[styles.textMain, !selectedShop && { color: theme.textSecondary, fontWeight: 'normal' }]} numberOfLines={1}>
                                 {selectedShop ? selectedShop.name : 'Nhấn để tìm kiếm tên, SĐT...'}
                             </Text>
                             {selectedShop && <Text style={styles.textSub}>{selectedShop.phone} | {selectedShop.customer_code}</Text>}
                         </View>
                         <View style={styles.searchIconWrap}>
-                            <Ionicons name="search" size={20} color={COLORS.primary} />
+                            <Ionicons name="search" size={20} color={theme.primary} />
                         </View>
                     </TouchableOpacity>
 
                     {selectedShop && (
                         <View style={styles.infoCard}>
                             <View style={styles.infoRow}>
-                                <Ionicons name="business" size={18} color={COLORS.textSub} style={{ marginRight: 10 }} />
-                                <Text style={styles.infoText}>Ngân hàng: <Text style={{ color: COLORS.textMain, fontWeight: 'bold' }}>{selectedShop.bank_name || 'Chưa cập nhật'}</Text></Text>
+                                <Ionicons name="business" size={18} color={theme.textSecondary} style={{ marginRight: 10 }} />
+                                <Text style={styles.infoText}>Ngân hàng: <Text style={{ color: theme.text, fontWeight: 'bold' }}>{selectedShop.bank_name || 'Chưa cập nhật'}</Text></Text>
                             </View>
                             <View style={[styles.infoRow, { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 }]}>
-                                <Ionicons name="card" size={18} color={COLORS.textSub} style={{ marginRight: 10 }} />
-                                <Text style={styles.infoText}>Số TK: <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>{selectedShop.account_number || 'Chưa cập nhật'}</Text></Text>
+                                <Ionicons name="card" size={18} color={theme.textSecondary} style={{ marginRight: 10 }} />
+                                <Text style={styles.infoText}>Số TK: <Text style={{ color: theme.primary, fontWeight: 'bold' }}>{selectedShop.account_number || 'Chưa cập nhật'}</Text></Text>
                             </View>
                         </View>
                     )}
@@ -170,29 +169,29 @@ export default function ShopStatementScreen({ navigation }: any) {
                         <View style={styles.modalContainer} onStartShouldSetResponder={() => true}>
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Tìm Kiếm Shop (Khách hàng)</Text>
-                                <TouchableOpacity onPress={() => setShowSearchModal(false)}><Ionicons name="close" size={28} color={COLORS.textMain} /></TouchableOpacity>
+                                <TouchableOpacity onPress={() => setShowSearchModal(false)}><Ionicons name="close" size={28} color={theme.text} /></TouchableOpacity>
                             </View>
 
                             <View style={styles.searchWrap}>
-                                <Ionicons name="search" size={20} color={COLORS.textSub} style={{ marginHorizontal: 10 }} />
+                                <Ionicons name="search" size={20} color={theme.textSecondary} style={{ marginHorizontal: 10 }} />
                                 <TextInput
                                     style={styles.searchInput}
                                     placeholder="Nhập SĐT, Tên, Mã KH..."
-                                    placeholderTextColor={COLORS.textSub}
+                                    placeholderTextColor={theme.textSecondary}
                                     value={searchTxt}
                                     onChangeText={handleSearch}
                                     autoFocus
                                 />
                                 {searchTxt !== '' && (
                                     <TouchableOpacity onPress={() => handleSearch('')} style={{ paddingHorizontal: 10 }}>
-                                        <Ionicons name="close-circle" size={20} color={COLORS.border} />
+                                        <Ionicons name="close-circle" size={20} color={theme.border} />
                                     </TouchableOpacity>
                                 )}
                             </View>
 
                             {loading ? (
                                 <View style={{ padding: 40, alignItems: 'center' }}>
-                                    <ActivityIndicator color={COLORS.primary} size="large" />
+                                    <ActivityIndicator color={theme.primary} size="large" />
                                 </View>
                             ) : (
                                 <FlatList
@@ -203,15 +202,15 @@ export default function ShopStatementScreen({ navigation }: any) {
                                     renderItem={({ item }) => (
                                         <TouchableOpacity style={styles.searchItem} onPress={() => { setSelectedShop(item); setShowSearchModal(false); setStatementResult(null); }}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                <View style={styles.custIcon}><Ionicons name="person" size={16} color={COLORS.primary} /></View>
+                                                <View style={styles.custIcon}><Ionicons name="person" size={16} color={theme.primary} /></View>
                                                 <View style={{ flex: 1 }}>
-                                                    <Text style={{ fontWeight: 'bold', fontSize: 15, color: COLORS.textMain }}>{item.name}</Text>
-                                                    <Text style={{ color: COLORS.textSub, fontSize: 13, marginTop: 2 }}>{item.phone} | {item.customer_code}</Text>
+                                                    <Text style={{ fontWeight: 'bold', fontSize: 15, color: theme.text }}>{item.name}</Text>
+                                                    <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>{item.phone} | {item.customer_code}</Text>
                                                 </View>
                                             </View>
                                         </TouchableOpacity>
                                     )}
-                                    ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 30, color: COLORS.textSub, fontStyle: 'italic' }}>Không tìm thấy khách hàng nào.</Text>}
+                                    ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 30, color: theme.textSecondary, fontStyle: 'italic' }}>Không tìm thấy khách hàng nào.</Text>}
                                 />
                             )}
                         </View>
@@ -223,11 +222,11 @@ export default function ShopStatementScreen({ navigation }: any) {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
 
     // Header Overlapping
-    headerArea: { backgroundColor: COLORS.primary, paddingTop: 50, paddingBottom: 60, position: 'relative', overflow: 'hidden', zIndex: 1 },
+    headerArea: { backgroundColor: theme.primary, paddingTop: 50, paddingBottom: 60, position: 'relative', overflow: 'hidden', zIndex: 1 },
     headerCircleDecoration: { position: 'absolute', top: -30, right: -60, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,255,255,0.08)' },
     headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
@@ -237,48 +236,48 @@ const styles = StyleSheet.create({
     contentWrapper: { flex: 1, zIndex: 10, marginTop: -35, paddingHorizontal: 15 },
 
     // Cards
-    card: { backgroundColor: COLORS.card, borderRadius: 20, padding: 20, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, borderWidth: 1, borderColor: COLORS.border },
-    label: { fontSize: 14, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 12 },
+    card: { backgroundColor: theme.card, borderRadius: 20, padding: 20, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, borderWidth: 1, borderColor: theme.border },
+    label: { fontSize: 14, fontWeight: 'bold', color: theme.text, marginBottom: 12 },
 
-    mockInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: COLORS.border, marginBottom: 20 },
-    textMain: { fontSize: 16, fontWeight: 'bold', color: COLORS.textMain, marginBottom: 4 },
-    textSub: { fontSize: 13, color: COLORS.textSub },
-    searchIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
+    mockInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.background, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: theme.border, marginBottom: 20 },
+    textMain: { fontSize: 16, fontWeight: 'bold', color: theme.text, marginBottom: 4 },
+    textSub: { fontSize: 13, color: theme.textSecondary },
+    searchIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.primaryBackground, justifyContent: 'center', alignItems: 'center' },
 
-    infoCard: { backgroundColor: '#F0FDF4', padding: 15, borderRadius: 12, marginBottom: 25, borderWidth: 1, borderColor: '#A7F3D0' },
-    infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#D1FAE5', paddingBottom: 12 },
-    infoText: { color: COLORS.textSub, fontSize: 14 },
+    infoCard: { backgroundColor: theme.successBackground, padding: 15, borderRadius: 12, marginBottom: 25, borderWidth: 1, borderColor: theme.success },
+    infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: theme.border, paddingBottom: 12 },
+    infoText: { color: theme.textSecondary, fontSize: 14 },
 
-    submitBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 16, justifyContent: 'center', alignItems: 'center', elevation: 3 },
+    submitBtn: { flexDirection: 'row', backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 16, justifyContent: 'center', alignItems: 'center', elevation: 3 },
     submitBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 0.5 },
 
     // Result Ticket
-    resultTicket: { backgroundColor: COLORS.card, borderRadius: 20, marginTop: 25, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, overflow: 'hidden' },
-    ticketTop: { padding: 25, alignItems: 'center', backgroundColor: '#ECFDF5' },
-    successCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.success, justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 2 },
-    resTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.success, marginBottom: 5 },
-    resCode: { fontSize: 14, color: COLORS.textSub, fontWeight: '500' },
+    resultTicket: { backgroundColor: theme.card, borderRadius: 20, marginTop: 25, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, overflow: 'hidden' },
+    ticketTop: { padding: 25, alignItems: 'center', backgroundColor: theme.successBackground },
+    successCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: theme.success, justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 2 },
+    resTitle: { fontSize: 18, fontWeight: 'bold', color: theme.success, marginBottom: 5 },
+    resCode: { fontSize: 14, color: theme.textSecondary, fontWeight: '500' },
 
-    ticketDivider: { height: 30, backgroundColor: COLORS.card, position: 'relative', justifyContent: 'center' },
-    ticketNotchLeft: { position: 'absolute', left: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.background },
-    ticketNotchRight: { position: 'absolute', right: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.background },
-    dashedLine: { height: 1, borderWidth: 1, borderColor: COLORS.border, borderStyle: 'dashed', marginHorizontal: 20 },
+    ticketDivider: { height: 30, backgroundColor: theme.card, position: 'relative', justifyContent: 'center' },
+    ticketNotchLeft: { position: 'absolute', left: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: theme.background },
+    ticketNotchRight: { position: 'absolute', right: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: theme.background },
+    dashedLine: { height: 1, borderWidth: 1, borderColor: theme.border, borderStyle: 'dashed', marginHorizontal: 20 },
 
-    ticketBottom: { padding: 25, paddingTop: 10, alignItems: 'center', backgroundColor: COLORS.card },
-    resAmountLabel: { fontSize: 13, color: COLORS.textSub, fontWeight: '600', letterSpacing: 1, marginBottom: 5 },
-    resAmountValue: { fontSize: 32, fontWeight: 'bold', color: COLORS.danger, marginBottom: 25 },
-    downloadBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingVertical: 14, paddingHorizontal: 25, borderRadius: 30, alignItems: 'center', elevation: 2, width: '100%', justifyContent: 'center' },
+    ticketBottom: { padding: 25, paddingTop: 10, alignItems: 'center', backgroundColor: theme.card },
+    resAmountLabel: { fontSize: 13, color: theme.textSecondary, fontWeight: '600', letterSpacing: 1, marginBottom: 5 },
+    resAmountValue: { fontSize: 32, fontWeight: 'bold', color: theme.danger, marginBottom: 25 },
+    downloadBtn: { flexDirection: 'row', backgroundColor: theme.primary, paddingVertical: 14, paddingHorizontal: 25, borderRadius: 30, alignItems: 'center', elevation: 2, width: '100%', justifyContent: 'center' },
     downloadText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
 
     // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContainer: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' },
+    modalContainer: { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textMain },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', color: theme.text },
 
-    searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, height: 54, marginBottom: 15, borderWidth: 1, borderColor: COLORS.border },
-    searchInput: { flex: 1, fontSize: 15, color: COLORS.textMain },
+    searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.background, borderRadius: 12, height: 54, marginBottom: 15, borderWidth: 1, borderColor: theme.border },
+    searchInput: { flex: 1, fontSize: 15, color: theme.text },
 
-    searchItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    custIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 15 }
+    searchItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border },
+    custIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.primaryBackground, justifyContent: 'center', alignItems: 'center', marginRight: 15 }
 });

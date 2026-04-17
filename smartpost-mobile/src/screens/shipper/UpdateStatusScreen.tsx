@@ -3,25 +3,13 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, Acti
 import { deliveryService } from '../../api/services/deliveryService';
 import { uploadService } from '../../api/services/uploadService';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 
-const COLORS = {
-  primary: '#254BE0',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textSub: '#64748B',
-  border: '#E2E8F0',
-  danger: '#EF4444',
-  success: '#059669', // Màu xanh lục đậm chuẩn theo thiết kế mới
-  warning: '#D97706',
-  warningBg: '#FEF3C7',
-  blueLight: '#EFF6FF',
-  redLight: '#FEE2E2'
-};
-
 export default function UpdateStatusScreen({ route, navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
   const { waybill, podUri } = route.params || {};
 
   const [statusType, setStatusType] = useState<'SUCCESS' | 'FAILED'>('SUCCESS');
@@ -82,8 +70,8 @@ export default function UpdateStatusScreen({ route, navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
       {/* =========================================
           1. HEADER & THÔNG TIN KHÁCH HÀNG 
@@ -104,7 +92,7 @@ export default function UpdateStatusScreen({ route, navigation }: any) {
 
       {/* Thanh Thông Tin Khách Hàng (Nằm đè lên viền Header) */}
       <View style={styles.customerBar}>
-        <Ionicons name="person-outline" size={18} color={COLORS.textMain} />
+        <Ionicons name="person-outline" size={18} color={theme.text} />
         <Text style={styles.custName} numberOfLines={1}>{waybill.receiver_name}</Text>
         <Text style={styles.custPhone}>{waybill.receiver_phone}</Text>
         <View style={styles.codBadge}>
@@ -122,7 +110,7 @@ export default function UpdateStatusScreen({ route, navigation }: any) {
             style={[styles.toggleBtn, statusType === 'SUCCESS' && styles.toggleBtnActiveSuccess]}
             onPress={() => setStatusType('SUCCESS')}
           >
-            <Ionicons name={statusType === 'SUCCESS' ? "checkmark" : "checkmark-outline"} size={20} color={statusType === 'SUCCESS' ? '#FFF' : COLORS.textSub} style={{ marginRight: 6 }} />
+            <Ionicons name={statusType === 'SUCCESS' ? "checkmark" : "checkmark-outline"} size={20} color={statusType === 'SUCCESS' ? '#FFF' : theme.textSecondary} style={{ marginRight: 6 }} />
             <Text style={[styles.toggleText, statusType === 'SUCCESS' && { color: '#FFF' }]}>Giao thành công</Text>
           </TouchableOpacity>
 
@@ -130,7 +118,7 @@ export default function UpdateStatusScreen({ route, navigation }: any) {
             style={[styles.toggleBtn, statusType === 'FAILED' && styles.toggleBtnActiveFail]}
             onPress={() => setStatusType('FAILED')}
           >
-            <Ionicons name={statusType === 'FAILED' ? "close" : "close-outline"} size={20} color={statusType === 'FAILED' ? '#FFF' : COLORS.textSub} style={{ marginRight: 6 }} />
+            <Ionicons name={statusType === 'FAILED' ? "close" : "close-outline"} size={20} color={statusType === 'FAILED' ? '#FFF' : theme.textSecondary} style={{ marginRight: 6 }} />
             <Text style={[styles.toggleText, statusType === 'FAILED' && { color: '#FFF' }]}>Giao thất bại</Text>
           </TouchableOpacity>
         </View>
@@ -197,14 +185,14 @@ export default function UpdateStatusScreen({ route, navigation }: any) {
                 </View>
               ) : (
                 <TouchableOpacity style={styles.cameraBox} onPress={() => navigation.navigate('CameraPOD', { waybill })}>
-                  <Ionicons name="camera-outline" size={32} color={COLORS.primary} />
+                  <Ionicons name="camera-outline" size={32} color={theme.primary} />
                   <Text style={styles.cameraBoxTitle}>Chụp ảnh kiện hàng</Text>
                   <Text style={styles.cameraBoxSub}>Ảnh phải thấy rõ mã vận đơn</Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity style={styles.galleryBtn}>
-                <Ionicons name="image-outline" size={20} color={COLORS.textMain} style={{ marginRight: 8 }} />
+                <Ionicons name="image-outline" size={20} color={theme.text} style={{ marginRight: 8 }} />
                 <Text style={styles.galleryBtnText}>Chọn từ thư viện</Text>
               </TouchableOpacity>
             </View>
@@ -256,12 +244,12 @@ export default function UpdateStatusScreen({ route, navigation }: any) {
       <View style={styles.footer}>
         {statusType === 'SUCCESS' && (
           <View style={styles.summaryBanner}>
-            <Text style={styles.summaryBannerText}>Tổng thu: {formatMoney(actualCod)} đ COD + cước phí người nhận trả</Text>
-            <Ionicons name="checkmark" size={18} color={COLORS.success} />
+            <Text style={styles.summaryBannerText}>Tổng thu: {formatMoney(actualCod)} đ</Text>
+            <Ionicons name="checkmark" size={18} color={theme.success} />
           </View>
         )}
         <TouchableOpacity
-          style={[styles.submitBtn, statusType === 'FAILED' ? { backgroundColor: COLORS.danger } : { backgroundColor: COLORS.success }]}
+          style={[styles.submitBtn, statusType === 'FAILED' ? { backgroundColor: theme.danger } : { backgroundColor: theme.success }]}
           onPress={handleConfirm} disabled={loading}
         >
           {loading ? <ActivityIndicator color="#fff" /> : (
@@ -276,11 +264,11 @@ export default function UpdateStatusScreen({ route, navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
 
   // Header
-  headerArea: { backgroundColor: COLORS.primary, paddingTop: 50, paddingBottom: 30, position: 'relative', overflow: 'hidden' },
+  headerArea: { backgroundColor: theme.primary, paddingTop: 50, paddingBottom: 30, position: 'relative', overflow: 'hidden' },
   headerCircleDecoration: { position: 'absolute', top: -50, right: -50, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,255,255,0.05)' },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
@@ -288,70 +276,70 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
 
   // Customer Bar (Đè lên viền Header)
-  customerBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, marginHorizontal: 20, marginTop: -20, padding: 15, borderRadius: 12, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, borderWidth: 1, borderColor: COLORS.border, zIndex: 10 },
-  custName: { fontSize: 15, fontWeight: 'bold', color: COLORS.textMain, marginLeft: 10, flex: 1 },
-  custPhone: { fontSize: 14, color: COLORS.textSub, marginHorizontal: 10 },
-  codBadge: { backgroundColor: COLORS.warningBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  codBadgeText: { color: COLORS.warning, fontSize: 12, fontWeight: 'bold' },
+  customerBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, marginHorizontal: 20, marginTop: -20, padding: 15, borderRadius: 12, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, borderWidth: 1, borderColor: theme.border, zIndex: 10 },
+  custName: { fontSize: 15, fontWeight: 'bold', color: theme.text, marginLeft: 10, flex: 1 },
+  custPhone: { fontSize: 14, color: theme.textSecondary, marginHorizontal: 10 },
+  codBadge: { backgroundColor: theme.warningBackground, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  codBadgeText: { color: theme.warning, fontSize: 12, fontWeight: 'bold' },
 
   scrollContent: { padding: 15, paddingTop: 25, paddingBottom: 150 },
 
   // Status Toggle
-  statusToggleCard: { flexDirection: 'row', backgroundColor: COLORS.card, borderRadius: 16, padding: 6, marginBottom: 15, borderWidth: 1, borderColor: COLORS.border, elevation: 1 },
+  statusToggleCard: { flexDirection: 'row', backgroundColor: theme.card, borderRadius: 16, padding: 6, marginBottom: 15, borderWidth: 1, borderColor: theme.border, elevation: 1 },
   toggleBtn: { flex: 1, flexDirection: 'row', paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
-  toggleBtnActiveSuccess: { backgroundColor: COLORS.success, elevation: 2 },
-  toggleBtnActiveFail: { backgroundColor: COLORS.danger, elevation: 2 },
-  toggleText: { fontSize: 15, fontWeight: '600', color: COLORS.textSub },
+  toggleBtnActiveSuccess: { backgroundColor: theme.success, elevation: 2 },
+  toggleBtnActiveFail: { backgroundColor: theme.danger, elevation: 2 },
+  toggleText: { fontSize: 15, fontWeight: '600', color: theme.textSecondary },
 
   // Card Chung
-  card: { backgroundColor: COLORS.card, borderRadius: 16, padding: 20, marginBottom: 15, elevation: 1, borderWidth: 1, borderColor: COLORS.border },
+  card: { backgroundColor: theme.card, borderRadius: 16, padding: 20, marginBottom: 15, elevation: 1, borderWidth: 1, borderColor: theme.border },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
 
-  dotWarning: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.warning, marginRight: 8 },
-  cardTitleWarning: { fontSize: 13, fontWeight: 'bold', color: COLORS.warning, letterSpacing: 0.5 },
+  dotWarning: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.warning, marginRight: 8 },
+  cardTitleWarning: { fontSize: 13, fontWeight: 'bold', color: theme.warning, letterSpacing: 0.5 },
 
-  dotPrimary: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary, marginRight: 8 },
-  cardTitlePrimary: { fontSize: 13, fontWeight: 'bold', color: COLORS.primary, letterSpacing: 0.5 },
+  dotPrimary: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.primary, marginRight: 8 },
+  cardTitlePrimary: { fontSize: 13, fontWeight: 'bold', color: theme.primary, letterSpacing: 0.5 },
 
-  dotDanger: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.danger, marginRight: 8 },
-  cardTitleDanger: { fontSize: 13, fontWeight: 'bold', color: COLORS.danger, letterSpacing: 0.5 },
+  dotDanger: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.danger, marginRight: 8 },
+  cardTitleDanger: { fontSize: 13, fontWeight: 'bold', color: theme.danger, letterSpacing: 0.5 },
 
-  dotGray: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.textSub, marginRight: 8 },
-  cardTitleGray: { fontSize: 13, fontWeight: 'bold', color: COLORS.textSub, letterSpacing: 0.5 },
+  dotGray: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.textSecondary, marginRight: 8 },
+  cardTitleGray: { fontSize: 13, fontWeight: 'bold', color: theme.textSecondary, letterSpacing: 0.5 },
 
-  expectedText: { fontSize: 13, color: COLORS.textMain, fontWeight: '500' },
-  requiredBadge: { backgroundColor: COLORS.redLight, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
-  requiredText: { color: COLORS.danger, fontSize: 11, fontWeight: 'bold' },
+  expectedText: { fontSize: 13, color: theme.text, fontWeight: '500' },
+  requiredBadge: { backgroundColor: theme.dangerBackground, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
+  requiredText: { color: theme.danger, fontSize: 11, fontWeight: 'bold' },
 
   // Tiền COD
   codInputWrapper: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  codInput: { fontSize: 36, fontWeight: 'bold', color: '#92400E', textAlign: 'center', minWidth: 120 },
-  codCurrency: { fontSize: 24, fontWeight: 'bold', color: '#92400E', marginLeft: 8, marginTop: 6 },
+  codInput: { fontSize: 36, fontWeight: 'bold', color: theme.warning, textAlign: 'center', minWidth: 120 },
+  codCurrency: { fontSize: 24, fontWeight: 'bold', color: theme.warning, marginLeft: 8, marginTop: 6 },
 
   quickActionRow: { flexDirection: 'row', justifyContent: 'space-between' },
   quickBtn: { flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 12, alignItems: 'center', borderRadius: 10, marginHorizontal: 4, borderWidth: 1, borderColor: 'transparent' },
-  quickBtnActive: { backgroundColor: COLORS.warningBg, borderColor: '#FDE68A' },
-  quickBtnText: { fontSize: 14, color: COLORS.textSub, fontWeight: '600' },
-  quickBtnTextActive: { color: COLORS.warning, fontWeight: 'bold' },
+  quickBtnActive: { backgroundColor: theme.warningBackground, borderColor: theme.warning },
+  quickBtnText: { fontSize: 14, color: theme.textSecondary, fontWeight: '600' },
+  quickBtnTextActive: { color: theme.warning, fontWeight: 'bold' },
 
   // POD (Ảnh)
-  cameraBox: { borderWidth: 1, borderColor: COLORS.primary, borderStyle: 'dashed', borderRadius: 12, height: 160, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.blueLight, marginBottom: 15 },
-  cameraBoxTitle: { color: COLORS.primary, fontSize: 15, fontWeight: 'bold', marginTop: 10, marginBottom: 4 },
-  cameraBoxSub: { color: COLORS.textSub, fontSize: 12 },
+  cameraBox: { borderWidth: 1, borderColor: theme.primary, borderStyle: 'dashed', borderRadius: 12, height: 160, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.primaryBackground, marginBottom: 15 },
+  cameraBoxTitle: { color: theme.primary, fontSize: 15, fontWeight: 'bold', marginTop: 10, marginBottom: 4 },
+  cameraBoxSub: { color: theme.textSecondary, fontSize: 12 },
   podImage: { width: '100%', height: 250, borderRadius: 12, resizeMode: 'cover' },
   reCamBtn: { position: 'absolute', bottom: 15, right: 15, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
 
   galleryBtn: { flexDirection: 'row', backgroundColor: '#F1F5F9', paddingVertical: 14, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  galleryBtnText: { color: COLORS.textMain, fontWeight: '600', fontSize: 15 },
+  galleryBtnText: { color: theme.text, fontWeight: '600', fontSize: 15 },
 
   // Note
-  inputNotePlain: { fontSize: 15, color: COLORS.textMain, lineHeight: 22, height: 80, textAlignVertical: 'top' },
-  inputNoteArea: { backgroundColor: '#F1F5F9', borderRadius: 12, padding: 15, fontSize: 15, color: COLORS.textMain, height: 120, textAlignVertical: 'top' },
+  inputNotePlain: { fontSize: 15, color: theme.text, lineHeight: 22, height: 80, textAlignVertical: 'top' },
+  inputNoteArea: { backgroundColor: '#F1F5F9', borderRadius: 12, padding: 15, fontSize: 15, color: theme.text, height: 120, textAlignVertical: 'top' },
 
   // Footer
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 15, paddingBottom: 25, backgroundColor: COLORS.card, borderTopWidth: 1, borderColor: COLORS.border },
-  summaryBanner: { flexDirection: 'row', backgroundColor: '#ECFDF5', padding: 12, borderRadius: 8, justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  summaryBannerText: { color: COLORS.success, fontSize: 13, fontWeight: '600' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 15, paddingBottom: 25, backgroundColor: theme.card, borderTopWidth: 1, borderColor: theme.border },
+  summaryBanner: { flexDirection: 'row', backgroundColor: theme.successBackground, padding: 12, borderRadius: 8, justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  summaryBannerText: { color: theme.success, fontSize: 13, fontWeight: '600' },
 
   submitBtn: { flexDirection: 'row', paddingVertical: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }

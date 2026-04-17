@@ -3,8 +3,11 @@ import { View, Alert, TouchableOpacity, StyleSheet, StatusBar } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import UniversalScanner from '../../components/UniversalScanner';
 import { waybillService } from '../../api/services/waybillService';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function ScanTaskScreen({ navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
 
   // Hàm này sẽ được truyền vào prop 'onScan' của UniversalScanner
   const handleScanFindTask = async (scannedCode: string) => {
@@ -47,7 +50,7 @@ export default function ScanTaskScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000', position: 'relative' },
   backBtn: {
     position: 'absolute',

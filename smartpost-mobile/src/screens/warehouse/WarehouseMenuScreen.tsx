@@ -5,43 +5,12 @@ import { useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { waybillService } from '../../api/services/waybillService';
 import { accountingService } from '../../api/services/accountingService';
-
-const COLORS = {
-  primary: '#254BE0',
-  primaryLight: '#4361EE',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textSub: '#64748B',
-  textMuted: '#94A3B8',
-  border: '#F1F5F9',
-  iconBlue: '#3B82F6',
-  iconGreen: '#10B981',
-  iconOrange: '#F59E0B',
-  iconGray: '#64748B',
-};
-
-// 🚀 CHIA 2 NHÓM GRID VÀ LIST KÈM PHÂN QUYỀN
-const mainFunctions = [
-  { id: 'CreateWaybill', title: 'Tạo vận đơn', sub: 'Tạo mới đơn hàng', icon: 'add', color: COLORS.iconBlue, isPrimary: false, allowedRoles: [1, 2] },
-  { id: 'ScanInHub', title: 'Nhập kho', sub: 'Quét nhận hàng vào', icon: 'log-in', color: '#FFF', bg: COLORS.primaryLight, isPrimary: true, allowedRoles: [1, 2, 3] },
-  { id: 'ScanBagging', title: 'Đóng túi', sub: 'Đóng gói vận chuyển', icon: 'briefcase-outline', color: COLORS.iconOrange, isPrimary: false, allowedRoles: [1, 2, 3] },
-  { id: 'ScanManifestLoad', title: 'Bốc lên xe', sub: 'Load manifest xuất', icon: 'swap-horizontal', color: COLORS.iconGreen, isPrimary: false, allowedRoles: [1, 2, 3] },
-];
-
-const otherFunctions = [
-  { id: 'ScanManifestUnload', title: 'Gỡ xuống xe', sub: 'Nhận hàng từ tài xế', icon: 'arrow-down', color: COLORS.iconBlue, allowedRoles: [1, 2, 3] },
-  { id: 'AssignShipper', title: 'Giao shipper', sub: 'Phân công giao hàng', icon: 'people-outline', color: COLORS.iconGreen, allowedRoles: [1, 2] },
-  { id: 'CashConfirm', title: 'Thu tiền COD', sub: 'Xác nhận thanh toán', icon: 'card-outline', color: COLORS.iconOrange, allowedRoles: [1, 2, 5] },
-  { id: 'WaybillList', title: 'DS vận đơn', sub: 'Tra cứu & Chỉnh sửa', icon: 'list', color: COLORS.iconGray, allowedRoles: [1, 2, 3] },
-  { id: 'PricingRules', title: 'Cấu hình giá', sub: 'Quản lý bảng giá', icon: 'calculator', color: '#8B5CF6', allowedRoles: [1, 2] },
-  { id: 'StaffManagement', title: 'Quản lý nhân sự', sub: 'Nhân viên & Tài xế', icon: 'people-circle-outline', color: '#8B5CF6', allowedRoles: [1, 2] },
-  { id: 'HubManagement', title: 'Hệ thống bưu cục', sub: 'Quản trị mạng lưới', icon: 'business-outline', color: '#EF4444', allowedRoles: [1] },
-  { id: 'AdminOperations', title: 'Quản trị hệ thống', sub: 'Quản trị hệ thống', icon: 'settings-outline', color: COLORS.iconGray, allowedRoles: [1] },
-
-];
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function WarehouseMenuScreen({ navigation }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
+
   const [activeTab, setActiveTab] = useState('Nghiệp vụ');
   const user = useAuthStore((state: any) => state.user);
   const userRole = user?.roleId || 3;
@@ -50,6 +19,25 @@ export default function WarehouseMenuScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ todayOrders: 0, inHubInventory: 0, pendingCodTotal: 0, pendingShippersCount: 0 });
+
+  // 🚀 Đưa danh sách Menu vào trong Component để nhận diện theme
+  const mainFunctions = [
+    { id: 'CreateWaybill', title: 'Tạo vận đơn', sub: 'Tạo mới đơn hàng', icon: 'add', color: '#3B82F6', isPrimary: false, allowedRoles: [1, 2] },
+    { id: 'ScanInHub', title: 'Nhập kho', sub: 'Quét nhận hàng vào', icon: 'log-in', color: '#FFF', bg: theme.primary, isPrimary: true, allowedRoles: [1, 2, 3] },
+    { id: 'ScanBagging', title: 'Đóng túi', sub: 'Đóng gói vận chuyển', icon: 'briefcase-outline', color: theme.warning, isPrimary: false, allowedRoles: [1, 2, 3] },
+    { id: 'ScanManifestLoad', title: 'Bốc lên xe', sub: 'Load manifest xuất', icon: 'swap-horizontal', color: theme.success, isPrimary: false, allowedRoles: [1, 2, 3] },
+  ];
+
+  const otherFunctions = [
+    { id: 'ScanManifestUnload', title: 'Gỡ xuống xe', sub: 'Nhận hàng từ tài xế', icon: 'arrow-down', color: '#3B82F6', allowedRoles: [1, 2, 3] },
+    { id: 'AssignShipper', title: 'Giao shipper', sub: 'Phân công giao hàng', icon: 'people-outline', color: theme.success, allowedRoles: [1, 2] },
+    { id: 'CashConfirm', title: 'Thu tiền COD', sub: 'Xác nhận thanh toán', icon: 'card-outline', color: theme.warning, allowedRoles: [1, 2, 5] },
+    { id: 'WaybillList', title: 'DS vận đơn', sub: 'Tra cứu & Chỉnh sửa', icon: 'list', color: theme.textSecondary, allowedRoles: [1, 2, 3] },
+    { id: 'PricingRules', title: 'Cấu hình giá', sub: 'Quản lý bảng giá', icon: 'calculator', color: '#8B5CF6', allowedRoles: [1, 2] },
+    { id: 'StaffManagement', title: 'Quản lý nhân sự', sub: 'Nhân viên & Tài xế', icon: 'people-circle-outline', color: '#8B5CF6', allowedRoles: [1, 2] },
+    { id: 'HubManagement', title: 'Hệ thống bưu cục', sub: 'Quản trị mạng lưới', icon: 'business-outline', color: theme.danger, allowedRoles: [1] },
+    { id: 'AdminOperations', title: 'Quản trị hệ thống', sub: 'Quản trị hệ thống', icon: 'settings-outline', color: theme.textSecondary, allowedRoles: [1] },
+  ];
 
   // Load Dữ liệu Thống kê Realtime
   const fetchDashboardData = async () => {
@@ -95,17 +83,17 @@ export default function WarehouseMenuScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFF" />}>
 
-        {/* HEADER XANH DƯƠNG & THỐNG KÊ */}
-        <View style={styles.blueHeader}>
+        {/* HEADER & THỐNG KÊ */}
+        <View style={styles.mainHeader}>
           <View style={styles.headerCircleDecoration} />
 
           <View style={styles.headerTopRow}>
             <View style={styles.hubInfo}>
-              <View style={styles.hubIconWrap}><Ionicons name={userRole === 1 ? "globe" : "home"} size={16} color={COLORS.primary} /></View>
+              <View style={styles.hubIconWrap}><Ionicons name={userRole === 1 ? "globe" : "home"} size={16} color={theme.primary} /></View>
               <Text style={styles.hubName}>{userRole === 1 ? 'Trung Tâm Toàn Quốc' : `Bưu Cục ${user?.hubId || 'N/A'}`}</Text>
             </View>
             <TouchableOpacity style={styles.profileAvatar} onPress={() => navigation.navigate('Profile')}>
@@ -186,7 +174,7 @@ export default function WarehouseMenuScreen({ navigation }: any) {
                       {item.id === 'CashConfirm' && stats.pendingShippersCount > 0 && (
                         <View style={styles.badge}><Text style={styles.badgeText}>{stats.pendingShippersCount} ca</Text></View>
                       )}
-                      <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+                      <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -197,8 +185,8 @@ export default function WarehouseMenuScreen({ navigation }: any) {
 
         {activeTab !== 'Nghiệp vụ' && (
           <View style={{ alignItems: 'center', marginTop: 50 }}>
-            <Ionicons name="construct-outline" size={60} color={COLORS.textMuted} />
-            <Text style={{ color: COLORS.textMuted, marginTop: 10, fontSize: 16 }}>Tính năng đang phát triển</Text>
+            <Ionicons name="construct-outline" size={60} color={theme.textMuted} />
+            <Text style={{ color: theme.textMuted, marginTop: 10, fontSize: 16 }}>Tính năng đang phát triển</Text>
           </View>
         )}
 
@@ -207,11 +195,11 @@ export default function WarehouseMenuScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+const getStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
   scrollContent: { paddingBottom: 40 },
 
-  blueHeader: { backgroundColor: COLORS.primary, paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40, position: 'relative', overflow: 'hidden' },
+  mainHeader: { backgroundColor: theme.primary, paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40, position: 'relative', overflow: 'hidden' },
   headerCircleDecoration: { position: 'absolute', top: -50, right: -50, width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,255,255,0.05)' },
   headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
   hubInfo: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
@@ -229,30 +217,30 @@ const styles = StyleSheet.create({
   statUnit: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
 
   tabContainerWrapper: { alignItems: 'center', marginTop: -25, marginBottom: 20, zIndex: 10 },
-  tabContainer: { flexDirection: 'row', backgroundColor: COLORS.card, padding: 5, borderRadius: 30, elevation: 4, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, width: '90%' },
+  tabContainer: { flexDirection: 'row', backgroundColor: theme.card, padding: 5, borderRadius: 30, elevation: 4, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, width: '90%' },
   tabButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 25 },
-  tabButtonActive: { backgroundColor: COLORS.primary },
-  tabText: { fontSize: 15, color: COLORS.textSub, fontWeight: '600' },
+  tabButtonActive: { backgroundColor: theme.primary },
+  tabText: { fontSize: 15, color: theme.textSecondary, fontWeight: '600' },
   tabTextActive: { color: '#FFF', fontWeight: 'bold' },
 
   sectionContainer: { paddingHorizontal: 20, marginBottom: 25 },
-  sectionTitle: { fontSize: 13, fontWeight: 'bold', color: COLORS.textSub, letterSpacing: 1, marginBottom: 15 },
+  sectionTitle: { fontSize: 13, fontWeight: 'bold', color: theme.textSecondary, letterSpacing: 1, marginBottom: 15 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  mainCard: { width: '48%', backgroundColor: COLORS.card, borderRadius: 20, padding: 16, marginBottom: 15, minHeight: 140, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, overflow: 'hidden' },
-  mainCardPrimary: { backgroundColor: COLORS.primaryLight },
+  mainCard: { width: '48%', backgroundColor: theme.card, borderRadius: 20, padding: 16, marginBottom: 15, minHeight: 140, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, overflow: 'hidden' },
+  mainCardPrimary: { backgroundColor: theme.primary },
   cardCircleDecoration: { position: 'absolute', bottom: -20, right: -20, width: 80, height: 80, borderRadius: 40 },
   mainCardIconWrap: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   mainCardTextWrap: { flex: 1, justifyContent: 'flex-end' },
-  mainCardTitle: { fontSize: 16, fontWeight: '600', color: COLORS.textMain, marginBottom: 4 },
-  mainCardSub: { fontSize: 12, color: COLORS.textMuted },
+  mainCardTitle: { fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 4 },
+  mainCardSub: { fontSize: 12, color: theme.textMuted },
 
-  listContainer: { backgroundColor: COLORS.card, borderRadius: 20, paddingHorizontal: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
-  listItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  listContainer: { backgroundColor: theme.card, borderRadius: 20, paddingHorizontal: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  listItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border },
   listIconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   listTextWrap: { flex: 1 },
-  listTitle: { fontSize: 15, fontWeight: '600', color: COLORS.textMain, marginBottom: 3 },
-  listSub: { fontSize: 13, color: COLORS.textMuted },
+  listTitle: { fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 3 },
+  listSub: { fontSize: 13, color: theme.textMuted },
   badge: { backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginRight: 10 },
-  badgeText: { color: '#D97706', fontSize: 12, fontWeight: 'bold' }
+  badgeText: { color: theme.warning, fontSize: 12, fontWeight: 'bold' } // updated to warning color
 });

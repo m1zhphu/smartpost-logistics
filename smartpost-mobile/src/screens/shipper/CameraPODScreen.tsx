@@ -2,14 +2,12 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, StatusBar, SafeAreaView } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-
-const COLORS = {
-  primary: '#254BE0',
-  danger: '#EF4444',
-  success: '#10B981',
-};
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 export default function CameraPODScreen({ navigation, route }: any) {
+  const theme = useAppTheme();
+  const styles = getStyles(theme);
+
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [preview, setPreview] = useState<string | null>(null);
@@ -19,7 +17,7 @@ export default function CameraPODScreen({ navigation, route }: any) {
   // Nhận waybill từ màn hình trước để in Watermark
   const { waybill } = route.params || {};
 
-  if (!permission) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  if (!permission) return <View style={styles.center}><ActivityIndicator size="large" color={theme.primary} /></View>;
 
   if (!permission.granted) {
     return (
@@ -111,7 +109,7 @@ export default function CameraPODScreen({ navigation, route }: any) {
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={toggleFlash}>
-            <Ionicons name={flash === 'on' ? "flash" : "flash-off"} size={24} color={flash === 'on' ? "#F59E0B" : "#fff"} />
+            <Ionicons name={flash === 'on' ? "flash" : "flash-off"} size={24} color={flash === 'on' ? theme.warning : "#fff"} />
           </TouchableOpacity>
         </View>
 
@@ -130,7 +128,7 @@ export default function CameraPODScreen({ navigation, route }: any) {
         <View style={styles.bottomActions}>
           <TouchableOpacity style={styles.captureBtn} onPress={takePicture} disabled={taking}>
             {taking ? (
-              <ActivityIndicator size="large" color={COLORS.primary} />
+              <ActivityIndicator size="large" color={theme.primary} />
             ) : (
               <View style={styles.captureInner} />
             )}
@@ -141,10 +139,10 @@ export default function CameraPODScreen({ navigation, route }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA', padding: 30 },
-  authText: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 20, lineHeight: 24 },
-  authBtn: { backgroundColor: COLORS.primary, paddingVertical: 14, paddingHorizontal: 30, borderRadius: 12 },
+const getStyles = (theme: any) => StyleSheet.create({
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background, padding: 30 },
+  authText: { fontSize: 16, color: theme.textSecondary, textAlign: 'center', marginBottom: 20, lineHeight: 24 },
+  authBtn: { backgroundColor: theme.primary, paddingVertical: 14, paddingHorizontal: 30, borderRadius: 12 },
   authBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 
   // Camera UI
@@ -174,6 +172,6 @@ const styles = StyleSheet.create({
 
   previewActions: { flexDirection: 'row', backgroundColor: '#000', padding: 20, paddingBottom: 30, justifyContent: 'space-between' },
   actionBtnReject: { flex: 1, flexDirection: 'row', backgroundColor: '#334155', paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-  actionBtnAccept: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.success, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  actionBtnAccept: { flex: 1, flexDirection: 'row', backgroundColor: theme.success, paddingVertical: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
   actionText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, marginLeft: 8 },
 });
