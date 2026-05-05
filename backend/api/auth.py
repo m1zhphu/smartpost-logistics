@@ -1,11 +1,9 @@
-# File: api/auth.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from core.database import get_db
 from core.security import verify_password, get_password_hash, create_access_token
 import crud.auth as crud_auth
-import schemas.auth as schema_auth # Giả định bạn đã chuyển Schema sang thư mục schemas
-import models
+import schemas.auth as schema_auth 
 
 router = APIRouter(prefix="/api", tags=["Authentication"])
 
@@ -38,13 +36,13 @@ def setup_first_admin(db: Session = Depends(get_db)):
 def login(data: schema_auth.LoginSchema, db: Session = Depends(get_db)):
     """Xử lý đăng nhập và nạp quyền vào Token"""
     
-    # 1. Sử dụng CRUD để lấy User (Thay cho dòng bị lỗi models.Users)
+    # 1. Sử dụng CRUD để lấy User
     user = crud_auth.get_user_by_username(db, data.username)
     
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Tài khoản hoặc mật khẩu không chính xác")
     
-    # 2. Sử dụng CRUD để lấy Quyền (Thay cho dòng bị lỗi models.Roles)
+    # 2. Sử dụng CRUD để lấy Quyền
     role = crud_auth.get_role_by_id(db, user.role_id)
     permissions = role.permissions if role else {}
 
@@ -55,7 +53,7 @@ def login(data: schema_auth.LoginSchema, db: Session = Depends(get_db)):
             "user_id": user.user_id, 
             "role_id": user.role_id,
             "primary_hub_id": user.primary_hub_id,
-            "permissions": permissions # Rất quan trọng cho PermissionChecker
+            "permissions": permissions 
         }
     )
     
@@ -69,7 +67,7 @@ def login(data: schema_auth.LoginSchema, db: Session = Depends(get_db)):
 def setup_roles_v2(db: Session = Depends(get_db)):
     """Xóa cũ, tạo mới toàn bộ danh sách vai trò hệ thống"""
     try:
-        # 1. Định nghĩa danh sách vai trò
+        # 1. Định nghĩa danh sách vai trò (Data)
         roles_data = [
             {"role_id": 1, "role_name": "SUPER_ADMIN", "permissions": {"all": True}},
             {"role_id": 2, "role_name": "HUB_MANAGER", "permissions": {
@@ -86,16 +84,10 @@ def setup_roles_v2(db: Session = Depends(get_db)):
             }},
         ]
 
-        # 2. Cập nhật hoặc thêm mới vào Database
-        for r in roles_data:
-            existing_role = db.query(models.Roles).filter(models.Roles.role_id == r["role_id"]).first()
-            if existing_role:
-                existing_role.role_name = r["role_name"]
-                existing_role.permissions = r["permissions"]
-            else:
-                new_role = models.Roles(**r)
-                db.add(new_role)
+        # 2. Gọi hàm CRUD để xử lý Database
+        crud_auth.upsert_roles_bulk(db, roles_data)
         
+        # 3. Commit giao dịch tại API Layer
         db.commit()
         return {"message": "Đã cấu hình lại toàn bộ hệ thống phân quyền 5 cấp thành công!"}
     except Exception as e:

@@ -1,4 +1,3 @@
-# File: api/delivery.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from core.database import get_db
@@ -8,8 +7,6 @@ from core.state_machine import WaybillStatus, validate_state_transition
 import crud.delivery as crud_delivery
 import schemas.delivery as schema_delivery
 import crud.waybills as crud_wb
-from datetime import datetime, timedelta
-import models 
 
 router = APIRouter(prefix="/api/delivery", tags=["Delivery Operations"])
 
@@ -31,15 +28,11 @@ def get_pending_assign_waybills(
     """Lấy danh sách đơn hàng đã về bưu cục đích, chờ phân công Shipper"""
     verify_manager_access(current_user)
     
-    query = db.query(models.Waybills)
-
     # DATA ISOLATION: Quản lý chỉ thấy đơn hàng có ĐÍCH ĐẾN là bưu cục của mình
-    if current_user.get("role_id") != 1:
-        query = query.filter(models.Waybills.dest_hub_id == current_user.get("primary_hub_id"))
-
-    # Lọc đơn đang chờ ở kho
-    query = query.filter(models.Waybills.status.in_(["ARRIVED", "IN_HUB"]))
-    return query.all()
+    hub_id = None if current_user.get("role_id") == 1 else current_user.get("primary_hub_id")
+    
+    # Nhờ CRUD lấy dữ liệu
+    return crud_delivery.get_pending_waybills_for_hub(db, hub_id)
 
 @router.post("/assign-shipper")
 async def assign_shipper(
@@ -55,11 +48,8 @@ async def assign_shipper(
         success_codes = []
         user_hub = current_user.get('primary_hub_id')
         
-        # Kiểm tra xem Shipper có tồn tại và thuộc bưu cục này không
-        shipper = db.query(models.Users).filter(
-            models.Users.user_id == data.shipper_id,
-            models.Users.role_id == 4
-        ).first()
+        # 1. Kiểm tra Shipper qua CRUD
+        shipper = crud_delivery.get_active_shipper(db, data.shipper_id)
         
         if not shipper:
             raise HTTPException(status_code=404, detail="Không tìm thấy Shipper hợp lệ.")
@@ -100,11 +90,8 @@ def get_shipper_tasks(
     """Lấy danh sách đơn hàng đang được giao bởi Shipper hiện tại"""
     verify_shipper_access(current_user)
 
-    # Chỉ lấy những đơn đang ở trạng thái DELIVERING và gán cho user này
-    tasks = db.query(models.Waybills).join(models.DeliveryResults).filter(
-        models.Waybills.status == WaybillStatus.DELIVERING,
-        models.DeliveryResults.shipper_id == current_user["user_id"]
-    ).order_by(models.DeliveryResults.delivery_id.desc()).all()
+    # Lấy dữ liệu qua CRUD
+    tasks = crud_delivery.get_tasks_for_shipper(db, current_user["user_id"])
     
     return {"items": tasks}
 
@@ -126,9 +113,7 @@ async def confirm_delivery_success(
 
     # SECURITY: Chặn Shipper xác nhận giùm đơn của người khác
     if current_user.get("role_id") != 1:
-        delivery_record = db.query(models.DeliveryResults).filter(
-            models.DeliveryResults.waybill_id == waybill.waybill_id
-        ).order_by(models.DeliveryResults.delivery_id.desc()).first()
+        delivery_record = crud_delivery.get_latest_delivery_record(db, waybill.waybill_id)
         
         if not delivery_record or delivery_record.shipper_id != current_user["user_id"]:
             raise HTTPException(status_code=403, detail="Bạn không được phân công giao đơn hàng này!")
@@ -162,9 +147,7 @@ async def report_failure(
 
     # SECURITY: Chặn Shipper báo cáo giùm đơn của người khác
     if current_user.get("role_id") != 1:
-        delivery_record = db.query(models.DeliveryResults).filter(
-            models.DeliveryResults.waybill_id == waybill.waybill_id
-        ).order_by(models.DeliveryResults.delivery_id.desc()).first()
+        delivery_record = crud_delivery.get_latest_delivery_record(db, waybill.waybill_id)
         
         if not delivery_record or delivery_record.shipper_id != current_user["user_id"]:
             raise HTTPException(status_code=403, detail="Bạn không được phân công giao đơn hàng này!")
@@ -180,37 +163,3 @@ async def report_failure(
     res = {"status": "DELIVERY_FAILED", "waybill_code": data.waybill_code}
     commit_idempotency(idem_key, res) 
     return res
-
-def scan_overdue_waybills(db: Session):
-    """Tìm và gắn cờ cảnh báo cho các đơn giao quá 24h"""
-    from datetime import datetime, timedelta
-    deadline = datetime.utcnow() - timedelta(hours=24)
-    
-    overdue_waybills = db.query(models.Waybills).join(
-        models.TrackingLogs, 
-        models.Waybills.waybill_id == models.TrackingLogs.waybill_id
-    ).filter(
-        models.Waybills.status == WaybillStatus.DELIVERING,
-        models.TrackingLogs.status_id == WaybillStatus.DELIVERING,
-        models.TrackingLogs.system_time <= deadline
-    ).all()
-
-    updated_count = 0
-    for wb in overdue_waybills:
-        existing_warning = db.query(models.TrackingLogs).filter(
-            models.TrackingLogs.waybill_id == wb.waybill_id,
-            models.TrackingLogs.status_id == "OVERDUE_WARNING",
-            models.TrackingLogs.system_time > deadline
-        ).first()
-
-        if not existing_warning:
-            db.add(models.TrackingLogs(
-                waybill_id=wb.waybill_id,
-                status_id="OVERDUE_WARNING",
-                note="CẢNH BÁO: Đơn hàng giao quá 24 giờ chưa có cập nhật!",
-                system_time=datetime.utcnow()
-            ))
-            updated_count += 1
-            
-    db.commit()
-    return updated_count

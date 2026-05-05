@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import date, datetime
 from typing import List
 import pandas as pd
@@ -10,7 +9,6 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
 from core.database import get_db
 from core.security import get_current_user
-import models
 import schemas.waybills as schema_wb
 import crud.waybills as crud_wb
 from core.pricing import calculate_shipping_fee
@@ -26,7 +24,7 @@ def export_waybills_excel(
 ):
     """Xuất danh sách vận đơn ra file Excel theo bộ lọc"""
     try:
-        # 1. Lấy dữ liệu theo bộ lọc (không phân trang cho export)
+        # 1. Lấy dữ liệu theo bộ lọc
         filters.page = 1
         filters.size = 10000 
         
@@ -57,12 +55,11 @@ def export_waybills_excel(
         df = pd.DataFrame(data)
         output = BytesIO()
         
-        # 3. Tạo file Excel với định dạng chuyên nghiệp
+        # 3. Tạo file Excel
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Danh_Sach_Van_Don')
             worksheet = writer.sheets['Danh_Sach_Van_Don']
 
-            # Style tiêu đề
             header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
             header_font = Font(color="FFFFFF", bold=True)
             border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
@@ -73,7 +70,6 @@ def export_waybills_excel(
                 cell.alignment = Alignment(horizontal="center")
                 cell.border = border
 
-            # Tự động chỉnh độ rộng cột
             for column in worksheet.columns:
                 max_length = 0
                 column_letter = column[0].column_letter
@@ -103,13 +99,9 @@ def get_today_scan_count(
     """Lấy số lượng đơn đã quét nhập kho trong ngày tại bưu cục hiện tại"""
     today = date.today()
     hub_id = current_user.get("primary_hub_id")
-
-    count = db.query(models.TrackingLogs).filter(
-        models.TrackingLogs.hub_id == hub_id,
-        models.TrackingLogs.status_id == "IN_HUB",
-        func.date(models.TrackingLogs.system_time) == today
-    ).count()
-
+    
+    # Giao việc cho CRUD
+    count = crud_wb.count_today_in_hub_scans(db, hub_id, today)
     return {"total": count}
 
 # --- 2. TÌM KIẾM VẬN ĐƠN ---
@@ -126,17 +118,14 @@ def search_waybills(
     if user_role != 1:
         # --- CHỐT CHẶN NGHIỆP VỤ ---
         if filters.status == "CREATED":
-            # Đang ở tab "Chờ nhập kho": CHỈ lọc theo nguồn
             filters.origin_hub_id = user_hub_id
             filters.dest_hub_id = None
             hub_filter = None 
         elif filters.status == "ARRIVED":
-            # Đang ở tab "Phân công giao": CHỈ lọc theo đích
             filters.dest_hub_id = user_hub_id
             filters.origin_hub_id = None
             hub_filter = None
         else:
-            # Tra cứu chung
             hub_filter = user_hub_id
 
     try:
@@ -182,8 +171,6 @@ async def create_waybill(
     current_user: dict = Depends(get_current_user)
 ):
     """Tạo vận đơn mới và ghi log khởi tạo"""
-    
-    # 1. Bắt lỗi chặn đứng nếu giá cước không hợp lệ (Bảo vệ doanh thu)
     if data.shipping_fee <= 0:
         raise HTTPException(
             status_code=400, 
@@ -200,13 +187,9 @@ async def create_waybill(
 
         from crud.accounting import create_ledger_entry
         
-        # 2. Tạo vận đơn mới (Sẽ xử lý cả Extra Services bên trong CRUD)
         new_waybill = crud_wb.create_waybill_record(db, save_data, fee=data.shipping_fee)
-
-        # 3. Ghi log khởi tạo hành trình
         crud_wb.create_initial_log(db, new_waybill.waybill_id, origin_id, current_user['user_id'])
 
-        # 4. KẾ TOÁN MVP: CHỈ ghi nợ phí ship cho Khách hàng nếu họ chọn SENDER_PAY
         if (data.shipping_fee or 0) > 0 and data.payment_method == "SENDER_PAY":
             create_ledger_entry(
                 db, new_waybill.waybill_id, new_waybill.customer_id, 
@@ -221,7 +204,7 @@ async def create_waybill(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- 4. CẬP NHẬT CÂN NẶNG THỰC TẾ (NEW - ĐÃ THÊM) ---
+# --- 4. CẬP NHẬT CÂN NẶNG THỰC TẾ ---
 @router.patch("/{code}/weight")
 def update_waybill_weight(
     code: str,
@@ -238,49 +221,31 @@ def update_waybill_weight(
     if new_weight is None:
         raise HTTPException(status_code=400, detail="Thiếu thông tin khối lượng thực tế")
 
-    # Cập nhật cân nặng thực tế và tăng version (Optimistic Locking)
-    result = db.query(models.Waybills).filter(
-        models.Waybills.waybill_id == waybill.waybill_id,
-        models.Waybills.version == waybill.version
-    ).update({
-        "actual_weight": float(new_weight),
-        "version": models.Waybills.version + 1
-    })
-
-    if not result:
+    # Nhờ CRUD thực hiện update
+    updated_waybill = crud_wb.update_waybill_weight_record(db, waybill, float(new_weight))
+    
+    if not updated_waybill:
         db.rollback()
         raise HTTPException(status_code=409, detail="Dữ liệu đã bị thay đổi, vui lòng thử lại.")
     
-    # Tự động tính toán lại giá cước
+    # Tính lại giá và nhờ CRUD ghi log
     try:
         new_fee = calculate_shipping_fee(
-            db, 
-            waybill.origin_hub_id, 
-            waybill.dest_hub_id, 
-            float(new_weight), 
-            waybill.service_type or 'STANDARD'
+            db, updated_waybill.origin_hub_id, updated_waybill.dest_hub_id, 
+            float(new_weight), updated_waybill.service_type or 'STANDARD'
         )
-        # Update fee directly
-        db.query(models.Waybills).filter(models.Waybills.waybill_id == waybill.waybill_id).update({"shipping_fee": new_fee})
-        price_note = f"Cập nhật giá mới: {new_fee:,.0f} VNĐ"
+        crud_wb.update_waybill_fee_and_log(
+            db, updated_waybill, new_fee, new_weight, 
+            current_user.get("primary_hub_id"), current_user['user_id']
+        )
     except Exception as e:
-        price_note = f"Lỗi tính giá: {str(e)}"
-
-    # Ghi log hành trình
-    new_log = models.TrackingLogs(
-        waybill_id=waybill.waybill_id,
-        status_id=waybill.status,
-        hub_id=current_user.get("primary_hub_id"),
-        user_id=current_user['user_id'],
-        note=f"Cân lại: {new_weight}kg. {price_note}",
-        system_time=datetime.utcnow()
-    )
-    db.add(new_log)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Lỗi tính giá: {str(e)}")
 
     try:
         db.commit()
-        return {"message": "Cập nhật khối lượng thành công", "actual_weight": waybill.actual_weight}
-    except Exception as e:
+        return {"message": "Cập nhật khối lượng thành công", "actual_weight": updated_waybill.actual_weight}
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Lỗi khi lưu cân nặng")
 
@@ -298,45 +263,23 @@ def update_status_delivered(
     if not waybill:
         raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
 
-    # 1. Kiểm tra Optimistic Lock (chỉ update nếu version khớp)
-    # Lấy version hiện tại từ client (nếu có) hoặc mặc định xử lý
-    current_version = waybill.version
+    # Gọi CRUD để update status
+    updated_waybill = crud_wb.mark_waybill_as_delivered(db, waybill, current_user.get("primary_hub_id"), current_user['user_id'])
     
-    # Thực hiện update nguyên tử với version check
-    result = db.query(models.Waybills).filter(
-        models.Waybills.waybill_id == waybill.waybill_id,
-        models.Waybills.version == current_version
-    ).update({
-        "status": "DELIVERED",
-        "version": models.Waybills.version + 1
-    })
-
-    if not result:
+    if not updated_waybill:
         db.rollback()
         raise HTTPException(status_code=409, detail="Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại.")
 
-    # 2. KẾ TOÁN MVP: Ghi nợ COD cho Shipper (Shipper cầm tiền mặt)
-    if (waybill.cod_amount or 0) > 0:
+    if (updated_waybill.cod_amount or 0) > 0:
         create_ledger_entry(
-            db, waybill.waybill_id, current_user['user_id'], 
-            "DEBIT", float(waybill.cod_amount), "COD"
+            db, updated_waybill.waybill_id, current_user['user_id'], 
+            "DEBIT", float(updated_waybill.cod_amount), "COD"
         )
-    
-    # 3. Ghi log hành trình
-    new_log = models.TrackingLogs(
-        waybill_id=waybill.waybill_id,
-        status_id="DELIVERED",
-        hub_id=current_user.get("primary_hub_id"),
-        user_id=current_user['user_id'],
-        note="Giao hàng thành công - Shipper đã thu tiền mặt",
-        system_time=datetime.utcnow()
-    )
-    db.add(new_log)
 
     try:
         db.commit()
         return {"message": "Đã cập nhật Giao hàng thành công", "waybill_code": code}
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Lỗi hệ thống")
 
@@ -344,18 +287,15 @@ def update_status_delivered(
 @router.put("/{code}")
 def edit_waybill_info(
     code: str,
-    update_data: dict,  # Nhận payload chỉnh sửa từ Frontend
+    update_data: dict, 
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """API cho phép chỉnh sửa thông tin người nhận và COD của vận đơn"""
-    
-    # 1. Tìm vận đơn trong DB
     waybill = crud_wb.get_waybill_by_code(db, code)
     if not waybill:
         raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn để chỉnh sửa")
 
-    # 2. Ràng buộc nghiệp vụ: Không cho phép sửa đơn đã giao thành công hoặc đã hủy
     if waybill.status in ["DELIVERED", "CANCELLED"]:
         raise HTTPException(
             status_code=400, 
@@ -363,31 +303,17 @@ def edit_waybill_info(
         )
 
     try:
-        # 3. Gọi hàm CRUD đã viết sẵn để cập nhật dữ liệu
         updated_waybill = crud_wb.update_waybill(db, code, update_data)
-        
         if not updated_waybill:
             raise HTTPException(status_code=500, detail="Lỗi khi cập nhật dữ liệu vào Database")
 
-        # 4. Ghi log hành trình để theo dõi lịch sử sửa đổi (Audit Trail)
-        new_log = models.TrackingLogs(
-            waybill_id=waybill.waybill_id,
-            status_id=waybill.status,  # Giữ nguyên trạng thái hiện tại
-            hub_id=current_user.get("primary_hub_id"),
-            user_id=current_user.get("user_id"),
-            note=f"Nhân viên {current_user.get('username')} đã hiệu chỉnh thông tin vận đơn",
-            system_time=datetime.utcnow()
-        )
-        db.add(new_log)
+        crud_wb.log_waybill_edit(db, waybill.waybill_id, waybill.status, current_user)
         
-        # 5. Lưu thay đổi
         db.commit()
         return {"message": "Cập nhật vận đơn thành công", "waybill_code": code}
 
     except Exception as e:
         db.rollback()
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
     
 # --- 6. CÁC API PHỤ KHÁC ---
@@ -401,5 +327,5 @@ def get_waybill_tracking(code: str, db: Session = Depends(get_db)):
 
 @router.delete("/{code}")
 def delete_waybill(code: str, db: Session = Depends(get_db)):
-    waybill = crud_wb.soft_delete_waybill(db, code)
+    crud_wb.soft_delete_waybill(db, code)
     return {"message": "Đã hủy đơn thành công"}

@@ -1,11 +1,11 @@
-# File: api/admin.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from core.database import get_db
 from core.security import get_current_user
-import models, schemas.admin
-from typing import Optional # THÊM DÒNG NÀY
+import schemas.admin
+from typing import Optional 
 import crud.delivery as crud_delivery
+import crud.admin as crud_admin  # THÊM IMPORT CRUD MỚI
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Operations"])
 
@@ -15,34 +15,24 @@ def override_waybill_status(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    # 1. Kiểm tra quyền Admin (role_id = 1) [cite: 41, 42, 138]
+    # 1. Kiểm tra quyền
     if current_user.get("role_id") != 1:
         raise HTTPException(status_code=403, detail="Chỉ Admin mới có quyền thực hiện thao tác này")
 
-    # 2. Tìm vận đơn
-    waybill = db.query(models.Waybills).filter(models.Waybills.waybill_code == data.waybill_code).first()
+    # 2. Tìm vận đơn qua CRUD
+    waybill = crud_admin.get_waybill_by_code(db, data.waybill_code)
     if not waybill:
         raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
 
-    old_status = waybill.status
-
-    # 3. Ghi lại Audit Log trước khi sửa [cite: 43, 136]
-    audit_entry = models.AuditLogs(
-        admin_id=current_user["user_id"],
-        target_table="waybills",
-        target_id=waybill.waybill_id,
-        column_name="status",
-        old_value=old_status,
-        new_value=data.new_status,
+    # 3. Yêu cầu CRUD ghi log và cập nhật
+    old_status = crud_admin.log_and_override_status(
+        db=db, 
+        waybill=waybill, 
+        admin_id=current_user["user_id"], 
+        new_status=data.new_status, 
         reason=data.reason
     )
-    db.add(audit_entry)
-
-    # 4. Thực hiện Override trạng thái và tăng version (Optimistic Locking) [cite: 60, 92]
-    waybill.status = data.new_status
-    waybill.version += 1
     
-    db.commit()
     return {"message": f"Đã ghi đè trạng thái từ {old_status} sang {data.new_status} thành công"}
 
 @router.get("/audit-logs")
@@ -51,29 +41,29 @@ def get_audit_logs(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    # Chỉ Admin mới có quyền xem nhật ký kiểm toán [cite: 41]
+    # Kiểm tra quyền
     if current_user.get("role_id") != 1:
         raise HTTPException(status_code=403, detail="Quyền truy cập bị từ chối")
     
-    query = db.query(models.AuditLogs)
-    if target_id:
-        query = query.filter(models.AuditLogs.target_id == target_id)
-    
-    return query.order_by(models.AuditLogs.timestamp.desc()).all()
+    # Lấy dữ liệu qua CRUD
+    return crud_admin.get_audit_logs(db, target_id)
 
 @router.post("/scan-overdue")
 def trigger_scan_overdue(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    # Kiểm tra quyền Admin hoặc Điều phối [cite: 41, 44]
+    # Kiểm tra quyền
     if current_user.get("role_id") not in [1, 2]: 
         raise HTTPException(status_code=403, detail="Không có quyền thực hiện")
 
+    # Gọi CRUD của delivery (Giữ nguyên như cũ)
     count = crud_delivery.scan_overdue_waybills(db)
     db.commit()
     
     return {"message": f"Quét hoàn tất. Đã phát hiện và gắn cảnh báo cho {count} đơn hàng quá hạn."}
+
 @router.get('/departments')
 def get_departments(db: Session = Depends(get_db)):
-    return db.query(models.Departments).filter(models.Departments.status == True).all()
+    # Lấy dữ liệu qua CRUD
+    return crud_admin.get_active_departments(db)

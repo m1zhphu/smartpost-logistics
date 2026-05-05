@@ -5,10 +5,9 @@ from typing import List
 from core.database import get_db
 from core.permissions import PermissionChecker
 from core.idempotency import validate_idempotency, commit_idempotency 
-from core.security import get_current_user # Bổ sung import để lấy user hiện tại
+from core.security import get_current_user
 import crud.pricing as crud_pricing
 import schemas.pricing as schema_pricing
-import models
 
 router = APIRouter(prefix="/api/pricing", tags=["Pricing System"])
 
@@ -88,31 +87,25 @@ def calculate_shipping_fee(
     data: schema_pricing.FeeCalculateRequest,
     db: Session = Depends(get_db)
 ):
-    """Tính cước phí vận chuyển BAO GỒM CẢ DỊCH VỤ TIỆN ÍCH (Mở rộng cho luồng tạo đơn)"""
+    """Tính cước phí vận chuyển BAO GỒM CẢ DỊCH VỤ TIỆN ÍCH"""
     
-    origin_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.origin_hub_id).first()
-    dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.dest_hub_id).first()
+    # 1. Gọi CRUD lấy thông tin bưu cục
+    origin_hub = crud_pricing.get_hub_by_id(db, data.origin_hub_id)
+    dest_hub = crud_pricing.get_hub_by_id(db, data.dest_hub_id)
 
     if not origin_hub or not dest_hub:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin bưu cục.")
 
-    # Tìm quy tắc giá chính
-    rule = db.query(models.PricingRules).filter(
-        models.PricingRules.from_province_id == data.origin_hub_id,
-        models.PricingRules.to_province_id == data.dest_hub_id,
-        models.PricingRules.service_type == data.service_type,
-        models.PricingRules.min_weight <= data.weight,
-        models.PricingRules.max_weight >= data.weight,
-        models.PricingRules.is_active == True
-    ).first()
+    # 2. Gọi CRUD tìm quy tắc giá chính
+    rule = crud_pricing.get_pricing_rule_exact(
+        db, data.origin_hub_id, data.dest_hub_id, data.service_type, data.weight
+    )
 
     if not rule:
-        rule = db.query(models.PricingRules).filter(
-            models.PricingRules.from_province_id == origin_hub.province_id,
-            models.PricingRules.to_province_id == dest_hub.province_id,
-            models.PricingRules.service_type == data.service_type,
-            models.PricingRules.is_active == True
-        ).order_by(models.PricingRules.max_weight.desc()).first()
+        # Gọi CRUD tìm quy tắc theo cụm Tỉnh/Thành phố nếu không có tuyến chính xác
+        rule = crud_pricing.get_pricing_rule_fallback(
+            db, origin_hub.province_id, dest_hub.province_id, data.service_type
+        )
 
     if not rule:
         raise HTTPException(
@@ -120,11 +113,13 @@ def calculate_shipping_fee(
             detail=f"Chưa có bảng giá cho tuyến {origin_hub.province_id}→{dest_hub.province_id} ({data.service_type})."
         )
 
+    # 3. Tính toán tiền (Logic Toán học giữ nguyên tại API)
     main_fee = float(rule.price)
     extra_fee = 0
 
     if data.extra_services:
-        active_services = db.query(models.ServiceConfigs).filter(models.ServiceConfigs.is_active == True).all()
+        # Gọi CRUD lấy danh sách dịch vụ cấu hình
+        active_services = crud_pricing.get_active_service_configs(db)
         service_map = {s.service_code: s for s in active_services}
         
         for srv_code in data.extra_services:
@@ -155,7 +150,7 @@ def calculate_shipping_fee(
 @router.get("/extra-services", response_model=List[schema_pricing.ServiceConfigResponse])
 def get_extra_services_config(db: Session = Depends(get_db)):
     """Lấy danh sách cấu hình giá dịch vụ tiện ích"""
-    return db.query(models.ServiceConfigs).all()
+    return crud_pricing.get_all_service_configs(db)
 
 @router.post("/extra-services", response_model=schema_pricing.ServiceConfigResponse)
 def create_extra_service_config(
@@ -166,12 +161,11 @@ def create_extra_service_config(
     """Tạo cấu hình giá dịch vụ mới"""
     verify_pricing_edit_access(current_user) # Chốt chặn
 
-    existing = db.query(models.ServiceConfigs).filter(models.ServiceConfigs.service_code == data.service_code).first()
+    existing = crud_pricing.get_service_config_by_code(db, data.service_code)
     if existing:
         raise HTTPException(status_code=400, detail="Mã dịch vụ này đã tồn tại!")
         
-    new_config = models.ServiceConfigs(**data.model_dump())
-    db.add(new_config)
+    new_config = crud_pricing.create_service_config(db, data.model_dump())
     db.commit()
     db.refresh(new_config)
     return new_config
@@ -186,13 +180,11 @@ def update_extra_service_config(
     """Cập nhật giá dịch vụ tiện ích"""
     verify_pricing_edit_access(current_user) # Chốt chặn
 
-    config = db.query(models.ServiceConfigs).filter(models.ServiceConfigs.id == config_id).first()
+    config = crud_pricing.get_service_config_by_id(db, config_id)
     if not config:
         raise HTTPException(status_code=404, detail="Không tìm thấy cấu hình này")
         
-    for key, value in data.model_dump().items():
-        setattr(config, key, value)
-        
+    updated_config = crud_pricing.update_service_config(db, config, data.model_dump())
     db.commit()
-    db.refresh(config)
-    return config
+    db.refresh(updated_config)
+    return updated_config

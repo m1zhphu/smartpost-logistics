@@ -87,10 +87,15 @@ def patch_hub_status(
     if current_user.get("role_id") != 1:
         raise HTTPException(status_code=403, detail="Chỉ Super Admin mới được quyền đóng/mở cửa bưu cục.")
 
-    hub = crud_hubs.get_hub_by_id(db, hub_id)
+    # Kiểm tra xem request có truyền status lên không
+    if "status" not in data:
+         raise HTTPException(status_code=400, detail="Thiếu trường 'status' trong yêu cầu.")
+
+    # Giao việc cập nhật Data cho CRUD
+    hub = crud_hubs.patch_hub_status_record(db, hub_id, data["status"])
+    
     if not hub:
         raise HTTPException(status_code=404, detail="Không tìm thấy bưu cục")
     
-    hub.status = data.get("status", hub.status)
     db.commit()
     return {"message": "Cập nhật trạng thái thành công", "status": hub.status}

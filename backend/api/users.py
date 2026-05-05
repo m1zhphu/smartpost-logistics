@@ -7,7 +7,6 @@ from core.security import get_current_user
 from core.permissions import PermissionChecker
 import crud.users as crud_users
 import schemas.users as schema_users
-import models
 
 router = APIRouter(prefix="/api/users", tags=["Staff Management"])
 
@@ -36,7 +35,7 @@ def create_staff(
         if existing_user:
             raise HTTPException(status_code=400, detail="Tên đăng nhập đã tồn tại")
         
-        new_user = crud_users.create_user_record(db, user_data) # Dùng user_data thay vì data.model_dump()
+        new_user = crud_users.create_user_record(db, user_data)
         db.commit()
         db.refresh(new_user)
         return new_user
@@ -57,10 +56,7 @@ def list_staff(
             return crud_users.get_all_users(db)
         
         hub_id = current_user.get("primary_hub_id")
-        return db.query(models.Users).filter(
-            models.Users.primary_hub_id == hub_id,
-            models.Users.is_deleted == False
-        ).all()
+        return crud_users.get_users_by_hub(db, hub_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -75,7 +71,7 @@ def update_staff(
 ):
     """Cập nhật thông tin nhân viên"""
     try:
-        # Kiểm tra người bị sửa
+        # Kiểm tra người bị sửa qua CRUD
         target_user = crud_users.get_user_by_id(db, user_id)
         if not target_user:
             raise HTTPException(status_code=404, detail="Không tìm thấy nhân viên")
@@ -110,7 +106,7 @@ def toggle_user_status(
 ):
     """Kích hoạt hoặc tạm khóa tài khoản nhân viên"""
     try:
-        user = db.query(models.Users).filter(models.Users.user_id == user_id).first()
+        user = crud_users.get_user_by_id(db, user_id)
         if not user:
             raise HTTPException(status_code=404, detail="Không tìm thấy nhân viên")
 
@@ -118,9 +114,12 @@ def toggle_user_status(
         if current_user.get("role_id") != 1 and user.primary_hub_id != current_user.get("primary_hub_id"):
             raise HTTPException(status_code=403, detail="Bạn không có quyền thao tác trên nhân viên của bưu cục khác.")
 
-        user.is_active = data.get("is_active", not user.is_active)
+        # Gọi CRUD thực hiện đổi trạng thái
+        new_status = data.get("is_active", not user.is_active)
+        crud_users.toggle_user_status_record(db, user, new_status)
+        
         db.commit()
-        return {"message": "Cập nhật trạng thái thành công", "is_active": user.is_active}
+        return {"message": "Cập nhật trạng thái thành công", "is_active": new_status}
     except HTTPException as he:
         raise he
     except Exception as e:
@@ -136,7 +135,7 @@ def delete_staff(
     """Xóa mềm tài khoản nhân viên"""
     try:
         # Khóa nếu Manager xóa nhân viên bưu cục khác
-        user = db.query(models.Users).filter(models.Users.user_id == user_id).first()
+        user = crud_users.get_user_by_id(db, user_id)
         if current_user.get("role_id") != 1 and user and user.primary_hub_id != current_user.get("primary_hub_id"):
              raise HTTPException(status_code=403, detail="Bạn không có quyền xóa nhân viên của bưu cục khác.")
 
@@ -157,19 +156,6 @@ def get_shippers_by_hub(
 ):
     """Lấy danh sách Shipper để phân công"""
     user_role = current_user.get("role_id")
+    target_hub = hub_id if user_role == 1 else current_user.get("primary_hub_id")
 
-    if user_role == 1:
-        target_hub = hub_id
-    else:
-        target_hub = current_user.get("primary_hub_id")
-
-    query = db.query(models.Users).filter(
-        models.Users.role_id == 4,
-        models.Users.is_active == True,
-        models.Users.is_deleted == False
-    )
-    
-    if target_hub:
-        query = query.filter(models.Users.primary_hub_id == target_hub)
-        
-    return query.all()
+    return crud_users.get_active_shippers_by_hub(db, target_hub)

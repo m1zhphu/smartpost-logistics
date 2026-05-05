@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from api import auth, hubs, waybills, warehouse, delivery, accounting, pricing, users, dashboard, printing, customers
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
-from api.delivery import scan_overdue_waybills
+from crud.delivery import scan_overdue_waybills
 from core.database import SessionLocal
 from datetime import datetime
 from fastapi.staticfiles import StaticFiles

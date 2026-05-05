@@ -24,12 +24,11 @@ def create_ledger_entry(db: Session, waybill_id: int, account_id: int, entry_typ
     db.add(entry)
     return p_trans_id
 
-# --- 1. LẤY DANH SÁCH SHIPPER CHỜ CHỐT CA (FIX LỖI #UNKNOWN) ---
+# --- 1. LẤY DANH SÁCH SHIPPER CHỜ CHỐT CA ---
 def get_shippers_for_cash_confirmation(db: Session, hub_id: int):
     """
     Lấy danh sách Shipper có đơn DELIVERED kèm tên thật từ bảng Users.
     """
-    # Subquery lấy lần giao hàng cuối cùng của từng đơn để lấy ID shipper chuẩn nhất
     latest_delivery = db.query(
         models.DeliveryResults.waybill_id,
         func.max(models.DeliveryResults.delivery_id).label("last_id")
@@ -73,7 +72,6 @@ def record_cash_collection(db: Session, waybill_codes: list, hub_id: int, user_i
     """
     processed_count = 0
     for code in waybill_codes:
-        # 1. Tìm vận đơn
         waybill = db.query(models.Waybills).filter(models.Waybills.waybill_code == code).first()
         if not waybill or waybill.status != WaybillStatus.DELIVERED:
             continue
@@ -81,24 +79,17 @@ def record_cash_collection(db: Session, waybill_codes: list, hub_id: int, user_i
         p_trans_id = f"TXN-{uuid.uuid4().hex[:10].upper()}"
         amount = waybill.cod_amount
         
-        # Tìm Shipper đã giao đơn này (lần cuối cùng) từ bảng DeliveryResults
         delivery = db.query(models.DeliveryResults).filter(
             models.DeliveryResults.waybill_id == waybill.waybill_id
         ).order_by(models.DeliveryResults.delivery_id.desc()).first()
         
         if not delivery:
-            # Fallback if delivery record is missing (but waybill is DELIVERED)
             continue
             
         shipper_id = delivery.shipper_id
-
-        # 2. Ghi Ledger Nợ/Có (Bút toán kép)
-        # Nếu người thực hiện là Admin (hub_id=None), thì ghi nhận vào Hub đích của đơn hàng
         actual_hub_id = hub_id or waybill.dest_hub_id
         
-        # PHÒNG HỜ: Nếu đơn hàng cũng không có dest_hub_id (dữ liệu rác/test)
         if not actual_hub_id:
-            # Lấy theo Hub của chính Shipper đó
             shipper_record = db.query(models.Users).filter(models.Users.user_id == shipper_id).first()
             actual_hub_id = shipper_record.primary_hub_id if shipper_record else 1
         
@@ -121,7 +112,6 @@ def record_cash_collection(db: Session, waybill_codes: list, hub_id: int, user_i
             status="RECONCILED"
         ))
 
-        # 3. Ghi nhận công nợ phải trả Khách hàng (Shop) - Quan trọng để đối soát Shop hiện đơn
         if waybill.customer_id:
             db.add(models.TransactionLedger(
                 parent_transaction_id=p_trans_id,
@@ -133,7 +123,6 @@ def record_cash_collection(db: Session, waybill_codes: list, hub_id: int, user_i
                 status="RECONCILED"
             ))
 
-        # 4. Cập nhật trạng thái đơn hàng và ghi log
         waybill.status = WaybillStatus.SETTLED
         waybill.version += 1
         db.add(models.TrackingLogs(
@@ -159,7 +148,6 @@ def get_settled_bills(db: Session, customer_id: int):
 
 def create_cod_statement(db: Session, customer_id: int, user_id: int):
     """Lập bảng kê thanh toán COD cho Shop"""
-    # 1. Tìm các bút toán COD RECONCILED chưa nằm trong bảng kê
     subquery = db.query(models.StatementDetails.ledger_id)
     
     pending_ledgers = db.query(models.TransactionLedger).filter(
@@ -174,7 +162,6 @@ def create_cod_statement(db: Session, customer_id: int, user_id: int):
 
     total_sum = sum(item.amount for item in pending_ledgers)
 
-    # 2. Tạo bảng kê tổng
     new_statement = models.StatementCOD(
         statement_code=f"STM-COD-{int(datetime.utcnow().timestamp())}",
         customer_id=customer_id,
@@ -187,7 +174,6 @@ def create_cod_statement(db: Session, customer_id: int, user_id: int):
     db.add(new_statement)
     db.flush()
 
-    # 3. Ghi chi tiết liên kết
     for ledger in pending_ledgers:
         db.add(models.StatementDetails(
             statement_id=new_statement.statement_id, 
@@ -198,3 +184,19 @@ def create_cod_statement(db: Session, customer_id: int, user_id: int):
     db.commit()
     db.refresh(new_statement)
     return new_statement
+
+# --- HÀM MỚI ĐƯỢC CHUYỂN TỪ API SANG (ĐỂ ĐẢM BẢO CHUẨN PHÂN TẦNG) ---
+def get_statement_details_for_export(db: Session, statement_id: int):
+    """Lấy dữ liệu chi tiết bảng kê để xuất Excel"""
+    return db.query(
+        models.Waybills.waybill_code,
+        models.TransactionLedger.amount,
+        models.TransactionLedger.entry_type,
+        models.TransactionLedger.timestamp
+    ).join(
+        models.TransactionLedger, models.Waybills.waybill_id == models.TransactionLedger.waybill_id
+    ).join(
+        models.StatementDetails, models.TransactionLedger.id == models.StatementDetails.ledger_id
+    ).filter(
+        models.StatementDetails.statement_id == statement_id
+    ).all()

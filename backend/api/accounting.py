@@ -21,7 +21,7 @@ class CashConfirmRequest(BaseModel):
     waybill_codes: List[str]
     note: str = "Xác nhận Shipper đã nộp tiền mặt"
 
-# --- 1. API LẤY DANH SÁCH CHỐT CA (GIẢI QUYẾT LỖI 404 & UNKNOWN) ---
+# --- 1. API LẤY DANH SÁCH CHỐT CA ---
 @router.get("/cash-confirmation")
 def get_cash_confirmation_list(
     db: Session = Depends(get_db),
@@ -29,7 +29,6 @@ def get_cash_confirmation_list(
 ):
     """Lấy danh sách Shipper kèm tên thật từ hàm CRUD mới có JOIN bảng Users"""
     hub_id = current_user.get('primary_hub_id')
-    # Gọi hàm CRUD mà mình đã hướng dẫn Thảo thêm vào file crud/accounting.py
     return crud_acc.get_shippers_for_cash_confirmation(db, hub_id)
 
 # --- 2. API XÁC NHẬN NỘP TIỀN (CHỐT CA) ---
@@ -52,7 +51,7 @@ async def confirm_shipper_cash(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- 3. CÁC API ĐỐI SOÁT SHOP & EXCEL (GIỮ NGUYÊN CODE CỦA THẢO) ---
+# --- 3. CÁC API ĐỐI SOÁT SHOP & EXCEL ---
 @router.post("/create-shop-statement")
 async def create_shop_statement(
     customer_id: int, 
@@ -79,18 +78,8 @@ def export_statement_excel(
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        raw_data = db.query(
-            models.Waybills.waybill_code,
-            models.TransactionLedger.amount,
-            models.TransactionLedger.entry_type,
-            models.TransactionLedger.timestamp
-        ).join(
-            models.TransactionLedger, models.Waybills.waybill_id == models.TransactionLedger.waybill_id
-        ).join(
-            models.StatementDetails, models.TransactionLedger.id == models.StatementDetails.ledger_id
-        ).filter(
-            models.StatementDetails.statement_id == statement_id
-        ).all()
+        # GỌI CRUD thay vì viết query trực tiếp ở đây
+        raw_data = crud_acc.get_statement_details_for_export(db, statement_id)
 
         if not raw_data:
             raise HTTPException(status_code=404, detail="Bảng kê không có dữ liệu chi tiết")
@@ -119,14 +108,14 @@ def export_statement_excel(
                 top=Side(style='thin'), bottom=Side(style='thin')
             )
 
-            # 4. Áp dụng Style cho Header
+            # Áp dụng Style cho Header
             for cell in worksheet[1]:
                 cell.fill = header_fill
                 cell.font = header_font
                 cell.alignment = center_alignment
                 cell.border = thin_border
 
-            # 5. Tự động giãn cột và kẻ khung dữ liệu
+            # Tự động giãn cột và kẻ khung dữ liệu
             for column_cells in worksheet.columns:
                 max_len = 0
                 for cell in column_cells:

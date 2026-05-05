@@ -31,7 +31,6 @@ def create_user_record(db: Session, user_data: dict):
     new_user = models.Users(
         **user_data,
         password_hash=hashed_pwd,
-        # Lưu ý: Trong Model bạn có cả 'status' và 'is_active'. 
         is_active=True,
         is_deleted=False,
         created_at=datetime.utcnow()
@@ -72,4 +71,31 @@ def update_user_record(db, user_id: int, data: dict):
         joinedload(models.Users.department)
     ).filter(models.Users.user_id == user_id).first()
 
+# ==========================================
+# CÁC HÀM TRUY VẤN MỚI CHUYỂN TỪ API SANG
+# ==========================================
 
+def get_users_by_hub(db: Session, hub_id: int):
+    """Lấy danh sách nhân viên thuộc một bưu cục cụ thể"""
+    return db.query(models.Users).filter(
+        models.Users.primary_hub_id == hub_id,
+        models.Users.is_deleted == False
+    ).all()
+
+def toggle_user_status_record(db: Session, user: models.Users, is_active: bool):
+    """Chuyển đổi trạng thái hoạt động của nhân viên"""
+    user.is_active = is_active
+    db.flush()
+    return user
+
+def get_active_shippers_by_hub(db: Session, hub_id: int = None):
+    """Lấy danh sách các Shipper đang hoạt động để phân công đơn"""
+    query = db.query(models.Users).filter(
+        models.Users.role_id == 4,
+        models.Users.is_active == True,
+        models.Users.is_deleted == False
+    )
+    if hub_id:
+        query = query.filter(models.Users.primary_hub_id == hub_id)
+        
+    return query.all()
