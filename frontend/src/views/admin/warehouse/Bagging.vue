@@ -1,142 +1,241 @@
 <template>
-  <div class="bagging-page">
-    <div class="page-header flex-between mb-4">
-      <div class="title-section">
-        <h2 class="misa-title">Đóng túi (Bagging)</h2>
-        <p class="text-muted">Gom nhiều vận đơn vào một túi để vận chuyển liên tỉnh</p>
-      </div>
-      <div class="actions">
-        <el-button type="primary" :icon="Check" @click="confirmBagging" :loading="loading" size="large">Hoàn tất Đóng túi</el-button>
-        <el-button @click="resetSession" size="large">Hủy & Đóng lại</el-button>
-      </div>
-    </div>
+  <div class="modern-bagging-page">
+    <div class="page-container">
 
-    <el-row :gutter="20">
-      
-      <el-col :span="6">
-        <el-card class="bag-config mb-4" shadow="hover">
-           <template #header><div class="card-header"><el-icon><Suitcase /></el-icon> Thông tin Túi</div></template>
-           <el-form label-position="top">
-              <el-form-item label="Mã số Túi (Để trống nếu muốn tự tạo)" required>
+      <!-- Header Section -->
+      <header class="page-header animate-fade-in">
+        <div class="header-content">
+          <div class="title-wrapper">
+            <div class="icon-box primary">
+              <el-icon><Suitcase /></el-icon>
+            </div>
+            <div>
+              <h2 class="page-title">Đóng túi (Bagging)</h2>
+              <p class="page-subtitle">Gom nhiều vận đơn vào một túi để vận chuyển liên tỉnh</p>
+            </div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn-secondary" @click="resetSession" :disabled="loading">
+            <el-icon><RefreshLeft /></el-icon>
+            <span>Hủy & Đóng lại</span>
+          </button>
+          <button class="btn-primary" @click="confirmBagging" :disabled="loading || itemsInBag.length === 0">
+            <el-icon class="is-loading mr-2" v-if="loading"><Loading /></el-icon>
+            <el-icon v-else><Check /></el-icon>
+            <span>Hoàn tất Đóng túi</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Layout: 3 Columns -->
+      <el-row :gutter="24" class="form-row-container animate-fade-in-up">
+        
+        <!-- COLUMN 1: Bag Configuration (25%) -->
+        <el-col :span="6" class="column-layout">
+          <div class="content-card compact-card config-card" :class="{'is-locked': isBagLocked}">
+            <div class="section-header">
+              <el-icon><Setting /></el-icon><span>Cấu hình Túi</span>
+            </div>
+            
+            <el-form label-position="top" class="modern-form">
+              <el-form-item label="Mã số Túi (Tuỳ chọn)">
                  <el-input 
                     v-model="bagCode" 
-                    placeholder="Để trống để hệ thống tự tạo" 
-                    prefix-icon="Message"
-                    size="large"
+                    placeholder="Hệ thống tự tạo nếu để trống" 
                     :disabled="isBagLocked"
-                 />
+                    class="code-input"
+                 >
+                   <template #prefix><el-icon><Key /></el-icon></template>
+                 </el-input>
               </el-form-item>
               
-              <el-form-item label="Bưu cục Đích (Điểm đến)" required>
-                 <el-select v-model="destHubId" placeholder="Chọn BC đích" class="w-full" size="large" :disabled="isBagLocked" filterable>
+              <el-form-item label="Bưu cục Đích đến (Bắt buộc)">
+                 <el-select 
+                    v-model="destHubId" 
+                    placeholder="Chọn Bưu cục đích..." 
+                    class="w-full modern-select" 
+                    :disabled="isBagLocked" 
+                    filterable
+                 >
+                    <template #prefix><el-icon><Location /></el-icon></template>
                     <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
                  </el-select>
               </el-form-item>
 
-              <el-button v-if="!isBagLocked" type="primary" class="w-full font-bold" size="large" @click="lockBag" :disabled="!destHubId">
-                BẮT ĐẦU ĐÓNG TÚI
-              </el-button>
-              <el-button v-else type="warning" plain class="w-full" @click="isBagLocked = false">
-                <el-icon class="mr-2"><Unlock /></el-icon> Mở khóa để sửa thông tin
-              </el-button>
-           </el-form>
-        </el-card>
-
-        <el-card class="summary-card" shadow="never">
-           <div class="stat-row">
-              <span>Tổng số đơn:</span>
-              <span class="value font-bold text-primary">{{ itemsInBag.length }}</span>
-           </div>
-           <el-divider class="my-2" />
-           <div class="stat-row total">
-              <span>Ước tính (kg):</span>
-              <span class="value">{{ totalWeight.toFixed(2) }} kg</span>
-           </div>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="9">
-        <el-card class="list-card border-dashed" shadow="never">
-           <template #header>
-              <div class="card-header flex-between">
-                 <span><el-icon><List /></el-icon> Đơn đang chờ tại kho</span>
-                 <el-button size="small" circle :icon="Refresh" @click="fetchAvailableWaybills" :loading="loadingList"></el-button>
+              <div class="action-area mt-4">
+                <button v-if="!isBagLocked" class="btn-primary w-full justify-center lg-btn lock-btn" @click="lockBag" :disabled="!destHubId">
+                  <el-icon><Lock /></el-icon> <span>BẮT ĐẦU ĐÓNG TÚI</span>
+                </button>
+                <button v-else class="btn-warning-outline w-full justify-center" @click="isBagLocked = false">
+                  <el-icon><Unlock /></el-icon> <span>Mở khóa sửa thông tin</span>
+                </button>
               </div>
-           </template>
-           
-           <el-table :data="availableWaybills" v-loading="loadingList" stripe empty-text="Không có đơn nào chờ đóng túi" height="520px" size="small">
+            </el-form>
+          </div>
+
+          <!-- Summary Card -->
+          <div class="content-card compact-card summary-card flex-fill">
+            <div class="section-header">
+              <el-icon><DataLine /></el-icon><span>Tổng quan túi</span>
+            </div>
+            <div class="stat-container">
+              <div class="stat-box">
+                <span class="stat-label">Tổng số đơn</span>
+                <div class="stat-value-group">
+                  <span class="stat-value text-primary">{{ itemsInBag.length }}</span>
+                  <span class="stat-unit">Đơn</span>
+                </div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-box">
+                <span class="stat-label">Ước tính khối lượng</span>
+                <div class="stat-value-group">
+                  <span class="stat-value">{{ totalWeight.toFixed(2) }}</span>
+                  <span class="stat-unit">Kg</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-col>
+
+        <!-- COLUMN 2: Available Waybills (35%) -->
+        <el-col :span="8" class="column-layout">
+          <div class="content-card compact-card list-card flex-fill">
+            <div class="section-header flex-between mb-4">
+              <div class="flex-center gap-2">
+                <el-icon><List /></el-icon><span>Đơn chờ tại kho</span>
+              </div>
+              <button class="icon-btn secondary small" @click="fetchAvailableWaybills" :disabled="loadingList" title="Làm mới danh sách">
+                <el-icon :class="{'is-loading': loadingList}"><Refresh /></el-icon>
+              </button>
+            </div>
+            
+            <el-table 
+              :data="availableWaybills" 
+              v-loading="loadingList" 
+              class="modern-table compact-table borderless"
+              height="550px"
+            >
               <el-table-column prop="waybill_code" label="Mã Vận đơn" width="130">
                  <template #default="{ row }">
-                   <span class="font-bold">{{ row.waybill_code }}</span>
+                   <span class="code-badge default">{{ row.waybill_code }}</span>
                  </template>
               </el-table-column>
-              <el-table-column label="BC Đích" min-width="120" show-overflow-tooltip>
+              
+              <el-table-column label="BC Đích đến" min-width="140" show-overflow-tooltip>
                  <template #default="{ row }">
-                   <span :class="{'text-danger font-bold': isBagLocked && row.dest_hub_id !== destHubId}">
+                   <div class="dest-info" :class="{'text-danger fw-bold': isBagLocked && row.dest_hub_id !== destHubId}">
+                     <el-icon class="mr-1"><LocationInformation /></el-icon>
                      {{ row.dest_hub?.hub_name || 'Không rõ' }}
-                   </span>
+                   </div>
                  </template>
               </el-table-column>
-              <el-table-column label="Thêm" width="70" align="center">
+              
+              <el-table-column label="Thêm" width="70" align="center" fixed="right">
                  <template #default="{ row }">
-                    <el-button type="primary" plain size="small" circle :icon="Plus" @click="handleAddWaybill(row, true)" :disabled="!isBagLocked"></el-button>
+                    <button class="icon-btn primary small" @click="handleAddWaybill(row, true)" :disabled="!isBagLocked" title="Thêm vào túi">
+                      <el-icon><Plus /></el-icon>
+                    </button>
                  </template>
               </el-table-column>
-           </el-table>
-        </el-card>
-      </el-col>
-
-      <el-col :span="9">
-        <el-card class="scan-area mb-4" shadow="hover" :body-style="{ padding: '15px' }">
-           <el-input 
-              v-model="barcode" 
-              placeholder="QUÉT MÃ VẬN ĐƠN VÀO ĐÂY..." 
-              ref="barcodeRef"
-              :disabled="!isBagLocked || loading"
-              @keyup.enter="handleScan"
-              size="large"
-              class="scan-input"
-           >
-              <template #append>
-                 <el-button @click="handleScan" type="success" :icon="Select" class="font-bold">QUÉT</el-button>
+              
+              <template #empty>
+                <el-empty description="Không có đơn nào chờ đóng túi" :image-size="60" />
               </template>
-           </el-input>
-           <div v-if="!isBagLocked" class="lock-overlay text-danger font-bold">
-              VUI LÒNG CHỌN ĐÍCH ĐẾN & KHÓA TÚI TRƯỚC KHI QUÉT
-           </div>
-        </el-card>
+            </el-table>
+          </div>
+        </el-col>
 
-        <el-card class="list-card bg-success-light" shadow="never">
-           <template #header>
-              <div class="card-header text-success">
-                <el-icon><Box /></el-icon> Đã cho vào túi ({{ itemsInBag.length }})
-              </div>
-           </template>
-           <el-table :data="itemsInBag" empty-text="Túi đang trống" height="400px" size="small">
-              <el-table-column type="index" width="50" align="center" />
-              <el-table-column prop="barcode" label="Mã Vận đơn" min-width="140" class-name="font-bold text-primary" />
-              <el-table-column prop="weight" label="Cân nặng" width="90" align="center">
-                 <template #default="{ row }">{{ row.weight }}kg</template>
-              </el-table-column>
-              <el-table-column label="Bỏ" width="60" align="center">
-                 <template #default="{ row, $index }">
-                    <el-button type="danger" text @click="removeItem($index, row)" circle><el-icon><Delete /></el-icon></el-button>
-                 </template>
-              </el-table-column>
-           </el-table>
-        </el-card>
-      </el-col>
+        <!-- COLUMN 3: Scanner & Bag Contents (40%) -->
+        <el-col :span="10" class="column-layout">
+          
+          <!-- Scanner Input -->
+          <div class="content-card compact-card scanner-container">
+             <el-input 
+                v-model="barcode" 
+                placeholder="QUÉT MÃ VẬN ĐƠN VÀO ĐÂY..." 
+                ref="barcodeRef"
+                :disabled="!isBagLocked || loading"
+                @keyup.enter="handleScan"
+                class="modern-scanner-input"
+             >
+                <template #prefix><el-icon class="scanner-icon"><Scan /></el-icon></template>
+                <template #append>
+                   <button class="btn-scan" @click="handleScan" :disabled="!isBagLocked || loading">
+                     <span>QUÉT</span>
+                   </button>
+                </template>
+             </el-input>
+             
+             <!-- Overlay for un-locked state -->
+             <div v-if="!isBagLocked" class="lock-overlay">
+                <el-icon class="lock-icon"><Lock /></el-icon>
+                <span>Vui lòng chọn Đích đến & Bắt đầu đóng túi trước khi quét</span>
+             </div>
+          </div>
 
-    </el-row>
+          <!-- Items in Bag -->
+          <div class="content-card compact-card list-card flex-fill bag-content-card">
+             <div class="section-header text-success mb-4 flex-between">
+                <div class="flex-center gap-2">
+                  <el-icon><Box /></el-icon><span>Đơn đã cho vào túi</span>
+                </div>
+                <el-tag type="success" effect="light" round class="fw-bold">{{ itemsInBag.length }} đơn</el-tag>
+             </div>
+             
+             <el-table 
+                :data="itemsInBag" 
+                class="modern-table compact-table highlight-table"
+                height="450px"
+             >
+                <el-table-column type="index" width="50" align="center" label="#" />
+                
+                <el-table-column prop="barcode" label="Mã Vận đơn" min-width="140">
+                  <template #default="{ row }">
+                    <span class="code-badge success">{{ row.barcode }}</span>
+                  </template>
+                </el-table-column>
+                
+                <el-table-column prop="weight" label="Cân nặng" width="100" align="center">
+                   <template #default="{ row }">
+                     <span class="fw-bold text-dark">{{ row.weight }} kg</span>
+                   </template>
+                </el-table-column>
+                
+                <el-table-column label="Bỏ" width="70" align="center" fixed="right">
+                   <template #default="{ row, $index }">
+                      <button class="icon-btn delete small mx-auto" @click="removeItem($index, row)" title="Lấy ra khỏi túi">
+                        <el-icon><Delete /></el-icon>
+                      </button>
+                   </template>
+                </el-table-column>
+                
+                <template #empty>
+                  <el-empty description="Túi đang trống" :image-size="80" />
+                </template>
+             </el-table>
+          </div>
 
-    <audio ref="beepOk" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
-    <audio ref="beepError" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+        </el-col>
+      </el-row>
+
+      <!-- Audio Elements -->
+      <audio ref="beepOk" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
+      <audio ref="beepError" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
-import { Suitcase, Check, Delete, Message, List, Plus, Refresh, Unlock, Box, Select } from '@element-plus/icons-vue';
+import { 
+  Suitcase, Check, Delete, List, Plus, Refresh, Unlock, Box, 
+  Lock, Location, Key, DataLine, LocationInformation, Loading,
+  RefreshLeft
+} from '@element-plus/icons-vue';
+// Use Aim or Camera instead of Scan as we know Scan might be missing
+import { Aim as Scan } from '@element-plus/icons-vue'; 
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
@@ -172,29 +271,21 @@ const totalWeight = computed(() => {
 const fetchAvailableWaybills = async () => {
   loadingList.value = true;
   try {
-    const myHubId = Number(currentHubId.value); // Lấy ID bưu cục của tài khoản đang đăng nhập
+    const myHubId = Number(currentHubId.value); 
 
-    // Gọi API tìm kiếm
     const res = await api.post('/api/waybills/search', {
       status: 'IN_HUB',
-      origin_hub_id: myHubId, // Ép Backend ưu tiên tìm đơn xuất phát từ đây
+      origin_hub_id: myHubId, 
       page: 1, 
       size: 200 
     });
     
-    // Danh sách mã đơn đã nằm trong túi
     const inBagCodes = itemsInBag.value.map(i => i.barcode);
     
-    // --- BỘ LỌC KÉP FRONTEND (Khắc phục triệt để hiển thị sai) ---
     availableWaybills.value = (res.data.items || []).filter(w => {
       const isNotInBag = !inBagCodes.includes(w.waybill_code);
-      
-      // Điều kiện 1: Đơn hàng phải XUẤT PHÁT từ bưu cục hiện tại
       const isAtMyHub = Number(w.origin_hub_id) === myHubId;
-      
-      // Điều kiện 2: Đích đến PHẢI KHÁC bưu cục hiện tại (Để tránh đem đơn nội tỉnh ra đóng túi)
       const isNotDestinedForHere = Number(w.dest_hub_id) !== myHubId;
-      
       return isNotInBag && isAtMyHub && isNotDestinedForHere;
     });
 
@@ -211,7 +302,6 @@ const lockBag = () => {
   nextTick(() => barcodeRef.value?.focus());
 };
 
-// Hàm xử lý gộp chung cho cả "Bấm nút Thêm" và "Quét Súng"
 const handleAddWaybill = async (waybill, isFromList = false) => {
   if (!isBagLocked.value) {
     if (!isFromList) barcode.value = '';
@@ -220,21 +310,18 @@ const handleAddWaybill = async (waybill, isFromList = false) => {
 
   const code = waybill.waybill_code;
 
-  // 1. Kiểm tra trùng lặp
   if (itemsInBag.value.some(i => i.barcode === code)) {
     playError();
     if (!isFromList) barcode.value = '';
     return ElMessage.warning('Đơn này đã có trong túi!');
   }
 
-  // 2. Kiểm tra trạng thái IN_HUB
   if (waybill.status !== 'IN_HUB') {
     playError();
     if (!isFromList) barcode.value = '';
     return ElMessage.error(`Đơn ${code} đang ở trạng thái ${waybill.status}, không thể đóng túi!`);
   }
 
-  // 3. Kiểm tra bảo mật (Phải nằm đúng bưu cục hiện tại)
   const packageLocationId = waybill.current_hub_id || waybill.origin_hub_id; 
   if (currentHubId.value && packageLocationId && packageLocationId !== currentHubId.value) {
     playError();
@@ -242,9 +329,8 @@ const handleAddWaybill = async (waybill, isFromList = false) => {
     return ElMessage.error(`CẢNH BÁO: Đơn ${code} không có mặt tại bưu cục của bạn!`);
   }
 
-  // 4. KIỂM TRA LỆCH TUYẾN (Cảnh báo nhầm bưu cục đích)
   if (waybill.dest_hub_id !== destHubId.value) {
-    playError(); // Phát tiếng bíp lỗi để gây sự chú ý
+    playError(); 
     try {
       const targetHubName = waybill.dest_hub?.hub_name || `Bưu cục #${waybill.dest_hub_id}`;
       await ElMessageBox.confirm(
@@ -254,20 +340,19 @@ const handleAddWaybill = async (waybill, isFromList = false) => {
           confirmButtonText: 'Vẫn thêm vào túi', 
           cancelButtonText: 'Hủy, không thêm', 
           type: 'warning', 
-          dangerouslyUseHTMLString: true 
+          dangerouslyUseHTMLString: true,
+          customClass: 'modern-message-box'
         }
       );
     } catch {
-      // Người dùng chọn Hủy
       if (!isFromList) {
         barcode.value = '';
         nextTick(() => barcodeRef.value?.focus());
       }
-      return; // Dừng lại, không thêm vào túi
+      return; 
     }
   }
 
-  // 5. Nếu thỏa mãn mọi thứ (Hoặc đã đồng ý cảnh báo) -> Thêm vào túi
   playOk();
   itemsInBag.value.unshift({
     barcode: code,
@@ -275,7 +360,6 @@ const handleAddWaybill = async (waybill, isFromList = false) => {
     weight: waybill.actual_weight || 0.5
   });
   
-  // Xóa khỏi danh sách chờ
   availableWaybills.value = availableWaybills.value.filter(w => w.waybill_code !== code);
   
   if (!isFromList) {
@@ -284,7 +368,6 @@ const handleAddWaybill = async (waybill, isFromList = false) => {
   }
 };
 
-// Xử lý riêng cho trường hợp quét mã vạch
 const handleScan = async () => {
   const code = barcode.value.trim();
   if (!code) return;
@@ -317,7 +400,7 @@ const handleScan = async () => {
 
 const removeItem = (idx, row) => {
   itemsInBag.value.splice(idx, 1);
-  fetchAvailableWaybills(); // Tải lại danh sách để hiện đơn hàng đó trở lại
+  fetchAvailableWaybills(); 
 };
 
 const playOk = () => { beepOk.value?.play().catch(() => {}) };
@@ -335,17 +418,15 @@ const confirmBagging = async () => {
     };
 
     const res = await api.post('/api/scans/bagging', payload);
+    const realBagCode = res.data.bag_code; 
     
-    const realBagCode = res.data.bag_code; // Mã thật do Backend tạo ra
-    
-    // Popup mã túi to, trực quan
     ElMessageBox.alert(
-      `<div style="text-align: center; font-size: 16px;">
-         Đóng túi thành công!<br>Mã túi của bạn là:<br>
-         <b style="font-size: 26px; color: #409EFF; display: block; margin-top: 10px; letter-spacing: 1px;">${realBagCode}</b>
+      `<div style="text-align: center;">
+         <span style="font-size: 14px; color: #4B5563;">Đóng túi thành công!<br>Mã túi của bạn là:</span><br>
+         <b style="font-size: 28px; color: #4318FF; display: block; margin-top: 12px; letter-spacing: 2px; font-family: monospace; background: #F4F7FE; padding: 12px; border-radius: 12px;">${realBagCode}</b>
        </div>`, 
       'Hoàn tất', 
-      { dangerouslyUseHTMLString: true, type: 'success' }
+      { dangerouslyUseHTMLString: true, type: 'success', customClass: 'modern-message-box' }
     );
 
     resetSession();
@@ -383,42 +464,212 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.flex-between { display: flex; justify-content: space-between; align-items: center; }
-.w-full { width: 100%; }
-.mb-4 { margin-bottom: 1rem; }
-.my-2 { margin: 0.5rem 0; }
-.font-bold { font-weight: 700; }
-.text-danger { color: #F56C6C; }
-.text-success { color: #67C23A; }
-.text-primary { color: #409EFF; }
-.mr-2 { margin-right: 8px; }
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-/* Cards & Headers */
-.card-header { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #374151; font-size: 15px; }
-.border-dashed { border: 1px dashed #dcdfe6; }
-.bg-success-light { background-color: #f0fdf4; border-color: #bbf7d0; }
-
-/* Tùy chỉnh input quét mã */
-.scan-area { position: relative; }
-.scan-input :deep(.el-input__inner) { 
-  font-size: 1.3rem; height: 50px; letter-spacing: 1px; text-align: center; font-weight: 800; color: #409EFF; 
+/* Base Layout */
+.modern-bagging-page {
+  min-height: calc(100vh - 64px);
+  background-color: #F4F7FE; /* Light SaaS background */
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #2B3674;
+  padding: 24px;
 }
-.lock-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(2px);
+
+.page-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Utilities */
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-center { display: flex; align-items: center; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: 8px; }
+.w-full { width: 100%; }
+.mb-4 { margin-bottom: 16px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.mt-4 { margin-top: 16px; }
+.mr-1 { margin-right: 4px; }
+.mr-2 { margin-right: 8px; }
+.fw-bold { font-weight: 700; }
+.text-dark { color: #1B2559; }
+.text-danger { color: #EE5D50; }
+.text-success { color: #05CD99; }
+.text-primary { color: #4318FF; }
+
+/* Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header-content .title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
-  border-radius: 8px;
+  font-size: 24px;
 }
+.icon-box.primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
 
-/* Thống kê */
-.stat-row { display: flex; justify-content: space-between; font-size: 1rem; color: #4B5563; }
-.stat-row.total { font-weight: 800; color: #111827; font-size: 1.15rem; }
+.page-title { font-size: 28px; font-weight: 800; color: #2B3674; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+.page-subtitle { color: #A3AED0; font-size: 14px; margin: 0; font-weight: 500; }
 
-/* Bảng Table */
-:deep(.el-table) { border-radius: 6px; }
+.header-actions { display: flex; gap: 12px; }
+
+/* Buttons */
+.btn-primary { background: #4318FF; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(67, 24, 255, 0.25); }
+.btn-primary:hover:not(:disabled) { background: #3311DB; transform: translateY(-2px); }
+.btn-secondary { background: #FFFFFF; color: #2B3674; border: 1px solid #E2E8F0; padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
+.btn-secondary:hover:not(:disabled) { background: #F8FAFC; border-color: #A3AED0; }
+.btn-warning-outline { background: transparent; color: #FFB547; border: 1px solid #FFB547; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.3s; }
+.btn-warning-outline:hover { background: rgba(255, 181, 71, 0.1); }
+button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.lg-btn { padding: 14px 20px; font-size: 15px; }
+
+.icon-btn { width: 32px; height: 32px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px; }
+.icon-btn.small { width: 28px; height: 28px; font-size: 14px; }
+.icon-btn.primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
+.icon-btn.primary:hover:not(:disabled) { background: #4318FF; color: white; }
+.icon-btn.secondary { background: #F4F7FE; color: #8F9BBA; }
+.icon-btn.secondary:hover:not(:disabled) { background: #4318FF; color: white; }
+.icon-btn.delete { background: #FFF0F0; color: #EE5D50; }
+.icon-btn.delete:hover { background: #EE5D50; color: white; }
+.icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+
+/* Layout Columns */
+.form-row-container { display: flex; align-items: stretch; }
+.column-layout { display: flex; flex-direction: column; gap: 20px; }
+.flex-fill { flex: 1; display: flex; flex-direction: column; }
+
+/* Cards */
+.content-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.02);
+  border: 1px solid #E9EDF7;
+  overflow: hidden;
+}
+.compact-card { padding: 20px; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1B2559;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.section-header .el-icon { color: #4318FF; font-size: 18px; }
+.section-header.text-success { color: #05CD99; }
+.section-header.text-success .el-icon { color: #05CD99; }
+
+/* Config Card */
+.config-card.is-locked { border: 2px solid #05CD99; background: #F0FDF4; }
+
+:deep(.modern-form .el-form-item__label) { font-weight: 700; color: #2B3674; margin-bottom: 8px; font-size: 13px; }
+:deep(.modern-form .el-input__wrapper),
+:deep(.modern-select .el-input__wrapper) { background: #F8FAFC; box-shadow: 0 0 0 1px #E2E8F0 inset !important; border-radius: 10px; padding: 10px 12px; transition: all 0.3s; }
+:deep(.modern-form .el-input__wrapper:hover),
+:deep(.modern-select .el-input__wrapper:hover) { box-shadow: 0 0 0 1px #4318FF inset !important; }
+:deep(.modern-form .el-input__wrapper.is-focus),
+:deep(.modern-select .el-input__wrapper.is-focus) { box-shadow: 0 0 0 2px rgba(67, 24, 255, 0.2) inset !important; background: #FFFFFF; }
+:deep(.modern-form .el-input.is-disabled .el-input__wrapper) { background: #E9EDF7; box-shadow: none !important; }
+
+/* Code Input specific */
+:deep(.code-input .el-input__inner) { font-family: monospace; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #4318FF; }
+
+/* Summary Stats */
+.summary-card { background: #F8FAFC; border: none; }
+.stat-container { display: flex; flex-direction: column; gap: 12px; }
+.stat-box { display: flex; justify-content: space-between; align-items: center; }
+.stat-label { font-size: 14px; font-weight: 600; color: #8F9BBA; }
+.stat-value-group { display: flex; align-items: baseline; gap: 4px; }
+.stat-value { font-size: 24px; font-weight: 800; color: #1B2559; }
+.stat-unit { font-size: 13px; font-weight: 700; color: #A3AED0; }
+.stat-divider { height: 1px; background-image: linear-gradient(to right, #E2E8F0 50%, transparent 50%); background-size: 8px 1px; background-repeat: repeat-x; margin: 4px 0; }
+
+/* Tables */
+:deep(.modern-table) {
+  --el-table-border-color: transparent;
+  --el-table-header-bg-color: #F8FAFC;
+  --el-table-header-text-color: #A3AED0;
+  --el-table-text-color: #2B3674;
+}
+:deep(.modern-table th.el-table__cell) { font-weight: 700; font-size: 12px; text-transform: uppercase; padding: 12px 0; border-bottom: 2px solid #E9EDF7 !important; }
+:deep(.modern-table td.el-table__cell) { padding: 12px 0; border-bottom: 1px solid #F4F7FE !important; }
+:deep(.compact-table .el-table__cell) { padding: 8px 0 !important; }
+
+/* Highlight newly added row */
+:deep(.highlight-table .el-table__row:first-child) { background-color: rgba(5, 205, 153, 0.05) !important; }
+
+.code-badge { font-family: monospace; font-weight: 800; padding: 4px 8px; border-radius: 6px; font-size: 13px; display: inline-block; }
+.code-badge.default { background: #F4F7FE; color: #4318FF; }
+.code-badge.success { background: rgba(5, 205, 153, 0.1); color: #05CD99; font-size: 14px; }
+
+.dest-info { display: flex; align-items: center; font-size: 13px; color: #4B5563; }
+
+/* Scanner Area */
+.scanner-container { position: relative; padding: 24px; background: linear-gradient(to right, #ffffff, #f8fafc); border-color: #4318FF; box-shadow: 0 4px 20px rgba(67, 24, 255, 0.08); }
+
+:deep(.modern-scanner-input .el-input__wrapper) {
+  background: #FFFFFF; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important; 
+  border-radius: 12px 0 0 12px; padding: 10px 16px; border: 2px solid transparent; transition: all 0.3s;
+}
+:deep(.modern-scanner-input .el-input__wrapper.is-focus) {
+  border-color: #4318FF; box-shadow: 0 8px 25px rgba(67, 24, 255, 0.15) !important;
+}
+:deep(.modern-scanner-input .el-input__inner) {
+  height: 50px; font-size: 20px; text-align: center; font-weight: 800; color: #4318FF; font-family: monospace; letter-spacing: 2px;
+}
+.scanner-icon { font-size: 24px; color: #A3AED0; margin-right: 8px; }
+
+:deep(.modern-scanner-input .el-input-group__append) {
+  background-color: #05CD99; border-color: #05CD99; color: white; border-radius: 0 12px 12px 0; overflow: hidden; padding: 0; box-shadow: 0 4px 15px rgba(5, 205, 153, 0.2);
+}
+.btn-scan {
+  background: transparent; color: white; border: none; height: 100%; padding: 0 24px; font-weight: 800; font-size: 15px; font-family: inherit; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center;
+}
+.btn-scan:hover:not(:disabled) { background-color: #04b083; }
+
+/* Overlay */
+.lock-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(4px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  z-index: 10; border-radius: 16px; color: #EE5D50; font-weight: 700; font-size: 14px; text-align: center; padding: 20px;
+}
+.lock-icon { font-size: 32px; margin-bottom: 4px; }
+
+/* Animations */
+.animate-fade-in { animation: fadeIn 0.5s ease-out; }
+.animate-fade-in-up { animation: fadeInUp 0.5s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .form-row-container { flex-direction: column; }
+  .column-layout { width: 100%; max-width: 100%; margin-bottom: 20px; }
+  .bag-content-card { min-height: 400px; }
+}
 </style>

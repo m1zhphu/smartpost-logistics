@@ -1,230 +1,360 @@
 <template>
-  <div class="waybill-list-page">
-    <div class="page-header flex-center space-between flex-between mb-4">
-      <div class="header-left">
-        <h2 class="misa-title">Quản lý Vận đơn</h2>
-        <p class="misa-subtitle">Tra cứu hành trình, cập nhật trạng thái và in ấn mẫu biểu</p>
-      </div>
-      <div class="header-right flex gap-2">
-        <el-button type="success" :icon="Plus" @click="$router.push('/admin/waybills/create')">Thêm mới (F2)</el-button>
-        <el-button :icon="Download" @click="exportExcel" :loading="exporting" plain>Xuất Excel</el-button>
-      </div>
-    </div>
-
-    <el-card class="filter-card mb-4" shadow="never">
-      <el-row :gutter="12">
-        <el-col :span="6">
-          <el-input 
-            v-model="searchQuery" 
-            placeholder="Mã vận đơn / SĐT / Tên nhận" 
-            clearable 
-            prefix-icon="Search"
-            @keyup.enter="handleSearch"
-            size="default"
-          ></el-input>
-        </el-col>
-        <el-col :span="4">
-          <el-select v-model="statusFilter" placeholder="Trạng thái" clearable class="w-full">
-            <el-option label="Tất cả trạng thái" value=""></el-option>
-            <el-option label="Mới tạo (CREATED)" value="CREATED"></el-option>
-            <el-option label="Trong kho (IN_HUB)" value="IN_HUB"></el-option>
-            <el-option label="Đang đi giao (DELIVERING)" value="DELIVERING"></el-option>
-            <el-option label="Giao thành công (DELIVERED)" value="DELIVERED"></el-option>
-            <el-option label="Đã đối soát (SETTLED)" value="SETTLED"></el-option>
-            <el-option label="Đã hủy (CANCELLED)" value="CANCELLED"></el-option>
-          </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="-"
-            start-placeholder="Từ ngày"
-            end-placeholder="Đến ngày"
-            class="w-full"
-          ></el-date-picker>
-        </el-col>
-        <el-col :span="8" class="flex-end gap-2">
-          <el-button type="primary" :icon="Search" @click="handleSearch">Tìm kiếm</el-button>
-          <el-button @click="resetFilters" plain>Mặc định</el-button>
-        </el-col>
-      </el-row>
-    </el-card>
-
-    <el-card class="table-card" shadow="never">
-      <el-table 
-        :data="waybills" 
-        v-loading="loading" 
-        stripe border 
-        style="width: 100%"
-        :header-cell-style="{ background: '#F2F5F8', color: '#111827', fontWeight: 'bold' }"
-      >
-        <el-table-column prop="waybill_code" label="Mã vận đơn" width="150" fixed>
-          <template #default="{ row }">
-             <el-link type="primary" :underline="false" @click="viewTracking(row.waybill_code)" class="font-bold">
-               {{ row.waybill_code }}
-             </el-link>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="Thông tin Người nhận" width="240">
-          <template #default="{ row }">
-            <div class="recipient-info">
-              <div class="flex-center gap-2">
-                 <span class="name font-bold">{{ row.receiver_name }}</span>
-                 <el-tag size="small" effect="plain" type="info">{{ row.receiver_phone }}</el-tag>
-              </div>
-              <p class="addr text-muted mt-1 truncate" :title="row.receiver_address">{{ row.receiver_address }}</p>
+  <div class="modern-waybill-management">
+    <div class="page-container">
+      
+      <!-- Header Section -->
+      <header class="page-header animate-fade-in">
+        <div class="header-content">
+          <div class="title-wrapper">
+            <div class="icon-box primary">
+              <el-icon><Tickets /></el-icon>
             </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="status" label="Trạng thái" width="140" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" effect="light" round>
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="Tài chính (VNĐ)" width="200" align="right">
-          <template #default="{ row }">
-            <div class="finance-info">
-              <p class="text-muted text-xs">Cước: {{ formatCurrencyManual(row.shipping_fee || 0) }}</p>
-              <p class="font-bold text-danger">COD: {{ formatCurrencyManual(row.cod_amount) }}</p>
+            <div>
+              <h2 class="page-title">Quản lý Vận đơn</h2>
+              <p class="page-subtitle">Tra cứu hành trình, cập nhật trạng thái và in ấn mẫu biểu</p>
             </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="origin_hub.hub_name" label="Nguồn (Origin)" min-width="150" />
-        <el-table-column prop="dest_hub.hub_name" label="Đích (Dest)" min-width="150" />
-
-        <el-table-column label="Thao tác" width="220" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="action-buttons flex-center gap-1 justify-center">
-              <el-button link type="primary" @click="handlePrint(row.waybill_code)">
-                <el-icon><Printer /></el-icon> In
-              </el-button>
-              <el-button link type="primary" @click="viewTracking(row.waybill_code)">
-                <el-icon><Van /></el-icon> Track
-              </el-button>
-              
-              <el-dropdown trigger="click">
-                <el-button link type="primary" :icon="MoreFilled" />
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item :icon="Edit" @click="openEditDialog(row)">Sửa</el-dropdown-item>
-                    <el-dropdown-item 
-                      :icon="Check" 
-                      class="text-success" 
-                      @click="handleUpdateStatus(row.waybill_code)"
-                      :disabled="row.status === 'DELIVERED' || row.status === 'SETTLED'"
-                    >
-                      Kết thúc
-                    </el-dropdown-item>
-                    <el-dropdown-item 
-                      :icon="Delete" 
-                      class="text-danger" 
-                      @click="handleDelete(row.waybill_code)"
-                      v-if="row.status === 'CREATED'"
-                    >
-                      Hủy
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrapper mt-4 flex-between">
-        <span class="text-muted text-sm italic">Hiển thị {{ waybills.length }} / {{ total }} bản ghi</span>
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-          background
-        />
-      </div>
-    </el-card>
-
-    <!-- Tracking History Modal -->
-    <el-dialog v-model="trackingDialog" title="Lịch sử hành trình Vận đơn" width="650px" class="misa-dialog">
-      <div v-if="selectedWaybill" class="tracking-summary mb-4 flex-between bg-primary-light p-3 border-radius-4">
-        <div>
-          <span class="text-muted text-xs block mb-1">Mã vận đơn:</span>
-          <span class="font-bold text-lg text-primary">{{ selectedWaybill.waybill_code }}</span>
+          </div>
         </div>
-        <div class="text-right">
-           <el-tag :type="getStatusType(selectedWaybill.status)" effect="dark">{{ getStatusLabel(selectedWaybill.status) }}</el-tag>
+        <div class="header-actions">
+          <button class="btn-secondary" @click="exportExcel" :disabled="exporting">
+            <el-icon class="is-loading mr-2" v-if="exporting"><Loading /></el-icon>
+            <el-icon v-else><Download /></el-icon>
+            <span>Xuất Excel</span>
+          </button>
+          <button class="btn-primary" @click="$router.push('/admin/waybills/create')">
+            <el-icon><Plus /></el-icon>
+            <span>Thêm mới (F2)</span>
+          </button>
         </div>
-      </div>
-      <el-scrollbar max-height="400px">
-        <el-timeline v-loading="trackingLoading" class="p-4">
-          <el-timeline-item
-            v-for="(activity, index) in trackingLogs"
-            :key="index"
-            :type="index === 0 ? 'primary' : ''"
-            :hollow="index !== 0"
-            :timestamp="formatTime(activity.system_time)"
-          >
-            <div class="timeline-content">
-              <h4 class="font-bold text-sm">{{ activity.status_id }}</h4>
-              <p class="activity-note text-muted text-xs mt-1">{{ activity.note }}</p>
-              <div v-if="activity.hub_name" class="activity-loc flex-center gap-1 mt-1">
-                 <el-icon><Location /></el-icon>
-                 <span>{{ activity.hub_name }}</span>
-              </div>
-            </div>
-          </el-timeline-item>
-        </el-timeline>
-      </el-scrollbar>
-      <template #footer>
-         <el-button @click="trackingDialog = false">Đóng</el-button>
-      </template>
-    </el-dialog>
+      </header>
 
-    <!-- Edit Modal -->
-    <el-dialog v-model="editDialogVisible" title="Hiệu chỉnh thông tin Vận đơn" width="550px" class="misa-dialog">
-      <el-form :model="editForm" label-position="top">
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="Tên người nhận">
-              <el-input v-model="editForm.receiver_name" placeholder="Nhập tên người nhận"></el-input>
-            </el-form-item>
+      <!-- Advanced Filter Section -->
+      <div class="content-card filter-card animate-fade-in mb-24">
+        <el-row :gutter="20" class="filter-row">
+          <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
+            <div class="filter-label">Tìm kiếm</div>
+            <el-input 
+              v-model="searchQuery" 
+              placeholder="Mã vận đơn, SĐT hoặc Tên nhận..." 
+              clearable 
+              class="modern-input"
+              @keyup.enter="handleSearch"
+            >
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="Số điện thoại">
-              <el-input v-model="editForm.receiver_phone" placeholder="Nhập số điện thoại"></el-input>
-            </el-form-item>
+          
+          <el-col :xs="24" :sm="12" :lg="5" class="filter-col">
+            <div class="filter-label">Trạng thái</div>
+            <el-select v-model="statusFilter" placeholder="Tất cả trạng thái" clearable class="w-full modern-select">
+              <el-option label="Mới tạo (CREATED)" value="CREATED" />
+              <el-option label="Trong kho (IN_HUB)" value="IN_HUB" />
+              <el-option label="Đang đi giao (DELIVERING)" value="DELIVERING" />
+              <el-option label="Giao thành công (DELIVERED)" value="DELIVERED" />
+              <el-option label="Đã đối soát (SETTLED)" value="SETTLED" />
+              <el-option label="Đã hủy (CANCELLED)" value="CANCELLED" />
+            </el-select>
+          </el-col>
+          
+          <el-col :xs="24" :sm="12" :lg="7" class="filter-col">
+            <div class="filter-label">Thời gian tạo</div>
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              range-separator="-"
+              start-placeholder="Từ ngày"
+              end-placeholder="Đến ngày"
+              class="w-full modern-date-picker"
+              format="DD/MM/YYYY"
+            />
+          </el-col>
+          
+          <el-col :xs="24" :sm="12" :lg="6" class="filter-action-col">
+             <button class="btn-secondary w-full" @click="resetFilters">
+               <el-icon><RefreshRight /></el-icon> Đặt lại
+             </button>
+             <button class="btn-primary w-full" @click="handleSearch">
+               <el-icon><Search /></el-icon> Tìm kiếm
+             </button>
           </el-col>
         </el-row>
-        <el-form-item label="Địa chỉ giao hàng">
-          <el-input v-model="editForm.receiver_address" type="textarea" :rows="3" placeholder="Số nhà, đường, phường/xã, quận/huyện..."></el-input>
-        </el-form-item>
-        <el-form-item label="Số tiền thu hộ (COD)">
-          <el-input-number v-model="editForm.cod_amount" :min="0" :step="10000" class="w-full"></el-input-number>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="editDialogVisible = false">Hủy bỏ</el-button>
-          <el-button type="primary" @click="submitEdit" :loading="editSubmitting">Cập nhật (Ctrl + S)</el-button>
-        </span>
-      </template>
-    </el-dialog>
+      </div>
 
+      <!-- Main Table Card -->
+      <div class="content-card table-wrapper animate-fade-in-up">
+        <div class="card-header-inner mb-4 flex-between">
+          <h3 class="inner-title">Danh sách Vận đơn</h3>
+          <el-tag type="primary" effect="light" round class="fw-bold">Tổng: {{ total }} bản ghi</el-tag>
+        </div>
+
+        <el-table 
+          :data="waybills" 
+          v-loading="loading" 
+          class="modern-table"
+          row-class-name="modern-row"
+          style="width: 100%"
+        >
+          <!-- Mã vận đơn -->
+          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="140" fixed="left">
+            <template #default="{ row }">
+               <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình">
+                 {{ row.waybill_code }}
+               </div>
+            </template>
+          </el-table-column>
+          
+          <!-- Thông tin Người nhận -->
+          <el-table-column label="Thông tin Người nhận" min-width="260">
+            <template #default="{ row }">
+              <div class="recipient-profile">
+                <div class="avatar-circle bg-info">
+                  <el-icon><User /></el-icon>
+                </div>
+                <div class="recipient-details">
+                  <div class="name-phone">
+                    <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
+                    <span class="phone-tag"><el-icon><Phone /></el-icon>{{ row.receiver_phone }}</span>
+                  </div>
+                  <span class="address-text" :title="row.receiver_address">
+                    <el-icon class="mr-1"><Location /></el-icon>{{ row.receiver_address }}
+                  </span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- Trạng thái -->
+          <el-table-column prop="status" label="Trạng thái" min-width="150" align="center">
+            <template #default="{ row }">
+              <div class="modern-tag" :class="getStatusClass(row.status)">
+                <span class="dot"></span>
+                {{ getStatusLabel(row.status) }}
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- Tài chính -->
+          <el-table-column label="Tài chính (VNĐ)" min-width="180" align="right">
+            <template #default="{ row }">
+              <div class="finance-display">
+                <div class="finance-line">
+                  <span class="label">Cước phí:</span>
+                  <span class="value text-primary">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
+                </div>
+                <div class="finance-line highlight">
+                  <span class="label">Thu hộ (COD):</span>
+                  <span class="value">{{ formatCurrencyManual(row.cod_amount) }}</span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- Nguồn / Đích -->
+          <el-table-column label="Hành trình (Nguồn → Đích)" min-width="220">
+            <template #default="{ row }">
+              <div class="hub-route">
+                <span class="hub-item origin">{{ row.origin_hub?.hub_name || '---' }}</span>
+                <el-icon class="route-arrow"><Right /></el-icon>
+                <span class="hub-item dest">{{ row.dest_hub?.hub_name || '---' }}</span>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- Thao tác -->
+          <el-table-column label="Thao tác" width="180" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <button class="icon-btn edit" @click="handlePrint(row.waybill_code)" title="In tem vận đơn">
+                  <el-icon><Printer /></el-icon>
+                </button>
+                <button class="icon-btn success" @click="viewTracking(row.waybill_code)" title="Theo dõi hành trình">
+                  <el-icon><Van /></el-icon>
+                </button>
+                
+                <el-dropdown trigger="click" placement="bottom-end">
+                  <button class="icon-btn secondary" title="Thêm thao tác">
+                    <el-icon><MoreFilled /></el-icon>
+                  </button>
+                  <template #dropdown>
+                    <el-dropdown-menu class="modern-dropdown">
+                      <el-dropdown-item @click="openEditDialog(row)">
+                        <el-icon><Edit /></el-icon> Hiệu chỉnh thông tin
+                      </el-dropdown-item>
+                      <el-dropdown-item 
+                        @click="handleUpdateStatus(row.waybill_code)"
+                        :disabled="row.status === 'DELIVERED' || row.status === 'SETTLED'"
+                        class="text-success"
+                      >
+                        <el-icon><Check /></el-icon> Hoàn tất giao hàng
+                      </el-dropdown-item>
+                      <el-dropdown-item 
+                        v-if="row.status === 'CREATED'"
+                        @click="handleDelete(row.waybill_code)"
+                        class="text-danger"
+                      >
+                        <el-icon><Delete /></el-icon> Hủy vận đơn
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+          
+          <template #empty>
+            <el-empty description="Không tìm thấy vận đơn nào phù hợp" :image-size="100" />
+          </template>
+        </el-table>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper mt-24 flex-between">
+          <span class="pagination-info">Hiển thị {{ waybills.length }} / {{ total }} bản ghi</span>
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="sizes, prev, pager, next, jumper"
+            :total="total"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            background
+            class="modern-pagination"
+          />
+        </div>
+      </div>
+
+      <!-- Tracking History Modal -->
+      <el-dialog 
+        v-model="trackingDialog" 
+        title="Lịch sử hành trình Vận đơn" 
+        width="650px" 
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <div v-if="selectedWaybill" class="tracking-summary-card mb-24">
+          <div class="tracking-summary-left">
+            <span class="label">Mã vận đơn:</span>
+            <span class="code">{{ selectedWaybill.waybill_code }}</span>
+          </div>
+          <div class="tracking-summary-right">
+             <div class="modern-tag" :class="getStatusClass(selectedWaybill.status)">
+               {{ getStatusLabel(selectedWaybill.status) }}
+             </div>
+          </div>
+        </div>
+        
+        <el-scrollbar max-height="450px" class="tracking-scrollbar">
+          <el-timeline v-loading="trackingLoading" class="modern-timeline">
+            <el-timeline-item
+              v-for="(activity, index) in trackingLogs"
+              :key="index"
+              :type="index === 0 ? 'primary' : 'info'"
+              :hollow="index !== 0"
+              :timestamp="formatTime(activity.system_time)"
+              placement="top"
+            >
+              <div class="timeline-card" :class="{'latest': index === 0}">
+                <h4 class="status-title">{{ activity.status_id }}</h4>
+                <p class="status-note">{{ activity.note }}</p>
+                <div v-if="activity.hub_name" class="status-location">
+                   <el-icon><LocationInformation /></el-icon>
+                   <span>{{ activity.hub_name }}</span>
+                </div>
+              </div>
+            </el-timeline-item>
+            
+            <el-empty v-if="!trackingLoading && trackingLogs.length === 0" description="Chưa có dữ liệu hành trình" :image-size="80" />
+          </el-timeline>
+        </el-scrollbar>
+        
+        <template #footer>
+          <div class="dialog-footer-actions">
+             <button class="btn-secondary" @click="trackingDialog = false">Đóng cửa sổ</button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <!-- Edit Modal (2-Column Form) -->
+      <el-dialog 
+        v-model="editDialogVisible" 
+        title="Hiệu chỉnh thông tin Vận đơn" 
+        width="650px" 
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <el-form :model="editForm" label-position="top" class="modern-form">
+          <div class="form-section">
+            <div class="section-header">
+              <el-icon><UserFilled /></el-icon>
+              <span>Thông tin Người nhận</span>
+            </div>
+            <el-row :gutter="24">
+              <el-col :span="12">
+                <el-form-item label="Tên người nhận">
+                  <el-input v-model="editForm.receiver_name" placeholder="VD: Nguyễn Văn A">
+                    <template #prefix><el-icon><User /></el-icon></template>
+                  </el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="Số điện thoại liên hệ">
+                  <el-input v-model="editForm.receiver_phone" placeholder="VD: 09xxxxxxx">
+                    <template #prefix><el-icon><Phone /></el-icon></template>
+                  </el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item label="Địa chỉ giao hàng chi tiết">
+              <el-input 
+                v-model="editForm.receiver_address" 
+                type="textarea" 
+                :rows="3" 
+                placeholder="Số nhà, đường, phường/xã, quận/huyện..."
+                resize="none"
+              />
+            </el-form-item>
+          </div>
+          
+          <div class="form-section no-border mb-0">
+            <div class="section-header">
+              <el-icon><Money /></el-icon>
+              <span>Thông tin Thu hộ</span>
+            </div>
+            <el-form-item label="Số tiền thu hộ (COD - VNĐ)">
+              <el-input-number 
+                v-model="editForm.cod_amount" 
+                :min="0" :step="10000" 
+                class="w-full modern-price-input"
+                :controls="false"
+                :formatter="(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
+                :parser="(value) => value.replace(/\$\s?|(\.*)/g, '')"
+              />
+            </el-form-item>
+          </div>
+        </el-form>
+        
+        <template #footer>
+          <div class="dialog-footer-actions">
+            <button class="btn-secondary" @click="editDialogVisible = false">Hủy bỏ</button>
+            <button class="btn-primary" @click="submitEdit" :disabled="editSubmitting">
+              <el-icon class="is-loading mr-2" v-if="editSubmitting"><Loading /></el-icon>
+              <span>{{ editSubmitting ? 'Đang cập nhật...' : 'Cập nhật (Ctrl+S)' }}</span>
+            </button>
+          </div>
+        </template>
+      </el-dialog>
+
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { Search, Plus, Printer, Download, MoreFilled, Check, Edit, Delete, Location } from '@element-plus/icons-vue';
+import { 
+  Search, Plus, Printer, Download, MoreFilled, Check, Edit, Delete, 
+  Location, LocationInformation, Tickets, RefreshRight, Van, User, 
+  Phone, Right, Loading, UserFilled, Money 
+} from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import moment from 'moment';
@@ -337,7 +467,6 @@ const viewTracking = async (code) => {
 };
 
 const handlePrint = (code) => {
-  // SỬA Ở ĐÂY:
   const baseUrl = import.meta.env.VITE_API_URL || '';
   window.open(`${baseUrl}/api/print/${code}`, '_blank');
 };
@@ -370,9 +499,15 @@ const submitEdit = async () => {
 const handleUpdateStatus = async (code) => {
   try {
     await ElMessageBox.confirm(
-      `Xác nhận đơn hàng ${code} đã được giao thành công?`,
+      `Xác nhận đơn hàng <strong>${code}</strong> đã được giao thành công?`,
       'Hoàn tất giao hàng',
-      { confirmButtonText: 'Đồng ý', cancelButtonText: 'Hủy', type: 'info' }
+      { 
+        confirmButtonText: 'Đồng ý', 
+        cancelButtonText: 'Hủy', 
+        type: 'info',
+        dangerouslyUseHTMLString: true,
+        customClass: 'modern-message-box'
+      }
     );
     await api.patch(`/api/waybills/${code}/delivered`);
     ElMessage.success('Cập nhật trạng thái thành công!');
@@ -385,9 +520,15 @@ const handleUpdateStatus = async (code) => {
 const handleDelete = async (code) => {
   try {
     await ElMessageBox.confirm(
-      `Xác nhận hủy vận đơn ${code}? Thao tác này sẽ xóa đơn khỏi hệ thống vận hành.`,
+      `Xác nhận hủy vận đơn <strong>${code}</strong>?<br/>Thao tác này sẽ xóa đơn khỏi hệ thống vận hành.`,
       'Hủy Vận Đơn',
-      { confirmButtonText: 'Hủy đơn', cancelButtonText: 'Quay lại', type: 'warning' }
+      { 
+        confirmButtonText: 'Hủy đơn', 
+        cancelButtonText: 'Quay lại', 
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+        customClass: 'modern-message-box'
+      }
     );
     await api.delete(`/api/waybills/${code}`);
     ElMessage.success(`Đã hủy vận đơn ${code}`);
@@ -397,16 +538,16 @@ const handleDelete = async (code) => {
   }
 };
 
-const getStatusType = (status) => {
+const getStatusClass = (status) => {
   const map = {
-    'CREATED': 'info',
-    'IN_HUB': 'primary',
-    'DELIVERING': 'warning',
-    'DELIVERED': 'success',
-    'SETTLED': 'success',
-    'CANCELLED': 'info'
+    'CREATED': 'tag-info',
+    'IN_HUB': 'tag-primary',
+    'DELIVERING': 'tag-warning',
+    'DELIVERED': 'tag-success',
+    'SETTLED': 'tag-success',
+    'CANCELLED': 'tag-danger'
   };
-  return map[status] || 'info';
+  return map[status] || 'tag-info';
 };
 
 const getStatusLabel = (status) => {
@@ -429,83 +570,231 @@ onMounted(handleSearch);
 </script>
 
 <style scoped>
-.waybill-list-page {
-  padding: 0;
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* Base Layout */
+.modern-waybill-management {
+  min-height: calc(100vh - 64px);
+  background-color: #F4F7FE; /* Light SaaS background */
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #2B3674;
+  padding: 32px 24px;
 }
 
+.page-container {
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.mb-24 { margin-bottom: 24px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-0 { margin-bottom: 0 !important; }
+.mt-24 { margin-top: 24px; }
+.w-full { width: 100%; }
+
+/* Header */
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
-.recipient-info .name {
-  font-size: 13px;
-  color: var(--misa-text);
+.header-content .title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.recipient-info .addr {
-  font-size: 12px;
-  max-width: 210px;
+.icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.icon-box.primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
+
+.page-title { font-size: 28px; font-weight: 800; color: #2B3674; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+.page-subtitle { color: #A3AED0; font-size: 14px; margin: 0; font-weight: 500; }
+
+.header-actions { display: flex; gap: 12px; }
+
+/* Filters Card */
+.content-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.02);
 }
 
-.finance-info p {
-  margin: 0;
-  line-height: 1.4;
+.filter-card { padding: 20px 24px; }
+.filter-row { align-items: flex-end; }
+.filter-label { font-size: 13px; font-weight: 700; color: #2B3674; margin-bottom: 8px; }
+.filter-action-col { display: flex; gap: 12px; }
+
+:deep(.modern-input .el-input__wrapper),
+:deep(.modern-select .el-input__wrapper),
+:deep(.modern-date-picker .el-input__wrapper) {
+  background: #F8FAFC; box-shadow: none !important; border: 1px solid #E2E8F0; border-radius: 10px; padding: 6px 12px; transition: all 0.3s;
 }
 
-.text-xs { font-size: 11px; }
-.text-sm { font-size: 13px; }
-.text-lg { font-size: 18px; }
-.block { display: block; }
-.truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.flex-end { display: flex; justify-content: flex-end; align-items: center; }
-.justify-center { justify-content: center; }
-
-.bg-primary-light {
-  background-color: var(--misa-primary-light);
+:deep(.modern-input .el-input__wrapper:hover),
+:deep(.modern-select .el-input__wrapper:hover),
+:deep(.modern-date-picker .el-input__wrapper:hover),
+:deep(.modern-input .el-input__wrapper.is-focus),
+:deep(.modern-select .el-input__wrapper.is-focus),
+:deep(.modern-date-picker .el-input__wrapper.is-focus) {
+  border-color: #4318FF; background: #FFFFFF;
 }
 
-.border-radius-4 {
-  border-radius: 4px;
-}
+/* Table Header */
+.card-header-inner { display: flex; align-items: center; gap: 16px; }
+.card-header-inner.flex-between { justify-content: space-between; }
+.inner-title { margin: 0; font-size: 18px; font-weight: 800; color: #1B2559; }
 
-.activity-note {
-  line-height: 1.4;
+/* Table Elements */
+:deep(.modern-table) {
+  --el-table-border-color: transparent;
+  --el-table-header-bg-color: #F4F7FE;
+  --el-table-header-text-color: #A3AED0;
+  --el-table-text-color: #2B3674;
 }
+:deep(.modern-table th.el-table__cell) { font-weight: 700; font-size: 13px; text-transform: uppercase; padding: 16px 0; border-bottom: 2px solid #E9EDF7 !important; }
+:deep(.modern-table td.el-table__cell) { padding: 16px 0; border-bottom: 1px solid #F4F7FE !important; }
 
-.activity-loc {
-  color: var(--misa-primary);
-  font-size: 11px;
+/* Table Content Styles */
+.code-link {
+  font-family: 'Courier New', Courier, monospace; font-weight: 800; color: #4318FF; background: #F4F7FE;
+  padding: 6px 10px; border-radius: 8px; font-size: 13px; display: inline-block; cursor: pointer; transition: 0.3s;
 }
-</style>
-<style scoped>
-.waybill-list-page {
-  padding: 0;
-  width: 100%;
-  max-width: 100% !important;
+.code-link:hover { background: #4318FF; color: white; }
+
+.recipient-profile { display: flex; align-items: center; gap: 12px; }
+.avatar-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; color: white; flex-shrink: 0; }
+.bg-info { background: linear-gradient(135deg, #8F9BBA, #A3AED0); }
+
+.recipient-details { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+.name-phone { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.phone-tag { background: #F8FAFC; border: 1px solid #E2E8F0; padding: 2px 6px; border-radius: 6px; font-size: 11px; font-weight: 600; color: #4B5563; display: flex; align-items: center; gap: 4px; }
+.address-text { font-size: 12px; color: #A3AED0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
+
+.finance-display { display: flex; flex-direction: column; gap: 4px; }
+.finance-line { display: flex; justify-content: flex-end; gap: 8px; font-size: 12px; color: #A3AED0; }
+.finance-line .value { font-weight: 700; color: #2B3674; }
+.finance-line.highlight .value { color: #EE5D50; font-size: 14px; }
+
+.hub-route { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+.hub-item { padding: 4px 8px; border-radius: 6px; }
+.hub-item.origin { background: rgba(67, 24, 255, 0.05); color: #4318FF; }
+.hub-item.dest { background: rgba(5, 205, 153, 0.05); color: #05CD99; }
+.route-arrow { color: #A3AED0; font-size: 16px; }
+
+/* Tags */
+.modern-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; width: fit-content; margin: 0 auto; }
+.modern-tag .dot { width: 6px; height: 6px; border-radius: 50%; }
+.tag-info { background: rgba(143, 155, 186, 0.1); color: #8F9BBA; }
+.tag-info .dot { background: #8F9BBA; }
+.tag-primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
+.tag-primary .dot { background: #4318FF; }
+.tag-warning { background: rgba(255, 181, 71, 0.1); color: #FFB547; }
+.tag-warning .dot { background: #FFB547; }
+.tag-success { background: rgba(5, 205, 153, 0.1); color: #05CD99; }
+.tag-success .dot { background: #05CD99; }
+.tag-danger { background: rgba(238, 93, 80, 0.1); color: #EE5D50; }
+.tag-danger .dot { background: #EE5D50; }
+
+/* Buttons */
+.btn-primary { background: #4318FF; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(67, 24, 255, 0.25); }
+.btn-primary:hover:not(:disabled) { background: #3311DB; transform: translateY(-2px); }
+.btn-secondary { background: #F4F7FE; color: #2B3674; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
+.btn-secondary:hover:not(:disabled) { background: #E9EDF7; }
+
+.action-buttons { display: flex; gap: 6px; justify-content: center; }
+.icon-btn { width: 32px; height: 32px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px; }
+.icon-btn.edit { background: #F4F7FE; color: #4318FF; }
+.icon-btn.edit:hover { background: #4318FF; color: white; }
+.icon-btn.success { background: #F0FDF4; color: #05CD99; }
+.icon-btn.success:hover { background: #05CD99; color: white; }
+.icon-btn.secondary { background: #F8FAFC; color: #8F9BBA; }
+.icon-btn.secondary:hover { background: #E2E8F0; color: #1B2559; }
+
+/* Pagination */
+.pagination-wrapper { display: flex; justify-content: space-between; align-items: center; }
+.pagination-info { font-size: 13px; color: #A3AED0; font-weight: 600; font-style: italic; }
+:deep(.modern-pagination .el-pager li), :deep(.modern-pagination button) { background: #F8FAFC !important; border-radius: 8px; font-weight: 600; color: #8F9BBA; }
+:deep(.modern-pagination .el-pager li.is-active) { background: #4318FF !important; color: white; }
+
+/* Modern Dialogs */
+:deep(.modern-dialog) { border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+:deep(.modern-dialog .el-dialog__header) { margin: 0; padding: 24px; border-bottom: 1px solid #E9EDF7; }
+:deep(.modern-dialog .el-dialog__title) { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #2B3674; font-size: 18px; }
+:deep(.modern-dialog .el-dialog__body) { padding: 24px; }
+:deep(.modern-dialog .el-dialog__footer) { padding: 16px 24px 24px; border-top: 1px solid #E9EDF7; }
+.dialog-footer-actions { display: flex; justify-content: flex-end; gap: 12px; }
+
+/* Form Sections for Edit Modal */
+.form-section { background: #FFFFFF; border: 1px solid #E9EDF7; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+.form-section.no-border { border: none; background: #F8FAFC; }
+.section-header { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: #1B2559; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px dashed #E2E8F0; }
+.section-header .el-icon { color: #4318FF; font-size: 18px; }
+
+:deep(.modern-form .el-form-item__label) { font-weight: 700; color: #2B3674; margin-bottom: 8px; }
+:deep(.modern-form .el-input__wrapper),
+:deep(.modern-form .el-textarea__inner) { background: #F8FAFC; box-shadow: 0 0 0 1px #E2E8F0 inset; border-radius: 10px; padding: 8px 12px; transition: all 0.3s ease; }
+:deep(.modern-form .el-textarea__inner) { padding: 12px; }
+:deep(.modern-form .el-input__wrapper:hover),
+:deep(.modern-form .el-textarea__inner:hover) { box-shadow: 0 0 0 1px #4318FF inset; }
+:deep(.modern-form .el-input__wrapper.is-focus),
+:deep(.modern-form .el-textarea__inner:focus) { box-shadow: 0 0 0 2px rgba(67, 24, 255, 0.2) inset !important; background: #FFFFFF; }
+:deep(.modern-price-input .el-input__inner) { font-size: 18px !important; font-weight: 800 !important; color: #EE5D50 !important; text-align: left; }
+
+/* Tracking Summary & Timeline */
+.tracking-summary-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+.tracking-summary-left { display: flex; flex-direction: column; gap: 4px; }
+.tracking-summary-left .label { font-size: 12px; color: #8F9BBA; font-weight: 700; text-transform: uppercase; }
+.tracking-summary-left .code { font-family: monospace; font-size: 20px; font-weight: 800; color: #4318FF; }
+
+.tracking-scrollbar { padding-right: 16px; margin-right: -16px; }
+:deep(.modern-timeline .el-timeline-item__timestamp) { font-weight: 700; color: #8F9BBA; font-size: 12px; }
+:deep(.modern-timeline .el-timeline-item__node--primary) { background-color: #4318FF; }
+
+.timeline-card { background: #F8FAFC; border: 1px solid #E9EDF7; border-radius: 12px; padding: 16px; margin-top: 8px; transition: all 0.3s; }
+.timeline-card.latest { background: #FFFFFF; border-color: #4318FF; box-shadow: 0 4px 15px rgba(67, 24, 255, 0.1); }
+.status-title { margin: 0 0 6px; font-size: 14px; font-weight: 800; color: #1B2559; }
+.status-note { margin: 0 0 8px; font-size: 13px; color: #4B5563; line-height: 1.5; }
+.status-location { display: inline-flex; align-items: center; gap: 6px; background: rgba(67, 24, 255, 0.05); color: #4318FF; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+
+/* Dropdown */
+:deep(.modern-dropdown .el-dropdown-menu__item) { padding: 10px 16px; font-weight: 600; font-size: 13px; gap: 8px; }
+:deep(.modern-dropdown .el-dropdown-menu__item:hover) { background-color: #F4F7FE; color: #4318FF; }
+:deep(.modern-dropdown .text-success) { color: #05CD99 !important; }
+:deep(.modern-dropdown .text-danger) { color: #EE5D50 !important; }
+
+/* Utilities */
+.fw-bold { font-weight: 700; }
+.text-dark { color: #1B2559; }
+.text-primary { color: #4318FF; }
+.mr-1 { margin-right: 4px; }
+.mr-2 { margin-right: 8px; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+/* Animations */
+.animate-fade-in { animation: fadeIn 0.5s ease-out; }
+.animate-fade-in-up { animation: fadeInUp 0.5s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Responsive */
+@media (max-width: 992px) { .filter-col { margin-bottom: 16px; } }
+@media (max-width: 768px) {
+  .page-header { flex-direction: column; align-items: flex-start; }
+  .header-actions, .filter-action-col { width: 100%; flex-direction: column; }
+  .filter-action-col .btn-primary, .filter-action-col .btn-secondary { width: 100%; margin: 0; }
+  .pagination-wrapper { flex-direction: column; gap: 16px; }
 }
-.page-header { display: flex; justify-content: space-between; align-items: flex-end; }
-.flex-between { display: flex; justify-content: space-between; }
-/* Fix action button blobs */
-.action-buttons .el-button.is-link { 
-  background: transparent !important; 
-  padding: 4px 8px; 
-  height: auto;
-}
-.action-buttons .el-icon { font-size: 18px; }
-.filter-card { border-radius: 8px; }
-.recipient-info p { margin: 0; line-height: 1.4; }
-.name { font-size: 0.95rem; }
-.phone { font-size: 0.85rem; }
-.addr { font-size: 0.8rem; color: #666; max-width: 200px; }
-.truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mt-4 { margin-top: 1rem; }
-.flex-end { display: flex; justify-content: flex-end; gap: 10px; }
-.font-bold { font-weight: 600; }
-.text-success { color: #67C23A; }
-.text-danger { color: #F56C6C; }
-.activity-note { color: #666; font-size: 0.9rem; margin: 4px 0; }
-.activity-loc { color: #409EFF; font-size: 0.8rem; font-weight: 600; }
 </style>

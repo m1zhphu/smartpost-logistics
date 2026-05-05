@@ -1,343 +1,473 @@
 <template>
-  <div class="pricing-rules-page">
+  <div class="modern-pricing-management">
+    <div class="page-container">
 
-    <div class="page-header">
-      <div class="header-left">
-        <div class="header-icon">
-          <el-icon><Ticket /></el-icon>
+      <!-- Header Section -->
+      <header class="page-header animate-fade-in">
+        <div class="header-content">
+          <div class="title-wrapper">
+            <div class="icon-box primary">
+              <el-icon><Ticket /></el-icon>
+            </div>
+            <div>
+              <h2 class="page-title">Cấu hình Bảng Giá</h2>
+              <p class="page-subtitle">Quản lý phí vận chuyển theo tuyến đường, khối lượng và loại dịch vụ</p>
+            </div>
+          </div>
         </div>
-        <div>
-          <h1 class="page-title">Cấu hình Bảng Giá</h1>
-          <p class="page-subtitle">Quản lý phí vận chuyển theo tuyến đường, khối lượng và loại dịch vụ</p>
+        <div class="header-actions">
+          <button class="btn-secondary circle-btn" @click="refreshAll" title="Làm mới toàn bộ dữ liệu">
+            <el-icon><Refresh /></el-icon>
+          </button>
         </div>
-      </div>
-      <div class="header-actions">
-        <el-button @click="refreshAll" :icon="Refresh" circle title="Làm mới toàn bộ" />
-      </div>
-    </div>
+      </header>
 
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-icon blue"><el-icon><List /></el-icon></div>
-        <div class="stat-info">
-          <span class="stat-value">{{ rules.length }}</span>
-          <span class="stat-label">Tổng quy tắc tuyến</span>
+      <!-- Stats Grid -->
+      <div class="stats-grid animate-fade-in mb-24">
+        <div class="stat-card">
+          <div class="stat-icon-wrapper bg-blue">
+            <el-icon><List /></el-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ rules.length }}</span>
+            <span class="stat-label">Tổng quy tắc tuyến</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrapper bg-green">
+            <el-icon><CircleCheck /></el-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ activeCount }}</span>
+            <span class="stat-label">Tuyến đang áp dụng</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrapper bg-orange">
+            <el-icon><Lightning /></el-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ expressCount }}</span>
+            <span class="stat-label">Hoả tốc (EXPRESS)</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrapper bg-purple">
+            <el-icon><Setting /></el-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ services.length }}</span>
+            <span class="stat-label">Dịch vụ tiện ích</span>
+          </div>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon green"><el-icon><CircleCheck /></el-icon></div>
-        <div class="stat-info">
-          <span class="stat-value">{{ activeCount }}</span>
-          <span class="stat-label">Tuyến đang áp dụng</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon orange"><el-icon><Lightning /></el-icon></div>
-        <div class="stat-info">
-          <span class="stat-value">{{ expressCount }}</span>
-          <span class="stat-label">Hoả tốc (EXPRESS)</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon purple"><el-icon><Setting /></el-icon></div>
-        <div class="stat-info">
-          <span class="stat-value">{{ services.length }}</span>
-          <span class="stat-label">Dịch vụ tiện ích</span>
-        </div>
-      </div>
-    </div>
 
-    <el-tabs v-model="activeTab" class="custom-tabs mt-4">
-      
-      <el-tab-pane label="Bảng Giá Cước Tuyến" name="main_routes">
+      <!-- Main Tabs -->
+      <el-tabs v-model="activeTab" class="modern-tabs animate-fade-in-up">
         
-        <el-card class="filter-card mb-4" shadow="never">
-          <div class="filter-bar">
-            <el-select v-model="filter.service_type" placeholder="Tất cả dịch vụ" clearable style="width: 200px">
-              <el-option label="⚡ Hoả tốc (EXPRESS)" value="EXPRESS" />
-              <el-option label="🚚 Tiêu chuẩn (STANDARD)" value="STANDARD" />
-            </el-select>
-            <el-select v-model="filterHubId" placeholder="Lọc theo Bưu cục" clearable filterable style="width: 260px">
-              <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
-            </el-select>
-            <div class="filter-actions">
-              <el-button type="primary" :icon="Search" @click="fetchData">Tìm kiếm</el-button>
-              <el-button :icon="Refresh" @click="resetFilters">Đặt lại</el-button>
-              <el-button v-if="canEditPricing" type="primary" :icon="Plus" @click="openDialog(null)" plain>Thêm Tuyến Giá</el-button>
+        <!-- TAB 1: MAIN ROUTES -->
+        <el-tab-pane label="Bảng Giá Cước Tuyến" name="main_routes">
+          
+          <!-- Filter Section -->
+          <div class="content-card filter-card mb-24">
+            <div class="filter-wrapper">
+              <div class="filter-inputs">
+                <el-select v-model="filter.service_type" placeholder="Tất cả dịch vụ" clearable class="modern-select w-200">
+                  <el-option label="⚡ Hoả tốc (EXPRESS)" value="EXPRESS" />
+                  <el-option label="🚚 Tiêu chuẩn (STANDARD)" value="STANDARD" />
+                </el-select>
+                <el-select v-model="filterHubId" placeholder="Lọc theo Bưu cục" clearable filterable class="modern-select w-260">
+                  <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
+                </el-select>
+              </div>
+              <div class="filter-actions">
+                <button class="btn-secondary" @click="resetFilters">
+                  <el-icon><RefreshRight /></el-icon> Đặt lại
+                </button>
+                <button v-if="canEditPricing" class="btn-primary" @click="openDialog(null)">
+                  <el-icon><Plus /></el-icon> Thêm Tuyến Giá
+                </button>
+              </div>
             </div>
           </div>
-        </el-card>
 
-        <el-card class="table-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span class="card-title">Danh sách Quy tắc Giá theo tuyến</span>
-              <el-tag type="info" size="small">{{ filteredRules.length }} quy tắc</el-tag>
+          <!-- Table Section -->
+          <div class="content-card table-wrapper">
+            <div class="card-header-inner mb-4">
+              <h3 class="inner-title">Danh sách Quy tắc Giá theo tuyến</h3>
+              <el-tag type="primary" effect="light" round class="fw-bold">{{ filteredRules.length }} quy tắc</el-tag>
             </div>
-          </template>
 
-          <el-table :data="filteredRules" v-loading="loading" stripe style="width: 100%" :header-cell-style="{ background: '#f8fafc', color: '#374151', fontWeight: '600' }" row-class-name="table-row">
-            <el-table-column label="Tuyến đường" min-width="280">
-              <template #default="{ row }">
-                <div class="route-cell">
-                  <div class="hub-tag origin">
-                    <el-icon><LocationFilled /></el-icon>
-                    <span>{{ row.origin_hub ? row.origin_hub.hub_name : `Hub #${row.origin_hub_id}` }}</span>
+            <el-table 
+              :data="filteredRules" 
+              v-loading="loading" 
+              class="modern-table"
+              row-class-name="modern-row"
+              style="width: 100%"
+            >
+              <!-- Tuyến đường -->
+              <el-table-column label="Tuyến đường vận chuyển" min-width="320" fixed="left">
+                <template #default="{ row }">
+                  <div class="route-visualization">
+                    <div class="route-hub origin">
+                      <span class="hub-code">{{ row.origin_hub?.hub_code || '---' }}</span>
+                      <span class="hub-name text-truncate">{{ row.origin_hub ? row.origin_hub.hub_name : `Hub #${row.origin_hub_id}` }}</span>
+                    </div>
+                    <div class="route-connector">
+                      <div class="line"></div>
+                      <el-icon class="arrow-icon"><Right /></el-icon>
+                    </div>
+                    <div class="route-hub dest">
+                      <span class="hub-code">{{ row.dest_hub?.hub_code || '---' }}</span>
+                      <span class="hub-name text-truncate">{{ row.dest_hub ? row.dest_hub.hub_name : `Hub #${row.dest_hub_id}` }}</span>
+                    </div>
                   </div>
-                  <div class="route-arrow"><el-icon><Right /></el-icon></div>
-                  <div class="hub-tag dest">
-                    <el-icon><Location /></el-icon>
-                    <span>{{ row.dest_hub ? row.dest_hub.hub_name : `Hub #${row.dest_hub_id}` }}</span>
+                </template>
+              </el-table-column>
+
+              <!-- Dịch vụ -->
+              <el-table-column label="Loại Dịch vụ" min-width="160" align="center">
+                <template #default="{ row }">
+                  <div class="modern-tag" :class="row.service_type === 'EXPRESS' ? 'tag-warning' : 'tag-info'">
+                    <span class="dot"></span>
+                    {{ row.service_type === 'EXPRESS' ? 'Hoả tốc (EXPRESS)' : 'Tiêu chuẩn (STANDARD)' }}
                   </div>
-                </div>
-                <div class="hub-codes">
-                  <span class="code-badge">{{ row.origin_hub?.hub_code || '---' }}</span>
-                  <span class="code-arrow">→</span>
-                  <span class="code-badge">{{ row.dest_hub?.hub_code || '---' }}</span>
+                </template>
+              </el-table-column>
+
+              <!-- Nấc cân -->
+              <el-table-column label="Nấc cân áp dụng" min-width="160" align="center">
+                <template #default="{ row }">
+                  <div class="weight-badge">
+                    <el-icon><ScaleToOriginal /></el-icon>
+                    <span>{{ row.min_weight }} – {{ row.max_weight }} kg</span>
+                  </div>
+                </template>
+              </el-table-column>
+
+              <!-- Đơn giá -->
+              <el-table-column label="Đơn giá" min-width="160" align="right">
+                <template #default="{ row }">
+                  <div class="price-display">
+                    <span class="amount">{{ formatMoney(row.price) }}</span>
+                    <span class="currency">đ</span>
+                  </div>
+                </template>
+              </el-table-column>
+
+              <!-- Trạng thái -->
+              <el-table-column label="Trạng thái" min-width="140" align="center">
+                <template #default="{ row }">
+                  <div class="status-pill" :class="row.is_active ? 'active' : 'locked'">
+                    {{ row.is_active ? 'Đang áp dụng' : 'Tạm dừng' }}
+                  </div>
+                </template>
+              </el-table-column>
+
+              <!-- Thao tác -->
+              <el-table-column v-if="canEditPricing" label="Thao tác" width="120" fixed="right" align="center">
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa">
+                      <el-icon><Edit /></el-icon>
+                    </button>
+                    <button class="icon-btn delete" @click="handleDelete(row)" title="Xóa">
+                      <el-icon><Delete /></el-icon>
+                    </button>
+                  </div>
+                </template>
+              </el-table-column>
+
+              <template #empty>
+                <div class="empty-state">
+                  <el-empty description="Chưa có quy tắc giá nào hoặc không tìm thấy kết quả phù hợp" :image-size="100" />
+                  <button v-if="canEditPricing" class="btn-primary mt-4 mx-auto" @click="openDialog(null)">
+                    <el-icon><Plus /></el-icon> Thêm quy tắc đầu tiên
+                  </button>
                 </div>
               </template>
-            </el-table-column>
-
-            <el-table-column label="Dịch vụ" width="140" align="center">
-              <template #default="{ row }">
-                <div :class="['service-badge', row.service_type === 'EXPRESS' ? 'express' : 'standard']">
-                  <span>{{ row.service_type === 'EXPRESS' ? '⚡ Hoả tốc' : '🚚 Tiêu chuẩn' }}</span>
-                </div>
-              </template>
-            </el-table-column>
-
-            <el-table-column label="Nấc cân" width="170" align="center">
-              <template #default="{ row }">
-                <div class="weight-cell">
-                  <el-icon><ScaleToOriginal /></el-icon>
-                  <span>{{ row.min_weight }} – {{ row.max_weight }} kg</span>
-                </div>
-              </template>
-            </el-table-column>
-
-            <el-table-column label="Đơn giá" width="160" align="right">
-              <template #default="{ row }">
-                <div class="price-cell">
-                  <span class="price-value">{{ formatMoney(row.price) }}</span>
-                  <span class="price-unit">đ</span>
-                </div>
-              </template>
-            </el-table-column>
-
-            <el-table-column label="Trạng thái" width="130" align="center">
-              <template #default="{ row }">
-                <div :class="['status-pill', row.is_active ? 'active' : 'inactive']">
-                  <span class="status-dot"></span>
-                  {{ row.is_active ? 'Đang áp dụng' : 'Tạm dừng' }}
-                </div>
-              </template>
-            </el-table-column>
-
-            <el-table-column v-if="canEditPricing" label="Thao tác" width="120" align="center" fixed="right">
-              <template #default="{ row }">
-                <div class="action-buttons flex gap-1 justify-center">
-                  <el-tooltip content="Chỉnh sửa" placement="top">
-                    <el-button text type="primary" :icon="Edit" @click="openDialog(row)" size="small" />
-                  </el-tooltip>
-                  <el-tooltip content="Xóa quy tắc" placement="top">
-                    <el-button text type="danger" :icon="Delete" @click="handleDelete(row)" size="small" />
-                  </el-tooltip>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div v-if="filteredRules.length === 0 && !loading" class="empty-state">
-            <el-icon class="empty-icon"><DocumentRemove /></el-icon>
-            <p>Chưa có quy tắc giá nào</p>
-            <el-button v-if="canEditPricing" type="primary" :icon="Plus" @click="openDialog(null)">Thêm quy tắc đầu tiên</el-button>
+            </el-table>
           </div>
-        </el-card>
-      </el-tab-pane>
+        </el-tab-pane>
 
-      <el-tab-pane label="Phí Dịch vụ Tiện Ích" name="extra_services">
-        <el-card shadow="never" class="table-card">
-          <template #header>
-            <div class="card-header">
-              <span class="card-title">Cấu hình phí dịch vụ cộng thêm</span>
-              <el-button v-if="canEditPricing" type="primary" :icon="Plus" @click="openServiceDialog(null)" plain>
-                Thêm Dịch vụ mới
-              </el-button>
+        <!-- TAB 2: EXTRA SERVICES -->
+        <el-tab-pane label="Phí Dịch vụ Tiện Ích" name="extra_services">
+          <div class="content-card table-wrapper">
+            <div class="card-header-inner mb-4 flex-between">
+              <h3 class="inner-title">Cấu hình phí dịch vụ cộng thêm</h3>
+              <button v-if="canEditPricing" class="btn-primary" @click="openServiceDialog(null)">
+                <el-icon><Plus /></el-icon> Thêm Dịch vụ mới
+              </button>
             </div>
-          </template>
 
-          <el-table :data="services" v-loading="serviceLoading" stripe style="width: 100%" :header-cell-style="{ background: '#f8fafc', color: '#374151', fontWeight: '600' }">
-            <el-table-column label="Mã Dịch vụ" width="150" align="center">
-              <template #default="{ row }">
-                <el-tag type="info" class="font-mono">{{ row.service_code }}</el-tag>
-              </template>
-            </el-table-column>
+            <el-table 
+              :data="services" 
+              v-loading="serviceLoading" 
+              class="modern-table"
+              row-class-name="modern-row"
+              style="width: 100%"
+            >
+              <el-table-column label="Mã Dịch vụ" min-width="140">
+                <template #default="{ row }">
+                  <span class="code-badge uppercase">{{ row.service_code }}</span>
+                </template>
+              </el-table-column>
 
-            <el-table-column prop="service_name" label="Tên Dịch vụ" min-width="200">
-              <template #default="{ row }">
-                <span style="font-weight: 600; color: #111827;">{{ row.service_name }}</span>
-              </template>
-            </el-table-column>
+              <el-table-column prop="service_name" label="Tên Dịch vụ" min-width="220">
+                <template #default="{ row }">
+                  <span class="fw-bold text-dark">{{ row.service_name }}</span>
+                </template>
+              </el-table-column>
 
-            <el-table-column label="Loại Phí" width="150" align="center">
-              <template #default="{ row }">
-                <el-tag :type="row.fee_type === 'FIXED' ? 'primary' : 'warning'" size="small">
-                  {{ row.fee_type === 'FIXED' ? 'Giá cố định' : 'Phần trăm (%)' }}
-                </el-tag>
-              </template>
-            </el-table-column>
+              <el-table-column label="Loại Phí" min-width="150" align="center">
+                <template #default="{ row }">
+                  <div class="modern-tag" :class="row.fee_type === 'FIXED' ? 'tag-primary' : 'tag-warning'">
+                    <span class="dot"></span>
+                    {{ row.fee_type === 'FIXED' ? 'Giá cố định' : 'Phần trăm (%)' }}
+                  </div>
+                </template>
+              </el-table-column>
 
-            <el-table-column label="Mức Phí" width="180" align="right">
-              <template #default="{ row }">
-                <div class="price-cell">
-                  <span class="price-value" style="color: #ea580c;">{{ formatMoney(row.fee_value) }}</span>
-                  <span class="price-unit">{{ row.fee_type === 'FIXED' ? 'VNĐ' : '% COD' }}</span>
-                </div>
-              </template>
-            </el-table-column>
+              <el-table-column label="Mức Phí áp dụng" min-width="180" align="right">
+                <template #default="{ row }">
+                  <div class="price-display highlight">
+                    <span class="amount">{{ formatMoney(row.fee_value) }}</span>
+                    <span class="currency">{{ row.fee_type === 'FIXED' ? 'VNĐ' : '% COD' }}</span>
+                  </div>
+                </template>
+              </el-table-column>
 
-            <el-table-column label="Trạng thái" width="120" align="center">
-              <template #default="{ row }">
-                <el-switch v-model="row.is_active" :disabled="!canEditPricing" @change="toggleServiceStatus(row)" style="--el-switch-on-color: #16a34a" />
-              </template>
-            </el-table-column>
+              <el-table-column label="Trạng thái" min-width="140" align="center">
+                <template #default="{ row }">
+                  <el-switch 
+                    v-model="row.is_active" 
+                    :disabled="!canEditPricing" 
+                    @change="toggleServiceStatus(row)" 
+                    style="--el-switch-on-color: #05CD99; --el-switch-off-color: #E2E8F0" 
+                  />
+                </template>
+              </el-table-column>
 
-            <el-table-column v-if="canEditPricing" label="Thao tác" width="100" align="center" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" :icon="Edit" @click="openServiceDialog(row)" />
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </el-tab-pane>
-
-    </el-tabs>
-
-    <el-dialog v-model="dialogVisible" :title="ruleForm.rule_id ? '✏️ Cập nhật Quy tắc Giá' : '➕ Thêm Quy tắc Giá mới'" width="600px" destroy-on-close>
-      <el-form :model="ruleForm" :rules="formRules" ref="ruleFormRef" label-position="top">
-        <div class="form-section-title">📍 Tuyến đường</div>
-        <el-row :gutter="16">
-          <el-col :span="11">
-            <el-form-item label="Bưu cục gửi (Origin)" prop="origin_hub_id">
-              <el-select v-model="ruleForm.origin_hub_id" filterable placeholder="Chọn bưu cục gửi" class="w-full">
-                <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="route-mid-arrow">
-            <el-icon><Right /></el-icon>
-          </el-col>
-          <el-col :span="11">
-            <el-form-item label="Bưu cục nhận (Destination)" prop="dest_hub_id">
-              <el-select v-model="ruleForm.dest_hub_id" filterable placeholder="Chọn bưu cục nhận" class="w-full">
-                <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <div class="form-section-title">📦 Loại dịch vụ & Khối lượng</div>
-        <el-form-item label="Loại dịch vụ" prop="service_type">
-          <el-radio-group v-model="ruleForm.service_type" class="service-radio-group">
-            <el-radio-button label="EXPRESS">⚡ Hoả tốc</el-radio-button>
-            <el-radio-button label="STANDARD">🚚 Tiêu chuẩn</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="Khối lượng từ (kg)" prop="min_weight">
-              <el-input-number v-model="ruleForm.min_weight" :precision="2" :step="0.5" :min="0" class="w-full" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="Khối lượng đến (kg)" prop="max_weight">
-              <el-input-number v-model="ruleForm.max_weight" :precision="2" :step="0.5" :min="0.01" class="w-full" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <div class="form-section-title">💰 Đơn giá</div>
-        <el-form-item label="Đơn giá (VNĐ)" prop="price">
-          <el-input-number v-model="ruleForm.price" :min="1000" :step="5000" class="w-full price-input" :controls="false" :formatter="val => val ? val.toLocaleString('vi-VN') : ''" :parser="val => val.replace(/[^\d]/g, '')" />
-          <div class="price-preview" v-if="ruleForm.price">
-            → <strong>{{ formatMoney(ruleForm.price) }} đ</strong>
+              <el-table-column v-if="canEditPricing" label="Thao tác" width="100" fixed="right" align="center">
+                <template #default="{ row }">
+                  <button class="icon-btn edit mx-auto" @click="openServiceDialog(row)" title="Chỉnh sửa">
+                    <el-icon><Edit /></el-icon>
+                  </button>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
-        </el-form-item>
+        </el-tab-pane>
+      </el-tabs>
 
-        <el-form-item label="Thuộc Chính sách giá">
-          <el-select v-model="ruleForm.policy_id" class="w-full">
-            <el-option v-for="p in policies" :key="p.policy_id" :label="p.policy_name" :value="p.policy_id" />
-          </el-select>
-        </el-form-item>
+      <!-- Dialog: Route Rule -->
+      <el-dialog 
+        v-model="dialogVisible" 
+        :title="ruleForm.rule_id ? 'Cập nhật Quy tắc Giá' : 'Thêm Quy tắc Giá mới'" 
+        width="750px" 
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <el-form :model="ruleForm" :rules="formRules" ref="ruleFormRef" label-position="top" class="modern-form">
+          
+          <div class="form-section">
+            <div class="section-header">
+              <el-icon><MapLocation /></el-icon>
+              <span>Thiết lập Tuyến đường</span>
+            </div>
+            <div class="route-selector-container">
+              <div class="route-box origin">
+                <el-form-item label="Bưu cục gửi (Origin)" prop="origin_hub_id" class="mb-0">
+                  <el-select v-model="ruleForm.origin_hub_id" filterable placeholder="Chọn bưu cục gửi" class="w-full">
+                    <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
+                  </el-select>
+                </el-form-item>
+              </div>
+              <div class="route-arrow-center">
+                <el-icon><Right /></el-icon>
+              </div>
+              <div class="route-box dest">
+                <el-form-item label="Bưu cục nhận (Destination)" prop="dest_hub_id" class="mb-0">
+                  <el-select v-model="ruleForm.dest_hub_id" filterable placeholder="Chọn bưu cục nhận" class="w-full">
+                    <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
+                  </el-select>
+                </el-form-item>
+              </div>
+            </div>
+          </div>
 
-        <el-form-item>
-          <el-switch v-model="ruleForm.is_active" active-text="Đang áp dụng" inactive-text="Tạm dừng" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="dialogVisible = false">Hủy bỏ</el-button>
-          <el-button type="primary" @click="handleSave" :loading="saveLoading" size="large">
-            {{ ruleForm.rule_id ? 'Cập nhật quy tắc' : 'Thêm quy tắc' }}
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="serviceDialogVisible" :title="serviceForm.id ? '✏️ Cập nhật Dịch vụ' : '➕ Thêm Dịch vụ mới'" width="500px" destroy-on-close>
-      <el-form :model="serviceForm" :rules="serviceRules" ref="serviceFormRef" label-position="top">
-        
-        <el-row :gutter="20">
-          <el-col :span="10">
-            <el-form-item label="Mã hệ thống (Code)" prop="service_code">
-              <el-input v-model="serviceForm.service_code" placeholder="VD: CO_CHECK" :disabled="!!serviceForm.id" class="font-mono uppercase"/>
+          <div class="form-section">
+            <div class="section-header">
+              <el-icon><Box /></el-icon>
+              <span>Dịch vụ & Khối lượng</span>
+            </div>
+            
+            <el-form-item label="Loại dịch vụ áp dụng" prop="service_type">
+              <el-radio-group v-model="ruleForm.service_type" class="custom-radio-group w-full">
+                <el-radio-button label="EXPRESS">
+                  <div class="radio-content">
+                    <el-icon><Lightning /></el-icon> <span>Hoả tốc (EXPRESS)</span>
+                  </div>
+                </el-radio-button>
+                <el-radio-button label="STANDARD">
+                  <div class="radio-content">
+                    <el-icon><Van /></el-icon> <span>Tiêu chuẩn (STANDARD)</span>
+                  </div>
+                </el-radio-button>
+              </el-radio-group>
             </el-form-item>
-          </el-col>
-          <el-col :span="14">
-            <el-form-item label="Tên hiển thị" prop="service_name">
-              <el-input v-model="serviceForm.service_name" placeholder="VD: Dịch vụ Đồng kiểm" />
+
+            <el-row :gutter="24">
+              <el-col :span="12">
+                <el-form-item label="Khối lượng từ (kg)" prop="min_weight">
+                  <el-input-number v-model="ruleForm.min_weight" :precision="2" :step="0.5" :min="0" class="w-full modern-input-number" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="Khối lượng đến (kg)" prop="max_weight">
+                  <el-input-number v-model="ruleForm.max_weight" :precision="2" :step="0.5" :min="0.01" class="w-full modern-input-number" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </div>
+
+          <div class="form-section no-border">
+            <div class="section-header">
+              <el-icon><Money /></el-icon>
+              <span>Đơn giá & Chính sách</span>
+            </div>
+            <el-row :gutter="24">
+              <el-col :span="12">
+                <el-form-item label="Đơn giá áp dụng (VNĐ)" prop="price">
+                  <el-input-number 
+                    v-model="ruleForm.price" 
+                    :min="1000" 
+                    :step="5000" 
+                    class="w-full modern-price-input" 
+                    :controls="false" 
+                    :formatter="val => val ? val.toLocaleString('vi-VN') : ''" 
+                    :parser="val => val.replace(/[^\d]/g, '')" 
+                  />
+                  <div class="price-hint" v-if="ruleForm.price">
+                    Tương đương: <strong>{{ formatMoney(ruleForm.price) }} VNĐ</strong>
+                  </div>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="Thuộc Chính sách giá">
+                  <el-select v-model="ruleForm.policy_id" class="w-full">
+                    <el-option v-for="p in policies" :key="p.policy_id" :label="p.policy_name" :value="p.policy_id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item class="mb-0 mt-2">
+              <div class="status-switch-wrapper">
+                <span class="fw-bold text-dark mr-3">Trạng thái:</span>
+                <el-switch 
+                  v-model="ruleForm.is_active" 
+                  active-text="Đang áp dụng" 
+                  inactive-text="Tạm dừng" 
+                  style="--el-switch-on-color: #05CD99" 
+                />
+              </div>
             </el-form-item>
-          </el-col>
-        </el-row>
+          </div>
+        </el-form>
 
-        <el-form-item label="Cách tính phí" prop="fee_type">
-          <el-radio-group v-model="serviceForm.fee_type" style="width: 100%; display: flex;">
-            <el-radio-button label="FIXED" style="flex: 1; text-align: center;">Giá Cố định (VNĐ)</el-radio-button>
-            <el-radio-button label="PERCENT" style="flex: 1; text-align: center;">Phần trăm (% COD)</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
+        <template #footer>
+          <div class="dialog-footer-actions">
+            <button class="btn-secondary" @click="dialogVisible = false">Hủy bỏ</button>
+            <button class="btn-primary" @click="handleSave" :disabled="saveLoading">
+              <el-icon class="is-loading mr-2" v-if="saveLoading"><Loading /></el-icon>
+              <span>{{ saveLoading ? 'Đang lưu...' : 'Xác nhận lưu' }}</span>
+            </button>
+          </div>
+        </template>
+      </el-dialog>
 
-        <el-form-item :label="serviceForm.fee_type === 'FIXED' ? 'Số tiền (VNĐ)' : 'Tỉ lệ phần trăm (%)'" prop="fee_value">
-          <el-input-number v-model="serviceForm.fee_value" :min="0" :step="serviceForm.fee_type === 'FIXED' ? 5000 : 0.5" class="w-full price-input" :controls="false" :formatter="val => val ? Number(val).toLocaleString('vi-VN') : ''" :parser="val => val.replace(/[^\d.]/g, '')" />
-        </el-form-item>
+      <!-- Dialog: Extra Service -->
+      <el-dialog 
+        v-model="serviceDialogVisible" 
+        :title="serviceForm.id ? 'Cập nhật Dịch vụ' : 'Thêm Dịch vụ mới'" 
+        width="600px" 
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <el-form :model="serviceForm" :rules="serviceRules" ref="serviceFormRef" label-position="top" class="modern-form">
+          
+          <el-row :gutter="24">
+            <el-col :span="10">
+              <el-form-item label="Mã hệ thống (Code)" prop="service_code">
+                <el-input v-model="serviceForm.service_code" placeholder="VD: CO_CHECK" :disabled="!!serviceForm.id" class="uppercase">
+                  <template #prefix><el-icon><Key /></el-icon></template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="14">
+              <el-form-item label="Tên hiển thị" prop="service_name">
+                <el-input v-model="serviceForm.service_name" placeholder="VD: Dịch vụ Đồng kiểm" />
+              </el-form-item>
+            </el-col>
+          </el-row>
 
-        <el-form-item>
-          <el-switch v-model="serviceForm.is_active" active-text="Đang áp dụng" inactive-text="Tạm khóa" />
-        </el-form-item>
+          <el-form-item label="Cách tính phí áp dụng" prop="fee_type">
+            <el-radio-group v-model="serviceForm.fee_type" class="custom-radio-group w-full">
+              <el-radio-button label="FIXED">Giá Cố định (VNĐ)</el-radio-button>
+              <el-radio-button label="PERCENT">Phần trăm (% COD)</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
 
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="serviceDialogVisible = false">Hủy bỏ</el-button>
-          <el-button type="primary" @click="handleSaveService" :loading="serviceSaveLoading">Xác nhận</el-button>
-        </div>
-      </template>
-    </el-dialog>
+          <el-form-item :label="serviceForm.fee_type === 'FIXED' ? 'Số tiền thu (VNĐ)' : 'Tỉ lệ phần trăm (%)'" prop="fee_value">
+            <el-input-number 
+              v-model="serviceForm.fee_value" 
+              :min="0" 
+              :step="serviceForm.fee_type === 'FIXED' ? 5000 : 0.5" 
+              class="w-full modern-price-input" 
+              :controls="false" 
+              :formatter="val => val ? Number(val).toLocaleString('vi-VN') : ''" 
+              :parser="val => val.replace(/[^\d.]/g, '')" 
+            />
+          </el-form-item>
 
+          <el-form-item class="mb-0">
+             <div class="status-switch-wrapper">
+                <span class="fw-bold text-dark mr-3">Trạng thái:</span>
+                <el-switch 
+                  v-model="serviceForm.is_active" 
+                  active-text="Đang áp dụng" 
+                  inactive-text="Tạm khóa" 
+                  style="--el-switch-on-color: #05CD99" 
+                />
+              </div>
+          </el-form-item>
+
+        </el-form>
+        <template #footer>
+          <div class="dialog-footer-actions">
+            <button class="btn-secondary" @click="serviceDialogVisible = false">Hủy bỏ</button>
+            <button class="btn-primary" @click="handleSaveService" :disabled="serviceSaveLoading">
+              <el-icon class="is-loading mr-2" v-if="serviceSaveLoading"><Loading /></el-icon>
+              <span>Xác nhận lưu</span>
+            </button>
+          </div>
+        </template>
+      </el-dialog>
+
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue';
-import { Plus, Edit, Delete, List, Right, Refresh, Search, Location, LocationFilled, CircleCheck, DocumentRemove, ScaleToOriginal, Ticket, Setting } from '@element-plus/icons-vue';
+import { 
+  Plus, Edit, Delete, List, Right, Refresh, RefreshRight, LocationFilled, 
+  CircleCheck, ScaleToOriginal, Ticket, Setting, Lightning, Van, 
+  MapLocation, Box, Money, Loading, Key
+} from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
-
-// Fix Lightning & Van icons
-const Lightning = { render: () => null };
-const Van = { render: () => null };
 
 // ================= THIẾT LẬP QUYỀN (RBAC) =================
 const authStore = useAuthStore();
@@ -391,7 +521,6 @@ const serviceRules = {
 // ================= COMPUTED & UTILS =================
 const activeCount = computed(() => rules.value.filter(r => r.is_active).length);
 const expressCount = computed(() => rules.value.filter(r => r.service_type === 'EXPRESS').length);
-const standardCount = computed(() => rules.value.filter(r => r.service_type === 'STANDARD').length);
 
 const filteredRules = computed(() => {
   return rules.value.filter(r => {
@@ -458,8 +587,17 @@ const handleSave = async () => {
 
 const handleDelete = (row) => {
   const routeLabel = `${row.origin_hub?.hub_name || row.origin_hub_id} → ${row.dest_hub?.hub_name || row.dest_hub_id}`;
-  ElMessageBox.confirm(`Xóa quy tắc giá cho tuyến "${routeLabel}"?`, 'Xác nhận xóa', { confirmButtonText: 'Xóa', cancelButtonText: 'Giữ lại', type: 'warning' })
-    .then(async () => {
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn xóa quy tắc giá cho tuyến <strong>${routeLabel}</strong>?`, 
+    'Xác nhận xóa', 
+    { 
+      confirmButtonText: 'Xóa quy tắc', 
+      cancelButtonText: 'Hủy bỏ', 
+      type: 'error',
+      dangerouslyUseHTMLString: true,
+      customClass: 'modern-message-box'
+    }
+  ).then(async () => {
       try {
         await api.delete(`/api/pricing/rules/${row.rule_id}`);
         ElMessage.success('Đã xóa quy tắc.');
@@ -467,7 +605,7 @@ const handleDelete = (row) => {
       } catch (err) {
         ElMessage.error('Không thể xóa.');
       }
-    });
+    }).catch(() => {});
 };
 
 // ================= HÀM CHO DỊCH VỤ TIỆN ÍCH =================
@@ -541,102 +679,257 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.pricing-rules-page {
-  padding: 0;
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* Base Layout */
+.modern-pricing-management {
+  min-height: calc(100vh - 64px);
+  background-color: #F4F7FE;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #2B3674;
+  padding: 32px 24px;
+}
+
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.mb-24 { margin-bottom: 24px; }
+.mb-4 { margin-bottom: 16px; }
+.w-full { width: 100%; }
+.w-200 { width: 200px; }
+.w-260 { width: 260px; }
+
+/* Header */
+.page-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.header-content .title-wrapper {
+  display: flex;
+  align-items: center;
   gap: 16px;
 }
 
-/* ── Header ── */
-.page-header {
+.icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
-  border-radius: 12px;
-  color: white;
+  justify-content: center;
+  font-size: 24px;
 }
-.header-left { display: flex; align-items: center; gap: 16px; }
-.header-icon { width: 52px; height: 52px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
-.page-title { margin: 0; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.3px; }
-.page-subtitle { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.8; }
+.icon-box.primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
 
-/* ── Stats ── */
-.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.stat-card { background: white; border-radius: 10px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); border: 1px solid #e5e7eb; }
-.stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-.stat-icon.blue { background: #eff6ff; color: #2563eb; }
-.stat-icon.green { background: #f0fdf4; color: #16a34a; }
-.stat-icon.orange { background: #fff7ed; color: #ea580c; }
-.stat-icon.purple { background: #faf5ff; color: #7c3aed; }
-.stat-info { display: flex; flex-direction: column; }
-.stat-value { font-size: 1.6rem; font-weight: 700; color: #111827; line-height: 1; }
-.stat-label { font-size: 0.75rem; color: #6b7280; margin-top: 4px; }
+.page-title { font-size: 28px; font-weight: 800; color: #2B3674; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+.page-subtitle { color: #A3AED0; font-size: 14px; margin: 0; font-weight: 500; }
 
-/* ── Custom Tabs ── */
-.custom-tabs {
-  background: white;
-  padding: 16px 20px;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-  border: 1px solid #e5e7eb;
-}
-.custom-tabs :deep(.el-tabs__item) {
-  font-weight: 600;
-  font-size: 1.05rem;
+.circle-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* ── Cards ── */
-.filter-card { border-radius: 8px; border: 1px solid #e5e7eb; }
-:deep(.filter-card .el-card__body) { padding: 16px 20px; }
-.filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.filter-actions { display: flex; gap: 8px; margin-left: auto; }
-.table-card { border-radius: 8px; border: 1px solid #e5e7eb; }
-.card-header { display: flex; align-items: center; justify-content: space-between; }
-.card-title { font-size: 0.95rem; font-weight: 600; color: #111827; }
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
 
-/* ── Table Cells ── */
-.route-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.hub-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
-.hub-tag.origin { background: #eff6ff; color: #1d4ed8; }
-.hub-tag.dest { background: #f0fdf4; color: #15803d; }
-.route-arrow { color: #9ca3af; font-size: 14px; }
-.hub-codes { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
-.code-badge { font-size: 0.7rem; font-family: monospace; background: #f3f4f6; color: #6b7280; padding: 1px 6px; border-radius: 4px; }
-.code-arrow { color: #d1d5db; font-size: 11px; }
+.stat-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.02);
+  transition: transform 0.3s ease;
+}
+.stat-card:hover { transform: translateY(-4px); }
 
-.service-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
-.service-badge.express { background: #fef3c7; color: #d97706; }
-.service-badge.standard { background: #e0f2fe; color: #0369a1; }
+.stat-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.bg-blue { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
+.bg-green { background: rgba(5, 205, 153, 0.1); color: #05CD99; }
+.bg-orange { background: rgba(255, 181, 71, 0.1); color: #FFB547; }
+.bg-purple { background: rgba(134, 140, 255, 0.1); color: #868CFF; }
 
-.weight-cell { display: flex; align-items: center; gap: 6px; justify-content: center; color: #374151; font-size: 0.85rem; }
+.stat-content { display: flex; flex-direction: column; }
+.stat-value { font-size: 24px; font-weight: 800; color: #2B3674; line-height: 1.2; }
+.stat-label { font-size: 13px; font-weight: 600; color: #A3AED0; margin-top: 4px; }
 
-.price-cell { display: flex; align-items: baseline; gap: 4px; justify-content: flex-end; }
-.price-value { font-size: 1.05rem; font-weight: 700; color: #16a34a; }
-.price-unit { font-size: 0.75rem; color: #6b7280; }
+/* Tabs */
+:deep(.modern-tabs .el-tabs__nav-wrap::after) { height: 1px; background-color: #E9EDF7; }
+:deep(.modern-tabs .el-tabs__item) { font-size: 15px; font-weight: 700; color: #A3AED0; height: 50px; line-height: 50px; }
+:deep(.modern-tabs .el-tabs__item.is-active) { color: #4318FF; }
+:deep(.modern-tabs .el-tabs__active-bar) { background-color: #4318FF; height: 3px; border-radius: 3px 3px 0 0; }
 
-.status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
-.status-pill.active { background: #dcfce7; color: #15803d; }
-.status-pill.inactive { background: #f3f4f6; color: #6b7280; }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-.status-pill.active .status-dot { background: #16a34a; }
-.status-pill.inactive .status-dot { background: #9ca3af; }
+/* Content Cards */
+.content-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.02);
+}
 
-.empty-state { padding: 60px 20px; text-align: center; color: #9ca3af; }
-.empty-icon { font-size: 3rem; margin-bottom: 12px; display: block; }
+.filter-wrapper { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.filter-inputs { display: flex; gap: 16px; flex-wrap: wrap; }
+.filter-actions { display: flex; gap: 12px; }
 
-/* ── Dialogs ── */
-.form-section-title { font-size: 0.8rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin: 12px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #f3f4f6; }
-.route-mid-arrow { display: flex; align-items: center; justify-content: center; padding-top: 32px; color: #9ca3af; font-size: 18px; }
-.price-preview { margin-top: 6px; font-size: 0.85rem; color: #6b7280; }
-.price-preview strong { color: #16a34a; font-size: 1rem; }
-.dialog-footer { display: flex; justify-content: flex-end; gap: 10px; }
+.card-header-inner { display: flex; align-items: center; gap: 16px; }
+.card-header-inner.flex-between { justify-content: space-between; }
+.inner-title { margin: 0; font-size: 18px; font-weight: 800; color: #1B2559; }
 
-.w-full { width: 100%; }
-.font-mono { font-family: monospace; }
-.uppercase :deep(input) { text-transform: uppercase; }
-:deep(.price-input .el-input__inner) { font-size: 1.2rem; font-weight: 800; color: #16a34a; text-align: right; }
-:deep(.el-table .table-row:hover td) { background: #f0f9ff !important; }
+/* Table Elements */
+:deep(.modern-table) {
+  --el-table-border-color: transparent;
+  --el-table-header-bg-color: #F4F7FE;
+  --el-table-header-text-color: #A3AED0;
+  --el-table-text-color: #2B3674;
+}
+:deep(.modern-table th.el-table__cell) { font-weight: 700; font-size: 13px; text-transform: uppercase; padding: 16px 0; border-bottom: 2px solid #E9EDF7 !important; }
+:deep(.modern-table td.el-table__cell) { padding: 16px 0; border-bottom: 1px solid #F4F7FE !important; }
+
+/* Route Visualization */
+.route-visualization { display: flex; align-items: center; gap: 12px; }
+.route-hub { display: flex; flex-direction: column; width: 120px; }
+.route-hub.origin .hub-code { color: #4318FF; background: rgba(67, 24, 255, 0.1); }
+.route-hub.dest .hub-code { color: #05CD99; background: rgba(5, 205, 153, 0.1); }
+.hub-code { font-family: monospace; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; width: fit-content; margin-bottom: 4px; }
+.hub-name { font-size: 13px; font-weight: 600; color: #1B2559; }
+.text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.route-connector { display: flex; align-items: center; position: relative; width: 40px; }
+.route-connector .line { flex: 1; height: 2px; background: #E2E8F0; }
+.route-connector .arrow-icon { color: #A3AED0; font-size: 14px; margin-left: -4px; }
+
+/* Tags & Badges */
+.modern-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.modern-tag .dot { width: 6px; height: 6px; border-radius: 50%; }
+.tag-info { background: rgba(143, 155, 186, 0.1); color: #8F9BBA; }
+.tag-info .dot { background: #8F9BBA; box-shadow: 0 0 0 2px rgba(143,155,186,0.2); }
+.tag-warning { background: rgba(255, 181, 71, 0.1); color: #FFB547; }
+.tag-warning .dot { background: #FFB547; box-shadow: 0 0 0 2px rgba(255,181,71,0.2); }
+.tag-primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
+.tag-primary .dot { background: #4318FF; }
+
+.weight-badge { display: inline-flex; align-items: center; gap: 6px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 12px; border-radius: 10px; font-weight: 600; font-size: 13px; color: #2B3674; }
+
+.price-display { display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; }
+.price-display .amount { font-size: 16px; font-weight: 800; color: #1B2559; }
+.price-display .currency { font-size: 12px; color: #A3AED0; font-weight: 600; }
+.price-display.highlight .amount { color: #EE5D50; }
+
+.code-badge { font-family: monospace; font-weight: 700; background: #F4F7FE; color: #4318FF; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+.uppercase { text-transform: uppercase; }
+
+.status-pill { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.status-pill.active { background: #05CD99; color: white; }
+.status-pill.locked { background: #E9EDF7; color: #8F9BBA; }
+
+/* Buttons */
+.btn-primary { background: #4318FF; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(67, 24, 255, 0.25); }
+.btn-primary:hover:not(:disabled) { background: #3311DB; transform: translateY(-2px); }
+.btn-secondary { background: #F4F7FE; color: #2B3674; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; }
+.btn-secondary:hover { background: #E9EDF7; }
+
+.action-buttons { display: flex; gap: 8px; justify-content: center; }
+.icon-btn { width: 32px; height: 32px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px; }
+.icon-btn.edit { background: #F4F7FE; color: #4318FF; }
+.icon-btn.edit:hover { background: #4318FF; color: white; }
+.icon-btn.delete { background: #FFF0F0; color: #EE5D50; }
+.icon-btn.delete:hover { background: #EE5D50; color: white; }
+
+.mx-auto { margin-left: auto; margin-right: auto; }
+
+/* Forms & Dialogs */
+:deep(.modern-dialog) { border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+:deep(.modern-dialog .el-dialog__header) { margin: 0; padding: 24px; border-bottom: 1px solid #E9EDF7; }
+:deep(.modern-dialog .el-dialog__title) { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #2B3674; font-size: 18px; }
+:deep(.modern-dialog .el-dialog__body) { padding: 24px; max-height: 70vh; overflow-y: auto; }
+:deep(.modern-dialog .el-dialog__footer) { padding: 16px 24px 24px; border-top: 1px solid #E9EDF7; }
+
+.dialog-footer-actions { display: flex; justify-content: flex-end; gap: 12px; }
+
+.form-section { background: #FFFFFF; border: 1px solid #E9EDF7; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+.form-section.no-border { border: none; background: #F8FAFC; }
+.section-header { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: #1B2559; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px dashed #E2E8F0; }
+.section-header .el-icon { color: #4318FF; font-size: 18px; }
+
+.route-selector-container { display: flex; align-items: flex-end; gap: 16px; }
+.route-box { flex: 1; }
+.route-arrow-center { padding-bottom: 15px; font-size: 24px; color: #A3AED0; }
+
+:deep(.modern-form .el-form-item__label) { font-weight: 700; color: #2B3674; margin-bottom: 8px; }
+:deep(.modern-input-number .el-input__wrapper),
+:deep(.modern-select .el-input__wrapper),
+:deep(.modern-form .el-input__wrapper),
+:deep(.modern-form .el-select__wrapper) { background: #F8FAFC; box-shadow: 0 0 0 1px #E2E8F0 inset !important; border-radius: 10px; padding: 8px 12px; transition: all 0.3s ease; }
+:deep(.modern-input-number .el-input__wrapper:hover),
+:deep(.modern-select .el-input__wrapper:hover),
+:deep(.modern-form .el-input__wrapper:hover),
+:deep(.modern-form .el-select__wrapper:hover) { box-shadow: 0 0 0 1px #4318FF inset !important; }
+:deep(.modern-input-number .el-input__wrapper.is-focus),
+:deep(.modern-select .el-input__wrapper.is-focus),
+:deep(.modern-form .el-input__wrapper.is-focus),
+:deep(.modern-form .el-select__wrapper.is-focus) { box-shadow: 0 0 0 2px rgba(67, 24, 255, 0.2) inset !important; background: #FFFFFF; }
+
+:deep(.modern-price-input .el-input__inner) { font-size: 18px !important; font-weight: 800 !important; color: #EE5D50 !important; text-align: right; }
+.price-hint { margin-top: 8px; font-size: 13px; color: #A3AED0; text-align: right; }
+.price-hint strong { color: #05CD99; font-size: 15px; }
+
+.status-switch-wrapper { display: flex; align-items: center; }
+
+/* Custom Radio Group */
+:deep(.custom-radio-group) { display: flex; gap: 12px; width: 100%; }
+:deep(.custom-radio-group .el-radio-button) { flex: 1; }
+:deep(.custom-radio-group .el-radio-button__inner) { width: 100%; border: 1px solid #E2E8F0 !important; background: #F8FAFC; color: #A3AED0; font-weight: 600; border-radius: 10px !important; padding: 12px; box-shadow: none !important; }
+:deep(.custom-radio-group .el-radio-button.is-active .el-radio-button__inner) { background: #4318FF; border-color: #4318FF !important; color: white; }
+.radio-content { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* Utilities */
+.fw-bold { font-weight: 700; }
+.text-dark { color: #1B2559; }
+.mr-3 { margin-right: 12px; }
+.mb-0 { margin-bottom: 0 !important; }
+.mt-2 { margin-top: 8px; }
+.mt-4 { margin-top: 16px; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+/* Animations */
+.animate-fade-in { animation: fadeIn 0.6s ease-out; }
+.animate-fade-in-up { animation: fadeInUp 0.6s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filter-wrapper { flex-direction: column; align-items: stretch; }
+  .filter-inputs { flex-direction: column; }
+  .filter-inputs .el-select { width: 100% !important; }
+  .route-selector-container { flex-direction: column; align-items: stretch; gap: 8px; }
+  .route-arrow-center { display: none; }
+  :deep(.custom-radio-group) { flex-direction: column; }
+}
 </style>

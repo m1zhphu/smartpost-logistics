@@ -1,20 +1,24 @@
 <template>
-  <el-container class="layout-container">
+  <el-container class="modern-layout-container">
     <!-- Tier 1: Primary Sidebar (Icons only) -->
     <div class="primary-sidebar">
       <div class="logo-mini">
         <div class="logo-icon">SP</div>
       </div>
       
-      <div 
-        v-for="menu in menuData" 
-        :key="menu.id"
-        class="menu-item-primary"
-        :class="{ active: activePrimaryId === menu.id }"
-        @click="handlePrimaryClick(menu)"
-      >
-        <el-icon :size="22"><component :is="menu.icon" /></el-icon>
-        <span class="menu-label">{{ menu.label }}</span>
+      <div class="menu-list">
+        <div 
+          v-for="menu in menuData" 
+          :key="menu.id"
+          class="menu-item-primary"
+          :class="{ active: activePrimaryId === menu.id }"
+          @click="handlePrimaryClick(menu)"
+        >
+          <div class="icon-wrapper">
+            <el-icon :size="22"><component :is="menu.icon" /></el-icon>
+          </div>
+          <span class="menu-label">{{ menu.label }}</span>
+        </div>
       </div>
     </div>
 
@@ -22,7 +26,9 @@
     <div class="secondary-panel" :class="{ open: isPanelOpen }">
       <div class="panel-header">
         <span class="panel-title">{{ activeMenuData?.label }}</span>
-        <el-icon class="close-btn" @click="isPanelOpen = false"><Close /></el-icon>
+        <button class="close-btn" @click="isPanelOpen = false">
+          <el-icon><Close /></el-icon>
+        </button>
       </div>
       
       <div class="panel-content">
@@ -35,6 +41,7 @@
             :class="{ active: $route.path === item.path }"
             @click="navigateTo(item.path)"
           >
+            <span class="item-dot"></span>
             {{ item.label }}
           </div>
         </div>
@@ -43,10 +50,12 @@
 
     <el-container class="main-wrapper" :class="{ 'panel-expanded': isPanelOpen }">
       <!-- Topbar -->
-      <el-header class="header">
+      <el-header class="modern-header">
         <div class="header-left">
           <div class="breadcrumb-info">
-             <el-icon class="home-icon"><HomeFilled /></el-icon>
+             <div class="home-icon-box">
+               <el-icon><HomeFilled /></el-icon>
+             </div>
              <span class="separator">/</span>
              <span class="page-title">{{ currentPageTitle }}</span>
           </div>
@@ -54,20 +63,34 @@
         
         <div class="header-right">
           <div class="search-box mr-4 hidden-sm-and-down">
-             <el-input placeholder="Tìm kiếm nhanh..." prefix-icon="Search" class="misa-search-input" />
+             <el-input 
+                placeholder="Tìm kiếm nhanh..." 
+                class="modern-search-input"
+             >
+                <template #prefix><el-icon><Search /></el-icon></template>
+             </el-input>
           </div>
           
           <div class="user-profile-wrapper">
-             <el-avatar :size="32" class="misa-avatar">{{ user?.full_name?.charAt(0) || 'A' }}</el-avatar>
-             <span class="user-display-name">
-                <b>{{ user?.full_name || 'Quản trị viên' }}</b>
-                <small>@{{ user?.username || 'admin' }} • {{ isAdmin ? 'Admin' : 'Nhân viên' }}</small>
-             </span>
-             <el-dropdown trigger="click">
-               <el-icon class="dropdown-trigger"><ArrowDown /></el-icon>
+             <el-dropdown trigger="click" placement="bottom-end">
+               <div class="user-profile-trigger">
+                 <el-avatar :size="40" class="modern-avatar">{{ user?.full_name?.charAt(0) || 'A' }}</el-avatar>
+                 <div class="user-display-name">
+                    <span class="fw-bold text-dark">{{ user?.full_name || 'Quản trị viên' }}</span>
+                    <span class="text-xs text-muted">{{ isAdmin ? 'Administrator' : 'Nhân viên' }}</span>
+                 </div>
+                 <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
+               </div>
+               
                <template #dropdown>
-                 <el-dropdown-menu>
-                   <el-dropdown-item @click="handleLogout">Đăng xuất</el-dropdown-item>
+                 <el-dropdown-menu class="modern-dropdown">
+                   <div class="dropdown-header">
+                      <div class="fw-bold text-dark">{{ user?.full_name || 'Quản trị viên' }}</div>
+                      <div class="text-xs text-muted">@{{ user?.username || 'admin' }}</div>
+                   </div>
+                   <el-dropdown-item divided @click="handleLogout" class="text-danger">
+                      <el-icon><Close /></el-icon> Đăng xuất
+                   </el-dropdown-item>
                  </el-dropdown-menu>
                </template>
              </el-dropdown>
@@ -75,9 +98,10 @@
         </div>
       </el-header>
       
+      <!-- Main Content -->
       <el-main class="main-content">
         <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
+          <transition name="fade-slide" mode="out-in">
             <component :is="Component" />
           </transition>
         </router-view>
@@ -169,12 +193,10 @@ const menuData = computed(() => {
     }
   ];
 
-  // Nếu chưa có user (lúc mới tải trang), trả về mảng rỗng để tránh lỗi
   if (!role) return [];
   return allMenus.filter(menu => menu.roles.includes(role));
 });
 
-// SỬA LỖI Ở ĐÂY: Thêm .value vào menuData
 const activeMenuData = computed(() => {
   if (!menuData.value) return null;
   return menuData.value.find(m => m.id === activePrimaryId.value);
@@ -203,7 +225,6 @@ const handleLogout = () => {
   authStore.logout();
 };
 
-// SỬA LỖI Ở ĐÂY: Thêm .value vào menuData
 watch(() => route.path, (newPath) => {
   if (!menuData.value || menuData.value.length === 0) return;
   
@@ -221,43 +242,56 @@ watch(() => route.path, (newPath) => {
 </script>
 
 <style scoped>
-.layout-container {
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+.modern-layout-container {
   height: 100vh;
   display: flex;
   overflow: hidden;
   position: relative;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #F4F7FE;
 }
 
-/* Tier 1 Sidebar */
+/* Tier 1: Primary Sidebar */
 .primary-sidebar {
-  width: 80px;
-  background-color: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  width: 90px;
+  background-color: #FFFFFF;
+  border-right: 1px solid #E9EDF7;
   display: flex;
   flex-direction: column;
   z-index: 100;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.02);
 }
 
 .logo-mini {
-  height: 64px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #F4F7FE;
+  margin-bottom: 16px;
 }
 
 .logo-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--misa-primary);
-  border-radius: 6px;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #4318FF 0%, #868CFF 100%);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 800;
-  font-size: 14px;
+  font-size: 18px;
+  box-shadow: 0 4px 15px rgba(67, 24, 255, 0.3);
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 12px;
 }
 
 .menu-item-primary {
@@ -266,165 +300,332 @@ watch(() => route.path, (newPath) => {
   align-items: center;
   justify-content: center;
   padding: 12px 0;
+  border-radius: 16px;
   cursor: pointer;
-  transition: all 0.2s;
-  color: #6b7280;
-  border-left: 3px solid transparent;
+  transition: all 0.3s ease;
+  color: #A3AED0;
 }
 
-.menu-item-primary:hover {
-  background-color: #f8fafc;
-  color: var(--misa-primary);
-}
-
-.menu-item-primary.active {
-  color: var(--misa-primary);
-  background-color: #eff6ff;
-  border-left-color: var(--misa-primary);
+.icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
 }
 
 .menu-label {
-  font-size: 10px;
-  margin-top: 4px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 6px;
   text-align: center;
+  transition: all 0.3s ease;
 }
 
-/* Tier 2 Panel */
+.menu-item-primary:hover .icon-wrapper {
+  background-color: #F4F7FE;
+  color: #4318FF;
+}
+
+.menu-item-primary:hover .menu-label {
+  color: #4318FF;
+}
+
+.menu-item-primary.active .icon-wrapper {
+  background-color: #4318FF;
+  color: white;
+  box-shadow: 0 4px 10px rgba(67, 24, 255, 0.25);
+}
+
+.menu-item-primary.active .menu-label {
+  color: #4318FF;
+}
+
+/* Tier 2: Secondary Panel */
 .secondary-panel {
-  width: 220px;
-  background-color: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  width: 260px;
+  background-color: #FFFFFF;
+  border-right: 1px solid #E9EDF7;
   position: absolute;
-  left: 80px;
+  left: 90px;
   top: 0;
   bottom: 0;
   z-index: 90;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
   transform: translateX(-100%);
   opacity: 0;
   pointer-events: none;
   display: flex;
   flex-direction: column;
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.03);
 }
 
 .secondary-panel.open {
   transform: translateX(0);
   opacity: 1;
   pointer-events: auto;
-  box-shadow: 10px 0 15px -3px rgba(0, 0, 0, 0.05);
 }
 
 .panel-header {
-  height: 64px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 0 24px;
+  border-bottom: 1px solid #F4F7FE;
 }
 
 .panel-title {
-  font-weight: 700;
-  font-size: 14px;
-  color: #111827;
-  text-transform: uppercase;
+  font-weight: 800;
+  font-size: 16px;
+  color: #1B2559;
+  letter-spacing: -0.5px;
 }
 
 .close-btn {
-  cursor: pointer;
-  color: #9ca3af;
-}
-
-.close-btn:hover { color: #111827; }
-
-.panel-content {
-  padding: 16px 0;
-  overflow-y: auto;
-}
-
-.menu-group {
-  margin-bottom: 24px;
-}
-
-.group-title {
-  padding: 0 16px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #9ca3af;
-  margin-bottom: 8px;
-  letter-spacing: 0.5px;
-}
-
-.sub-menu-item {
-  padding: 10px 16px 10px 32px;
-  font-size: 13px;
-  color: #4b5563;
+  background: #F4F7FE;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #A3AED0;
   cursor: pointer;
   transition: all 0.2s;
 }
 
+.close-btn:hover {
+  background: #EE5D50;
+  color: white;
+}
+
+.panel-content {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.panel-content::-webkit-scrollbar { width: 4px; }
+.panel-content::-webkit-scrollbar-thumb { background-color: #E9EDF7; border-radius: 4px; }
+
+.menu-group { margin-bottom: 28px; }
+
+.group-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #A3AED0;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sub-menu-item {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2B3674;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #E9EDF7;
+  transition: all 0.2s ease;
+}
+
 .sub-menu-item:hover {
-  background-color: #f3f4f6;
-  color: var(--misa-primary);
+  background-color: #F4F7FE;
+  color: #4318FF;
+  transform: translateX(4px);
+}
+
+.sub-menu-item:hover .item-dot {
+  background-color: #4318FF;
 }
 
 .sub-menu-item.active {
-  color: var(--misa-primary);
-  font-weight: 600;
-  background-color: #eff6ff;
+  background-color: rgba(67, 24, 255, 0.05);
+  color: #4318FF;
+}
+
+.sub-menu-item.active .item-dot {
+  background-color: #4318FF;
+  box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
 }
 
 /* Main Content Area */
 .main-wrapper {
   flex: 1;
-  transition: padding-left 0.3s;
-}
-
-.main-wrapper.panel-expanded {
-  padding-left: 0; /* Content is pushed OR covered depending on requirement. Usually pushed in MISA. */
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s;
+  background-color: #F4F7FE;
 }
 
 /* Header */
-.header {
-  height: 64px;
-  background: white;
-  border-bottom: 1px solid #f3f4f6;
+.modern-header {
+  height: 80px;
+  background: #F4F7FE;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 32px;
 }
 
 .breadcrumb-info {
-  display: flex; align-items: center; gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.home-icon { color: #6b7280; cursor: pointer; }
-.separator { color: #d1d5db; }
-.page-title { font-weight: 700; color: #111827; font-size: 15px; }
 
-.header-right { display: flex; align-items: center; }
+.home-icon-box {
+  width: 32px;
+  height: 32px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4318FF;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
 
+.separator {
+  color: #A3AED0;
+  font-weight: 600;
+}
+
+.page-title {
+  font-weight: 800;
+  color: #1B2559;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+/* Search Input */
+:deep(.modern-search-input .el-input__wrapper) {
+  background: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02) !important;
+  border: 1px solid transparent;
+  padding: 6px 20px;
+  width: 250px;
+  transition: all 0.3s;
+}
+
+:deep(.modern-search-input .el-input__wrapper.is-focus) {
+  border-color: #4318FF;
+  box-shadow: 0 4px 15px rgba(67, 24, 255, 0.1) !important;
+}
+
+:deep(.modern-search-input .el-input__inner) {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500;
+  color: #1B2559;
+}
+
+/* User Profile */
 .user-profile-wrapper {
-  display: flex; align-items: center; gap: 12px;
-  padding-left: 16px; border-left: 1px solid #f3f4f6;
+  margin-left: 20px;
+}
+
+.user-profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  background: #FFFFFF;
+  padding: 6px 16px 6px 6px;
+  border-radius: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  transition: all 0.3s ease;
+}
+
+.user-profile-trigger:hover {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.modern-avatar {
+  background: linear-gradient(135deg, #FFB547 0%, #FF8A00 100%);
+  color: white;
+  font-weight: 800;
+  font-size: 16px;
 }
 
 .user-display-name {
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
-.user-display-name b { font-size: 13px; color: #111827; }
-.user-display-name small { font-size: 11px; color: #6b7280; }
-.dropdown-trigger { cursor: pointer; color: #9ca3af; }
 
+.dropdown-icon {
+  color: #A3AED0;
+  font-weight: bold;
+}
+
+/* Dropdown styling */
+:deep(.modern-dropdown) {
+  border-radius: 16px;
+  padding: 8px;
+  min-width: 200px;
+}
+
+.dropdown-header {
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid #F4F7FE;
+  margin-bottom: 8px;
+}
+
+:deep(.modern-dropdown .el-dropdown-menu__item) {
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+:deep(.modern-dropdown .el-dropdown-menu__item:hover) {
+  background-color: #FFF0F0;
+  color: #EE5D50;
+}
+
+/* Main Content Wrapper */
 .main-content {
-  background-color: #f8fafc;
-  padding: 24px;
+  padding: 0;
+  height: calc(100vh - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.main-content::-webkit-scrollbar { width: 6px; }
+.main-content::-webkit-scrollbar-thumb { background-color: #E2E8F0; border-radius: 10px; }
 
-.mr-4 { margin-right: 1rem; }
+/* Transitions */
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fade-slide-enter-from { opacity: 0; transform: translateY(10px); }
+.fade-slide-leave-to { opacity: 0; transform: translateY(-10px); }
+
+/* Utility Classes */
+.mr-4 { margin-right: 16px; }
+.fw-bold { font-weight: 700; }
+.text-dark { color: #1B2559; }
+.text-muted { color: #A3AED0; }
+.text-xs { font-size: 12px; }
+.text-danger { color: #EE5D50; }
 </style>
-

@@ -1,174 +1,290 @@
 <template>
-  <div class="scan-in-page">
-    <el-tabs v-model="activeTab" class="scan-tabs">
-      
-      <el-tab-pane label="📷 Quét Nhập Kho" name="scan">
-        
-        <el-card class="scan-card mb-4 text-center">
-          <div class="scanner-section">
-            <h2 class="misa-title mb-4">Quét Nhập kho & Cân hàng thực tế</h2>
-            <el-input
-              v-model="barcode"
-              placeholder="Quét mã Vận đơn bằng máy quét, hoặc gõ tay và nhấn Enter..."
-              class="barcode-input"
-              ref="barcodeRef"
-              @keyup.enter="handleScan(barcode)"
-              :disabled="loading"
-              size="large"
-              prefix-icon="Grid"
-            >
-              <template #append>
-                <el-button @click="handleScan(barcode)" type="primary" :loading="loading">QUÉT (ENTER)</el-button>
-              </template>
-            </el-input>
+  <div class="modern-scan-in">
+    <div class="page-container">
+
+      <!-- Header Section -->
+      <header class="page-header animate-fade-in">
+        <div class="header-content">
+          <div class="title-wrapper">
+            <div class="icon-box primary">
+              <el-icon><Grid /></el-icon>
+            </div>
+            <div>
+              <h2 class="page-title">Quét Nhập kho & Cân hàng</h2>
+              <p class="page-subtitle">Xác nhận đơn hàng vào bưu cục và cập nhật khối lượng thực tế</p>
+            </div>
           </div>
-        </el-card>
+        </div>
+      </header>
 
-        <el-row :gutter="20">
+      <el-tabs v-model="activeTab" class="modern-tabs animate-fade-in-up">
+        
+        <!-- TAB 1: SCAN IN -->
+        <el-tab-pane name="scan">
+          <template #label>
+            <div class="tab-label"><el-icon><FullScreen /></el-icon> <span>Quét Nhập Kho</span></div>
+          </template>
           
-          <el-col :span="10">
-            <el-card class="list-card pending-card">
-              <template #header>
-                <div class="flex-between">
-                  <span class="font-bold text-warning"><el-icon><Timer /></el-icon> Đơn bưu cục nhà chờ nhập kho</span>
-                  <el-button size="small" circle :icon="Refresh" @click="fetchPendingBills" />
+          <!-- Scanner Input Section -->
+          <div class="content-card scanner-card mb-24">
+            <div class="scanner-wrapper">
+              <el-input
+                v-model="barcode"
+                placeholder="Quét mã Vận đơn hoặc gõ tay và nhấn Enter..."
+                class="modern-scanner-input"
+                ref="barcodeRef"
+                @keyup.enter="handleScan(barcode)"
+                :disabled="loading"
+              >
+                <template #prefix><el-icon class="scanner-icon"><Grid /></el-icon></template>
+                <template #append>
+                  <button class="btn-scan" @click="handleScan(barcode)" :disabled="loading">
+                    <el-icon class="is-loading mr-2" v-if="loading"><Loading /></el-icon>
+                    <span>{{ loading ? 'ĐANG QUÉT' : 'QUÉT (ENTER)' }}</span>
+                  </button>
+                </template>
+              </el-input>
+            </div>
+          </div>
+
+          <!-- Split Layout: Pending vs Success -->
+          <el-row :gutter="24" class="split-layout">
+            
+            <!-- LEFT COLUMN: Pending Items -->
+            <el-col :span="10">
+              <div class="content-card list-card border-top-warning">
+                <div class="card-header-inner flex-between mb-4">
+                  <div class="flex-center gap-2 text-warning fw-bold">
+                    <el-icon><Timer /></el-icon> <span>Chờ nhập kho</span>
+                  </div>
+                  <button class="icon-btn secondary" @click="fetchPendingBills" title="Làm mới">
+                    <el-icon><Refresh /></el-icon>
+                  </button>
                 </div>
-              </template>
-              <el-table :data="pendingItems" v-loading="pendingLoading" stripe height="450px">
-                <el-table-column prop="waybill_code" label="Mã Vận đơn" width="140">
-                  <template #default="{ row }">
-                    <span class="font-mono text-xs">{{ row.waybill_code }}</span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="receiver_name" label="Người nhận" min-width="120" show-overflow-tooltip />
-                <el-table-column label="Thao tác" width="100" align="center" fixed="right">
-                  <template #default="{ row }">
-                    <el-button type="primary" size="small" @click="handleScan(row.waybill_code)" plain>
-                      Nhập vào
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
-          </el-col>
 
-          <el-col :span="14">
-            <el-card class="list-card success-card">
-              <template #header>
-                <div class="flex-between">
-                  <span class="font-bold text-success"><el-icon><CircleCheck /></el-icon> Đơn vừa nhập thành công</span>
-                  <el-tag type="success">{{ scannedItems.length }} đơn</el-tag>
-                </div>
-              </template>
-              <el-table :data="scannedItems" stripe height="450px" border>
-                <el-table-column prop="barcode" label="Mã Vận đơn" width="140">
-                  <template #default="{ row }">
-                    <span class="text-primary font-bold font-mono text-xs">{{ row.barcode }}</span>
+                <el-table 
+                  :data="pendingItems" 
+                  v-loading="pendingLoading" 
+                  class="modern-table compact-table"
+                  height="400px"
+                >
+                  <el-table-column prop="waybill_code" label="Mã VĐ" width="120">
+                    <template #default="{ row }">
+                      <span class="code-badge warning">{{ row.waybill_code }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="receiver_name" label="Người nhận" min-width="120" show-overflow-tooltip>
+                    <template #default="{ row }">
+                      <span class="text-dark fw-bold">{{ row.receiver_name }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Thao tác" width="90" align="center" fixed="right">
+                    <template #default="{ row }">
+                      <button class="btn-action-small" @click="handleScan(row.waybill_code)">
+                        Nhập
+                      </button>
+                    </template>
+                  </el-table-column>
+                  <template #empty>
+                    <el-empty description="Không có đơn chờ nhập" :image-size="60" />
                   </template>
-                </el-table-column>
-                
-                <el-table-column label="Khối lượng (Shop)" width="90" align="center">
-                  <template #default="{ row }">
-                    <span class="text-muted text-xs">{{ row.declared_weight || '0' }}kg</span>
-                  </template>
-                </el-table-column>
-                
-                <el-table-column label="Cân lại (Thực tế) 🖊️" width="160">
-                  <template #default="{ row, $index }">
-                    <el-input-number 
-                      v-model="row.actual_weight" 
-                      :precision="2" 
-                      :step="0.1" 
-                      :min="0.1"
-                      :ref="(el) => weightInputsRef[$index] = el"
-                      @change="updateWeight(row)"
-                      @keyup.enter="handleWeightEnter"
-                      size="small"
-                      class="w-full"
-                    />
-                  </template>
-                </el-table-column>
-
-                <el-table-column prop="receiver_name" label="Người nhận" min-width="120" show-overflow-tooltip />
-                
-                <el-table-column label="Bỏ" width="60" align="center">
-                  <template #default="{ $index }">
-                    <el-button type="danger" text @click="removeItem($index)"><el-icon><Delete /></el-icon></el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
-          </el-col>
-        </el-row>
-      </el-tab-pane>
-
-      <el-tab-pane name="history">
-        <template #label><span>📋 Nhật ký thao tác Nhập Kho</span></template>
-        <el-card class="mb-4">
-          <el-row :gutter="20" align="middle">
-            <el-col :span="8">
-              <span class="mr-2">Chọn ngày:</span>
-              <el-date-picker v-model="historyDate" type="date" format="DD/MM/YYYY" value-format="YYYY-MM-DD" :disabled-date="(d) => d > new Date()" @change="loadHistory" />
+                </el-table>
+              </div>
             </el-col>
-            <el-col :span="16" class="flex-end">
-              <el-button type="primary" :icon="Search" @click="loadHistory" :loading="historyLoading">Tải dữ liệu</el-button>
-              <el-tag type="info" class="ml-4" size="large">Tổng đơn đã quét: <strong>{{ historyTotal }}</strong></el-tag>
+
+            <!-- RIGHT COLUMN: Successfully Scanned Items -->
+            <el-col :span="14">
+              <div class="content-card list-card border-top-success">
+                <div class="card-header-inner flex-between mb-4">
+                  <div class="flex-center gap-2 text-success fw-bold">
+                    <el-icon><CircleCheckFilled /></el-icon> <span>Vừa nhập thành công</span>
+                  </div>
+                  <el-tag type="success" effect="light" round class="fw-bold px-3">{{ scannedItems.length }} đơn</el-tag>
+                </div>
+
+                <el-table 
+                  :data="scannedItems" 
+                  class="modern-table compact-table highlight-table"
+                  height="400px"
+                >
+                  <el-table-column prop="barcode" label="Mã Vận đơn" width="130">
+                    <template #default="{ row }">
+                      <span class="code-badge success">{{ row.barcode }}</span>
+                    </template>
+                  </el-table-column>
+                  
+                  <el-table-column label="KL Shop" width="80" align="center">
+                    <template #default="{ row }">
+                      <span class="text-muted text-xs">{{ row.declared_weight || '0' }}kg</span>
+                    </template>
+                  </el-table-column>
+                  
+                  <el-table-column label="Cân lại (Thực tế)" width="150" align="center">
+                    <template #default="{ row, $index }">
+                      <el-input-number 
+                        v-model="row.actual_weight" 
+                        :precision="2" 
+                        :step="0.1" 
+                        :min="0.1"
+                        :ref="(el) => weightInputsRef[$index] = el"
+                        @change="updateWeight(row)"
+                        @keyup.enter="handleWeightEnter"
+                        class="w-full modern-input-small weight-input"
+                        :controls="false"
+                      />
+                    </template>
+                  </el-table-column>
+
+                  <el-table-column prop="receiver_name" label="Người nhận" min-width="120" show-overflow-tooltip>
+                    <template #default="{ row }">
+                      <span class="text-dark fw-bold">{{ row.receiver_name }}</span>
+                    </template>
+                  </el-table-column>
+                  
+                  <el-table-column label="Bỏ" width="60" align="center" fixed="right">
+                    <template #default="{ $index }">
+                      <button class="icon-btn delete small" @click="removeItem($index)">
+                        <el-icon><Close /></el-icon>
+                      </button>
+                    </template>
+                  </el-table-column>
+                  <template #empty>
+                    <el-empty description="Chưa quét đơn nào" :image-size="60" />
+                  </template>
+                </el-table>
+              </div>
             </el-col>
           </el-row>
-        </el-card>
+        </el-tab-pane>
 
-        <el-card v-loading="historyLoading">
-          <el-table :data="historyItems" stripe border style="width:100%">
-            <el-table-column type="index" width="55" label="STT" />
-            <el-table-column prop="waybill_code" label="Mã Vận đơn" width="180">
-              <template #default="{ row }"><span class="text-primary font-bold">{{ row.waybill_code }}</span></template>
-            </el-table-column>
-            <el-table-column prop="receiver_name" label="Người nhận" min-width="160" />
-            <el-table-column label="KL Shop nhập" width="130">
-                <template #default="{ row }"><span class="text-muted">{{ row.declared_weight || '---' }} kg</span></template>
-            </el-table-column>
-            <el-table-column label="KL Thực tế (kg)" width="130">
-                <template #default="{ row }"><b class="text-success">{{ row.actual_weight || '---' }} kg</b></template>
-            </el-table-column>
-            
-            <el-table-column label="Giờ thao tác" width="160">
-              <template #default="{ row }"><span>{{ formatTime(row.scan_time || row.system_time) }}</span></template>
-            </el-table-column>
-            
-            <el-table-column prop="user_name" label="Người nhập kho" min-width="160">
-              <template #default="{ row }">
-                <span class="font-bold" style="color: #4b5563;">
-                  <el-icon class="mr-1"><User /></el-icon> {{ row.user_name || 'Hệ thống' }}
-                </span>
-              </template>
-            </el-table-column>
-            
-            <el-table-column label="Thao tác" width="120">
-              <template #default><el-tag type="info" effect="plain">Lưu vết IN_HUB</el-tag></template>
-            </el-table-column>
-          </el-table>
-          <div class="flex-end mt-4">
-            <el-pagination v-model:current-page="historyPage" :page-size="historySize" layout="total, prev, pager, next" :total="historyTotal" @current-change="loadHistory" />
+        <!-- TAB 2: HISTORY -->
+        <el-tab-pane name="history">
+          <template #label>
+            <div class="tab-label"><el-icon><List /></el-icon> <span>Nhật ký thao tác</span></div>
+          </template>
+          
+          <div class="content-card filter-card mb-24">
+            <el-row :gutter="20" class="filter-row" align="middle">
+              <el-col :xs="24" :sm="12" :lg="8" class="filter-col">
+                <div class="filter-label">Chọn ngày quét</div>
+                <el-date-picker 
+                  v-model="historyDate" 
+                  type="date" 
+                  format="DD/MM/YYYY" 
+                  value-format="YYYY-MM-DD" 
+                  :disabled-date="(d) => d > new Date()" 
+                  @change="loadHistory" 
+                  class="w-full modern-date-picker"
+                />
+              </el-col>
+              <el-col :xs="24" :sm="12" :lg="16" class="filter-action-col flex-end">
+                <el-tag type="primary" effect="light" round class="fw-bold px-4 mr-3" size="large">
+                  Tổng đơn đã quét: {{ historyTotal }}
+                </el-tag>
+                <button class="btn-primary" @click="loadHistory" :disabled="historyLoading">
+                  <el-icon class="is-loading mr-2" v-if="historyLoading"><Loading /></el-icon>
+                  <el-icon v-else><Search /></el-icon>
+                  <span>Tải dữ liệu</span>
+                </button>
+              </el-col>
+            </el-row>
           </div>
-        </el-card>
-      </el-tab-pane>
 
-    </el-tabs>
+          <div class="content-card table-wrapper">
+            <el-table 
+              :data="historyItems" 
+              v-loading="historyLoading" 
+              class="modern-table"
+              style="width:100%"
+            >
+              <el-table-column type="index" width="60" label="STT" align="center" />
+              <el-table-column prop="waybill_code" label="Mã Vận đơn" width="160">
+                <template #default="{ row }">
+                  <span class="code-badge primary">{{ row.waybill_code }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column prop="receiver_name" label="Người nhận" min-width="160">
+                <template #default="{ row }">
+                  <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="So sánh Khối lượng" width="200" align="center">
+                <template #default="{ row }">
+                  <div class="weight-compare">
+                    <span class="text-muted">{{ row.declared_weight || '---' }} kg</span>
+                    <el-icon class="arrow-right"><Right /></el-icon>
+                    <span class="text-success fw-bold">{{ row.actual_weight || '---' }} kg</span>
+                  </div>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="Thời gian" width="180">
+                <template #default="{ row }">
+                  <span class="time-badge">
+                    <el-icon class="mr-1"><Clock /></el-icon>
+                    {{ formatTime(row.scan_time || row.system_time) }}
+                  </span>
+                </template>
+              </el-table-column>
+              
+              <el-table-column prop="user_name" label="Người thao tác" min-width="180">
+                <template #default="{ row }">
+                  <div class="user-info">
+                    <el-icon><User /></el-icon>
+                    <span>{{ row.user_name || 'Hệ thống' }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="Thao tác" width="140" align="center">
+                <template #default>
+                  <div class="modern-tag tag-info">
+                    <span class="dot"></span> IN_HUB
+                  </div>
+                </template>
+              </el-table-column>
+              <template #empty>
+                <el-empty description="Không có dữ liệu nhật ký" :image-size="80" />
+              </template>
+            </el-table>
+            
+            <div class="pagination-wrapper mt-24 flex-end">
+              <el-pagination 
+                v-model:current-page="historyPage" 
+                :page-size="historySize" 
+                layout="total, prev, pager, next" 
+                :total="historyTotal" 
+                @current-change="loadHistory" 
+                background
+                class="modern-pagination"
+              />
+            </div>
+          </div>
+        </el-tab-pane>
 
-    <audio ref="beepOk" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
-    <audio ref="beepError" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+      </el-tabs>
+
+      <!-- Audio Elements -->
+      <audio ref="beepOk" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
+      <audio ref="beepError" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue';
-import { Grid, Delete, Search, Refresh, Timer, CircleCheck, User } from '@element-plus/icons-vue';
+import { 
+  Grid, Delete, Search, Refresh, Timer, User, List, Right, 
+  CircleCheckFilled, Close, Clock, FullScreen, Loading 
+} from '@element-plus/icons-vue';
 import moment from 'moment';
 import api from '@/api/axios';
 import { ElMessage, ElNotification } from 'element-plus';
-import { useAuthStore } from '@/stores/auth'; // ĐÃ THÊM: Import Store
+import { useAuthStore } from '@/stores/auth'; 
 
-const auth = useAuthStore(); // Sử dụng authStore để quản lý quyền
+const auth = useAuthStore(); 
 
 const activeTab = ref('scan');
 
@@ -183,7 +299,6 @@ const weightInputsRef = ref([]);
 const pendingItems = ref([]);
 const pendingLoading = ref(false);
 
-// ĐÃ SỬA: Lấy currentHubId trực tiếp từ Store một cách an toàn
 const currentHubId = computed(() => auth.user?.primary_hub_id);
 
 const fetchPendingBills = async () => {
@@ -195,13 +310,9 @@ const fetchPendingBills = async () => {
       size: 100 
     };
 
-    // NẾU LÀ ADMIN (Role 1): Không bắt buộc lọc theo Hub, trừ khi Admin chủ động chọn
     if (auth.user?.role_id === 1) {
-       // Nếu Admin có chọn một Hub cụ thể trên giao diện (ví dụ qua một dropdown chọn bến)
-       // thì payload.origin_hub_id = ... 
-       // Còn mặc định, Admin sẽ thấy TẤT CẢ đơn CREATED trên toàn hệ thống.
+       // Logic for Admin (omitted)
     } else {
-       // NẾU LÀ NHÂN VIÊN: Bắt buộc chỉ thấy đơn của bưu cục mình
        if (currentHubId.value) {
          payload.origin_hub_id = currentHubId.value;
        } else {
@@ -233,20 +344,15 @@ const handleScan = async (codeToScan) => {
 
   loading.value = true;
   
-  // --- IN LOG TRƯỚC KHI GỬI ---
   console.log(`[SCAN IN] Bắt đầu quét mã: ${code}`);
   console.log(`[SCAN IN] currentHubId từ Store: ${currentHubId.value}`);
   
-  // 1. Chuẩn bị Payload
-  // Thử gửi kèm cả hub_id xem Backend có bắt buộc không (tùy thuộc vào schema_wh.ScanRequest của bạn)
   const payload = { 
       waybill_code: code,
-      // Gửi kèm hub_id hoặc ghi chú nếu Backend yêu cầu trong Schema
       hub_id: currentHubId.value || null, 
       note: "Quét từ Web"
   };
   
-  // 2. Chuẩn bị Config
   const config = {
       headers: { 'Idempotency-Key': new Date().getTime().toString() }
   };
@@ -259,8 +365,9 @@ const handleScan = async (codeToScan) => {
     
     console.log(`[SCAN IN] Thành công! Dữ liệu trả về:`, res.data);
 
-    if (beepError.value) {
-        beepError.value.play().catch(e => console.warn("Lỗi phát âm thanh (Bỏ qua)"));
+    // FIXED: Play correct success sound instead of error sound
+    if (beepOk.value) {
+        beepOk.value.play().catch(e => console.warn("Lỗi phát âm thanh (Bỏ qua)"));
     }
 
     const newItem = {
@@ -285,7 +392,6 @@ const handleScan = async (codeToScan) => {
   } catch (err) {
     console.error(`[SCAN IN] ❌ Lỗi từ Backend:`, err);
     
-    // --- IN LOG LỖI CHI TIẾT ---
     if (err.response) {
         console.error(`[SCAN IN] Status Code:`, err.response.status);
         console.error(`[SCAN IN] Data lỗi:`, err.response.data);
@@ -317,8 +423,8 @@ const updateWeight = async (row) => {
       actual_weight: row.actual_weight
     });
     ElNotification({
-      title: 'Hệ thống',
-      message: `Đã lưu cân nặng ${row.actual_weight}kg cho đơn ${row.barcode}`,
+      title: 'Thành công',
+      message: `Đã lưu cân nặng thực tế ${row.actual_weight}kg cho đơn ${row.barcode}`,
       type: 'success',
       position: 'bottom-right'
     });
@@ -373,17 +479,187 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.scan-card { border-top: 4px solid #409EFF; }
-.barcode-input :deep(.el-input__inner) { 
-    height: 60px; font-size: 1.8rem; text-align: center; font-weight: bold; color: #409EFF;
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* Base Layout */
+.modern-scan-in {
+  min-height: calc(100vh - 64px);
+  background-color: #F4F7FE; /* Light SaaS background */
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #2B3674;
+  padding: 32px 24px;
 }
-.flex-between { display: flex; justify-content: space-between; align-items: center; }
-.flex-end { display: flex; justify-content: flex-end; gap: 10px; }
+
+.page-container {
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+/* Utilities */
+.mb-24 { margin-bottom: 24px; }
+.mb-4 { margin-bottom: 16px; }
 .w-full { width: 100%; }
-.font-mono { font-family: monospace; }
-.text-xs { font-size: 0.85rem; }
-.text-warning { color: #e6a23c; }
-.text-success { color: #67c23a; }
-.pending-card { border-top: 3px solid #e6a23c; }
-.success-card { border-top: 3px solid #67c23a; }
+.fw-bold { font-weight: 700; }
+.text-dark { color: #1B2559; }
+.text-muted { color: #A3AED0; }
+.text-warning { color: #FFB547; }
+.text-success { color: #05CD99; }
+.text-xs { font-size: 12px; }
+.mr-1 { margin-right: 4px; }
+.mr-2 { margin-right: 8px; }
+.px-3 { padding-left: 12px; padding-right: 12px; }
+.px-4 { padding-left: 16px; padding-right: 16px; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-center { display: flex; align-items: center; }
+.flex-end { display: flex; justify-content: flex-end; align-items: center; }
+.gap-2 { gap: 8px; }
+
+/* Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.header-content .title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.icon-box.primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
+
+.page-title { font-size: 28px; font-weight: 800; color: #2B3674; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+.page-subtitle { color: #A3AED0; font-size: 14px; margin: 0; font-weight: 500; }
+
+/* Tabs */
+.tab-label { display: flex; align-items: center; gap: 8px; }
+:deep(.modern-tabs .el-tabs__nav-wrap::after) { height: 1px; background-color: #E9EDF7; }
+:deep(.modern-tabs .el-tabs__item) { font-size: 15px; font-weight: 700; color: #A3AED0; height: 50px; line-height: 50px; }
+:deep(.modern-tabs .el-tabs__item.is-active) { color: #4318FF; }
+:deep(.modern-tabs .el-tabs__active-bar) { background-color: #4318FF; height: 3px; border-radius: 3px 3px 0 0; }
+
+/* Content Cards */
+.content-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+.filter-card { padding: 20px 24px; }
+.list-card { padding: 20px; }
+.border-top-warning { border-top: 4px solid #FFB547; }
+.border-top-success { border-top: 4px solid #05CD99; }
+
+.card-header-inner { font-size: 15px; border-bottom: 1px dashed #E2E8F0; padding-bottom: 12px; }
+
+/* Scanner Input Section */
+.scanner-card { padding: 32px 40px; background: linear-gradient(to right, #ffffff, #f8fafc); border: 1px solid #E2E8F0; }
+.scanner-wrapper { max-width: 800px; margin: 0 auto; }
+
+:deep(.modern-scanner-input .el-input__wrapper) {
+  background: #FFFFFF; box-shadow: 0 4px 20px rgba(67, 24, 255, 0.08) !important; 
+  border-radius: 16px 0 0 16px; padding: 12px 20px; border: 2px solid transparent; transition: all 0.3s;
+}
+:deep(.modern-scanner-input .el-input__wrapper.is-focus) {
+  border-color: #4318FF; box-shadow: 0 8px 30px rgba(67, 24, 255, 0.15) !important;
+}
+:deep(.modern-scanner-input .el-input__inner) {
+  height: 60px; font-size: 24px; text-align: center; font-weight: 800; color: #4318FF; font-family: monospace; letter-spacing: 2px;
+}
+.scanner-icon { font-size: 28px; color: #A3AED0; margin-right: 12px; }
+
+:deep(.modern-scanner-input .el-input-group__append) {
+  background-color: #4318FF; border-color: #4318FF; color: white; border-radius: 0 16px 16px 0; overflow: hidden; padding: 0; box-shadow: 0 4px 20px rgba(67, 24, 255, 0.15);
+}
+.btn-scan {
+  background: transparent; color: white; border: none; height: 100%; padding: 0 32px; font-weight: 800; font-size: 16px; font-family: inherit; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center;
+}
+.btn-scan:hover:not(:disabled) { background-color: #3311DB; }
+.btn-scan:disabled { opacity: 0.8; cursor: not-allowed; }
+
+/* Table Elements */
+:deep(.modern-table) {
+  --el-table-border-color: transparent;
+  --el-table-header-bg-color: #F8FAFC;
+  --el-table-header-text-color: #A3AED0;
+  --el-table-text-color: #2B3674;
+}
+:deep(.modern-table th.el-table__cell) { font-weight: 700; font-size: 12px; text-transform: uppercase; padding: 12px 0; border-bottom: 2px solid #E9EDF7 !important; }
+:deep(.modern-table td.el-table__cell) { padding: 12px 0; border-bottom: 1px solid #F4F7FE !important; }
+
+/* Compact table for the split view to avoid scrolling */
+:deep(.compact-table .el-table__cell) { padding: 8px 0 !important; }
+:deep(.highlight-table .el-table__row:first-child) { background-color: #F0FDF4 !important; }
+
+.code-badge { font-family: monospace; font-weight: 800; padding: 4px 8px; border-radius: 6px; font-size: 13px; display: inline-block; }
+.code-badge.warning { background: rgba(255, 181, 71, 0.1); color: #FFB547; }
+.code-badge.success { background: rgba(5, 205, 153, 0.1); color: #05CD99; font-size: 14px; }
+.code-badge.primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; font-size: 14px; }
+
+/* Custom Inputs in Table */
+:deep(.modern-input-small .el-input__wrapper) { background: #FFFFFF; box-shadow: 0 0 0 1px #E2E8F0 inset !important; border-radius: 8px; padding: 2px 8px; transition: 0.3s; }
+:deep(.modern-input-small .el-input__wrapper.is-focus),
+:deep(.modern-input-small .el-input__wrapper:hover) { box-shadow: 0 0 0 2px #05CD99 inset !important; }
+:deep(.weight-input .el-input__inner) { font-weight: 800 !important; color: #05CD99 !important; font-size: 15px; text-align: center; }
+
+/* Time & User Badges */
+.time-badge { display: inline-flex; align-items: center; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #4B5563; }
+.user-info { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #2B3674; }
+
+/* Weight Compare */
+.weight-compare { display: flex; align-items: center; justify-content: center; gap: 8px; background: #F8FAFC; border-radius: 8px; padding: 4px 8px; }
+.weight-compare .arrow-right { color: #A3AED0; }
+
+/* Tags */
+.modern-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; }
+.modern-tag .dot { width: 6px; height: 6px; border-radius: 50%; }
+.tag-info { background: rgba(143, 155, 186, 0.1); color: #8F9BBA; }
+.tag-info .dot { background: #8F9BBA; }
+
+/* Date Picker Filter */
+:deep(.modern-date-picker .el-input__wrapper) { background: #F8FAFC; box-shadow: none !important; border: 1px solid #E2E8F0; border-radius: 10px; padding: 6px 12px; }
+:deep(.modern-date-picker .el-input__wrapper:hover), :deep(.modern-date-picker .el-input__wrapper.is-focus) { border-color: #4318FF; background: #FFFFFF; }
+.filter-label { font-size: 13px; font-weight: 700; color: #2B3674; margin-bottom: 8px; }
+
+/* Buttons */
+.btn-primary { background: #4318FF; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(67, 24, 255, 0.25); }
+.btn-primary:hover:not(:disabled) { background: #3311DB; transform: translateY(-2px); }
+.btn-action-small { background: rgba(255, 181, 71, 0.1); color: #FFB547; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s; }
+.btn-action-small:hover { background: #FFB547; color: white; }
+
+.icon-btn { width: 32px; height: 32px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px; }
+.icon-btn.small { width: 28px; height: 28px; font-size: 14px; }
+.icon-btn.secondary { background: #F4F7FE; color: #8F9BBA; }
+.icon-btn.secondary:hover { background: #4318FF; color: white; }
+.icon-btn.delete { background: #FFF0F0; color: #EE5D50; }
+.icon-btn.delete:hover { background: #EE5D50; color: white; }
+
+/* Pagination */
+.pagination-wrapper { display: flex; justify-content: flex-end; align-items: center; }
+:deep(.modern-pagination .el-pager li), :deep(.modern-pagination button) { background: #F8FAFC !important; border-radius: 8px; font-weight: 600; color: #8F9BBA; }
+:deep(.modern-pagination .el-pager li.is-active) { background: #4318FF !important; color: white; }
+
+/* Animations */
+.animate-fade-in { animation: fadeIn 0.5s ease-out; }
+.animate-fade-in-up { animation: fadeInUp 0.5s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Responsive */
+@media (max-width: 992px) {
+  .split-layout { flex-direction: column; }
+  .split-layout .el-col { width: 100%; max-width: 100%; margin-bottom: 24px; }
+}
 </style>
