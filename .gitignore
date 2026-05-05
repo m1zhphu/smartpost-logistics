@@ -14,3 +14,8 @@ env/
 # App specific
 uploads/pod/*
 !uploads/pod/.gitkeep
+
+.expo/
+.github/
+android/
+node_modules/

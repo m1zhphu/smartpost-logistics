@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "smartpost-mobile",
+    "slug": "smartpost-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Cho phép SmartPost truy cập Camera để quét mã vạch và chụp ảnh.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ],
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "App cần vị trí của bạn để cập nhật lộ trình giao hàng thời gian thực.",
+        "NSLocationAlwaysUsageDescription": "App cần vị trí của bạn ngay cả khi chạy ngầm để đảm bảo đơn hàng được giám sát.",
+        "NSLocationWhenInUseUsageDescription": "App cần vị trí của bạn để tìm đơn hàng gần nhất."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.smartpostmobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "react-native-vision-camera",
+      "expo-build-properties",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Cho phép SmartPost truy cập vị trí của bạn mọi lúc để điều phối giao hàng."
+        }
+      ]
+    ]
+  }
+}
