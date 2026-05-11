@@ -19,3 +19,7 @@ uploads/pod/*
 .github/
 android/
 node_modules/
+
+.agent/
+GEMINI.md
+.sandbox/

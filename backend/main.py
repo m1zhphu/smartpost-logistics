@@ -22,7 +22,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000", # Cho phép chạy dưới localhost khi code Frontend
+        "http://localhost:3000",
+        "http://localhost:5173", # Cho phép chạy dưới localhost khi code Frontend
         "https://smartpost-logistics.vercel.app", # Domain thật của Vercel
         "https://smartpost-logistics-lv7y5cfef-m1zhphus-projects.vercel.app" # Link build cụ thể của Vercel nếu cần
     ], 

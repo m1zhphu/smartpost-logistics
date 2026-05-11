@@ -526,6 +526,13 @@ class Waybills(Base):
     product_name: Mapped[Optional[str]] = mapped_column(String(255))
     note: Mapped[Optional[str]] = mapped_column(String(255))
     version: Mapped[Optional[int]] = mapped_column(Integer, server_default=text('1'))
+    
+    # Bill verification and OCR
+    bill_image_url: Mapped[Optional[str]] = mapped_column(String(255))
+    pickup_image_url: Mapped[Optional[str]] = mapped_column(String(255))
+    ocr_status: Mapped[Optional[str]] = mapped_column(String(50), server_default=text("'PENDING'"))
+    verify_status: Mapped[Optional[str]] = mapped_column(String(50), server_default=text("'PENDING'"))
+    verify_error_msg: Mapped[Optional[str]] = mapped_column(String(255))
 
     customer: Mapped[Optional['Customers']] = relationship('Customers', back_populates='waybills')
     dest_hub: Mapped[Optional['Hubs']] = relationship('Hubs', foreign_keys=[dest_hub_id], back_populates='waybills_dest_hub')

@@ -165,6 +165,16 @@ async def scan_bagging(
                     detail=f"Lỗi: Đơn hàng {code} đang ở Bưu cục khác (Hub ID: {package_location}). Bạn không thể đóng túi hàng không có mặt ở đây!"
                 )
 
+            # --- KIỂM SOÁT VẬN ĐƠN TRƯỚC KHI XUẤT KHO ---
+            if wb.verify_status != "VERIFIED":
+                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} chưa được xác thực (VERIFY). Không thể xuất kho!")
+            
+            if not wb.bill_image_url and not wb.pickup_image_url:
+                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} chưa có ảnh bill. Không thể xuất kho!")
+            
+            if not wb.receiver_address:
+                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} thiếu địa chỉ nhận. Không thể xuất kho!")
+
             if wb.status == WaybillStatus.BAGGED:
                 raise HTTPException(status_code=400, detail=f"Đơn hàng {code} đã nằm trong túi hàng khác.")
             

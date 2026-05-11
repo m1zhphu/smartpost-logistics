@@ -6,7 +6,9 @@ from fastapi import UploadFile, HTTPException
 
 # Đảm bảo thư mục uploads tồn tại khi hệ thống khởi động
 UPLOAD_DIR = "uploads/pod"
+BILL_UPLOAD_DIR = "uploads/bills"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(BILL_UPLOAD_DIR, exist_ok=True)
 
 def save_pod_image(file: UploadFile) -> str:
     """Xử lý lưu file ảnh vào ổ cứng và trả về đường dẫn URL"""
@@ -30,3 +32,23 @@ def save_pod_image(file: UploadFile) -> str:
 
     # 4. Trả về đường dẫn để API gửi lại cho FE hoặc DB
     return f"/uploads/pod/{unique_filename}"
+
+def save_bill_image(file: UploadFile, is_pickup: bool = False) -> str:
+    """Xử lý lưu file ảnh bill vào ổ cứng và trả về đường dẫn URL"""
+    allowed_extensions = ["jpg", "jpeg", "png"]
+    file_ext = file.filename.split(".")[-1].lower()
+    
+    if file_ext not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ định dạng JPG hoặc PNG")
+
+    prefix = "PICKUP" if is_pickup else "BILL"
+    unique_filename = f"{prefix}_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:8]}.{file_ext}"
+    file_path = os.path.join(BILL_UPLOAD_DIR, unique_filename)
+
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi lưu file: {str(e)}")
+
+    return f"/uploads/bills/{unique_filename}"

@@ -18,3 +18,17 @@ async def upload_pod_image(
         "status": "success",
         "image_url": image_url
     }
+
+@router.post("/bill")
+async def upload_bill_image(
+    file: UploadFile = File(...),
+    is_pickup: bool = False,
+    current_user: dict = Depends(get_current_user)
+):
+    """API tải lên ảnh bill hoặc ảnh pickup"""
+    image_url = file_service.save_bill_image(file, is_pickup)
+    
+    return {
+        "status": "success",
+        "image_url": image_url
+    }
