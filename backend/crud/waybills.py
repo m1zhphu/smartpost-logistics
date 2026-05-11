@@ -246,16 +246,25 @@ def verify_waybill_status(db: Session, code: str, action: str, error_msg: Option
     if not waybill:
         return None
     
+    # Chuẩn hóa action để tránh lỗi do khoảng trắng hoặc chữ thường
+    action = action.strip().upper()
+    
     if action == "VERIFIED":
         waybill.verify_status = "VERIFIED"
         waybill.status = WaybillStatus.READY_WAREHOUSE
         waybill.verify_error_msg = None
         note = "Đã xác thực ảnh bill khớp với dữ liệu hệ thống"
-    else:
+    elif action == "MISMATCH":
         waybill.verify_status = "MISMATCH"
         waybill.status = WaybillStatus.VERIFY_ERROR
         waybill.verify_error_msg = error_msg
         note = f"Xác thực thất bại: {error_msg}"
+    else:
+        # Nếu truyền sai action, mặc định là lỗi để an toàn
+        waybill.verify_status = "MISMATCH"
+        waybill.status = WaybillStatus.VERIFY_ERROR
+        waybill.verify_error_msg = f"Action không hợp lệ: {action}"
+        note = f"Action không hợp lệ: {action}"
     
     new_log = models.TrackingLogs(
         waybill_id=waybill.waybill_id,

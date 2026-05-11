@@ -8,6 +8,7 @@ import crud.warehouse as crud_wh
 import schemas.warehouse as schema_wh
 from core.permissions import PermissionChecker
 from datetime import datetime, date
+import models
 
 router = APIRouter(prefix="/api/scans", tags=["Warehouse Operations"])
 
@@ -145,6 +146,11 @@ async def scan_bagging(
             safe_hub = hub_id if hub_id else 0 
             final_bag_code = f"BG-{safe_hub}-{time_str}"
         
+        # Kiểm tra bưu cục đích có tồn tại không trước khi tạo túi
+        dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.destination_hub_id).first()
+        if not dest_hub:
+            raise HTTPException(status_code=400, detail=f"Bưu cục đích (ID: {data.destination_hub_id}) không tồn tại trên hệ thống!")
+
         bag = crud_wh.get_or_create_bag(db, final_bag_code, user_id, data.destination_hub_id)
 
         for code in data.waybill_codes:
@@ -166,8 +172,12 @@ async def scan_bagging(
                 )
 
             # --- KIỂM SOÁT VẬN ĐƠN TRƯỚC KHI XUẤT KHO ---
-            if wb.verify_status != "VERIFIED":
-                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} chưa được xác thực (VERIFY). Không thể xuất kho!")
+            # Chặn nếu chưa Verify hoặc Verify bị lỗi (Mismatch/Pending/Null)
+            if not wb.verify_status or wb.verify_status != "VERIFIED":
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Đơn hàng {code} chưa được xác thực (VERIFY). Trạng thái hiện tại: {wb.verify_status or 'CHƯA CÓ'}. Không thể xuất kho!"
+                )
             
             if not wb.bill_image_url and not wb.pickup_image_url:
                 raise HTTPException(status_code=400, detail=f"Đơn hàng {code} chưa có ảnh bill. Không thể xuất kho!")
