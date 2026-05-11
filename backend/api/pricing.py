@@ -96,15 +96,25 @@ def calculate_shipping_fee(
     if not origin_hub or not dest_hub:
         raise HTTPException(status_code=404, detail="Không tìm thấy thông tin bưu cục.")
 
-    # 2. Gọi CRUD tìm quy tắc giá chính
+    # 2. Xử lý logic nghiệp vụ mới (Volumetric Weight & Customer Policy)
+    # Khối lượng quy đổi = (L * W * H) / 5000
+    volumetric_weight = (data.length * data.width * data.height) / 5000 if data.length and data.width and data.height else 0
+    charge_weight = max(data.weight, volumetric_weight)
+
+    # Lấy policy_id dựa trên customer_id (nếu có)
+    policy_id = 1
+    if data.customer_id:
+        policy_id = crud_pricing.get_customer_policy_id(db, data.customer_id)
+
+    # 3. Gọi CRUD tìm quy tắc giá chính theo Tuyến Tỉnh
     rule = crud_pricing.get_pricing_rule_exact(
-        db, data.origin_hub_id, data.dest_hub_id, data.service_type, data.weight
+        db, origin_hub.province_id, dest_hub.province_id, data.service_type, charge_weight, policy_id
     )
 
     if not rule:
         # Gọi CRUD tìm quy tắc theo cụm Tỉnh/Thành phố nếu không có tuyến chính xác
         rule = crud_pricing.get_pricing_rule_fallback(
-            db, origin_hub.province_id, dest_hub.province_id, data.service_type
+            db, origin_hub.province_id, dest_hub.province_id, data.service_type, policy_id
         )
 
     if not rule:
@@ -113,10 +123,18 @@ def calculate_shipping_fee(
             detail=f"Chưa có bảng giá cho tuyến {origin_hub.province_id}→{dest_hub.province_id} ({data.service_type})."
         )
 
-    # 3. Tính toán tiền (Logic Toán học giữ nguyên tại API)
+    # 4. Tính toán tiền
     main_fee = float(rule.price)
     extra_fee = 0
+    remote_fee = 0
 
+    # Phụ phí vùng sâu vùng xa
+    if data.dest_district_id and data.dest_ward_id:
+        remote_fee = crud_pricing.get_remote_area_fee(
+            db, dest_hub.province_id, data.dest_district_id, data.dest_ward_id
+        )
+
+    # Dịch vụ tiện ích (Extra Services)
     if data.extra_services:
         # Gọi CRUD lấy danh sách dịch vụ cấu hình
         active_services = crud_pricing.get_active_service_configs(db)
@@ -132,18 +150,20 @@ def calculate_shipping_fee(
                         calculated_val = float(data.cod_amount) * (float(config.fee_value) / 100)
                         extra_fee += max(10000.0, calculated_val)
 
-    total_service = main_fee + extra_fee
-    fuel_fee = round(total_service * 0.05, 0)
-    vat = round((total_service + fuel_fee) * 0.10, 0)
-    total = total_service + fuel_fee + vat
+    total_service = main_fee + extra_fee + remote_fee
+    
+    # Theo chuẩn mới không thu phụ phí nhiên liệu và VAT là 8%
+    vat = round(total_service * 0.08, 0)
+    total = total_service + vat
 
     return {
         "main_fee": main_fee,
         "extra_fee": extra_fee,
-        "fuel_fee": fuel_fee,
+        "remote_fee": remote_fee,
         "vat": vat,
         "total": total,
         "rule_id": rule.rule_id,
+        "charge_weight": charge_weight,
         "matched_rule": f"{rule.min_weight}-{rule.max_weight}kg @ {rule.price:,.0f}đ"
     }
 
@@ -188,3 +208,100 @@ def update_extra_service_config(
     db.commit()
     db.refresh(updated_config)
     return updated_config
+
+@router.post("/simulate")
+def simulate_pricing(
+    data: schema_pricing.PricingSimulatorRequest,
+    db: Session = Depends(get_db)
+):
+    """Bộ mô phỏng giá dành cho CSKH tra cứu nhanh (Mục 20 Đặc tả)"""
+    
+    # 1. Tính khối lượng quy đổi
+    volumetric_weight = (data.length * data.width * data.height) / 5000 if data.length and data.width and data.height else 0
+    charge_weight = max(data.weight, volumetric_weight)
+
+    # 2. Tra cứu giá (Simulator dùng policy_id = 1 mặc định)
+    rule = crud_pricing.get_pricing_rule_exact(
+        db, data.origin_province_id, data.dest_province_id, data.service_type, charge_weight, 1
+    )
+
+    if not rule:
+        # Thử tìm fallback
+        rule = crud_pricing.get_pricing_rule_fallback(
+            db, data.origin_province_id, data.dest_province_id, data.service_type, 1
+        )
+
+    if not rule:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Chưa có bảng giá cho tuyến tỉnh {data.origin_province_id}→{data.dest_province_id}."
+        )
+
+    # 3. Tính toán tiền
+    main_fee = float(rule.price)
+    extra_fee = 0
+    
+    # Dịch vụ tiện ích (Simulator)
+    if data.extra_services:
+        active_services = crud_pricing.get_active_service_configs(db)
+        service_map = {s.service_code: s for s in active_services}
+        
+        for srv_code in data.extra_services:
+            if srv_code in service_map:
+                config = service_map[srv_code]
+                if config.fee_type == "FIXED":
+                    extra_fee += float(config.fee_value)
+                elif config.fee_type == "PERCENT":
+                    if data.cod_amount and data.cod_amount > 0:
+                        calculated_val = float(data.cod_amount) * (float(config.fee_value) / 100)
+                        extra_fee += max(10000.0, calculated_val)
+
+    total_service = main_fee + extra_fee
+    vat = round(total_service * 0.08, 0)
+    total = total_service + vat
+
+    return {
+        "status": "SUCCESS",
+        "charge_weight": charge_weight,
+        "main_fee": main_fee,
+        "extra_fee": extra_fee,
+        "vat_8": vat,
+        "grand_total": total,
+        "note": f"Áp dụng bảng giá: {rule.min_weight}-{rule.max_weight}kg"
+    }
+
+# ==========================================
+# PHẦN 4: QUẢN LÝ PHÂN VÙNG (PROVINCE ZONES)
+# ==========================================
+
+@router.get("/zones", response_model=List[schema_pricing.ProvinceZoneResponse])
+def list_province_zones(db: Session = Depends(get_db)):
+    """Lấy danh sách mapping vùng miền (Mục 6 Đặc tả)"""
+    return crud_pricing.get_all_province_zones(db)
+
+@router.post("/zones", response_model=schema_pricing.ProvinceZoneResponse)
+def add_province_zone(
+    data: schema_pricing.ProvinceZoneCreate, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Thiết lập mapping vùng miền mới"""
+    verify_pricing_edit_access(current_user)
+    new_zone = crud_pricing.create_province_zone(db, data.model_dump())
+    db.commit()
+    db.refresh(new_zone)
+    return new_zone
+
+@router.delete("/zones/{zone_id}")
+def remove_province_zone(
+    zone_id: int, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Xóa mapping vùng miền"""
+    verify_pricing_edit_access(current_user)
+    success = crud_pricing.delete_province_zone(db, zone_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi phân vùng")
+    db.commit()
+    return {"message": "Đã xóa phân vùng thành công"}

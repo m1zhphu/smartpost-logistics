@@ -2,7 +2,7 @@ from typing import Optional
 import datetime
 import decimal
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKeyConstraint, Integer, Numeric, PrimaryKeyConstraint, Sequence, String, Text, UniqueConstraint, text, ForeignKey, Identity
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKeyConstraint, Integer, Numeric, PrimaryKeyConstraint, Sequence, String, Text, UniqueConstraint, text, ForeignKey, Identity, and_
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime # Đảm bảo import đúng class datetime
@@ -489,7 +489,17 @@ class StatementDebt(Base):
     total_vat: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2))
     grand_total: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2))
 
+    # Accounting fields
+    status: Mapped[str] = mapped_column(String(50), server_default=text("'DRAFT'")) 
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('users.user_id'))
+
     customer: Mapped[Optional['Customers']] = relationship('Customers', back_populates='statement_debt')
+    details: Mapped[list['StatementDetails']] = relationship(
+        'StatementDetails',
+        primaryjoin="and_(StatementDebt.statement_id == StatementDetails.statement_id, StatementDetails.statement_type == 'DEBT')",
+        foreign_keys="[StatementDetails.statement_id]"
+    )
 
 
 class Waybills(Base):
@@ -653,6 +663,7 @@ class PricingRules(Base):
     # Tra cứu theo ID Tỉnh (Province) như đặc tả yêu cầu
     from_province_id: Mapped[int] = mapped_column(Integer, nullable=False)
     to_province_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    zone_name: Mapped[Optional[str]] = mapped_column(String(50)) # Hỗ trợ tính giá theo Vùng (Nội tỉnh, Nội vùng...)
     
     service_type: Mapped[str] = mapped_column(String(20), nullable=False) # EXPRESS, STANDARD
     min_weight: Mapped[decimal.Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -663,6 +674,21 @@ class PricingRules(Base):
 
     # Liên kết ngược lại với chính sách giá
     policy: Mapped['PricingPolicies'] = relationship('PricingPolicies', back_populates='rules')
+
+class RemoteAreas(Base):
+    __tablename__ = 'remote_areas'
+    __table_args__ = (
+        PrimaryKeyConstraint('id', name='remote_areas_pkey'),
+        UniqueConstraint('province_id', 'district_id', 'ward_id', name='unique_remote_area')
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    province_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    district_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    ward_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    fee: Mapped[decimal.Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text('true'))
 
 class TransactionLedger(Base):
     __tablename__ = 'transaction_ledger'
@@ -722,19 +748,19 @@ class StatementCOD(Base):
     # Người tạo
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey('users.user_id'))
 
-    # Relationships (Giữ nguyên)
+    # Relationships
     customer: Mapped['Customers'] = relationship('Customers', back_populates='statement_cod')
-    details: Mapped[list['StatementDetails']] = relationship('StatementDetails', back_populates='statement')
+    details: Mapped[list['StatementDetails']] = relationship(
+        'StatementDetails', 
+        primaryjoin="and_(StatementCOD.statement_id == StatementDetails.statement_id, StatementDetails.statement_type == 'COD')",
+        foreign_keys="[StatementDetails.statement_id]"
+    )
 
 class StatementDetails(Base):
     __tablename__ = 'statement_details'
     __table_args__ = (
         # 1. Sửa ForeignKey trỏ về statement_id của bảng mẹ
-        ForeignKeyConstraint(
-            ['statement_id'], 
-            ['statement_cod.statement_id'], 
-            name='statement_details_statement_id_fkey'
-        ),
+        # Removed rigid FK to statement_cod to allow polymorphic use (COD/DEBT)
         ForeignKeyConstraint(['ledger_id'], ['transaction_ledger.id'], name='statement_details_ledger_id_fkey'),
         ForeignKeyConstraint(['waybill_id'], ['waybills.waybill_id'], name='statement_details_waybill_id_fkey'),
         
@@ -747,7 +773,7 @@ class StatementDetails(Base):
     mapping_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     
     statement_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    ledger_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    ledger_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     waybill_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
     # Bổ sung thêm cho đủ bộ với Database của bạn
@@ -755,7 +781,7 @@ class StatementDetails(Base):
     statement_type: Mapped[Optional[str]] = mapped_column(String(20))
 
     # Relationships (Giữ nguyên)
-    statement: Mapped['StatementCOD'] = relationship('StatementCOD', back_populates='details')
+    # Generic reference, no back_populates to avoid circular mapper issues with dynamic primaryjoin
     waybill: Mapped[Optional['Waybills']] = relationship('Waybills', back_populates='statement_details')
     ledger: Mapped['TransactionLedger'] = relationship('TransactionLedger')
 
@@ -773,3 +799,33 @@ class ServiceConfigs(Base):
     fee_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'FIXED'")) # 'FIXED' (Giá cố định) hoặc 'PERCENT' (Phần trăm)
     fee_value: Mapped[decimal.Decimal] = mapped_column(Numeric(15, 2), nullable=False, server_default=text('0')) # Số tiền hoặc Số %
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text('true'))
+
+class ProvinceZones(Base):
+    """Mapping Tỉnh -> Vùng miền (Zone) - Mục 5 & 6 Đặc tả"""
+    __tablename__ = 'province_zones'
+    __table_args__ = (
+        PrimaryKeyConstraint('id', name='province_zones_pkey'),
+    )
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    origin_province_id: Mapped[int] = mapped_column(Integer)
+    destination_province_id: Mapped[int] = mapped_column(Integer)
+    zone_name: Mapped[str] = mapped_column(String(50)) # Nội tỉnh, Nội vùng, Liên vùng, Xa
+    
+class StatementAdjustments(Base):
+    """Lưu vết điều chỉnh tiền sau khi bảng kê đã chốt - Mục 18 Đặc tả"""
+    __tablename__ = 'statement_adjustments'
+    __table_args__ = (
+        ForeignKeyConstraint(['created_by'], ['users.user_id'], name='fk_adjustments_user'),
+        ForeignKeyConstraint(['waybill_id'], ['waybills.waybill_id'], name='fk_adjustments_waybill'),
+        PrimaryKeyConstraint('id', name='statement_adjustments_pkey'),
+    )
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    statement_id: Mapped[int] = mapped_column(Integer) # Tham chiếu đến StatementDebt hoặc StatementCOD
+    statement_type: Mapped[str] = mapped_column(String(20)) # 'DEBT' hoặc 'COD'
+    waybill_id: Mapped[int] = mapped_column(Integer)
+    amount: Mapped[decimal.Decimal] = mapped_column(Numeric(15, 2)) # Số tiền điều chỉnh (Dương là tăng, Âm là giảm)
+    reason: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_by: Mapped[int] = mapped_column(Integer)

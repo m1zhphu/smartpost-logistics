@@ -1,0 +1,7 @@
+D:\Th\u1ef1c T\u1eadp\D\u1ef1 án 2 - Log\Logistic\smartpost-logistics\backend\main.py:67: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")

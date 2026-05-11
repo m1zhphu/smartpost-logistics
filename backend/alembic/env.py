@@ -19,7 +19,8 @@ import models # Đảm bảo file models.py của bạn dùng chung 'Base' từ 
 config = context.config
 
 # Ghi đè URL từ file .ini bằng URL từ core.database (đã bao gồm .env)
-config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+# Lưu ý: cần replace % thành %% để configparser không hiểu nhầm là nội suy chuỗi (interpolation)
+config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

@@ -5,6 +5,23 @@ class FeeCalculateRequest(BaseModel):
     origin_hub_id: int
     dest_hub_id: int
     weight: float
+    length: Optional[float] = 0.0
+    width: Optional[float] = 0.0
+    height: Optional[float] = 0.0
+    service_type: str = "STANDARD"
+    extra_services: Optional[List[str]] = []
+    cod_amount: Optional[float] = 0.0
+    customer_id: Optional[int] = None
+    dest_district_id: Optional[int] = None
+    dest_ward_id: Optional[int] = None
+
+class PricingSimulatorRequest(BaseModel):
+    origin_province_id: int
+    dest_province_id: int
+    weight: float
+    length: Optional[float] = 0.0
+    width: Optional[float] = 0.0
+    height: Optional[float] = 0.0
     service_type: str = "STANDARD"
     extra_services: Optional[List[str]] = []
     cod_amount: Optional[float] = 0.0
@@ -46,6 +63,36 @@ class ServiceConfigCreate(ServiceConfigBase):
     pass
 
 class ServiceConfigResponse(ServiceConfigBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+class RemoteAreaBase(BaseModel):
+    province_id: int
+    district_id: int
+    ward_id: int
+    fee: float
+    is_active: bool = True
+
+class RemoteAreaCreate(RemoteAreaBase):
+    pass
+
+class RemoteAreaResponse(RemoteAreaBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+class ProvinceZoneBase(BaseModel):
+    origin_province_id: int
+    destination_province_id: int
+    zone_name: str
+
+class ProvinceZoneCreate(ProvinceZoneBase):
+    pass
+
+class ProvinceZoneResponse(ProvinceZoneBase):
     id: int
 
     class Config:

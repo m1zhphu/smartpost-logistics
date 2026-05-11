@@ -14,12 +14,47 @@ class StatementCreate(BaseModel):
     customer_id: int
 
 class StatementResponse(BaseModel):
-    id: int # Đổi từ statement_id thành id để khớp với model StatementCOD
+    statement_id: int # Đồng bộ với model StatementCOD
     customer_id: int
     total_amount: decimal.Decimal
     status: str
     created_at: datetime
-    created_by: int # Thêm để khớp với model
+    created_by: int
 
-    # Sử dụng model_config thay cho class Config (chuẩn Pydantic v2)
     model_config = ConfigDict(from_attributes=True)
+
+class StatementDebtBase(BaseModel):
+    statement_code: str
+    customer_id: Optional[int] = None
+    total_main_fee: Optional[decimal.Decimal] = decimal.Decimal('0')
+    total_extra_fee: Optional[decimal.Decimal] = decimal.Decimal('0')
+    total_vat: Optional[decimal.Decimal] = decimal.Decimal('0')
+    grand_total: Optional[decimal.Decimal] = decimal.Decimal('0')
+    status: str = "DRAFT"
+
+class StatementDebtCreate(StatementDebtBase):
+    waybill_ids: List[int] = Field(default_factory=list)
+
+class StatementDebtResponse(StatementDebtBase):
+    statement_id: int
+    created_at: datetime
+    created_by: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class StatementStatusUpdate(BaseModel):
+    status: str = Field(..., pattern="^(DRAFT|CALCULATED|CONFIRMED|EXPORTED|PAID)$")
+
+class WaybillPriceOverride(BaseModel):
+    waybill_id: int
+    new_shipping_fee: Optional[decimal.Decimal] = None
+    new_extra_fee: Optional[decimal.Decimal] = None
+    reason: str
+
+class StatementAdjustmentCreate(BaseModel):
+    statement_id: int
+    statement_type: str = Field(..., pattern="^(DEBT|COD)$")
+    waybill_id: int
+    amount: decimal.Decimal # Dùng Decimal để tránh sai số
+    reason: str

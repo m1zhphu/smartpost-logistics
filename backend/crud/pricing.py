@@ -108,25 +108,79 @@ def get_hub_by_id(db: Session, hub_id: int):
     """Tìm thông tin bưu cục để tính toán tuyến đường"""
     return db.query(models.Hubs).filter(models.Hubs.hub_id == hub_id).first()
 
-def get_pricing_rule_exact(db: Session, origin_id: int, dest_id: int, service_type: str, weight: float):
-    """Tìm bảng giá khớp chính xác với ID bưu cục"""
+def get_customer_policy_id(db: Session, customer_id: int) -> int:
+    """Lấy policy_id áp dụng cho khách hàng. Mặc định là 1 nếu không có."""
+    mapping = db.query(models.CustomerPriceMapping).filter(
+        models.CustomerPriceMapping.customer_id == customer_id
+    ).first()
+    return mapping.policy_id if mapping else 1
+
+def get_province_zone(db: Session, origin_prov_id: int, dest_prov_id: int) -> str:
+    """Lấy Zone mapping cho cặp Tỉnh đi - Tỉnh đến (Mục 6 Đặc tả)"""
+    mapping = db.query(models.ProvinceZones).filter(
+        models.ProvinceZones.origin_province_id == origin_prov_id,
+        models.ProvinceZones.destination_province_id == dest_prov_id
+    ).first()
+    return mapping.zone_name if mapping else None
+
+def get_pricing_rule_by_zone(db: Session, zone_name: str, service_type: str, weight: float, policy_id: int = 1):
+    """Tìm bảng giá theo Zone (Mục 5 Đặc tả)"""
     return db.query(models.PricingRules).filter(
+        models.PricingRules.zone_name == zone_name,
+        models.PricingRules.service_type == service_type,
+        models.PricingRules.min_weight <= weight,
+        models.PricingRules.max_weight >= weight,
+        models.PricingRules.policy_id == policy_id,
+        models.PricingRules.is_active == True
+    ).first()
+
+def get_pricing_rule_exact(db: Session, origin_id: int, dest_id: int, service_type: str, weight: float, policy_id: int = 1):
+    """Tìm bảng giá với logic 3 lớp: Exact -> Zone -> Fallback"""
+    # Lớp 1: Khớp chính xác tỉnh
+    rule = db.query(models.PricingRules).filter(
         models.PricingRules.from_province_id == origin_id,
         models.PricingRules.to_province_id == dest_id,
         models.PricingRules.service_type == service_type,
         models.PricingRules.min_weight <= weight,
         models.PricingRules.max_weight >= weight,
+        models.PricingRules.policy_id == policy_id,
         models.PricingRules.is_active == True
     ).first()
+    
+    if rule: return rule
+    
+    # Lớp 2: Tìm theo Zone mapping (Mục 5 & 6)
+    zone_name = get_province_zone(db, origin_id, dest_id)
+    if zone_name:
+        rule = get_pricing_rule_by_zone(db, zone_name, service_type, weight, policy_id)
+        if rule: return rule
+        
+    return None
 
-def get_pricing_rule_fallback(db: Session, origin_prov: int, dest_prov: int, service_type: str):
-    """Tìm bảng giá thay thế dựa trên cụm Tỉnh/Thành phố"""
-    return db.query(models.PricingRules).filter(
+def get_pricing_rule_fallback(db: Session, origin_prov: int, dest_prov: int, service_type: str, policy_id: int = 1):
+    """Tìm bảng giá thay thế (Lớp 3)"""
+    # Thử tìm theo tỉnh trước
+    rule = db.query(models.PricingRules).filter(
         models.PricingRules.from_province_id == origin_prov,
         models.PricingRules.to_province_id == dest_prov,
         models.PricingRules.service_type == service_type,
+        models.PricingRules.policy_id == policy_id,
         models.PricingRules.is_active == True
     ).order_by(models.PricingRules.max_weight.desc()).first()
+    
+    if rule: return rule
+    
+    # Thử tìm theo Zone
+    zone_name = get_province_zone(db, origin_prov, dest_prov)
+    if zone_name:
+        rule = db.query(models.PricingRules).filter(
+            models.PricingRules.zone_name == zone_name,
+            models.PricingRules.service_type == service_type,
+            models.PricingRules.policy_id == policy_id,
+            models.PricingRules.is_active == True
+        ).order_by(models.PricingRules.max_weight.desc()).first()
+        
+    return rule
 
 def get_all_service_configs(db: Session):
     return db.query(models.ServiceConfigs).all()
@@ -151,3 +205,47 @@ def update_service_config(db: Session, config: models.ServiceConfigs, data: dict
         setattr(config, key, value)
     db.flush()
     return config
+
+# ==========================================
+# PHẦN 3: VÙNG SÂU VÙNG XA (REMOTE AREAS)
+# ==========================================
+
+def get_remote_area_fee(db: Session, province_id: int, district_id: int, ward_id: int) -> float:
+    """Lấy phụ phí vùng sâu vùng xa nếu có"""
+    area = db.query(models.RemoteAreas).filter(
+        models.RemoteAreas.province_id == province_id,
+        models.RemoteAreas.district_id == district_id,
+        models.RemoteAreas.ward_id == ward_id,
+        models.RemoteAreas.is_active == True
+    ).first()
+    return float(area.fee) if area else 0.0
+
+def get_all_remote_areas(db: Session):
+    return db.query(models.RemoteAreas).all()
+
+def create_remote_area(db: Session, data: dict):
+    new_area = models.RemoteAreas(**data)
+    db.add(new_area)
+    db.flush()
+    return new_area
+
+# ==========================================
+# PHẦN 4: QUẢN LÝ PHÂN VÙNG (PROVINCE ZONES)
+# ==========================================
+
+def get_all_province_zones(db: Session):
+    return db.query(models.ProvinceZones).all()
+
+def create_province_zone(db: Session, data: dict):
+    new_zone = models.ProvinceZones(**data)
+    db.add(new_zone)
+    db.flush()
+    return new_zone
+
+def delete_province_zone(db: Session, zone_id: int):
+    zone = db.query(models.ProvinceZones).filter(models.ProvinceZones.id == zone_id).first()
+    if zone:
+        db.delete(zone)
+        db.flush()
+        return True
+    return False
