@@ -151,6 +151,11 @@ def search_waybills(
                 "dest_hub_id": w.dest_hub_id,
                 "origin_hub": {"hub_id": w.origin_hub.hub_id, "hub_name": w.origin_hub.hub_name} if w.origin_hub else None,
                 "dest_hub": {"hub_id": w.dest_hub.hub_id, "hub_name": w.dest_hub.hub_name} if w.dest_hub else None,
+                "bill_image_url": w.bill_image_url,
+                "pickup_image_url": w.pickup_image_url,
+                "ocr_status": w.ocr_status,
+                "verify_status": w.verify_status,
+                "verify_error_msg": w.verify_error_msg
             })
 
         return {"items": result, "total": total, "page": filters.page, "size": filters.size}
@@ -287,70 +292,49 @@ def update_status_delivered(
 @router.patch("/{code}/bill-images")
 def update_bill_images(
     code: str,
-    update_data: dict,
+    data: schema_wb.WaybillBillImagesUpdate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """API lưu URL ảnh bill gốc/pickup và cập nhật trạng thái chuẩn bị verify"""
-    waybill = crud_wb.get_waybill_by_code(db, code)
-    if not waybill:
+    updated_wb = crud_wb.update_waybill_images_and_trigger_ocr(
+        db, 
+        code, 
+        data.bill_image_url, 
+        data.pickup_image_url,
+        current_user.get("user_id"),
+        current_user.get("primary_hub_id")
+    )
+    
+    if not updated_wb:
         raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
-
-    if "bill_image_url" in update_data:
-        waybill.bill_image_url = update_data["bill_image_url"]
-    if "pickup_image_url" in update_data:
-        waybill.pickup_image_url = update_data["pickup_image_url"]
     
-    # Trigger AI OCR logic (Mocking cho hiện tại)
-    waybill.ocr_status = "SCANNED"
-    waybill.verify_status = "PENDING"
-    
-    # Đổi trạng thái chung nếu đang chờ pickup
-    if waybill.status == "CREATED":
-        waybill.status = "PICKED_PENDING_VERIFY"
-
-    crud_wb.create_tracking_log(db, waybill.waybill_id, "UPLOAD_BILL", current_user['user_id'], current_user.get("primary_hub_id"), "Bưu tá upload ảnh bill")
-
-    try:
-        db.commit()
-        return {"message": "Cập nhật ảnh thành công, đã trigger OCR", "ocr_status": waybill.ocr_status}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    db.commit()
+    return {"message": "Cập nhật ảnh thành công, đã trigger OCR", "ocr_status": updated_wb.ocr_status}
 
 # --- 5.2 XÁC THỰC BILL (VERIFY) ---
 @router.patch("/{code}/verify")
 def verify_bill(
     code: str,
-    verify_data: dict,
+    data: schema_wb.WaybillVerifyRequest,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """API dùng cho bộ phận CSKH/Kho xác thực bill"""
-    waybill = crud_wb.get_waybill_by_code(db, code)
-    if not waybill:
+    updated_wb = crud_wb.verify_waybill_status(
+        db, 
+        code, 
+        data.action, 
+        data.error_msg,
+        current_user.get("user_id"),
+        current_user.get("primary_hub_id")
+    )
+    
+    if not updated_wb:
         raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
 
-    verify_status = verify_data.get("verify_status")
-    if verify_status not in ["VERIFIED", "MISMATCH"]:
-        raise HTTPException(status_code=400, detail="Trạng thái verify không hợp lệ")
-
-    waybill.verify_status = verify_status
-    waybill.verify_error_msg = verify_data.get("verify_error_msg", "")
-    
-    if verify_status == "VERIFIED" and waybill.status == "PICKED_PENDING_VERIFY":
-        waybill.status = "READY_WAREHOUSE"
-    elif verify_status == "MISMATCH":
-        waybill.status = "VERIFY_ERROR"
-
-    crud_wb.create_tracking_log(db, waybill.waybill_id, f"VERIFY_{verify_status}", current_user['user_id'], current_user.get("primary_hub_id"), f"Kiểm soát viên xác thực bill: {verify_status}")
-
-    try:
-        db.commit()
-        return {"message": "Xác thực thành công", "verify_status": waybill.verify_status}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    db.commit()
+    return {"message": f"Xác thực {data.action} thành công", "verify_status": updated_wb.verify_status}
 
 # --- 5.5 CẬP NHẬT THÔNG TIN VẬN ĐƠN (SỬA ĐƠN) ---
 @router.put("/{code}")

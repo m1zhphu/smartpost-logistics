@@ -212,3 +212,59 @@ def log_waybill_edit(db: Session, waybill_id: int, current_status: str, current_
     )
     db.add(new_log)
     db.flush()
+
+# --- NEW: VERIFY & OCR CRUD FUNCTIONS ---
+
+def update_waybill_images_and_trigger_ocr(db: Session, code: str, bill_url: str, pickup_url: Optional[str], user_id: int, hub_id: int):
+    waybill = get_waybill_by_code(db, code)
+    if not waybill:
+        return None
+    
+    waybill.bill_image_url = bill_url
+    if pickup_url:
+        waybill.pickup_image_url = pickup_url
+    
+    # Kích hoạt trạng thái chờ xác thực và giả lập OCR
+    waybill.status = WaybillStatus.PICKED_PENDING_VERIFY
+    waybill.ocr_status = "SCANNED"
+    waybill.verify_status = "PENDING"
+    
+    new_log = models.TrackingLogs(
+        waybill_id=waybill.waybill_id,
+        status_id=WaybillStatus.PICKED_PENDING_VERIFY,
+        hub_id=hub_id,
+        user_id=user_id,
+        note="Đã upload ảnh bill và gửi yêu cầu xác thực OCR",
+        system_time=datetime.utcnow()
+    )
+    db.add(new_log)
+    db.flush()
+    return waybill
+
+def verify_waybill_status(db: Session, code: str, action: str, error_msg: Optional[str], user_id: int, hub_id: int):
+    waybill = get_waybill_by_code(db, code)
+    if not waybill:
+        return None
+    
+    if action == "VERIFIED":
+        waybill.verify_status = "VERIFIED"
+        waybill.status = WaybillStatus.READY_WAREHOUSE
+        waybill.verify_error_msg = None
+        note = "Đã xác thực ảnh bill khớp với dữ liệu hệ thống"
+    else:
+        waybill.verify_status = "MISMATCH"
+        waybill.status = WaybillStatus.VERIFY_ERROR
+        waybill.verify_error_msg = error_msg
+        note = f"Xác thực thất bại: {error_msg}"
+    
+    new_log = models.TrackingLogs(
+        waybill_id=waybill.waybill_id,
+        status_id=waybill.status,
+        hub_id=hub_id,
+        user_id=user_id,
+        note=note,
+        system_time=datetime.utcnow()
+    )
+    db.add(new_log)
+    db.flush()
+    return waybill

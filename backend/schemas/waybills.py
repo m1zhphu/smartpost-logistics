@@ -56,3 +56,13 @@ class WaybillFilter(BaseModel):
     end_date: Optional[datetime] = None
     page: int = 1
     size: int = 20
+
+# --- NEW: SCHEMAS FOR VERIFY & OCR ---
+
+class WaybillBillImagesUpdate(BaseModel):
+    bill_image_url: str = Field(..., description="Link ảnh bill gốc")
+    pickup_image_url: Optional[str] = Field(None, description="Link ảnh chụp lúc lấy hàng")
+
+class WaybillVerifyRequest(BaseModel):
+    action: str = Field(..., description="VERIFIED hoặc MISMATCH")
+    error_msg: Optional[str] = Field(None, description="Lý do lỗi nếu mismatch")
