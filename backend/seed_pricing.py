@@ -20,18 +20,18 @@ def seed_pricing():
             db.flush()
             print("Created default policy.")
 
-        # 2. Tạo quy tắc giá cho tuyến 3 -> 3 (Nội tỉnh)
+        # 2. Tạo quy tắc giá cho tuyến 29 -> 29 (Nội tỉnh Hà Nội)
         existing_rule = db.query(models.PricingRules).filter(
-            models.PricingRules.from_province_id == 3,
-            models.PricingRules.to_province_id == 3,
+            models.PricingRules.from_province_id == 29,
+            models.PricingRules.to_province_id == 29,
             models.PricingRules.service_type == "STANDARD"
         ).first()
 
         if not existing_rule:
             rule = models.PricingRules(
                 policy_id=1,
-                from_province_id=3,
-                to_province_id=3,
+                from_province_id=29,
+                to_province_id=29,
                 service_type="STANDARD",
                 min_weight=decimal.Decimal("0.00"),
                 max_weight=decimal.Decimal("100.00"),
@@ -39,9 +39,28 @@ def seed_pricing():
                 is_active=True
             )
             db.add(rule)
-            print("Created Rule for route 3->3.")
-        else:
-            print("Rule for route 3->3 already exists.")
+            print("Created Rule for route 29->29 (Hà Nội).")
+
+        # 3. Tạo quy tắc giá cho tuyến 29 -> 59 (Hà Nội -> HCM)
+        existing_hcm = db.query(models.PricingRules).filter(
+            models.PricingRules.from_province_id == 29,
+            models.PricingRules.to_province_id == 59,
+            models.PricingRules.service_type == "STANDARD"
+        ).first()
+
+        if not existing_hcm:
+            rule_hcm = models.PricingRules(
+                policy_id=1,
+                from_province_id=29,
+                to_province_id=59,
+                service_type="STANDARD",
+                min_weight=decimal.Decimal("0.00"),
+                max_weight=decimal.Decimal("30.00"),
+                price=decimal.Decimal("35000.00"),
+                is_active=True
+            )
+            db.add(rule_hcm)
+            print("Created Rule for route 29->59 (HN -> HCM).")
 
         # 3. Tạo vùng sâu vùng xa giả lập để test logic Phụ phí
         # Giả sử district_id=1, ward_id=1 là vùng sâu vùng xa

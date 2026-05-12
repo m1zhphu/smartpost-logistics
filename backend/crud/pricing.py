@@ -7,8 +7,16 @@ import models
 
 def create_rule(db: Session, data: dict):
     mapped_data = data.copy()
-    mapped_data['from_province_id'] = data.get('origin_hub_id')
-    mapped_data['to_province_id'] = data.get('dest_hub_id')
+    
+    # Resolving Province IDs from Hub IDs
+    origin_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.get('origin_hub_id')).first()
+    dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.get('dest_hub_id')).first()
+    
+    if not origin_hub or not dest_hub:
+        return None # Hub not found
+
+    mapped_data['from_province_id'] = origin_hub.province_id
+    mapped_data['to_province_id'] = dest_hub.province_id
     
     mapped_data.pop('origin_hub_id', None)
     mapped_data.pop('dest_hub_id', None)
@@ -18,7 +26,8 @@ def create_rule(db: Session, data: dict):
         models.PricingRules.to_province_id == mapped_data['to_province_id'],
         models.PricingRules.service_type == mapped_data['service_type'],
         models.PricingRules.min_weight == mapped_data['min_weight'],
-        models.PricingRules.max_weight == mapped_data['max_weight']
+        models.PricingRules.max_weight == mapped_data['max_weight'],
+        models.PricingRules.policy_id == mapped_data.get('policy_id', 1)
     ).first()
     
     if existing:
@@ -35,13 +44,17 @@ def get_all_rules(db: Session):
     return [format_rule_with_hub(db, r) for r in rules]
 
 def format_rule_with_hub(db: Session, rule: models.PricingRules):
-    origin_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == rule.from_province_id).first()
-    dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == rule.to_province_id).first()
+    # Tìm bưu cục đại diện (hoặc bưu cục đầu tiên trong tỉnh) để hiển thị
+    # Lưu ý: Vì rule lưu theo Tỉnh, việc hiển thị Hub nào là tùy chọn. 
+    # Ở đây ta lấy hub có hub_id khớp với from_province_id nếu data cũ bị sai, 
+    # nhưng chuẩn nhất là tìm hub theo province_id.
+    origin_hub = db.query(models.Hubs).filter(models.Hubs.province_id == rule.from_province_id).first()
+    dest_hub = db.query(models.Hubs).filter(models.Hubs.province_id == rule.to_province_id).first()
     
     rule_dict = {
         "rule_id": rule.rule_id,
-        "origin_hub_id": rule.from_province_id,
-        "dest_hub_id": rule.to_province_id,
+        "from_province_id": rule.from_province_id,
+        "to_province_id": rule.to_province_id,
         "service_type": rule.service_type,
         "min_weight": rule.min_weight,
         "max_weight": rule.max_weight,
@@ -68,9 +81,12 @@ def update_rule(db: Session, rule_id: int, data: dict):
 
     mapped_data = data.copy()
     if 'origin_hub_id' in mapped_data:
-        mapped_data['from_province_id'] = mapped_data.pop('origin_hub_id')
+        hub = db.query(models.Hubs).filter(models.Hubs.hub_id == mapped_data.pop('origin_hub_id')).first()
+        if hub: mapped_data['from_province_id'] = hub.province_id
+        
     if 'dest_hub_id' in mapped_data:
-        mapped_data['to_province_id'] = mapped_data.pop('dest_hub_id')
+        hub = db.query(models.Hubs).filter(models.Hubs.hub_id == mapped_data.pop('dest_hub_id')).first()
+        if hub: mapped_data['to_province_id'] = hub.province_id
 
     conflict = db.query(models.PricingRules).filter(
         models.PricingRules.from_province_id == mapped_data.get('from_province_id', rule.from_province_id),
@@ -78,6 +94,7 @@ def update_rule(db: Session, rule_id: int, data: dict):
         models.PricingRules.service_type == mapped_data.get('service_type', rule.service_type),
         models.PricingRules.min_weight == mapped_data.get('min_weight', rule.min_weight),
         models.PricingRules.max_weight == mapped_data.get('max_weight', rule.max_weight),
+        models.PricingRules.policy_id == mapped_data.get('policy_id', rule.policy_id),
         models.PricingRules.rule_id != rule_id
     ).first()
 
