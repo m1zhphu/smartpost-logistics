@@ -117,9 +117,14 @@
               class="modern-table compact-table borderless"
               height="550px"
             >
-              <el-table-column prop="waybill_code" label="Mã Vận đơn" width="130">
+              <el-table-column prop="waybill_code" label="Mã Vận đơn" width="150">
                  <template #default="{ row }">
-                   <span class="code-badge default">{{ row.waybill_code }}</span>
+                   <div style="display: flex; flex-direction: column; gap: 4px;">
+                     <span class="code-badge default">{{ row.waybill_code }}</span>
+                     <span v-if="row.verify_status === 'VERIFIED'" class="verify-badge verified"><el-icon><CircleCheckFilled /></el-icon> Verified</span>
+                     <span v-else-if="row.verify_status === 'MISMATCH'" class="verify-badge mismatch"><el-icon><WarningFilled /></el-icon> Mismatch</span>
+                     <span v-else class="verify-badge pending"><el-icon><Clock /></el-icon> Pending</span>
+                   </div>
                  </template>
               </el-table-column>
               
@@ -235,7 +240,7 @@ import {
   RefreshLeft
 } from '@element-plus/icons-vue';
 // Use Aim or Camera instead of Scan as we know Scan might be missing
-import { Aim as Scan } from '@element-plus/icons-vue'; 
+import { Aim as Scan, CircleCheckFilled, WarningFilled, Clock } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
@@ -322,7 +327,28 @@ const handleAddWaybill = async (waybill, isFromList = false) => {
     return ElMessage.error(`Đơn ${code} đang ở trạng thái ${waybill.status}, không thể đóng túi!`);
   }
 
-  const packageLocationId = waybill.current_hub_id || waybill.origin_hub_id; 
+  // --- CHẶN VERIFY: Đơn phải được CSKH xác thực trước khi đóng túi ---
+  if (!waybill.verify_status || waybill.verify_status !== 'VERIFIED') {
+    playError();
+    if (!isFromList) barcode.value = '';
+    ElMessageBox.alert(
+      `<div style="text-align: center;">
+         <span style="font-size: 48px; color: #EE5D50; margin-bottom: 12px; display: inline-block;">⚠️</span><br>
+         <b style="font-size: 18px; color: #EE5D50;">Lỗi: Đơn hàng chưa được xác thực (VERIFY). Không thể xuất kho!</b><br>
+         <span style="font-size: 14px; color: #4B5563; margin-top: 8px; display: inline-block;">
+           Trạng thái xác thực hiện tại của đơn <b>${code}</b>: 
+           <b style="color: #EE5D50;">${waybill.verify_status || 'CHƯA CÓ'}</b><br>
+           Vui lòng yêu cầu bộ phận CSKH xác thực ảnh bill trước khi đóng túi.
+         </span>
+       </div>`,
+      'LỖI XÁC THỰC BILL',
+      { dangerouslyUseHTMLString: true, type: 'error', customClass: 'modern-message-box' }
+    );
+    return;
+  }
+  // --- KẾT THÚC CHẶN VERIFY ---
+
+  const packageLocationId = waybill.current_hub_id || waybill.origin_hub_id;
   if (currentHubId.value && packageLocationId && packageLocationId !== currentHubId.value) {
     playError();
     if (!isFromList) barcode.value = '';
@@ -433,10 +459,21 @@ const confirmBagging = async () => {
     fetchAvailableWaybills(); 
   } catch (err) {
     const errorDetail = err.response?.data?.detail;
-    if (Array.isArray(errorDetail)) {
-        ElMessage.error(`Lỗi dữ liệu: ${errorDetail[0].msg}`);
+    const errorStr = Array.isArray(errorDetail) ? errorDetail[0].msg : (errorDetail || 'Lỗi khi đóng túi.');
+    if (err.response?.status === 400 && (errorStr.includes('xác thực') || errorStr.includes('VERIFY'))) {
+        playError();
+        ElMessageBox.alert(
+          `<div style="text-align: center;">
+             <span style="font-size: 48px; color: #EE5D50; margin-bottom: 12px; display: inline-block;">⚠️</span><br>
+             <b style="font-size: 18px; color: #EE5D50;">Lỗi: Đơn hàng chưa được xác thực (VERIFY). Không thể xuất kho!</b><br>
+             <span style="font-size: 14px; color: #4B5563; margin-top: 8px; display: inline-block;">${errorStr}</span>
+           </div>`, 
+          'LỖI XÁC THỰC', 
+          { dangerouslyUseHTMLString: true, type: 'error', customClass: 'modern-message-box' }
+        );
     } else {
-        ElMessage.error(errorDetail || 'Lỗi khi đóng túi.');
+        playError();
+        ElMessage.error(errorStr);
     }
   } finally {
     loading.value = false;
@@ -625,6 +662,11 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .code-badge { font-family: monospace; font-weight: 800; padding: 4px 8px; border-radius: 6px; font-size: 13px; display: inline-block; }
 .code-badge.default { background: #F4F7FE; color: #4318FF; }
 .code-badge.success { background: rgba(5, 205, 153, 0.1); color: #05CD99; font-size: 14px; }
+
+.verify-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; width: fit-content; }
+.verify-badge.verified { background: rgba(5, 205, 153, 0.1); color: #05CD99; }
+.verify-badge.mismatch { background: rgba(238, 93, 80, 0.1); color: #EE5D50; }
+.verify-badge.pending { background: rgba(255, 181, 71, 0.1); color: #FFB547; }
 
 .dest-info { display: flex; align-items: center; font-size: 13px; color: #4B5563; }
 

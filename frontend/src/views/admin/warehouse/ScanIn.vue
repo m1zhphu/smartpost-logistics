@@ -70,7 +70,12 @@
                 >
                   <el-table-column prop="waybill_code" label="Mã VĐ" width="120">
                     <template #default="{ row }">
-                      <span class="code-badge warning">{{ row.waybill_code }}</span>
+                      <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <span class="code-badge warning">{{ row.waybill_code }}</span>
+                        <span v-if="row.verify_status === 'VERIFIED'" class="verify-badge verified"><el-icon><CircleCheckFilled /></el-icon> Verified</span>
+                        <span v-else-if="row.verify_status === 'MISMATCH'" class="verify-badge mismatch"><el-icon><WarningFilled /></el-icon> Mismatch</span>
+                        <span v-else class="verify-badge pending"><el-icon><Clock /></el-icon> Pending</span>
+                      </div>
                     </template>
                   </el-table-column>
                   <el-table-column prop="receiver_name" label="Người nhận" min-width="120" show-overflow-tooltip>
@@ -277,11 +282,11 @@
 import { ref, onMounted, nextTick, computed } from 'vue';
 import { 
   Grid, Delete, Search, Refresh, Timer, User, List, Right, 
-  CircleCheckFilled, Close, Clock, FullScreen, Loading 
+  CircleCheckFilled, Close, Clock, FullScreen, Loading, WarningFilled 
 } from '@element-plus/icons-vue';
 import moment from 'moment';
 import api from '@/api/axios';
-import { ElMessage, ElNotification } from 'element-plus';
+import { ElMessage, ElNotification, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '@/stores/auth'; 
 
 const auth = useAuthStore(); 
@@ -409,7 +414,19 @@ const handleScan = async (codeToScan) => {
     const errorDetail = err.response?.data?.detail;
     const errorMsg = Array.isArray(errorDetail) ? errorDetail[0].msg : (errorDetail || 'Lỗi không xác định');
     
-    ElMessage.error(`Lỗi: ${code} - ${errorMsg}`);
+    if (err.response?.status === 400 && (errorMsg.includes('xác thực') || errorMsg.includes('VERIFY'))) {
+        ElMessageBox.alert(
+          `<div style="text-align: center;">
+             <span style="font-size: 48px; color: #EE5D50; margin-bottom: 12px; display: inline-block;">⚠️</span><br>
+             <b style="font-size: 18px; color: #EE5D50;">Lỗi: Đơn hàng chưa được xác thực (VERIFY). Không thể nhập kho/xuất kho!</b><br>
+             <span style="font-size: 14px; color: #4B5563; margin-top: 8px; display: inline-block;">${errorMsg}</span>
+           </div>`, 
+          'LỖI XÁC THỰC', 
+          { dangerouslyUseHTMLString: true, type: 'error', customClass: 'modern-message-box' }
+        );
+    } else {
+        ElMessage.error(`Lỗi: ${code} - ${errorMsg}`);
+    }
     nextTick(() => barcodeRef.value?.focus());
   } finally {
     barcode.value = '';
@@ -607,6 +624,11 @@ onMounted(() => {
 .code-badge.warning { background: rgba(255, 181, 71, 0.1); color: #FFB547; }
 .code-badge.success { background: rgba(5, 205, 153, 0.1); color: #05CD99; font-size: 14px; }
 .code-badge.primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; font-size: 14px; }
+
+.verify-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 4px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; width: fit-content; }
+.verify-badge.verified { background: rgba(5, 205, 153, 0.1); color: #05CD99; }
+.verify-badge.mismatch { background: rgba(238, 93, 80, 0.1); color: #EE5D50; }
+.verify-badge.pending { background: rgba(255, 181, 71, 0.1); color: #FFB547; }
 
 /* Custom Inputs in Table */
 :deep(.modern-input-small .el-input__wrapper) { background: #FFFFFF; box-shadow: 0 0 0 1px #E2E8F0 inset !important; border-radius: 8px; padding: 2px 8px; transition: 0.3s; }

@@ -144,6 +144,24 @@
               </el-row>
 
               <el-row :gutter="16">
+                <el-col :span="8">
+                  <el-form-item label="Dài (cm)" prop="length" class="mb-12">
+                    <el-input-number v-model="waybillForm.length" :min="0" :step="1" :controls="false" class="w-full modern-input-number" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="Rộng (cm)" prop="width" class="mb-12">
+                    <el-input-number v-model="waybillForm.width" :min="0" :step="1" :controls="false" class="w-full modern-input-number" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="Cao (cm)" prop="height" class="mb-12">
+                    <el-input-number v-model="waybillForm.height" :min="0" :step="1" :controls="false" class="w-full modern-input-number" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-row :gutter="16">
                 <el-col :span="14">
                   <el-form-item label="Tên sản phẩm" prop="product_name" class="mb-12">
                     <el-input v-model="waybillForm.product_name" placeholder="Quần áo, điện tử..." clearable />
@@ -195,6 +213,10 @@
               </div>
 
               <div class="summary-details">
+                <div class="summary-line" v-if="chargeWeight > 0 && chargeWeight > waybillForm.actual_weight">
+                  <span class="label text-primary">Tính cước theo (Thể tích):</span>
+                  <span class="value text-primary">{{ chargeWeight }} kg</span>
+                </div>
                 <div class="summary-line">
                   <span class="label">Cước chính:</span>
                   <span class="value">{{ (estimatedFees.main_fee || 0).toLocaleString() }} đ</span>
@@ -204,8 +226,8 @@
                   <span class="value text-primary">{{ (estimatedFees.extra_fee || 0).toLocaleString() }} đ</span>
                 </div>
                 <div class="summary-line">
-                  <span class="label">P.phí nhiên liệu:</span>
-                  <span class="value">{{ (estimatedFees.fuel_fee || 0).toLocaleString() }} đ</span>
+                  <span class="label">P.phí Vùng sâu/xa:</span>
+                  <span class="value">{{ (estimatedFees.remote_fee || 0).toLocaleString() }} đ</span>
                 </div>
                 <div class="summary-line">
                   <span class="label">Thuế VAT:</span>
@@ -257,6 +279,9 @@ const initialFormState = {
   receiver_phone: '',
   receiver_address: '',
   actual_weight: 0.5,
+  length: 0,
+  width: 0,
+  height: 0,
   product_name: '',
   payment_method: 'SENDER_PAY',
   cod_amount: 0,
@@ -286,9 +311,10 @@ const rules = {
 
 const feeLoading = ref(false);
 const pricingSource = ref('');
-const estimatedFees = reactive({ main_fee: 0, extra_fee: 0, fuel_fee: 0, vat: 0 });
+const chargeWeight = ref(0);
+const estimatedFees = reactive({ main_fee: 0, extra_fee: 0, remote_fee: 0, vat: 0 });
 
-const totalFee = computed(() => (estimatedFees.main_fee || 0) + (estimatedFees.extra_fee || 0) + (estimatedFees.fuel_fee || 0) + (estimatedFees.vat || 0));
+const totalFee = computed(() => (estimatedFees.main_fee || 0) + (estimatedFees.extra_fee || 0) + (estimatedFees.remote_fee || 0) + (estimatedFees.vat || 0));
 
 let feeTimer = null;
 const fetchFee = () => {
@@ -296,8 +322,9 @@ const fetchFee = () => {
   feeTimer = setTimeout(async () => {
     if (!waybillForm.actual_weight || waybillForm.actual_weight <= 0
         || !waybillForm.origin_hub_id || !waybillForm.dest_hub_id) {
-      Object.assign(estimatedFees, { main_fee: 0, extra_fee: 0, fuel_fee: 0, vat: 0 }); 
+      Object.assign(estimatedFees, { main_fee: 0, extra_fee: 0, remote_fee: 0, vat: 0 }); 
       pricingSource.value = '';
+      chargeWeight.value = 0;
       return;
     }
 
@@ -307,6 +334,9 @@ const fetchFee = () => {
         origin_hub_id: waybillForm.origin_hub_id,
         dest_hub_id: waybillForm.dest_hub_id,
         weight: waybillForm.actual_weight,
+        length: waybillForm.length,
+        width: waybillForm.width,
+        height: waybillForm.height,
         service_type: waybillForm.service_type,
         extra_services: waybillForm.extra_services,
         cod_amount: waybillForm.cod_amount
@@ -315,12 +345,13 @@ const fetchFee = () => {
       const fee = res.data;
       estimatedFees.main_fee = fee.main_fee;
       estimatedFees.extra_fee = fee.extra_fee || 0; 
-      estimatedFees.fuel_fee = fee.fuel_fee;
+      estimatedFees.remote_fee = fee.remote_fee || 0;
       estimatedFees.vat = fee.vat;
       pricingSource.value = fee.matched_rule;
+      chargeWeight.value = fee.charge_weight || 0;
     } catch (err) {
       if (err.response?.status === 404) {
-        Object.assign(estimatedFees, { main_fee: 0, extra_fee: 0, fuel_fee: 0, vat: 0 });
+        Object.assign(estimatedFees, { main_fee: 0, extra_fee: 0, remote_fee: 0, vat: 0 });
         pricingSource.value = 'chưa có bảng giá';
       }
     } finally {
@@ -331,6 +362,9 @@ const fetchFee = () => {
 
 watch(() => [
     waybillForm.actual_weight, 
+    waybillForm.length,
+    waybillForm.width,
+    waybillForm.height,
     waybillForm.service_type, 
     waybillForm.origin_hub_id, 
     waybillForm.dest_hub_id,

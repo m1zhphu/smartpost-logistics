@@ -133,17 +133,41 @@
             </template>
           </el-table-column>
 
+          <!-- Xác thực Bill -->
+          <el-table-column label="Xác thực Bill" min-width="140" align="center">
+            <template #default="{ row }">
+              <div class="modern-tag" :class="getVerifyClass(row.verify_status)">
+                {{ getVerifyLabel(row.verify_status) }}
+              </div>
+            </template>
+          </el-table-column>
+
           <!-- Tài chính -->
-          <el-table-column label="Tài chính (VNĐ)" min-width="180" align="right">
+          <el-table-column label="Tài chính (VNĐ)" min-width="200" align="right">
             <template #default="{ row }">
               <div class="finance-display">
                 <div class="finance-line">
                   <span class="label">Cước phí:</span>
                   <span class="value text-primary">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
                 </div>
+                <!-- Hiển thị phụ phí nếu có -->
+                <div class="finance-line" v-if="(row.extra_services_fee || 0) > 0">
+                  <span class="label">Phụ phí:</span>
+                  <span class="value text-warning">{{ formatCurrencyManual(row.extra_services_fee) }}</span>
+                </div>
+                <!-- Tính toán Tổng thu an toàn để tránh NaN -->
+                <div class="finance-line total-row">
+                  <span class="label">Tổng thu:</span>
+                  <span class="value fw-bold">
+                    {{ formatCurrencyManual(
+                      row.total_amount_to_collect || 
+                      ((row.shipping_fee || 0) + (row.extra_services_fee || 0)) * 1.08
+                    ) }}
+                  </span>
+                </div>
                 <div class="finance-line highlight">
                   <span class="label">Thu hộ (COD):</span>
-                  <span class="value">{{ formatCurrencyManual(row.cod_amount) }}</span>
+                  <span class="value">{{ formatCurrencyManual(row.cod_amount || 0) }}</span>
                 </div>
               </div>
             </template>
@@ -179,6 +203,9 @@
                     <el-dropdown-menu class="modern-dropdown">
                       <el-dropdown-item @click="openEditDialog(row)">
                         <el-icon><Edit /></el-icon> Hiệu chỉnh thông tin
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="openOverrideDialog(row)" class="text-warning">
+                        <el-icon><Money /></el-icon> Sửa giá vận đơn
                       </el-dropdown-item>
                       <el-dropdown-item 
                         @click="handleUpdateStatus(row.waybill_code)"
@@ -344,6 +371,81 @@
         </template>
       </el-dialog>
 
+      <!-- Dialog Sửa giá Vận đơn -->
+      <el-dialog
+        v-model="overrideDialogVisible"
+        title="✏️ Sửa giá Vận đơn"
+        width="480px"
+        :close-on-click-modal="false"
+        destroy-on-close
+        class="modern-dialog"
+      >
+        <div class="override-info-box" v-if="overrideForm.waybill_code">
+          <div class="info-row">
+            <span class="label">Mã vận đơn:</span>
+            <span class="value code">{{ overrideForm.waybill_code }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Cước hiện tại:</span>
+            <span class="value text-primary">{{ formatCurrencyManual(overrideForm.current_shipping_fee) }}</span>
+          </div>
+        </div>
+
+        <el-form :model="overrideForm" label-position="top" class="mt-16">
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="Cước mới (VNĐ)">
+                <el-input-number
+                  v-model="overrideForm.new_shipping_fee"
+                  :min="0" :step="1000" :controls="false"
+                  class="w-full"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="Phụ phí mới (VNĐ)">
+                <el-input-number
+                  v-model="overrideForm.new_extra_fee"
+                  :min="0" :step="1000" :controls="false"
+                  class="w-full"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-form-item label="⚠️ Lý do điều chỉnh (BẮt buộc)">
+            <el-input
+              v-model="overrideForm.reason"
+              type="textarea"
+              :rows="3"
+              placeholder="VD: Sửa sai cước theo hợp đồng mới; Điều chỉnh sau kiểm trú..."
+              maxlength="200"
+              show-word-limit
+            />
+          </el-form-item>
+
+          <div class="warning-note" v-if="overrideForm.new_shipping_fee !== overrideForm.current_shipping_fee">
+            <el-icon><Warning /></el-icon>
+            Nếu bảng kê đã “CHỔT” (CONFIRMED), hệ thống sẽ tự động tạo <b>phiếu điều chỉnh</b> thay vì sửa trực tiếp.
+          </div>
+        </el-form>
+
+        <template #footer>
+          <div class="dialog-footer-actions">
+            <button class="btn-secondary" @click="overrideDialogVisible = false">Hủy</button>
+            <button
+              class="btn-warning"
+              @click="submitOverridePrice"
+              :disabled="!overrideForm.reason.trim() || overrideSubmitting"
+            >
+              <el-icon class="is-loading mr-2" v-if="overrideSubmitting"><Loading /></el-icon>
+              <el-icon v-else><Money /></el-icon>
+              <span>{{ overrideSubmitting ? 'Đang xử lý...' : 'Xác nhận Sửa giá' }}</span>
+            </button>
+          </div>
+        </template>
+      </el-dialog>
+
     </div>
   </div>
 </template>
@@ -353,7 +455,7 @@ import { ref, onMounted } from 'vue';
 import { 
   Search, Plus, Printer, Download, MoreFilled, Check, Edit, Delete, 
   Location, LocationInformation, Tickets, RefreshRight, Van, User, 
-  Phone, Right, Loading, UserFilled, Money 
+  Phone, Right, Loading, UserFilled, Money, Warning 
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
@@ -381,6 +483,18 @@ const editForm = ref({
   receiver_phone: '',
   receiver_address: '',
   cod_amount: 0
+});
+
+// --- OVERRIDE PRICE STATE ---
+const overrideDialogVisible = ref(false);
+const overrideSubmitting = ref(false);
+const overrideForm = ref({
+  waybill_id: null,
+  waybill_code: '',
+  current_shipping_fee: 0,
+  new_shipping_fee: 0,
+  new_extra_fee: 0,
+  reason: ''
 });
 
 const formatCurrencyManual = (amount) => {
@@ -562,9 +676,91 @@ const getStatusLabel = (status) => {
   return map[status] || status;
 };
 
+const getVerifyClass = (status) => {
+  const map = {
+    'VERIFIED': 'tag-success',
+    'MISMATCH': 'tag-danger',
+  };
+  return map[status] || 'tag-warning';
+};
+
+const getVerifyLabel = (status) => {
+  const map = {
+    'VERIFIED': '\u{1F7E2} Verified',
+    'MISMATCH': '\u{1F534} Mismatch',
+  };
+  return map[status] || '\u{1F7E0} Pending';
+};
+
 const formatTime = (t) => moment(t).format('DD/MM/YYYY HH:mm');
 const handleSizeChange = () => handleSearch();
 const handleCurrentChange = () => handleSearch();
+
+// --- OVERRIDE PRICE FUNCTIONS ---
+const openOverrideDialog = (row) => {
+  overrideForm.value = {
+    waybill_id: row.waybill_id,
+    waybill_code: row.waybill_code,
+    current_shipping_fee: row.shipping_fee || 0,
+    new_shipping_fee: row.shipping_fee || 0,
+    new_extra_fee: 0,
+    reason: ''
+  };
+  overrideDialogVisible.value = true;
+};
+
+const submitOverridePrice = async () => {
+  if (!overrideForm.value.reason.trim()) {
+    return ElMessage.warning('Vui lòng nhập lý do điều chỉnh!');
+  }
+
+  overrideSubmitting.value = true;
+  try {
+    const payload = {
+      waybill_id: overrideForm.value.waybill_id,
+      new_shipping_fee: overrideForm.value.new_shipping_fee,
+      new_extra_fee: overrideForm.value.new_extra_fee || null,
+      reason: overrideForm.value.reason.trim()
+    };
+
+    const res = await api.post('/api/accounting/override-price', payload);
+    const data = res.data;
+
+    overrideDialogVisible.value = false;
+
+    if (data.status === 'ADJUSTED') {
+      // Bảng kê đã CONFIRMED → tạo phiếu điều chỉnh
+      ElMessageBox.alert(
+        `Đã tạo <b>phiếu điều chỉnh #${data.adjustment_id}</b><br>
+         Chênh lệch: <b>${Number(data.diff_amount).toLocaleString('vi-VN')} đ</b><br>
+         Lý do: ${data.reason}`,
+        '⚠️ Đã tạo phiếu điều chỉnh',
+        { type: 'warning', dangerouslyUseHTMLString: true, confirmButtonText: 'Đóng' }
+      );
+    } else {
+      // Bảng kê DRAFT → sửa trực tiếp
+      // Cập nhật ngay tất cả giá trị tài chính từ BE trả về vào bảng local (optimistic update)
+      const idx = waybills.value.findIndex(w => w.waybill_id === overrideForm.value.waybill_id);
+      if (idx !== -1) {
+        waybills.value[idx] = {
+          ...waybills.value[idx],
+          shipping_fee: data.new_shipping_fee,
+          extra_services_fee: data.new_extra_fee,
+          vat_amount: data.new_vat,
+          total_amount_to_collect: data.new_total
+        };
+      }
+      ElMessage.success(`✅ Cập nhật giá thành công! Tổng mới: ${Number(data.new_total).toLocaleString('vi-VN')} đ`);
+    }
+
+    // Reload từ server để đồng bộ toàn bộ dữ liệu
+    await handleSearch();
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Lỗi khi sửa giá vận đơn');
+  } finally {
+    overrideSubmitting.value = false;
+  }
+};
 
 onMounted(handleSearch);
 </script>
@@ -797,4 +993,44 @@ onMounted(handleSearch);
   .filter-action-col .btn-primary, .filter-action-col .btn-secondary { width: 100%; margin: 0; }
   .pagination-wrapper { flex-direction: column; gap: 16px; }
 }
+
+/* Override Price Dialog */
+.btn-warning {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; background: linear-gradient(135deg, #f9a825, #ffcc02);
+  color: #333; border: none; border-radius: 12px;
+  font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.btn-warning:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(249,168,37,0.3); }
+.btn-warning:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.override-info-box {
+  background: #F8FAFF; border-radius: 10px; padding: 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.override-info-box .info-row { display: flex; justify-content: space-between; align-items: center; }
+.override-info-box .label { font-size: 13px; color: #8F9BBA; }
+.override-info-box .value { font-size: 14px; font-weight: 600; color: #1B2559; }
+.override-info-box .value.code { font-family: monospace; background: #EEF2FF; color: #6C5CE7; padding: 2px 8px; border-radius: 6px; }
+.override-info-box .text-primary { color: #4318FF; }
+
+.warning-note {
+  display: flex; align-items: flex-start; gap: 8px; font-size: 13px;
+  background: #FFF8E6; border: 1px solid #FFE082; border-radius: 8px;
+  padding: 10px 14px; color: #795548; margin-top: 8px;
+}
+.warning-note .el-icon { color: #f9a825; margin-top: 2px; flex-shrink: 0; }
+.mt-16 { margin-top: 16px; }
+.mr-2 { margin-right: 8px; }
+.w-full { width: 100%; }
+.finance-line.total-row {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed #E9EDF7;
+  color: #1B2559;
+}
+.finance-line.total-row .value {
+  color: #2B3674;
+}
+:deep(.text-warning) { color: #e6a817 !important; }
 </style>

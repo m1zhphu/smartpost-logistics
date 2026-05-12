@@ -584,7 +584,22 @@ const submitManifest = async () => {
   } catch (err) {
     if (err !== 'cancel') {
         const detail = err.response?.data?.detail;
-        ElMessage.error(detail || 'Lỗi hệ thống khi thao tác');
+        const errorStr = Array.isArray(detail) ? detail[0].msg : (detail || 'Lỗi hệ thống khi thao tác');
+        if (err.response?.status === 400 && (errorStr.includes('xác thực') || errorStr.includes('VERIFY'))) {
+            playError();
+            ElMessageBox.alert(
+              `<div style="text-align: center;">
+                 <span style="font-size: 48px; color: #EE5D50; margin-bottom: 12px; display: inline-block;">⚠️</span><br>
+                 <b style="font-size: 18px; color: #EE5D50;">Lỗi: Đơn hàng trong túi chưa được xác thực (VERIFY). Không thể xuất kho!</b><br>
+                 <span style="font-size: 14px; color: #4B5563; margin-top: 8px; display: inline-block;">${errorStr}</span>
+               </div>`, 
+              'LỖI XÁC THỰC', 
+              { dangerouslyUseHTMLString: true, type: 'error', customClass: 'modern-message-box' }
+            );
+        } else {
+            playError();
+            ElMessage.error(errorStr);
+        }
     }
   } finally {
     submitting.value = false;

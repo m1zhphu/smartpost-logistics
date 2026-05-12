@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date
 import models
 from core.state_machine import WaybillStatus
-from typing import Optional
+from typing import Optional, List
 from schemas.waybills import WaybillFilter
 from sqlalchemy import func
 
@@ -75,7 +75,7 @@ def get_public_waybill_info(db: Session, code: str):
 def soft_delete_waybill(db: Session, code: str):
     waybill = db.query(models.Waybills).filter(models.Waybills.waybill_code == code, models.Waybills.is_deleted == False).first()
     if waybill:
-        waybill.status = "CANCELLED"
+        waybill.status = WaybillStatus.CANCELLED
         waybill.is_deleted = True
         waybill.deleted_at = datetime.utcnow()
         db.commit()
@@ -103,6 +103,17 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
         joinedload(models.Waybills.dest_hub),
     ).filter(models.Waybills.is_deleted == False)
 
+    # Lọc theo Khách hàng (Quan trọng cho Accounting)
+    if hasattr(filters, 'customer_id') and filters.customer_id:
+        query = query.filter(models.Waybills.customer_id == filters.customer_id)
+        
+    # Logic "Bỏ qua đơn đã lập bảng kê" (Theo yêu cầu Sếp)
+    # Nếu đang tìm kiếm đơn để lập bảng kê (thường lọc theo status DELIVERED/RETURNED)
+    if filters.status in [WaybillStatus.DELIVERED, WaybillStatus.RETURNED, WaybillStatus.SETTLED]:
+        # Subquery lấy danh sách waybill_id đã có trong bảng kê
+        listed_waybill_ids = db.query(models.StatementDetails.waybill_id).filter(models.StatementDetails.waybill_id.isnot(None))
+        query = query.filter(~models.Waybills.waybill_id.in_(listed_waybill_ids))
+
     if filters.origin_hub_id:
         query = query.filter(models.Waybills.origin_hub_id == filters.origin_hub_id)
     elif filters.dest_hub_id:
@@ -127,7 +138,7 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
 def get_overdue_waybills(db: Session, page: int = 1, size: int = 20):
     query = db.query(models.Waybills).join(models.TrackingLogs).filter(
         models.Waybills.is_deleted == False,
-        models.TrackingLogs.status_id == "OVERDUE_WARNING"
+        models.TrackingLogs.status_id == WaybillStatus.OVERDUE_WARNING
     ).distinct() 
 
     total = query.count()
@@ -137,17 +148,17 @@ def get_overdue_waybills(db: Session, page: int = 1, size: int = 20):
 def count_overdue_summary(db: Session):
     return db.query(models.Waybills).join(models.TrackingLogs).filter(
         models.Waybills.is_deleted == False,
-        models.TrackingLogs.status_id == "OVERDUE_WARNING"
+        models.TrackingLogs.status_id == WaybillStatus.OVERDUE_WARNING
     ).distinct().count()
 
 # ==========================================
-# CÁC HÀM TRUY VẤN MỚI CHUYỂN TỪ API SANG
+# CÁC HÀM TRUY VẤN MỚI CHUYỂN TỪ API SANG (ĐÃ SỬA LỖI TỪ 1.TXT)
 # ==========================================
 
 def count_today_in_hub_scans(db: Session, hub_id: int, today: date):
     return db.query(models.TrackingLogs).filter(
         models.TrackingLogs.hub_id == hub_id,
-        models.TrackingLogs.status_id == "IN_HUB",
+        models.TrackingLogs.status_id == WaybillStatus.IN_HUB,
         func.date(models.TrackingLogs.system_time) == today
     ).count()
 
@@ -172,7 +183,7 @@ def update_waybill_fee_and_log(db: Session, waybill: models.Waybills, new_fee: f
         status_id=waybill.status,
         hub_id=hub_id,
         user_id=user_id,
-        note=f"Cân lại: {new_weight}kg. Cập nhật giá mới: {new_fee:,.0f} VNĐ",
+        note=f"Cân lại {new_weight}kg. Cập nhật giá mới {new_fee:,.0f} VNĐ",
         system_time=datetime.utcnow()
     )
     db.add(new_log)
@@ -183,14 +194,14 @@ def mark_waybill_as_delivered(db: Session, waybill: models.Waybills, hub_id: int
         models.Waybills.waybill_id == waybill.waybill_id,
         models.Waybills.version == waybill.version
     ).update({
-        "status": "DELIVERED",
+        "status": WaybillStatus.DELIVERED,
         "version": models.Waybills.version + 1
     })
     
     if result:
         new_log = models.TrackingLogs(
             waybill_id=waybill.waybill_id,
-            status_id="DELIVERED",
+            status_id=WaybillStatus.DELIVERED,
             hub_id=hub_id,
             user_id=user_id,
             note="Giao hàng thành công - Shipper đã thu tiền mặt",
@@ -213,7 +224,7 @@ def log_waybill_edit(db: Session, waybill_id: int, current_status: str, current_
     db.add(new_log)
     db.flush()
 
-# --- NEW: VERIFY & OCR CRUD FUNCTIONS ---
+# --- NEW VERIFY & OCR CRUD FUNCTIONS (ĐÃ SỬA LỖI TỪ 1.TXT) ---
 
 def update_waybill_images_and_trigger_ocr(db: Session, code: str, bill_url: str, pickup_url: Optional[str], user_id: int, hub_id: int):
     waybill = get_waybill_by_code(db, code)

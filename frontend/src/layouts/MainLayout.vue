@@ -117,7 +117,7 @@ import { useAuthStore } from '../stores/auth';
 import { storeToRefs } from 'pinia';
 import { 
   Monitor, Management, Document, Box, Bicycle, Money, 
-  Close, Search, HomeFilled, ArrowDown, User, Collection, Location, List, TrendCharts
+  Close, Search, HomeFilled, ArrowDown, User, Collection, Location, List, TrendCharts, Service
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -186,8 +186,17 @@ const menuData = computed(() => {
       id: 'accounting', icon: Money, label: 'Kế toán', roles: [1, 2, 5], // Admin, Manager, Kế toán
       children: [
         { title: 'KẾ TOÁN', items: [
+          { label: 'Tạo Bảng Kê (Debt/COD)', path: '/admin/accounting/statements' },
           { label: 'Đối soát COD - Shop', path: '/admin/accounting/cod' },
           { label: 'Chốt ca Shipper', path: '/admin/accounting/confirm-cash' }
+        ]}
+      ]
+    },
+    {
+      id: 'cskh', icon: Service, label: 'CSKH', roles: [1, 2, 3, 5], // Thêm Role 3 (Nhân viên kho/CSKH)
+      children: [
+        { title: 'TRUNG TÂM CSKH', items: [
+          { label: 'Duyệt Bill & Báo giá', path: '/admin/cskh/verification' }
         ]}
       ]
     }

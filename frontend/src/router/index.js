@@ -108,6 +108,11 @@ const adminRoutes = [
         component: () => import('../views/admin/accounting/CODTable.vue'),
       },
       {
+        path: 'accounting/statements',
+        name: 'DebtStatement',
+        component: () => import('../views/admin/accounting/DebtStatement.vue'),
+      },
+      {
         path: 'accounting/pricing',
         name: 'PricingRules',
         component: () => import('../views/admin/accounting/PricingRules.vue'),
@@ -131,7 +136,14 @@ const adminRoutes = [
       {
         path: 'service-config',
         name: 'ServiceConfig',
-        component: () => import('@/views/admin/accounting/ServiceConfig.vue') // Sửa đường dẫn cho đúng nơi bạn lưu file nhé
+        component: () => import('@/views/admin/accounting/ServiceConfig.vue')
+      },
+      // CSKH
+      {
+        path: 'cskh/verification',
+        name: 'BillVerification',
+        component: () => import('../views/admin/cskh/BillVerification.vue'),
+        meta: { requiresAuth: true }
       },
     ],
   },
