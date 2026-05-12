@@ -45,14 +45,13 @@ def get_all_rules(db: Session):
 
 def format_rule_with_hub(db: Session, rule: models.PricingRules):
     # Tìm bưu cục đại diện (hoặc bưu cục đầu tiên trong tỉnh) để hiển thị
-    # Lưu ý: Vì rule lưu theo Tỉnh, việc hiển thị Hub nào là tùy chọn. 
-    # Ở đây ta lấy hub có hub_id khớp với from_province_id nếu data cũ bị sai, 
-    # nhưng chuẩn nhất là tìm hub theo province_id.
     origin_hub = db.query(models.Hubs).filter(models.Hubs.province_id == rule.from_province_id).first()
     dest_hub = db.query(models.Hubs).filter(models.Hubs.province_id == rule.to_province_id).first()
     
     rule_dict = {
         "rule_id": rule.rule_id,
+        "origin_hub_id": origin_hub.hub_id if origin_hub else 0, # Schema yêu cầu
+        "dest_hub_id": dest_hub.hub_id if dest_hub else 0,       # Schema yêu cầu
         "from_province_id": rule.from_province_id,
         "to_province_id": rule.to_province_id,
         "service_type": rule.service_type,

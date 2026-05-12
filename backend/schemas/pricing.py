@@ -46,6 +46,8 @@ class PricingRuleCreate(BaseModel):
 
 class PricingRuleResponse(PricingRuleCreate):
     rule_id: int
+    from_province_id: Optional[int] = None
+    to_province_id: Optional[int] = None
     origin_hub: Optional[HubNested] = None
     dest_hub: Optional[HubNested] = None
 
