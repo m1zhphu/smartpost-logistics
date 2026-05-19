@@ -498,7 +498,8 @@ class StatementDebt(Base):
     details: Mapped[list['StatementDetails']] = relationship(
         'StatementDetails',
         primaryjoin="and_(StatementDebt.statement_id == StatementDetails.statement_id, StatementDetails.statement_type == 'DEBT')",
-        foreign_keys="[StatementDetails.statement_id]"
+        foreign_keys="[StatementDetails.statement_id]",
+        overlaps="details"
     )
 
 
@@ -509,9 +510,12 @@ class Waybills(Base):
         ForeignKeyConstraint(['dest_hub_id'], ['hubs.hub_id'], name='waybills_dest_hub_id_fkey'),
         ForeignKeyConstraint(['origin_hub_id'], ['hubs.hub_id'], name='waybills_origin_hub_id_fkey'),
         ForeignKeyConstraint(['request_id'], ['booking_requests.request_id'], name='waybills_request_id_fkey'),
+        ForeignKeyConstraint(['holding_hub_id'], ['hubs.hub_id'], name='waybills_holding_hub_id_fkey'),
+        ForeignKeyConstraint(['holding_shipper_id'], ['users.user_id'], name='waybills_holding_shipper_id_fkey'),
         PrimaryKeyConstraint('waybill_id', name='waybills_pkey'),
         UniqueConstraint('waybill_code', name='waybills_waybill_code_key')
     )
+
 
     waybill_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     waybill_code: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -544,9 +548,25 @@ class Waybills(Base):
     verify_status: Mapped[Optional[str]] = mapped_column(String(50), server_default=text("'PENDING'"))
     verify_error_msg: Mapped[Optional[str]] = mapped_column(String(255))
 
+    # SLA Control and Holding Units
+    sla_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    holding_hub_id: Mapped[Optional[int]] = mapped_column(Integer)
+    holding_shipper_id: Mapped[Optional[int]] = mapped_column(Integer)
+
+    # Waybill Creator smart details & dimensions
+    sender_name: Mapped[Optional[str]] = mapped_column(String(100))
+    sender_phone: Mapped[Optional[str]] = mapped_column(String(20))
+    sender_address: Mapped[Optional[str]] = mapped_column(String(255))
+    length: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    width: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    height: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+
     customer: Mapped[Optional['Customers']] = relationship('Customers', back_populates='waybills')
     dest_hub: Mapped[Optional['Hubs']] = relationship('Hubs', foreign_keys=[dest_hub_id], back_populates='waybills_dest_hub')
     origin_hub: Mapped[Optional['Hubs']] = relationship('Hubs', foreign_keys=[origin_hub_id], back_populates='waybills_origin_hub')
+    holding_hub: Mapped[Optional['Hubs']] = relationship('Hubs', foreign_keys=[holding_hub_id])
+    holding_shipper: Mapped[Optional['Users']] = relationship('Users', foreign_keys=[holding_shipper_id])
+
     request: Mapped[Optional['BookingRequests']] = relationship('BookingRequests', back_populates='waybills')
     bag_items: Mapped[list['BagItems']] = relationship('BagItems', back_populates='waybill')
     delivery_results: Mapped[list['DeliveryResults']] = relationship('DeliveryResults', back_populates='waybill')
@@ -726,6 +746,21 @@ class AuditLogs(Base):
     # Relationship để biết Admin nào đã làm
     admin: Mapped['Users'] = relationship('Users')
 
+class ActivityLogs(Base):
+    __tablename__ = 'activity_logs'
+    
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    waybill_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey('waybills.waybill_id'))
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('users.user_id'))
+    action: Mapped[str] = mapped_column(String(255), nullable=False)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(50))
+    device_info: Mapped[Optional[str]] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    waybill: Mapped[Optional['Waybills']] = relationship('Waybills')
+    user: Mapped[Optional['Users']] = relationship('Users')
+
+
 class StatementCOD(Base):
     __tablename__ = 'statement_cod'
     __table_args__ = {'extend_existing': True}
@@ -751,10 +786,11 @@ class StatementCOD(Base):
     # Relationships
     customer: Mapped['Customers'] = relationship('Customers', back_populates='statement_cod')
     details: Mapped[list['StatementDetails']] = relationship(
-        'StatementDetails', 
-        primaryjoin="and_(StatementCOD.statement_id == StatementDetails.statement_id, StatementDetails.statement_type == 'COD')",
-        foreign_keys="[StatementDetails.statement_id]"
-    )
+         'StatementDetails', 
+         primaryjoin="and_(StatementCOD.statement_id == StatementDetails.statement_id, StatementDetails.statement_type == 'COD')",
+         foreign_keys="[StatementDetails.statement_id]",
+         overlaps="details"
+     )
 
 class StatementDetails(Base):
     __tablename__ = 'statement_details'

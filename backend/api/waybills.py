@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import date, datetime
-from typing import List
+from typing import List, Optional
 import pandas as pd
 from io import BytesIO
 from fastapi.responses import StreamingResponse
@@ -13,8 +13,29 @@ import schemas.waybills as schema_wb
 import crud.waybills as crud_wb
 from core.pricing import calculate_shipping_fee
 from core.permissions import PermissionChecker
+import models
 
 router = APIRouter(prefix="/api/waybills", tags=["Waybill Management"])
+
+@router.get("/recipient-history")
+def get_recipient_history(phone: str, db: Session = Depends(get_db)):
+    """API gợi ý tự động Họ tên và Địa chỉ nhận từ lịch sử kiện hàng gần nhất (autofill)"""
+    if not phone or len(phone) < 8:
+        raise HTTPException(status_code=400, detail="Số điện thoại không hợp lệ")
+    
+    # Truy vấn đơn hàng cũ gần nhất của số điện thoại này
+    last_order = db.query(models.Waybills).filter(
+        models.Waybills.receiver_phone == phone,
+        models.Waybills.is_deleted == False
+    ).order_by(models.Waybills.waybill_id.desc()).first()
+    
+    if not last_order:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lịch sử người nhận với số điện thoại này")
+        
+    return {
+        "receiver_name": last_order.receiver_name,
+        "receiver_address": last_order.receiver_address
+    }
 
 @router.post("/export")
 def export_waybills_excel(
@@ -133,6 +154,17 @@ def search_waybills(
 
         result = []
         for w in items:
+            # Dynamic SLA calculation
+            sla_status = "ON_TIME"
+            if w.sla_deadline:
+                now = datetime.utcnow()
+                if w.status in ["DELIVERED", "SETTLED"]:
+                    sla_status = "ON_TIME"
+                elif w.sla_deadline < now:
+                    sla_status = "OVERDUE"
+                elif (w.sla_deadline - now).total_seconds() <= 14400: # 4 hours
+                    sla_status = "WARNING"
+
             result.append({
                 "waybill_id": w.waybill_id,
                 "waybill_code": w.waybill_code,
@@ -151,6 +183,12 @@ def search_waybills(
                 "dest_hub_id": w.dest_hub_id,
                 "origin_hub": {"hub_id": w.origin_hub.hub_id, "hub_name": w.origin_hub.hub_name} if w.origin_hub else None,
                 "dest_hub": {"hub_id": w.dest_hub.hub_id, "hub_name": w.dest_hub.hub_name} if w.dest_hub else None,
+                "holding_hub_id": w.holding_hub_id,
+                "holding_shipper_id": w.holding_shipper_id,
+                "holding_hub": {"hub_id": w.holding_hub.hub_id, "hub_name": w.holding_hub.hub_name} if w.holding_hub else None,
+                "holding_shipper": {"user_id": w.holding_shipper.user_id, "full_name": w.holding_shipper.full_name} if w.holding_shipper else None,
+                "sla_deadline": w.sla_deadline.isoformat() if w.sla_deadline else None,
+                "sla_status": sla_status,
                 "bill_image_url": w.bill_image_url,
                 "pickup_image_url": w.pickup_image_url,
                 "ocr_status": w.ocr_status,
@@ -159,6 +197,7 @@ def search_waybills(
             })
 
         return {"items": result, "total": total, "page": filters.page, "size": filters.size}
+
 
     except Exception as e:
         import traceback
@@ -382,3 +421,77 @@ def get_waybill_tracking(code: str, db: Session = Depends(get_db)):
 def delete_waybill(code: str, db: Session = Depends(get_db)):
     crud_wb.soft_delete_waybill(db, code)
     return {"message": "Đã hủy đơn thành công"}
+
+# --- 7. API ĐIỀU CHUYỂN & SLA CONFIGURATION (MỚI BỔ SUNG) ---
+
+@router.post("/{code}/transfer")
+def transfer_waybill(
+    code: str,
+    target_type: str,
+    target_id: int,
+    reason: str,
+    note: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """API Điều chuyển quyền giữ kiện hàng (đến kho hoặc bưu tá khác)"""
+    try:
+        updated_wb = crud_wb.transfer_waybill_crud(
+            db=db,
+            code=code,
+            target_type=target_type,
+            target_id=target_id,
+            reason=reason,
+            note=note,
+            user_id=current_user.get("user_id"),
+            hub_id=current_user.get("primary_hub_id")
+        )
+        if not updated_wb:
+            raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn hoặc loại đích đến không hợp lệ")
+        
+        db.commit()
+        return {"message": "Điều chuyển vận đơn thành công", "waybill_code": code}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
+
+@router.get("/sla/dashboard")
+def get_sla_dashboard(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """API thống kê số lượng SLA realtime phục vụ widget dashboard"""
+    try:
+        from core.state_machine import WaybillStatus
+        # Lấy tất cả đơn chưa xóa
+        all_w = db.query(models.Waybills).filter(models.Waybills.is_deleted == False).all()
+        
+        total = len(all_w)
+        on_time = 0
+        warning = 0
+        overdue = 0
+        
+        now = datetime.utcnow()
+        for w in all_w:
+            if w.sla_deadline:
+                if w.status in [WaybillStatus.DELIVERED, WaybillStatus.SETTLED]:
+                    on_time += 1
+                elif w.sla_deadline < now:
+                    overdue += 1
+                elif (w.sla_deadline - now).total_seconds() <= 14400: # 4 hours
+                    warning += 1
+                else:
+                    on_time += 1
+            else:
+                on_time += 1
+                
+        return {
+            "total": total,
+            "on_time": on_time,
+            "warning": warning,
+            "overdue": overdue
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi thống kê SLA: {str(e)}")

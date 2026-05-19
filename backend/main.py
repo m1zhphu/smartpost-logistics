@@ -10,9 +10,14 @@ from fastapi.staticfiles import StaticFiles
 from api import uploads
 import os
 import models
-from core.database import engine
+from core.database import engine, SessionLocal
+from sqlalchemy import text
+
+# Tạo các bảng mới nếu chưa tồn tại
 models.Base.metadata.create_all(bind=engine)
+
 # Khởi tạo ứng dụng
+
 app = FastAPI(
     title="Smartpost Logistics - MVP Backend",
     description="Hệ thống quản lý vận hành Logistics chuyên nghiệp",
@@ -60,6 +65,8 @@ async def schedule_overdue_check():
             count = scan_overdue_waybills(db)
             print(f"[{datetime.now()}] Flagged {count} overdue waybills.")
             db.commit()
+        except Exception as e:
+            print(f"[{datetime.now()}] Lỗi hệ thống khi quét đơn quá hạn (Sẽ thử lại sau): {str(e)}")
         finally:
             db.close()
         await asyncio.sleep(3600) # Nghỉ 1 tiếng rồi chạy lại

@@ -21,13 +21,44 @@ def create_waybill_record(db: Session, data: dict, fee: float):
     ALLOWED_FIELDS = {
         'customer_id', 'receiver_name', 'receiver_phone', 'receiver_address',
         'origin_hub_id', 'dest_hub_id', 'actual_weight', 'cod_amount',
-        'service_type', 'product_name', 'note', 'payment_method'
+        'service_type', 'product_name', 'note', 'payment_method',
+        'sender_name', 'sender_phone', 'sender_address', 'length', 'width', 'height'
     }
     filtered = {k: v for k, v in data.items() if k in ALLOWED_FIELDS}
+    
+    # Cơ chế Autofill thông minh người gửi từ bảng Customers nếu trống
+    if data.get('customer_id'):
+        cust = db.query(models.Customers).filter(models.Customers.customer_id == data.get('customer_id')).first()
+        if cust:
+            if not filtered.get('sender_name'):
+                filtered['sender_name'] = cust.representative_name or cust.company_name or cust.customer_code
+            if not filtered.get('sender_phone'):
+                filtered['sender_phone'] = cust.phone_number
+            if not filtered.get('sender_address'):
+                filtered['sender_address'] = cust.address_detail
     
     total_collect = float(data.get('cod_amount', 0))
     if data.get('payment_method') == 'RECEIVER_PAY':
         total_collect += float(fee)
+
+    # Tính SLA deadline dựa trên dịch vụ
+    service = str(data.get('service_type', 'STANDARD')).upper()
+    hours = 24  # Mặc định STANDARD
+    if service in ('HT', 'FAST', 'EXPRESS'):
+        hours = 4
+    elif service in ('CPN', 'EXPRESS_STANDARD'):
+        hours = 12
+    elif service in ('TK', 'ECONOMY'):
+        hours = 48
+        
+    from datetime import timedelta
+    sla_dt = datetime.utcnow() + timedelta(hours=hours)
+
+    # Tính toán khối lượng quy đổi từ kích thước nếu có
+    l = data.get('length')
+    w = data.get('width')
+    h = data.get('height')
+    conv_w = (float(l) * float(w) * float(h)) / 5000 if l and w and h else 0.0
 
     new_waybill = models.Waybills(
         waybill_code=f"SP{int(datetime.utcnow().timestamp())}",
@@ -36,7 +67,9 @@ def create_waybill_record(db: Session, data: dict, fee: float):
         total_amount_to_collect=total_collect, 
         status=WaybillStatus.CREATED,
         version=1,
-        converted_weight=data.get('actual_weight', 0)
+        converted_weight=conv_w,
+        sla_deadline=sla_dt,
+        holding_hub_id=data.get('origin_hub_id')
     )
     db.add(new_waybill)
     db.flush() 
@@ -52,6 +85,7 @@ def create_waybill_record(db: Session, data: dict, fee: float):
             db.add(extra_srv)
             
     return new_waybill
+
 
 def create_initial_log(db: Session, waybill_id: int, hub_id: int, user_id: int):
     new_log = models.TrackingLogs(
@@ -101,7 +135,21 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
     query = db.query(models.Waybills).options(
         joinedload(models.Waybills.origin_hub),
         joinedload(models.Waybills.dest_hub),
+        joinedload(models.Waybills.holding_hub),
+        joinedload(models.Waybills.holding_shipper),
     ).filter(models.Waybills.is_deleted == False)
+
+    # Tìm kiếm theo keyword đa năng (Mã đơn, Tên/SĐT nhận, Mã KH/Tên shop gửi)
+    if hasattr(filters, 'keyword') and filters.keyword:
+        kw = f"%{filters.keyword}%"
+        query = query.join(models.Customers, models.Waybills.customer_id == models.Customers.customer_id, isouter=True).filter(
+            (models.Waybills.waybill_code.ilike(kw)) |
+            (models.Waybills.receiver_name.ilike(kw)) |
+            (models.Waybills.receiver_phone.ilike(kw)) |
+            (models.Customers.customer_code.ilike(kw)) |
+            (models.Customers.company_name.ilike(kw)) |
+            (models.Customers.transaction_name.ilike(kw))
+        )
 
     # Lọc theo Khách hàng (Quan trọng cho Accounting)
     if hasattr(filters, 'customer_id') and filters.customer_id:
@@ -129,11 +177,56 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
     if filters.waybill_code:
         query = query.filter(models.Waybills.waybill_code.ilike(f"%{filters.waybill_code}%"))
 
+    # Lọc theo loại Dịch vụ
+    if hasattr(filters, 'service_type') and filters.service_type:
+        query = query.filter(models.Waybills.service_type == filters.service_type)
+
+    # Lọc theo Đơn vị giữ
+    if hasattr(filters, 'holding_hub_id') and filters.holding_hub_id:
+        query = query.filter(models.Waybills.holding_hub_id == filters.holding_hub_id)
+    if hasattr(filters, 'holding_shipper_id') and filters.holding_shipper_id:
+        query = query.filter(models.Waybills.holding_shipper_id == filters.holding_shipper_id)
+
+    # Lọc theo SLA
+    if hasattr(filters, 'sla_status') and filters.sla_status:
+        now = datetime.utcnow()
+        from datetime import timedelta
+        if filters.sla_status == 'ON_TIME':
+            query = query.filter(
+                (models.Waybills.sla_deadline >= now) | 
+                (models.Waybills.status.in_([WaybillStatus.DELIVERED, WaybillStatus.SETTLED]))
+            )
+        elif filters.sla_status == 'WARNING':
+            query = query.filter(
+                models.Waybills.sla_deadline >= now,
+                models.Waybills.sla_deadline <= now + timedelta(hours=4),
+                ~models.Waybills.status.in_([WaybillStatus.DELIVERED, WaybillStatus.SETTLED, WaybillStatus.CANCELLED])
+            )
+        elif filters.sla_status == 'OVERDUE':
+            query = query.filter(
+                models.Waybills.sla_deadline < now,
+                ~models.Waybills.status.in_([WaybillStatus.DELIVERED, WaybillStatus.SETTLED, WaybillStatus.CANCELLED])
+            )
+
+    # Lọc theo trạng thái COD
+    if hasattr(filters, 'cod_status') and filters.cod_status:
+        if filters.cod_status == 'PAID':
+            query = query.filter(
+                models.Waybills.cod_amount > 0,
+                models.Waybills.status.in_([WaybillStatus.DELIVERED, WaybillStatus.SETTLED])
+            )
+        elif filters.cod_status == 'UNPAID':
+            query = query.filter(
+                models.Waybills.cod_amount > 0,
+                ~models.Waybills.status.in_([WaybillStatus.DELIVERED, WaybillStatus.SETTLED, WaybillStatus.CANCELLED])
+            )
+
     total = query.count()
     items = query.order_by(models.Waybills.waybill_id.desc())\
                  .offset((filters.page - 1) * filters.size).limit(filters.size).all()
 
     return items, total
+
 
 def get_overdue_waybills(db: Session, page: int = 1, size: int = 20):
     query = db.query(models.Waybills).join(models.TrackingLogs).filter(
@@ -288,3 +381,57 @@ def verify_waybill_status(db: Session, code: str, action: str, error_msg: Option
     db.add(new_log)
     db.flush()
     return waybill
+
+def log_activity(db: Session, waybill_id: int, user_id: int, action: str, ip_address: Optional[str] = None, device_info: Optional[str] = None):
+    new_log = models.ActivityLogs(
+        waybill_id=waybill_id,
+        user_id=user_id,
+        action=action,
+        ip_address=ip_address,
+        device_info=device_info,
+        created_at=datetime.utcnow()
+    )
+    db.add(new_log)
+    db.flush()
+    return new_log
+
+def transfer_waybill_crud(db: Session, code: str, target_type: str, target_id: int, reason: str, note: Optional[str], user_id: int, hub_id: Optional[int], ip_address: Optional[str] = None, device_info: Optional[str] = None):
+    waybill = get_waybill_by_code(db, code)
+    if not waybill:
+        return None
+    
+    target_type = target_type.strip().upper()
+    old_holder = "Kho " + waybill.holding_hub.hub_name if waybill.holding_hub else ("Bưu tá " + waybill.holding_shipper.full_name if waybill.holding_shipper else "Chưa có")
+    
+    if target_type == 'HUB':
+        waybill.holding_hub_id = target_id
+        waybill.holding_shipper_id = None
+        db.flush()
+        new_holder = "Kho " + (waybill.holding_hub.hub_name if waybill.holding_hub else f"ID {target_id}")
+    elif target_type == 'SHIPPER':
+        waybill.holding_shipper_id = target_id
+        waybill.holding_hub_id = None
+        db.flush()
+        new_holder = "Bưu tá " + (waybill.holding_shipper.full_name if waybill.holding_shipper else f"ID {target_id}")
+    else:
+        return None
+
+    # Ghi log hoạt động nội bộ
+    action_desc = f"Điều chuyển quyền giữ thư từ '{old_holder}' sang '{new_holder}'. Lý do: {reason}."
+    if note:
+        action_desc += f" Ghi chú: {note}"
+        
+    log_activity(db, waybill.waybill_id, user_id, action_desc, ip_address, device_info)
+    
+    # Ghi hành trình tracking log cho KH xem
+    new_log = models.TrackingLogs(
+        waybill_id=waybill.waybill_id,
+        status_id=waybill.status,
+        hub_id=hub_id or waybill.holding_hub_id or waybill.origin_hub_id,
+        user_id=user_id,
+        note=f"Đơn hàng được điều chuyển sang {new_holder}",
+        system_time=datetime.utcnow()
+    )
+    db.add(new_log)
+    db.flush()
+    return waybill

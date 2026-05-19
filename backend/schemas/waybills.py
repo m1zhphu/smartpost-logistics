@@ -22,6 +22,14 @@ class WaybillCreate(BaseModel):
     # ĐÃ BỔ SUNG: Trường này bắt buộc phải có để Backend nhận tiền từ Frontend gửi xuống
     shipping_fee: float = Field(default=0.0, description="Phí vận chuyển tính từ Frontend")
 
+    # Bổ sung phục vụ Tạo Bill thông minh
+    sender_name: Optional[str] = Field(default=None, description="Tên người gửi thực tế")
+    sender_phone: Optional[str] = Field(default=None, description="SĐT người gửi")
+    sender_address: Optional[str] = Field(default=None, description="Địa chỉ gửi")
+    length: Optional[float] = Field(default=None, description="Chiều dài (cm)")
+    width: Optional[float] = Field(default=None, description="Chiều rộng (cm)")
+    height: Optional[float] = Field(default=None, description="Chiều cao (cm)")
+
 class TrackingLogResponse(BaseModel):
     status_id: str
     hub_id: Optional[int]
@@ -56,6 +64,15 @@ class WaybillFilter(BaseModel):
     end_date: Optional[datetime] = None
     page: int = 1
     size: int = 20
+
+    # NEW ADVANCED FILTERS
+    keyword: Optional[str] = None
+    service_type: Optional[str] = None
+    holding_hub_id: Optional[int] = None
+    holding_shipper_id: Optional[int] = None
+    sla_status: Optional[str] = None
+    cod_status: Optional[str] = None
+
 
 # --- NEW: SCHEMAS FOR VERIFY & OCR ---
 

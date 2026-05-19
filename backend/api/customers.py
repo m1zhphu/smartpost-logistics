@@ -30,6 +30,38 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/code/{customer_code}")
+def get_customer_by_code(customer_code: str, db: Session = Depends(get_db)):
+    """API tra cứu nhanh chi tiết thông tin khách hàng theo Mã Khách Hàng (autofill)"""
+    customer = crud_customers.get_customer_by_code(db, customer_code)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Không tìm thấy khách hàng với mã này")
+    
+    bank = None
+    if customer.bank_accounts:
+        bank = customer.bank_accounts[0] if isinstance(customer.bank_accounts, list) else customer.bank_accounts
+
+    return {
+        "id": customer.customer_id,
+        "customer_id": customer.customer_id,
+        "customer_code": customer.customer_code,
+        "name": customer.company_name or customer.transaction_name or customer.customer_code,
+        "company_name": customer.company_name,
+        "transaction_name": customer.transaction_name,
+        "email": customer.email,
+        "phone": customer.phone_number,
+        "customer_type": customer.customer_type,
+        "status": customer.status,
+        "address": customer.address_detail,
+        "representative_name": customer.representative_name,
+        "province_id": customer.province_id,
+        "district_id": customer.district_id,
+        "ward_id": customer.ward_id,
+        "bank_name": bank.bank_name if bank else None,
+        "account_number": bank.account_number if bank else None,
+        "account_name": bank.account_name if bank else None,
+    }
+
 @router.get("", response_model=List[dict])
 def list_customers(skip: int = 0, limit: int = 200, db: Session = Depends(get_db)):
     """API lấy danh sách khách hàng (Shop) với đầy đủ thông tin để hiển thị FE"""
