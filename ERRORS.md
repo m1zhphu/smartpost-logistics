@@ -51,3 +51,16 @@
 - **Status**: Fixed
 
 ---
+
+## [2026-05-19 11:00] - Lỗi NameError: name 'target_hub' is not defined trong api/users.py
+
+- **Type**: Agent (Execution Error)
+- **Severity**: High
+- **File**: `backend/api/users.py:157`
+- **Agent**: Friday
+- **Root Cause**: Trong lúc thay thế mã để bổ sung API `/register-push-token` ở cuối tệp, Agent đã vô tình xóa nhầm 2 dòng tính toán biến `target_hub` bên trong hàm `get_shippers_by_hub` dẫn đến lỗi `NameError` khi gọi API.
+- **Fix Applied**: Khôi phục lại logic tính toán `target_hub` dựa trên vai trò người dùng trong hàm `get_shippers_by_hub` của tệp `backend/api/users.py`.
+- **Prevention**: Khi thực hiện chỉnh sửa file bằng cách thay thế khối nội dung (replace_file_content), cần đối chiếu kỹ lưỡng vùng ranh giới (StartLine/EndLine) để không xóa nhầm các biến quan trọng của các hàm liền kề.
+- **Status**: Fixed
+
+---

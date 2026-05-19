@@ -183,6 +183,7 @@ class Users(Base):
     primary_hub_id: Mapped[Optional[int]] = mapped_column(Integer)
     vehicle_plate: Mapped[Optional[str]] = mapped_column(String(50))
     status: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('true'))
+    push_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     hubs_manager: Mapped[list['Hubs']] = relationship('Hubs', foreign_keys='[Hubs.manager_id]', back_populates='manager')
     department: Mapped[Optional['Departments']] = relationship('Departments', back_populates='users')

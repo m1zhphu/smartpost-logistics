@@ -157,5 +157,29 @@ def get_shippers_by_hub(
     """Lấy danh sách Shipper để phân công"""
     user_role = current_user.get("role_id")
     target_hub = hub_id if user_role == 1 else current_user.get("primary_hub_id")
-
     return crud_users.get_active_shippers_by_hub(db, target_hub)
+
+@router.post("/register-push-token")
+def register_push_token(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """API đăng ký và cập nhật Expo Push Token từ Mobile App"""
+    token = data.get("push_token")
+    if not token:
+        raise HTTPException(status_code=400, detail="Thiếu Push Token")
+    
+    import models
+    user_id = current_user.get("user_id")
+    user = db.query(models.Users).filter(models.Users.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
+    
+    user.push_token = token
+    try:
+        db.commit()
+        return {"message": "Đăng ký Push Token thành công", "push_token": token}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Lỗi khi đăng ký token: {str(e)}")

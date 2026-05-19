@@ -42,7 +42,7 @@
               <el-row :gutter="16">
                 <el-col :span="14">
                   <el-form-item label="Khách hàng gửi (Shop)" prop="customer_id" class="mb-12">
-                    <el-select v-model="waybillForm.customer_id" placeholder="Tìm tên shop hoặc mã KH..." filterable class="w-full">
+                    <el-select v-model="waybillForm.customer_id" placeholder="Tìm tên shop hoặc mã KH..." filterable class="w-full" @change="handleCustomerChange">
                       <template #prefix><el-icon><Shop /></el-icon></template>
                       <el-option v-for="shop in customers" :key="shop.customer_id || shop.id" :label="shop.company_name || shop.name" :value="shop.customer_id || shop.id" />
                     </el-select>
@@ -57,6 +57,32 @@
                   </el-form-item>
                 </el-col>
               </el-row>
+              <el-row :gutter="16">
+                <el-col :span="10">
+                  <el-form-item label="SĐT người gửi" prop="sender_phone" class="mb-12">
+                    <el-input v-model="waybillForm.sender_phone" placeholder="VD: 09xxxxxxx" clearable>
+                      <template #prefix><el-icon><Phone /></el-icon></template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="14">
+                  <el-form-item label="Tên người gửi" prop="sender_name" class="mb-12">
+                    <el-input v-model="waybillForm.sender_name" placeholder="Họ và tên..." clearable>
+                      <template #prefix><el-icon><User /></el-icon></template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-form-item label="Địa chỉ gửi hàng" prop="sender_address" class="mb-12">
+                <el-input 
+                  v-model="waybillForm.sender_address" 
+                  type="textarea" 
+                  :rows="2" 
+                  placeholder="Địa chỉ gửi..." 
+                  resize="none"
+                />
+              </el-form-item>
 
               <el-row :gutter="16">
                 <el-col :span="12">
@@ -88,7 +114,7 @@
               <el-row :gutter="16">
                 <el-col :span="10">
                   <el-form-item label="Số điện thoại nhận" prop="receiver_phone" class="mb-12">
-                    <el-input ref="phoneInputRef" v-model="waybillForm.receiver_phone" placeholder="VD: 09xxxxxxx" clearable>
+                    <el-input ref="phoneInputRef" v-model="waybillForm.receiver_phone" placeholder="VD: 09xxxxxxx" clearable @blur="handleReceiverPhoneBlur">
                       <template #prefix><el-icon><Phone /></el-icon></template>
                     </el-input>
                   </el-form-item>
@@ -275,6 +301,9 @@ const servicesLoading = ref(false);
 
 const initialFormState = {
   service_type: 'STANDARD',
+  sender_name: '',
+  sender_phone: '',
+  sender_address: '',
   receiver_name: '',
   receiver_phone: '',
   receiver_address: '',
@@ -371,6 +400,30 @@ watch(() => [
     waybillForm.extra_services,
     waybillForm.cod_amount
 ], fetchFee, { deep: true });
+
+const handleCustomerChange = (customerId) => {
+  const customer = customers.value.find(c => c.customer_id === customerId || c.id === customerId);
+  if (!customer) return;
+  
+  waybillForm.sender_name = customer.company_name || customer.name || '';
+  waybillForm.sender_phone = customer.phone || '';
+  waybillForm.sender_address = customer.address || '';
+};
+
+const handleReceiverPhoneBlur = async () => {
+  const phone = waybillForm.receiver_phone;
+  if (!phone || phone.length < 10) return;
+  
+  try {
+    const res = await api.get('/api/waybills/recipient-history', { params: { phone } });
+    if (res.data) {
+      waybillForm.receiver_name = res.data.receiver_name || waybillForm.receiver_name;
+      waybillForm.receiver_address = res.data.receiver_address || waybillForm.receiver_address;
+      ElMessage.success('Đã tự động điền thông tin người nhận cũ!');
+    }
+  } catch (err) {
+  }
+};
 
 const saveWaybill = async (andPrint) => {
   if (!formRef.value) return;
