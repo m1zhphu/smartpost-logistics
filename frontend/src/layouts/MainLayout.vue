@@ -170,7 +170,8 @@ const menuData = computed(() => {
           { label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in' },
           { label: 'Đóng túi (Bagging)', path: '/admin/warehouse/bagging' },
           { label: 'Danh sách túi', path: '/admin/warehouse/bags' },
-          { label: 'Lên/Xuống xe (Manifest)', path: '/admin/warehouse/manifest' }
+          { label: 'Lên/Xuống xe (Manifest)', path: '/admin/warehouse/manifest' },
+          { label: 'Lịch sử Chuyến xe', path: '/admin/warehouse/manifests' }
         ]}
       ]
     },
@@ -196,7 +197,8 @@ const menuData = computed(() => {
       id: 'cskh', icon: Service, label: 'CSKH', roles: [1, 2, 3, 5], // Thêm Role 3 (Nhân viên kho/CSKH)
       children: [
         { title: 'TRUNG TÂM CSKH', items: [
-          { label: 'Duyệt Bill & Báo giá', path: '/admin/cskh/verification' }
+          { label: 'Duyệt Bill & Báo giá', path: '/admin/cskh/verification' },
+          { label: 'Mô phỏng giá cước', path: '/admin/pricing/simulator' }
         ]}
       ]
     }
@@ -271,6 +273,8 @@ watch(() => route.path, (newPath) => {
   flex-direction: column;
   z-index: 100;
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.02);
+  height: 100%;
+  overflow: hidden;
 }
 
 .logo-mini {
@@ -280,6 +284,7 @@ watch(() => route.path, (newPath) => {
   justify-content: center;
   border-bottom: 1px solid #F4F7FE;
   margin-bottom: 16px;
+  flex-shrink: 0; /* Không cho logo co lại */
 }
 
 .logo-icon {
@@ -300,7 +305,15 @@ watch(() => route.path, (newPath) => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 0 12px;
+  padding: 0 12px 24px 12px;
+  flex: 1;
+  overflow-y: auto;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.menu-list::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
 }
 
 .menu-item-primary {

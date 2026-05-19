@@ -90,6 +90,11 @@ const adminRoutes = [
         component: () => import('../views/admin/warehouse/ManifestScan.vue'),
       },
       {
+        path: 'warehouse/manifests',
+        name: 'ManifestList',
+        component: () => import('../views/admin/warehouse/ManifestList.vue'),
+      },
+      {
         path: 'warehouse/bags', // Đường dẫn là /admin/warehouse/bags
         name: 'BagList',
         component: () => import('../views/admin/warehouse/BagList.vue'),
@@ -121,6 +126,11 @@ const adminRoutes = [
         path: 'accounting/confirm-cash',
         name: 'ConfirmCash',
         component: () => import('../views/admin/accounting/ConfirmCash.vue'),
+      },
+      {
+        path: 'pricing/simulator',
+        name: 'PriceSimulator',
+        component: () => import('../views/admin/pricing/PriceSimulator.vue'),
       },
       // Shipper Mobile-friendly app
       {

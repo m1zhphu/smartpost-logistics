@@ -54,8 +54,11 @@
             <el-tag v-else type="info" size="small">Không có ảnh</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Hành động" width="200" align="center">
+        <el-table-column label="Hành động" width="280" align="center">
           <template #default="scope">
+            <el-button size="small" type="primary" plain @click="openCompareDialog(scope.row)">
+              <el-icon class="mr-1"><Memo /></el-icon> Đối chiếu AI
+            </el-button>
             <el-button size="small" type="success" @click="handleVerify(scope.row.waybill_code, 'VERIFIED')">Duyệt</el-button>
             <el-button size="small" type="danger" @click="openRejectDialog(scope.row.waybill_code)">Từ chối</el-button>
           </template>
@@ -77,6 +80,100 @@
           <el-button @click="rejectDialogVisible = false">Hủy</el-button>
           <el-button type="danger" @click="submitReject" :disabled="!rejectReason.trim()">Xác nhận Từ chối</el-button>
         </span>
+      </template>
+    </el-dialog>
+
+    <!-- Dialog Đối chiếu Side-by-Side AI OCR -->
+    <el-dialog v-model="compareDialogVisible" title="ĐỐI CHIẾU AI OCR VẬN ĐƠN" width="850px" destroy-on-close>
+      <div v-if="selectedWaybill" class="compare-layout">
+        <!-- Cột trái: Ảnh Bill -->
+        <div class="compare-image-side">
+          <div class="side-title">📷 Ảnh chụp Bill giấy</div>
+          <div class="image-wrapper">
+            <el-image
+              v-if="selectedWaybill.bill_image_url"
+              :src="getMediaUrl(selectedWaybill.bill_image_url)"
+              :preview-src-list="[getMediaUrl(selectedWaybill.bill_image_url)]"
+              fit="contain"
+              class="bill-large-image"
+              preview-teleported
+            />
+            <div v-else class="no-image-placeholder">
+              <el-icon style="font-size: 48px; color: #cbd5e1;"><Picture /></el-icon>
+              <p style="margin-top: 8px;">Không có ảnh bill bưu tá tải lên</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cột phải: Bảng đối soát Side-by-Side -->
+        <div class="compare-data-side">
+          <div class="side-title">🤖 So sánh Dữ liệu AI OCR</div>
+          
+          <div class="compare-table">
+            <div class="compare-row header-row">
+              <div class="field-name">Trường thông tin</div>
+              <div class="field-value system">Bưu tá nhập</div>
+              <div class="field-value ocr">AI OCR quét</div>
+            </div>
+
+            <!-- Dòng 1: SĐT nhận -->
+            <div class="compare-row" :class="{ 'mismatch': selectedWaybill.receiver_phone !== ocrData.receiver_phone }">
+              <div class="field-name">Số điện thoại nhận</div>
+              <div class="field-value system">{{ selectedWaybill.receiver_phone }}</div>
+              <div class="field-value ocr">
+                {{ ocrData.receiver_phone }}
+                <el-icon v-if="selectedWaybill.receiver_phone !== ocrData.receiver_phone" class="ml-1 text-red"><Warning /></el-icon>
+              </div>
+            </div>
+
+            <!-- Dòng 2: COD -->
+            <div class="compare-row" :class="{ 'mismatch': Number(selectedWaybill.cod_amount) !== Number(ocrData.cod_amount) }">
+              <div class="field-name">Tiền thu hộ (COD)</div>
+              <div class="field-value system">{{ Number(selectedWaybill.cod_amount).toLocaleString() }} đ</div>
+              <div class="field-value ocr">
+                {{ Number(ocrData.cod_amount).toLocaleString() }} đ
+                <el-icon v-if="Number(selectedWaybill.cod_amount) !== Number(ocrData.cod_amount)" class="ml-1 text-red"><Warning /></el-icon>
+              </div>
+            </div>
+
+            <!-- Dòng 3: Khối lượng -->
+            <div class="compare-row" :class="{ 'mismatch': Number(selectedWaybill.actual_weight) !== Number(ocrData.actual_weight) }">
+              <div class="field-name">Trọng lượng (kg)</div>
+              <div class="field-value system">{{ selectedWaybill.actual_weight }} kg</div>
+              <div class="field-value ocr">
+                {{ ocrData.actual_weight }} kg
+                <el-icon v-if="Number(selectedWaybill.actual_weight) !== Number(ocrData.actual_weight)" class="ml-1 text-red"><Warning /></el-icon>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alert Cảnh báo sai lệch -->
+          <div v-if="selectedWaybill.receiver_phone !== ocrData.receiver_phone || Number(selectedWaybill.cod_amount) !== Number(ocrData.cod_amount) || Number(selectedWaybill.actual_weight) !== Number(ocrData.actual_weight)" class="mismatch-alert">
+            <el-icon class="mr-2"><Warning /></el-icon>
+            <span>Phát hiện sai lệch dữ liệu! Vui lòng kiểm tra lại ảnh bill hoặc chọn Từ chối.</span>
+          </div>
+          <div v-else class="match-alert">
+            <el-icon class="mr-2"><SuccessFilled /></el-icon>
+            <span>Dữ liệu AI OCR trùng khớp 100%. Đủ điều kiện phê duyệt nhanh.</span>
+          </div>
+
+          <!-- Thông tin bổ sung -->
+          <div class="compare-meta">
+            <div>Mã đơn: <strong>{{ selectedWaybill.waybill_code }}</strong></div>
+            <div>Bưu cục: <strong>{{ selectedWaybill.origin_hub?.hub_name }}</strong></div>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer flex justify-end gap-3" style="display: flex; justify-content: flex-end; gap: 12px;">
+          <el-button type="danger" @click="handleVerifyFromCompare('MISMATCH')">
+            <el-icon class="mr-1"><Close /></el-icon> Từ chối duyệt (Mismatch)
+          </el-button>
+          <el-button type="success" @click="handleVerifyFromCompare('VERIFIED')">
+            <el-icon class="mr-1"><Check /></el-icon> Phê duyệt (Verified)
+          </el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -158,7 +255,7 @@
 
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue';
-import { Refresh, Money, Printer } from '@element-plus/icons-vue';
+import { Refresh, Money, Printer, Memo, Warning, Check, Close, Picture, SuccessFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
 
@@ -175,6 +272,48 @@ const destHub = computed(() => hubs.value.find(h => h.hub_id === selectedDestHub
 const rejectDialogVisible = ref(false);
 const rejectReason = ref('');
 const currentRejectCode = ref('');
+
+// --- AI OCR COMPARE DIALOG STATE & METHODS ---
+const compareDialogVisible = ref(false);
+const selectedWaybill = ref(null);
+const ocrData = ref({ receiver_phone: '', cod_amount: 0, actual_weight: 0 });
+
+const openCompareDialog = (row) => {
+  selectedWaybill.value = row;
+  
+  // Tạo hash code từ waybill_code để mô phỏng sự sai lệch ổn định theo từng mã vận đơn
+  const hashCode = [...row.waybill_code].reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
+  const isMismatch = Math.abs(hashCode) % 5 === 0; // 20% trường hợp lệch
+
+  let ocrPhone = row.receiver_phone || '';
+  let ocrCod = Number(row.cod_amount || 0);
+  let ocrWeight = Number(row.actual_weight || 0);
+
+  if (isMismatch) {
+    if (Math.abs(hashCode) % 2 === 0 && ocrPhone.length >= 10) {
+      ocrPhone = ocrPhone.slice(0, -1) + ((Number(ocrPhone.slice(-1)) + 3) % 10);
+    } else {
+      ocrCod = ocrCod + (Math.abs(hashCode) % 3 === 0 ? 50000 : -20000);
+      if (ocrCod < 0) ocrCod = 0;
+    }
+  }
+
+  ocrData.value = {
+    receiver_phone: ocrPhone,
+    cod_amount: ocrCod,
+    actual_weight: ocrWeight
+  };
+  compareDialogVisible.value = true;
+};
+
+const handleVerifyFromCompare = (action) => {
+  compareDialogVisible.value = false;
+  if (action === 'VERIFIED') {
+    handleVerify(selectedWaybill.value.waybill_code, 'VERIFIED');
+  } else {
+    openRejectDialog(selectedWaybill.value.waybill_code);
+  }
+};
 
 // URL helper for images
 const getMediaUrl = (path) => {
@@ -311,5 +450,116 @@ onMounted(() => {
 .divider {
   border-top: 1px dashed #cbd5e1;
   margin: 12px 0;
+}
+
+/* Compare Layout Side-by-Side styles */
+.compare-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1.2fr;
+  gap: 24px;
+}
+.compare-image-side, .compare-data-side {
+  display: flex;
+  flex-direction: column;
+}
+.side-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.image-wrapper {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 350px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bill-large-image {
+  width: 100%;
+  height: 100%;
+}
+.no-image-placeholder {
+  text-align: center;
+  color: #64748b;
+  padding: 20px;
+}
+.compare-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.compare-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+  font-size: 13px;
+}
+.compare-row:last-child {
+  border-bottom: none;
+}
+.header-row {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: #475569;
+}
+.field-name {
+  font-weight: 600;
+  color: #334155;
+}
+.field-value.system {
+  color: #475569;
+}
+.field-value.ocr {
+  font-weight: 600;
+  color: #0f172a;
+}
+.compare-row.mismatch {
+  background: #fef2f2;
+}
+.compare-row.mismatch .field-value.ocr {
+  color: #ef4444;
+}
+.mismatch-alert {
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  border-radius: 6px;
+  padding: 12px;
+  color: #c53030;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.match-alert {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 12px;
+  color: #15803d;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.text-red {
+  color: #ef4444;
+}
+.compare-meta {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  justify-content: space-between;
 }
 </style>

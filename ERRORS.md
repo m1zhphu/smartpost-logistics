@@ -64,3 +64,35 @@
 - **Status**: Fixed
 
 ---
+
+## [2026-05-19 13:42] - Lỗi SyntaxError: [vue/compiler-sfc] Expecting Unicode escape sequence \uXXXX trong DebtStatement.vue
+
+- **Type**: Syntax
+- **Severity**: High
+- **File**: `frontend/src/views/admin/accounting/DebtStatement.vue:660`
+- **Agent**: Friday
+- **Root Cause**: Trong template literal in bảng kê, việc đặt trực tiếp thẻ đóng `</script>` làm trình phân tích SFC Vue compiler hiểu nhầm đó là thẻ kết thúc của chính phần code Vue `<script setup>`. Đồng thời các ký tự backtick bị escape bằng dấu backslash `\`` làm parser báo lỗi.
+- **Fix Applied**: 
+  1. Loại bỏ các dấu backslash thoát dấu backtick \` và các tham số ${} không cần thiết.
+  2. Thoát dấu gạch chéo trong thẻ đóng script bên trong template literal: `<\/script>` để tránh bộ phân tích SFC Vue compiler nhận diện nhầm.
+- **Prevention**: Khi viết các đoạn code HTML/JS mẫu bên trong template literal của Vue SFC (Single File Component), luôn thoát thẻ đóng script dưới dạng `<\/script>` để bộ compiler không biên dịch nhầm, và tránh escape backtick thừa thãi.
+- **Status**: Fixed
+
+---
+
+## [2026-05-19 14:00] - Thiếu sót Giao diện: Thiếu nút Sửa cước và Tạo phiếu điều chỉnh trực tiếp trên màn hình Kế toán
+
+- **Type**: Agent (Execution Error)
+- **Severity**: High
+- **File**: `frontend/src/views/admin/accounting/DebtStatement.vue`, `frontend/src/views/admin/accounting/CODTable.vue`
+- **Agent**: Friday
+- **Root Cause**: Giao diện đối soát và tạo bảng kê kế toán (cước phí và COD) ban đầu không có nút chỉnh sửa giá cước vận đơn hay hộp thoại nhập lý do tạo adjustment trực tiếp. Điều này ép kế toán phải rời màn hình đối soát để di chuyển sang màn hình tra cứu vận đơn, làm giảm mạnh trải nghiệm người dùng, mặc dù phía Backend API đã hỗ trợ đầy đủ.
+- **Fix Applied**: 
+  1. Tích hợp cột hành động "Thao tác" và nút "Sửa giá" trực tiếp vào bảng danh sách vận đơn của cả hai màn hình `DebtStatement.vue` và `CODTable.vue`.
+  2. Bổ sung `el-dialog` cho phép Kế toán nhập cước mới, phụ phí mới, và bắt buộc nhập lý do điều chỉnh.
+  3. Gửi payload lên API `/api/accounting/override-price`. Nếu bảng kê đã chốt (`CONFIRMED`), backend tự động sinh và phản hồi thông tin phiếu điều chỉnh cước (`statement_adjustments`). UI hiển thị cảnh báo đẹp mắt chứa thông tin chênh lệch và ID phiếu điều chỉnh cho kế toán.
+  4. Tự động tải lại bảng dữ liệu sau khi sửa thành công để đồng bộ tổng số tiền cước đối soát trên UI.
+- **Prevention**: Khi thiết kế các phân hệ nghiệp vụ phức tạp (như Kế toán đối soát), luôn đặt mình vào vị trí người dùng cuối để phát hiện các "điểm nghẽn" tương tác. Đảm bảo các chức năng nghiệp vụ trọng yếu (như điều chỉnh giá cước) được tích hợp trực quan ngay tại nơi người dùng làm việc thường xuyên nhất.
+- **Status**: Fixed
+
+---

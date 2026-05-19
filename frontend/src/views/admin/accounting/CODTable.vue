@@ -85,6 +85,11 @@
           <div class="alert-content">
             <h4 class="alert-title">Đã tạo Bảng kê {{ lastStatementCode }} thành công!</h4>
             <p class="alert-desc">Bạn có thể nhấn 'Xuất Excel' để tải file chi tiết bảng kê này và gửi cho khách hàng.</p>
+            <div style="margin-top: 10px;">
+              <el-button type="warning" size="small" icon="Money" @click="showAdjustments" style="font-weight: bold; border-radius: 6px;">
+                Xem Phiếu Điều Chỉnh Cước
+              </el-button>
+            </div>
           </div>
           <button class="alert-close" @click="lastStatementCode = ''"><el-icon><Close /></el-icon></button>
         </div>
@@ -204,6 +209,22 @@
               </div>
             </template>
           </el-table-column>
+
+          <!-- Thao tác -->
+          <el-table-column label="Thao tác" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                icon="Edit"
+                @click="openOverrideDialog(row)"
+                :disabled="row.status === 'SETTLED'"
+              >
+                Sửa giá
+              </el-button>
+            </template>
+          </el-table-column>
           
           <template #empty>
             <el-empty description="Không có vận đơn nào thỏa mãn điều kiện lọc" :image-size="100" />
@@ -213,13 +234,76 @@
 
     </div>
   </div>
+
+  <!-- Dialog Sửa Cước Phí -->
+  <el-dialog v-model="overrideDialogVisible" title="ĐIỀU CHỈNH CƯỚC PHÍ & TẠO PHIẾU ĐIỀU CHỈNH" width="460px" append-to-body>
+    <el-form label-position="top" class="override-form">
+      <div style="background: #F4F7FE; border-radius: 8px; padding: 12px; margin-bottom: 16px; border: 1px solid #E9EDF7;">
+        <div style="font-size: 13px; color: #2B3674; margin-bottom: 4px;">Vận đơn cần chỉnh sửa:</div>
+        <div style="font-size: 16px; font-weight: 800; color: #4318FF;">{{ overrideForm.waybill_code }}</div>
+      </div>
+      
+      <el-form-item label="Cước vận chuyển chính (VNĐ)" required>
+        <el-input-number v-model="overrideForm.new_shipping_fee" class="w-full" :min="0" :step="1000" style="width: 100%;" />
+      </el-form-item>
+      
+      <el-form-item label="Phụ phí dịch vụ cộng thêm (VNĐ)">
+        <el-input-number v-model="overrideForm.new_extra_fee" class="w-full" :min="0" :step="1000" style="width: 100%;" />
+      </el-form-item>
+      
+      <el-form-item label="Lý do điều chỉnh (Bắt buộc để ghi nhận lịch sử)" required>
+        <el-input 
+          v-model="overrideForm.reason" 
+          type="textarea" 
+          :rows="3" 
+          placeholder="Nhập lý do chi tiết: VD sai cự ly, sai cân nặng, giảm giá cho khách..." 
+        />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+        <el-button @click="overrideDialogVisible = false">Hủy bỏ</el-button>
+        <el-button type="primary" @click="submitOverridePrice" :loading="overrideSubmitting">
+          Xác nhận Cập nhật
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
+
+  <!-- Dialog Xem Phiếu Điều Chỉnh -->
+  <el-dialog v-model="adjustmentsDialogVisible" title="📜 LỊCH SỬ PHIẾU ĐIỀU CHỈNH CƯỚC (BẢNG KÊ COD)" width="700px" append-to-body destroy-on-close>
+    <div style="margin-bottom: 16px; font-weight: bold; color: #2b3674;">
+      Bảng kê COD: <span style="color: #4318ff;">{{ lastStatementCode }}</span>
+    </div>
+    
+    <el-table :data="adjustmentsList" v-loading="loadingAdjustments" style="width: 100%;" border>
+      <el-table-column prop="id" label="Mã Phiếu" width="90" align="center" />
+      <el-table-column prop="waybill_code" label="Mã Vận Đơn" width="150" />
+      <el-table-column label="Số Tiền Thay Đổi" width="150" align="right">
+        <template #default="{ row }">
+          <span :style="{ color: row.diff_amount < 0 ? '#EE5D50' : '#05CD99', fontWeight: 'bold' }">
+            {{ row.diff_amount > 0 ? '+' : '' }}{{ Number(row.diff_amount).toLocaleString('vi-VN') }} đ
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="reason" label="Lý Do Điều Chỉnh" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="username" label="Người Thực Hiện" width="120" />
+    </el-table>
+    
+    <template #footer>
+      <div style="display: flex; justify-content: flex-end;">
+        <el-button type="primary" @click="adjustmentsDialogVisible = false">Đóng</el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { 
   DocumentCopy, Download, Refresh, Search, InfoFilled, Shop, 
-  Money, RefreshRight, CircleCheckFilled, Close, Loading, Phone 
+  Money, RefreshRight, CircleCheckFilled, Close, Loading, Phone,
+  Edit
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElNotification, ElMessageBox } from 'element-plus';
@@ -232,6 +316,92 @@ const lastStatementId = ref(null);
 const lastStatementCode = ref('');
 const multipleTableRef = ref(null);
 const selectedRows = ref([]);
+
+// --- PHIẾU ĐIỀU CHỈNH CƯỚC ---
+const adjustmentsDialogVisible = ref(false);
+const loadingAdjustments = ref(false);
+const adjustmentsList = ref([]);
+
+const showAdjustments = async () => {
+  if (!lastStatementId.value) return;
+  adjustmentsDialogVisible.value = true;
+  loadingAdjustments.value = true;
+  adjustmentsList.value = [];
+  try {
+    const res = await api.get(`/api/accounting/statements/${lastStatementId.value}/adjustments`, {
+      params: { statement_type: 'COD' }
+    });
+    adjustmentsList.value = res.data;
+  } catch (err) {
+    ElMessage.error('Không thể tải lịch sử điều chỉnh cước');
+  } finally {
+    loadingAdjustments.value = false;
+  }
+};
+
+// --- DIALOG ĐIỀU CHỈNH GIÁ ---
+const overrideDialogVisible = ref(false);
+const overrideSubmitting = ref(false);
+const overrideForm = ref({
+  waybill_id: null,
+  waybill_code: '',
+  current_shipping_fee: 0,
+  new_shipping_fee: 0,
+  new_extra_fee: 0,
+  reason: ''
+});
+
+const openOverrideDialog = (row) => {
+  overrideForm.value = {
+    waybill_id: row.waybill_id,
+    waybill_code: row.waybill_code,
+    current_shipping_fee: row.shipping_fee || 0,
+    new_shipping_fee: row.shipping_fee || 0,
+    new_extra_fee: row.extra_services_fee || 0,
+    reason: ''
+  };
+  overrideDialogVisible.value = true;
+};
+
+const submitOverridePrice = async () => {
+  if (!overrideForm.value.reason.trim()) {
+    return ElMessage.warning('Vui lòng nhập lý do điều chỉnh!');
+  }
+
+  overrideSubmitting.value = true;
+  try {
+    const payload = {
+      waybill_id: overrideForm.value.waybill_id,
+      new_shipping_fee: overrideForm.value.new_shipping_fee,
+      new_extra_fee: overrideForm.value.new_extra_fee || null,
+      reason: overrideForm.value.reason.trim()
+    };
+
+    const res = await api.post('/api/accounting/override-price', payload);
+    const data = res.data;
+
+    overrideDialogVisible.value = false;
+
+    if (data.status === 'ADJUSTED') {
+      ElMessageBox.alert(
+        `Đã tạo <b>phiếu điều chỉnh #${data.adjustment_id}</b><br>
+         Chênh lệch cước: <b>${Number(data.diff_amount).toLocaleString('vi-VN')} đ</b><br>
+         Lý do: ${data.reason}`,
+        '⚠️ Đã tạo phiếu điều chỉnh cước',
+        { type: 'warning', dangerouslyUseHTMLString: true, confirmButtonText: 'Đóng' }
+      );
+    } else {
+      ElMessage.success(`✅ Cập nhật giá thành công! Tổng cước mới: ${Number(data.new_total).toLocaleString('vi-VN')} đ`);
+    }
+
+    // Tải lại bảng dữ liệu
+    await fetchData();
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Lỗi khi sửa giá vận đơn');
+  } finally {
+    overrideSubmitting.value = false;
+  }
+};
 
 const filter = reactive({
   customer_id: null,
