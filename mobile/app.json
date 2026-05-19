@@ -1,0 +1,78 @@
+{
+  "expo": {
+    "name": "Speed Light Dev",
+    "owner": "speed-light-dev",
+    "slug": "speed-light-dev",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "vn.speedlight.app.dev",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Speedlight cần quyền vị trí để hỗ trợ theo dõi hành trình giao hàng trong ca làm việc.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Speedlight cần quyền vị trí \"Luôn luôn\" để ghi nhận hành trình kể cả khi bạn dùng ứng dụng khác.",
+        "NSLocationAlwaysUsageDescription": "Speedlight cần quyền vị trí ở chế độ nền để theo dõi hoạt động giao hàng.",
+        "UIBackgroundModes": ["location", "fetch"]
+      }
+    },
+    "android": {
+      "package": "vn.speedlight.app.dev",
+      "adaptiveIcon": {
+        "softwareKeyboardLayoutMode": "pan",
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Speedlight cần quyền truy cập Camera để bạn có thể chụp ảnh và quét mã vận đơn trực tiếp trên hệ thống.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Speedlight cần quyền vị trí \"Luôn luôn\" để theo dõi hành trình giao hàng kể cả khi bạn dùng ứng dụng khác.",
+          "locationAlwaysPermission": "Speedlight cần quyền vị trí nền để ghi nhận hoạt động ca làm việc.",
+          "locationWhenInUsePermission": "Speedlight cần quyền vị trí để hỗ trợ quản lý và giao nhận hàng hóa.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
+  }
+}

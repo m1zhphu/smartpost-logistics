@@ -1,0 +1,237 @@
+import { StyleSheet } from "react-native";
+import { COLORS } from "../constants/colors";
+
+const CameraPODStyles = StyleSheet.create({
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.backgroundSoft,
+    paddingHorizontal: 30,
+  },
+
+  // --- Auth Screen ---
+  authIconWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: COLORS.secondaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+  },
+  authText: {
+    fontSize: 15,
+    color: COLORS.textMuted,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+    fontWeight: "500",
+  },
+  authBtn: {
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 16,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  authBtnText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+
+  // --- Camera Overlay ---
+  topActions: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  frame: { width: "84%", height: "58%", position: "relative" },
+  corner: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderColor: COLORS.secondary,
+  },
+  topLeft: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4 },
+  topRight: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4 },
+  bottomLeft: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4 },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+  },
+
+  guideText: {
+    marginTop: 24,
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: "700",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    overflow: "hidden",
+  },
+
+  // --- Bottom Controls ---
+  bottomActions: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 40,
+    alignItems: "center",
+  },
+  captureBtn: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  captureInner: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: COLORS.white,
+  },
+
+  // --- Preview Screen ---
+  previewContainer: { flex: 1, position: "relative", backgroundColor: "#000" },
+  previewImage: { flex: 1, resizeMode: "cover" },
+
+  watermark: {
+    position: "absolute",
+    left: 20,
+    bottom: 20,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  watermarkRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
+  watermarkText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+
+  previewActions: {
+    backgroundColor: "#000",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 34,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  actionBtnReject: {
+    flex: 1,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  actionBtnAccept: {
+    flex: 1,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: COLORS.secondary,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  actionText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: "800",
+    marginLeft: 8,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    minHeight: 280,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.textDark,
+    marginBottom: 16,
+  },
+  modalLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 10 },
+  modalValue: { fontSize: 16, color: COLORS.textDark, marginTop: 4 },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 24,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    marginRight: 8,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#F2F2F2",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalButtonConfirm: {
+    flex: 1,
+    marginLeft: 8,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: COLORS.secondary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalButtonText: { color: COLORS.white, fontSize: 15, fontWeight: "700" },
+});
+
+export default CameraPODStyles;

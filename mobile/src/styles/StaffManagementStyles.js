@@ -1,0 +1,38 @@
+import { StyleSheet } from 'react-native';
+
+const StaffManagementStyles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#f5f7fa' },
+    headerArea: { backgroundColor: '#0f3d26', paddingTop: 50, paddingBottom: 45, paddingHorizontal: 20, position: 'relative', overflow: 'hidden' },
+    headerCircle: { position: 'absolute', top: -40, right: -50, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.08)' },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+    content: { paddingHorizontal: 20, paddingBottom: 100, marginTop: -30 },
+    summaryCard: { backgroundColor: '#fff', borderRadius: 20, padding: 18, marginBottom: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', elevation: 3, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8 },
+    summaryText: { color: '#334155', fontSize: 13, fontWeight: '600' },
+    summaryValue: { color: '#0f3d26', fontSize: 20, fontWeight: 'bold' },
+    list: { flex: 1 },
+    card: { backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#e2e8f0', elevation: 1 },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    staffInfo: { flex: 1, marginLeft: 12 },
+    staffName: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
+    staffMeta: { color: '#64748b', fontSize: 13, marginTop: 4 },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+    statusText: { fontWeight: '700', fontSize: 12 },
+    divider: { height: 1, backgroundColor: '#e2e8f0', marginVertical: 14 },
+    row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    label: { color: '#475569', fontSize: 13, fontWeight: '600' },
+    actionBtn: { flexDirection: 'row', backgroundColor: '#0f3d26', paddingVertical: 12, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginVertical: 15 },
+    actionBtnText: { color: '#fff', fontWeight: 'bold', marginLeft: 8 },
+    fab: { position: 'absolute', bottom: 24, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: '#0f3d26', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#0f3d26', shadowOpacity: 0.3, shadowOffset: { width: 0, height: 6 }, shadowRadius: 10 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(15,61,38,0.45)', justifyContent: 'flex-end' },
+    modalContainer: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, maxHeight: '85%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
+    input: { backgroundColor: '#f8fafc', borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16, color: '#0f172a' },
+    pickerWrap: { backgroundColor: '#f8fafc', borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 16, overflow: 'hidden' },
+    modalButton: { backgroundColor: '#0f3d26', paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 6 },
+    modalButtonText: { color: '#fff', fontWeight: 'bold' },
+});
+
+export default StaffManagementStyles;
