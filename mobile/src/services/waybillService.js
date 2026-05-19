@@ -175,6 +175,38 @@ export const waybillService = {
       "Không thể tạo khách hàng.",
     );
   },
+  getRecipientHistory: async (token, phone) => {
+    return requestJson(
+      ENDPOINTS.GET_RECIPIENT_HISTORY(phone),
+      {
+        method: "GET",
+        headers: createAuthHeaders(token, {
+          "Content-Type": "application/json",
+        }),
+      },
+      "Không thể tải lịch sử địa chỉ người nhận.",
+    );
+  },
+
+  transferWaybill: async (
+    token,
+    code,
+    targetType,
+    targetId,
+    reason,
+    note = "",
+  ) => {
+    return requestJson(
+      ENDPOINTS.TRANSFER_WAYBILL(code, targetType, targetId, reason, note),
+      {
+        method: "POST",
+        headers: createAuthHeaders(token, {
+          "Content-Type": "application/json",
+        }),
+      },
+      "Không thể điều chuyển vận đơn.",
+    );
+  },
 
   updateBillImages: async (token, code, billImageUrl, pickupImageUrl) => {
     return requestJson(

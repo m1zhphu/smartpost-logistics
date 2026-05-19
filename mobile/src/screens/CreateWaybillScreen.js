@@ -72,6 +72,7 @@ export default function CreateWaybillScreen({ navigation, route }) {
   });
   const [pricingSource, setPricingSource] = useState("");
   const [feeLoading, setFeeLoading] = useState(false);
+  const recipientHistoryTimeoutRef = useRef(null);
 
   // Modal States
   const [showCustModal, setShowCustModal] = useState(false);
@@ -297,6 +298,45 @@ export default function CreateWaybillScreen({ navigation, route }) {
     receiverWard,
     JSON.stringify(form.extra_services),
   ]);
+
+  useEffect(() => {
+    if (recipientHistoryTimeoutRef.current) {
+      clearTimeout(recipientHistoryTimeoutRef.current);
+      recipientHistoryTimeoutRef.current = null;
+    }
+
+    const phone = (form.receiver_phone || "").replace(/[^0-9]/g, "");
+    if (!user.token || phone.length !== 10) {
+      return;
+    }
+
+    recipientHistoryTimeoutRef.current = setTimeout(async () => {
+      try {
+        const history = await waybillService.getRecipientHistory(
+          user.token,
+          phone,
+        );
+        if (history && (history.receiver_name || history.receiver_address)) {
+          setForm((prev) => ({
+            ...prev,
+            receiver_name: history.receiver_name || prev.receiver_name,
+            receiver_address: history.receiver_address || prev.receiver_address,
+          }));
+        }
+      } catch (error) {
+        console.log(
+          "[AUTOFILL] Không lấy được lịch sử người nhận:",
+          error?.message || error,
+        );
+      }
+    }, 500);
+
+    return () => {
+      if (recipientHistoryTimeoutRef.current) {
+        clearTimeout(recipientHistoryTimeoutRef.current);
+      }
+    };
+  }, [form.receiver_phone, user.token]);
 
   const filteredCustomers = customers.filter(
     (item) =>

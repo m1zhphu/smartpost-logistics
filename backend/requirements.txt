@@ -28,3 +28,4 @@ jinja2
 xhtml2pdf
 
 email-validator
+httpx

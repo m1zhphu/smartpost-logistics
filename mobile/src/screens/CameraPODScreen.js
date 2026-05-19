@@ -26,7 +26,9 @@ export default function CameraPODScreen({ navigation, route }) {
   const [flash, setFlash] = useState("off");
   const { user } = useUser();
   const [uploading, setUploading] = useState(false);
-  const [cameraMode, setCameraMode] = useState(route?.params?.mode || "POD_MODE");
+  const [cameraMode, setCameraMode] = useState(
+    route?.params?.mode || "POD_MODE",
+  );
   const { waybill, returnScreen } = route?.params || {};
 
   React.useEffect(() => {
@@ -99,25 +101,25 @@ export default function CameraPODScreen({ navigation, route }) {
     try {
       // Step 1: Upload ảnh lấy hàng
       console.log("[PICKUP] Uploading pickup image...");
-      const pickupImageUrl = await uploadService.uploadBillImage(
+      const billImageUrl = await uploadService.uploadBillImage(
         user?.token,
         preview,
-        true
+        true,
       );
 
-      if (!pickupImageUrl) {
+      if (!billImageUrl) {
         throw new Error("Không thể lấy URL ảnh từ server.");
       }
 
-      console.log("[PICKUP] Image uploaded. URL:", pickupImageUrl);
+      console.log("[PICKUP] Image uploaded. URL:", billImageUrl);
 
-      // Step 2: Gọi API updateBillImages để cập nhật pickup_image_url
-      console.log("[PICKUP] Updating waybill with pickup image URL...");
+      // Step 2: Gọi API updateBillImages để cập nhật bill_image_url cho đơn hàng
+      console.log("[PICKUP] Updating waybill with bill image URL...");
       const updateResult = await waybillService.updateBillImages(
         user?.token,
         waybill.waybill_code,
-        null, // billImageUrl
-        pickupImageUrl // pickupImageUrl
+        billImageUrl,
+        null,
       );
 
       console.log("[PICKUP] Update result:", updateResult);
@@ -132,13 +134,13 @@ export default function CameraPODScreen({ navigation, route }) {
             text: "OK",
             onPress: () => navigation.goBack(),
           },
-        ]
+        ],
       );
     } catch (error) {
       console.error("[PICKUP] Error:", error);
       Alert.alert(
         "Lỗi tải ảnh",
-        error?.message || "Không thể tải ảnh lên server. Vui lòng thử lại."
+        error?.message || "Không thể tải ảnh lên server. Vui lòng thử lại.",
       );
     } finally {
       setUploading(false);

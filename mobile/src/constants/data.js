@@ -16,8 +16,6 @@ export const ENDPOINTS = {
   UPDATE_SCAN_WEIGHT: (waybillCode) =>
     `${API_PREFIX}/scans/${waybillCode}/weigh`,
   SCAN_BAGGING: `${API_PREFIX}/scans/bagging`,
-  CREATE_BAG: `${API_PREFIX}/bags/create`,
-  BAG_SCAN_IN: (bagCode) => `${API_PREFIX}/bags/${bagCode}/scan-in`,
   MANIFEST_LOAD: `${API_PREFIX}/scans/manifest-load`,
   MANIFEST_UNLOAD: `${API_PREFIX}/scans/manifest-unload`,
   GET_INCOMING_MANIFESTS: `${API_PREFIX}/scans/manifests/incoming`,
@@ -31,7 +29,7 @@ export const ENDPOINTS = {
   UPDATE_WAYBILL_WEIGHT: (code) => `${API_PREFIX}/waybills/${code}/weight`,
   UPDATE_WAYBILL_INFO: (code) => `${API_PREFIX}/waybills/${code}`,
   DELETE_WAYBILL: (code) => `${API_PREFIX}/waybills/${code}`,
-  DASHBOARD_SUMMARY: `${API_PREFIX}/waybills/dashboard-summary`,
+  DASHBOARD_SUMMARY: `${API_PREFIX}/waybills/sla/dashboard`,
 
   GET_HUBS: `${API_PREFIX}/hubs`,
   CREATE_HUB: `${API_PREFIX}/hubs`,
@@ -39,6 +37,9 @@ export const ENDPOINTS = {
 
   GET_CUSTOMERS: `${API_PREFIX}/customers`,
   CREATE_CUSTOMER: `${API_PREFIX}/customers`,
+
+  GET_RECIPIENT_HISTORY: (phone) =>
+    `${API_PREFIX}/waybills/recipient-history?phone=${encodeURIComponent(phone)}`,
 
   GET_PRICING_RULES: `${API_PREFIX}/pricing/rules`,
   CREATE_PRICING_RULE: `${API_PREFIX}/pricing/rules`,
@@ -55,16 +56,30 @@ export const ENDPOINTS = {
   UPLOAD_BILL_IMAGE: `${API_PREFIX}/upload/bill`,
   UPDATE_BILL_IMAGES: (code) => `${API_PREFIX}/waybills/${code}/bill-images`,
 
+  TRANSFER_WAYBILL: (code, targetType, targetId, reason, note) =>
+    `${API_PREFIX}/waybills/${code}/transfer?target_type=${encodeURIComponent(
+      targetType,
+    )}&target_id=${Number(targetId)}&reason=${encodeURIComponent(reason)}${
+      note ? `&note=${encodeURIComponent(note)}` : ""
+    }`,
+
   GET_CASH_CONFIRMATION_LIST: `${API_PREFIX}/accounting/cash-confirmation`,
   CONFIRM_SHIPPER_CASH: `${API_PREFIX}/accounting/confirm-shipper-cash`,
   CREATE_SHOP_STATEMENT: (customerId) =>
     `${API_PREFIX}/accounting/create-shop-statement?customer_id=${customerId}`,
-  EXPORT_STATEMENT: (statementId, token) =>
+  CREATE_DEBT_STATEMENT: `${API_PREFIX}/accounting/statements`,
+  CREATE_COD_STATEMENT: `${API_PREFIX}/accounting/statements/cod`,
+  EXPORT_COD_STATEMENT: (statementId, token) =>
     `${API_PREFIX}/accounting/cod/${statementId}/export?token=${token}`,
+  EXPORT_DEBT_STATEMENT: (statementId, token) =>
+    `${API_PREFIX}/accounting/statements/${statementId}/export?token=${token}`,
+  EXPORT_STATEMENT_CSV: (statementId, token) =>
+    `${API_PREFIX}/accounting/statements/${statementId}/export-csv?token=${token}`,
 
   GET_USERS: `${API_PREFIX}/users`,
   CREATE_USER: `${API_PREFIX}/users`,
   TOGGLE_USER_STATUS: (userId) => `${API_PREFIX}/users/${userId}/status`,
+  REGISTER_PUSH_TOKEN: `${API_PREFIX}/users/register-push-token`,
 
   ADMIN_AUDIT_LOGS: `${API_PREFIX}/admin/audit-logs`,
   ADMIN_OVERRIDE_WAYBILL_STATUS: `${API_PREFIX}/admin/override-waybill-status`,

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "826223670502",
+    "project_id": "log-app-653d6",
+    "storage_bucket": "log-app-653d6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:826223670502:android:8068b591969cb9ff8c7727",
+        "android_client_info": {
+          "package_name": "vn.speedlight.app.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZhtd3n0zLhoE05e3E-_A7BwzGhSWXj2A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

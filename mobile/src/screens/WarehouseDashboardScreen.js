@@ -26,9 +26,9 @@ export default function WarehouseDashboardScreen({ navigation }) {
     pendingShippers: 0,
   });
   const [slaSummary, setSlaSummary] = useState({
-    total_held: 0,
-    sla_warning: 0,
-    sla_late: 0,
+    total: 0,
+    warning: 0,
+    overdue: 0,
   });
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export default function WarehouseDashboardScreen({ navigation }) {
         promises.push(
           waybillService
             .getDashboardSummary(user.token)
-            .catch(() => ({ total_held: 0, sla_warning: 0, sla_late: 0 })),
+            .catch(() => ({ total: 0, warning: 0, overdue: 0 })),
         );
       }
 
@@ -94,9 +94,9 @@ export default function WarehouseDashboardScreen({ navigation }) {
 
       if (isManager) {
         setSlaSummary({
-          total_held: summaryRes?.total_held || 0,
-          sla_warning: summaryRes?.sla_warning || 0,
-          sla_late: summaryRes?.sla_late || 0,
+          total: summaryRes?.total || 0,
+          warning: summaryRes?.warning || 0,
+          overdue: summaryRes?.overdue || 0,
         });
       }
     } catch (error) {
@@ -178,19 +178,15 @@ export default function WarehouseDashboardScreen({ navigation }) {
                   <View style={styles.slaRow}>
                     <View style={styles.slaCard}>
                       <Text style={styles.slaLabel}>Đang giữ</Text>
-                      <Text style={styles.slaValue}>
-                        {slaSummary.total_held}
-                      </Text>
+                      <Text style={styles.slaValue}>{slaSummary.total}</Text>
                     </View>
                     <View style={styles.slaCard}>
                       <Text style={styles.slaLabel}>Cảnh báo</Text>
-                      <Text style={styles.slaValue}>
-                        {slaSummary.sla_warning}
-                      </Text>
+                      <Text style={styles.slaValue}>{slaSummary.warning}</Text>
                     </View>
                     <View style={styles.slaCard}>
                       <Text style={styles.slaLabel}>Trễ hạn</Text>
-                      <Text style={styles.slaValue}>{slaSummary.sla_late}</Text>
+                      <Text style={styles.slaValue}>{slaSummary.overdue}</Text>
                     </View>
                   </View>
                 </View>

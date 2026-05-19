@@ -13,6 +13,9 @@ async def validate_idempotency(
     # Theo đặc tả MVP: Tất cả API POST đều BẮT BUỘC phải có Idempotency-Key
     if request.method == "POST":
         if not idempotency_key:
+            idempotency_key = request.headers.get("idempotency_key") or request.headers.get("idempotency-key")
+
+        if not idempotency_key:
             raise HTTPException(
                 status_code=400, 
                 detail="Thiếu Header Idempotency-Key. Thao tác quét mã/tạo đơn cần khóa này để chống trùng lặp."

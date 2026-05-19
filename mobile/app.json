@@ -1,7 +1,6 @@
 {
   "expo": {
     "name": "Speed Light Dev",
-    "owner": "speed-light-dev",
     "slug": "speed-light-dev",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,7 +20,10 @@
         "NSLocationWhenInUseUsageDescription": "Speedlight cần quyền vị trí để hỗ trợ theo dõi hành trình giao hàng trong ca làm việc.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Speedlight cần quyền vị trí \"Luôn luôn\" để ghi nhận hành trình kể cả khi bạn dùng ứng dụng khác.",
         "NSLocationAlwaysUsageDescription": "Speedlight cần quyền vị trí ở chế độ nền để theo dõi hoạt động giao hàng.",
-        "UIBackgroundModes": ["location", "fetch"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ]
       }
     },
     "android": {
@@ -31,6 +33,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.CAMERA",
@@ -38,7 +41,8 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -73,6 +77,12 @@
     ],
     "runtimeVersion": {
       "policy": "appVersion"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "428d10d4-7db3-42fc-966e-dcb70e80a545"
+      }
+    },
+    "owner": "cnguyen25"
   }
 }

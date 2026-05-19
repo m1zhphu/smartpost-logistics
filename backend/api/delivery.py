@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from core.database import get_db
 from core.idempotency import validate_idempotency, commit_idempotency
@@ -7,6 +7,7 @@ from core.state_machine import WaybillStatus, validate_state_transition
 import crud.delivery as crud_delivery
 import schemas.delivery as schema_delivery
 import crud.waybills as crud_wb
+from core.push import send_expo_push_notification
 
 router = APIRouter(prefix="/api/delivery", tags=["Delivery Operations"])
 
@@ -39,7 +40,8 @@ async def assign_shipper(
     data: schema_delivery.AssignShipperRequest,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
-    idem_key: str = Depends(validate_idempotency)
+    idem_key: str = Depends(validate_idempotency),
+    background_tasks: BackgroundTasks = BackgroundTasks()
 ):
     """Quản lý phân công đơn hàng cho Shipper"""
     verify_manager_access(current_user)
@@ -75,6 +77,16 @@ async def assign_shipper(
                 success_codes.append(code)
 
         db.commit()
+        
+        # Trigger push notification if shipper has a valid token
+        if len(success_codes) > 0 and shipper.push_token:
+            title = "Phân công mới"
+            body = f"Bạn vừa được phân công giao {len(success_codes)} đơn hàng mới."
+            print(f">>>>> [PUSH ALERT] Đang đưa vào hàng đợi gửi thông báo tới Token: {shipper.push_token}")
+            background_tasks.add_task(send_expo_push_notification, shipper.push_token, title, body, {"codes": success_codes})
+        else:
+            print(f">>>>> [PUSH ALERT] KHÔNG GỬI được. Số đơn: {len(success_codes)}, Token: {shipper.push_token}")
+            
         res = {"status": "ASSIGNED", "count": len(success_codes), "codes": success_codes}
         commit_idempotency(idem_key, res)
         return res

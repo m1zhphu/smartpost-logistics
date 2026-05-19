@@ -3,6 +3,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import { userService } from "../services/userService";
 
 const UserContext = createContext();
 
@@ -174,14 +176,53 @@ const registerForPushNotificationsAsync = async () => {
       return null;
     }
 
-    // Lấy mã Expo Push Token gắn với dự án
-    const projectId = "0bd18bc6-fc56-4f2c-a7ca-d54f3bdc4d5f";
-    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    // Lấy mã Expo Push Token. projectId phải là Expo project ID, không phải Firebase ID.
+    const expoProjectId =
+      Constants?.expoConfig?.projectId ||
+      Constants?.manifest2?.projectId ||
+      Constants?.manifest?.projectId ||
+      Constants?.expoConfig?.extra?.eas?.projectId ||
+      Constants?.manifest2?.extra?.eas?.projectId ||
+      Constants?.manifest?.extra?.eas?.projectId;
+
+    const requestOptions = expoProjectId ? { projectId: expoProjectId } : {};
+    if (expoProjectId) {
+      console.log("[PUSH] Using Expo projectId for push token:", expoProjectId);
+    } else {
+      console.warn(
+        "[PUSH] No Expo projectId found. Skipping push token registration.",
+      );
+      return null;
+    }
+
+    let token;
+    try {
+      token = await Notifications.getExpoPushTokenAsync(requestOptions);
+    } catch (errorWithProjectId) {
+      if (requestOptions.projectId) {
+        console.warn(
+          "[PUSH] getExpoPushTokenAsync failed with projectId, retrying without projectId:",
+          errorWithProjectId.message || errorWithProjectId,
+        );
+        try {
+          token = await Notifications.getExpoPushTokenAsync();
+        } catch (fallbackError) {
+          console.warn("[PUSH] Fallback without projectId also failed:", fallbackError.message || fallbackError);
+          return null;
+        }
+      } else {
+        console.warn("[PUSH] getExpoPushTokenAsync failed:", errorWithProjectId.message || errorWithProjectId);
+        return null;
+      }
+    }
+
+    if (!token) return null;
+
     console.log("[PUSH] Push token obtained:", token.data);
 
     return token.data;
   } catch (error) {
-    console.error("[PUSH] Error registering for push notifications:", error);
+    console.warn("[PUSH] Registration warning:", error.message || error);
     return null;
   }
 };
@@ -198,6 +239,15 @@ export const UserProvider = ({ children }) => {
       }
     })();
   }, []);
+
+  const pushTokenRegisteredRef = React.useRef(false);
+
+  useEffect(() => {
+    if (user.token && !pushTokenRegisteredRef.current) {
+      pushTokenRegisteredRef.current = true;
+      setupPushNotifications();
+    }
+  }, [user.token]);
 
   // Khởi tạo các bộ lắng nghe (Listeners) cho thông báo đẩy khi ứng dụng đang chạy nền/foreground
   useEffect(() => {
@@ -251,7 +301,18 @@ export const UserProvider = ({ children }) => {
           "[PUSH-TOKEN-API] Token ready to be sent to backend:",
           pushToken,
         );
-        // Ghi chú: Có thể tích hợp gọi API POST lên máy chủ tại đây khi API lưu token sẵn sàng
+
+        if (user.token) {
+          try {
+            await userService.registerPushToken(user.token, pushToken);
+            console.log("[PUSH] Push token synced to backend successfully");
+          } catch (syncError) {
+            console.error(
+              "[PUSH] Failed to sync push token to backend:",
+              syncError,
+            );
+          }
+        }
       }
     } catch (error) {
       console.error("[PUSH] Failed to setup push notifications:", error);

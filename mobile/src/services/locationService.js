@@ -175,7 +175,7 @@ export const locationService = {
         BACKGROUND_LOCATION_TASK,
       );
       if (!isRegistered) {
-        console.warn("[locationService] Task chưa được đăng ký.");
+        console.log("[locationService] Task chưa được đăng ký.");
         return;
       }
 

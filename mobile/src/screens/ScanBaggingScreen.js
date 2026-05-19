@@ -3,6 +3,7 @@ import {
   Alert,
   FlatList,
   Keyboard,
+  Modal,
   StatusBar,
   Text,
   TextInput,
@@ -25,6 +26,9 @@ export default function ScanBaggingScreen({ navigation }) {
   const [manualCode, setManualCode] = useState("");
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [baggingErrorModalVisible, setBaggingErrorModalVisible] =
+    useState(false);
+  const [baggingErrorMessage, setBaggingErrorMessage] = useState("");
 
   useEffect(() => {
     if (!isRouteAllowed(user, "ScanBagging")) {
@@ -37,13 +41,25 @@ export default function ScanBaggingScreen({ navigation }) {
   }, [user]);
 
   const handleCreateBag = async () => {
+    if (!user?.primary_hub_id) {
+      Alert.alert(
+        "Lỗi",
+        "Không xác định được bưu cục hiện tại. Vui lòng đăng nhập lại.",
+      );
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await bagService.createBag(user.token);
-      setBagCode(data.bag_code);
+      const timeStr = new Date()
+        .toISOString()
+        .replace(/[^0-9]/g, "")
+        .slice(2, 14);
+      const code = `BG-${user.primary_hub_id}-${timeStr}`;
+      setBagCode(code);
       setScannedItems([]);
       setIsLocked(true);
-      Alert.alert("Tạo túi thành công", `Mã túi: ${data.bag_code}`);
+      Alert.alert("Tạo túi thành công", `Mã túi: ${code}`);
     } catch (error) {
       Alert.alert("Lỗi tạo túi", error.message || "Không thể tạo túi mới.");
     } finally {
@@ -69,9 +85,12 @@ export default function ScanBaggingScreen({ navigation }) {
     }
 
     try {
-      await bagService.scanBagIn(user.token, bagCode, {
-        waybill_code: waybillCode,
-      });
+      await bagService.scanBagIn(
+        user.token,
+        bagCode,
+        user.primary_hub_id,
+        waybillCode,
+      );
 
       const timeStr = new Date().toLocaleTimeString("vi-VN", { hour12: false });
       setScannedItems((prev) => [
@@ -81,20 +100,14 @@ export default function ScanBaggingScreen({ navigation }) {
     } catch (error) {
       if (error.status === 400) {
         Vibration.vibrate([0, 120, 40, 120]);
-        Alert.alert(
-          "Lỗi quét vận đơn",
-          error.message || "Vận đơn chưa được xác thực OCR",
-          [
-            {
-              text: "Đóng",
-              style: "cancel",
-            },
-          ],
+        setBaggingErrorMessage(
+          "LỖI! Đơn hàng chưa được xác thực Bill. Không thể xuất kho!",
         );
+        setBaggingErrorModalVisible(true);
       } else {
         Alert.alert(
           "Lỗi không xác định",
-          "Đã xảy ra lỗi, vui lòng thử lại sau.",
+          error.message || "Đã xảy ra lỗi, vui lòng thử lại sau.",
         );
       }
     }
@@ -355,6 +368,31 @@ export default function ScanBaggingScreen({ navigation }) {
           </>
         )}
       </View>
+
+      <Modal
+        visible={baggingErrorModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBaggingErrorModalVisible(false)}
+      >
+        <View style={ScanBaggingStyles.errorModalOverlay}>
+          <View style={ScanBaggingStyles.errorModalCard}>
+            <View style={ScanBaggingStyles.errorModalIconWrap}>
+              <Ionicons name="warning" size={36} color="#DC2626" />
+            </View>
+            <Text style={ScanBaggingStyles.errorModalTitle}>LỖI!</Text>
+            <Text style={ScanBaggingStyles.errorModalText}>
+              {baggingErrorMessage}
+            </Text>
+            <TouchableOpacity
+              style={ScanBaggingStyles.errorModalCloseBtn}
+              onPress={() => setBaggingErrorModalVisible(false)}
+            >
+              <Text style={ScanBaggingStyles.errorModalCloseText}>ĐÓNG</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
