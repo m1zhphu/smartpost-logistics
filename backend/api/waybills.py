@@ -424,6 +424,32 @@ def delete_waybill(code: str, db: Session = Depends(get_db)):
 
 # --- 7. API ĐIỀU CHUYỂN & SLA CONFIGURATION (MỚI BỔ SUNG) ---
 
+def send_expo_push_notification(push_token: str, title: str, body: str, data: dict = None):
+    """Gửi thông báo đẩy thời gian thực qua máy chủ Expo sử dụng urllib chuẩn"""
+    import urllib.request
+    import json
+    url = "https://exp.host/--/api/v2/push/send"
+    payload = {
+        "to": push_token,
+        "title": title,
+        "body": body,
+        "sound": "default"
+    }
+    if data:
+        payload["data"] = data
+        
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as e:
+        print(f"Lỗi khi gửi Expo Push Notification: {str(e)}")
+        return None
+
 @router.post("/{code}/transfer")
 def transfer_waybill(
     code: str,
@@ -450,6 +476,19 @@ def transfer_waybill(
             raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn hoặc loại đích đến không hợp lệ")
         
         db.commit()
+
+        # --- BẮN THÔNG BÁO ĐẨY EXPO KHI GÁN CHO BƯU TÁ (SHIPPER) ---
+        if target_type.strip().upper() == "SHIPPER":
+            try:
+                shipper = db.query(models.Users).filter(models.Users.user_id == target_id).first()
+                if shipper and shipper.push_token:
+                    title = "📦 Bạn có vận đơn mới được gán!"
+                    body = f"Đơn hàng {code} đã được điều chuyển sang cho bạn. Lý do: {reason}"
+                    payload_data = {"waybill_code": code, "action": "TRANSFER"}
+                    send_expo_push_notification(shipper.push_token, title, body, payload_data)
+            except Exception as push_err:
+                print(f"Lỗi khi gửi thông báo cho bưu tá: {str(push_err)}")
+        
         return {"message": "Điều chuyển vận đơn thành công", "waybill_code": code}
     except HTTPException as he:
         raise he

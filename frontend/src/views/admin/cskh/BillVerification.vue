@@ -41,13 +41,13 @@
             </el-button>
           </template>
         </el-table-column>
-        <el-table-column label="Ảnh Hàng Hóa" width="120" align="center">
+        <el-table-column label="Ảnh Tem Bill" width="120" align="center">
           <template #default="scope">
             <el-image
-              v-if="scope.row.pickup_image_url"
+              v-if="scope.row.bill_image_url"
               style="width: 50px; height: 50px"
-              :src="getMediaUrl(scope.row.pickup_image_url)"
-              :preview-src-list="[getMediaUrl(scope.row.pickup_image_url)]"
+              :src="getMediaUrl(scope.row.bill_image_url)"
+              :preview-src-list="[getMediaUrl(scope.row.bill_image_url)]"
               fit="cover"
               preview-teleported
             />

@@ -28,6 +28,44 @@
         </div>
       </header>
 
+      <!-- SLA Dashboard Widget -->
+      <div class="sla-dashboard mb-24 animate-fade-in">
+        <el-row :gutter="16">
+          <el-col :span="6">
+            <div class="sla-card total">
+              <div class="sla-info">
+                <span class="sla-title">Tổng số vận đơn</span>
+                <span class="sla-value">{{ slaStats.total }}</span>
+              </div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="sla-card on-time">
+              <div class="sla-info">
+                <span class="sla-title">Đúng hạn (ON TIME)</span>
+                <span class="sla-value">{{ slaStats.on_time }}</span>
+              </div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="sla-card warning">
+              <div class="sla-info">
+                <span class="sla-title">Sắp trễ (WARNING)</span>
+                <span class="sla-value">{{ slaStats.warning }}</span>
+              </div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="sla-card overdue">
+              <div class="sla-info">
+                <span class="sla-title">Quá hạn (OVERDUE)</span>
+                <span class="sla-value">{{ slaStats.overdue }}</span>
+              </div>
+            </div>
+          </el-col>
+        </el-row>
+      </div>
+
       <!-- Advanced Filter Section -->
       <div class="content-card filter-card animate-fade-in mb-24">
         <el-row :gutter="20" class="filter-row">
@@ -91,7 +129,7 @@
           :data="waybills" 
           v-loading="loading" 
           class="modern-table"
-          row-class-name="modern-row"
+          :row-class-name="tableRowClassName"
           style="width: 100%"
         >
           <!-- Mã vận đơn -->
@@ -129,6 +167,21 @@
               <div class="modern-tag" :class="getStatusClass(row.status)">
                 <span class="dot"></span>
                 {{ getStatusLabel(row.status) }}
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- SLA & Đơn vị giữ -->
+          <el-table-column label="SLA & Đơn vị giữ" min-width="180">
+            <template #default="{ row }">
+              <div class="sla-holding">
+                <el-tag :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" class="mb-1">
+                  {{ row.sla_status || 'ON_TIME' }}
+                </el-tag>
+                <div class="text-xs mt-1" style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                  <b>Đang giữ:</b> 
+                  {{ row.holding_hub ? row.holding_hub.hub_name : (row.holding_shipper ? row.holding_shipper.full_name : '---') }}
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -213,6 +266,9 @@
                         class="text-success"
                       >
                         <el-icon><Check /></el-icon> Hoàn tất giao hàng
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="openTransferDialog(row)">
+                        <el-icon><Position /></el-icon> Điều chuyển bưu kiện
                       </el-dropdown-item>
                       <el-dropdown-item 
                         v-if="row.status === 'CREATED'"
@@ -446,6 +502,36 @@
         </template>
       </el-dialog>
 
+      <!-- Transfer Dialog -->
+      <el-dialog
+        v-model="transferDialogVisible"
+        title="Điều chuyển Vận đơn"
+        width="480px"
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <el-form :model="transferForm" label-position="top">
+          <el-form-item label="Loại đích đến">
+            <el-radio-group v-model="transferForm.target_type">
+              <el-radio-button value="HUB">Chuyển sang Kho</el-radio-button>
+              <el-radio-button value="SHIPPER">Giao cho Bưu tá</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="ID Đích đến (Mã Kho / Mã NV)">
+            <el-input-number v-model="transferForm.target_id" :min="1" class="w-full" :controls="false" />
+          </el-form-item>
+          <el-form-item label="Lý do điều chuyển (Bắt buộc)">
+            <el-input v-model="transferForm.reason" type="textarea" :rows="3" placeholder="Nhập lý do..." />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <button class="btn-secondary mr-2" @click="transferDialogVisible = false">Hủy</button>
+          <button class="btn-primary" @click="submitTransfer" :disabled="!transferForm.reason.trim() || transferSubmitting || !transferForm.target_id">
+            Xác nhận
+          </button>
+        </template>
+      </el-dialog>
+
     </div>
   </div>
 </template>
@@ -455,7 +541,7 @@ import { ref, onMounted } from 'vue';
 import { 
   Search, Plus, Printer, Download, MoreFilled, Check, Edit, Delete, 
   Location, LocationInformation, Tickets, RefreshRight, Van, User, 
-  Phone, Right, Loading, UserFilled, Money, Warning 
+  Phone, Right, Loading, UserFilled, Money, Warning, Position 
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
@@ -464,6 +550,11 @@ import moment from 'moment';
 const loading = ref(false);
 const searchQuery = ref('');
 const statusFilter = ref('');
+
+const slaStats = ref({ total: 0, on_time: 0, warning: 0, overdue: 0 });
+const transferDialogVisible = ref(false);
+const transferSubmitting = ref(false);
+const transferForm = ref({ waybill_code: '', target_type: 'HUB', target_id: null, reason: '' });
 const dateRange = ref([]);
 const waybills = ref([]);
 const total = ref(0);
@@ -762,7 +853,50 @@ const submitOverridePrice = async () => {
   }
 };
 
-onMounted(handleSearch);
+const fetchSLAStats = async () => {
+  try {
+    const res = await api.get('/api/waybills/sla/dashboard');
+    slaStats.value = res.data;
+  } catch (err) {}
+};
+
+const tableRowClassName = ({ row }) => {
+  if (row.sla_status === 'OVERDUE') {
+    return 'overdue-row';
+  }
+  return 'modern-row';
+};
+
+const openTransferDialog = (row) => {
+  transferForm.value = { waybill_code: row.waybill_code, target_type: 'HUB', target_id: null, reason: '' };
+  transferDialogVisible.value = true;
+};
+
+const submitTransfer = async () => {
+  transferSubmitting.value = true;
+  try {
+    await api.post(`/api/waybills/${transferForm.value.waybill_code}/transfer`, null, {
+      params: {
+        target_type: transferForm.value.target_type,
+        target_id: transferForm.value.target_id,
+        reason: transferForm.value.reason
+      }
+    });
+    ElMessage.success('Điều chuyển thành công!');
+    transferDialogVisible.value = false;
+    handleSearch();
+    fetchSLAStats();
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Lỗi điều chuyển');
+  } finally {
+    transferSubmitting.value = false;
+  }
+};
+
+onMounted(() => {
+  handleSearch();
+  fetchSLAStats();
+});
 </script>
 
 <style scoped>
@@ -1033,4 +1167,32 @@ onMounted(handleSearch);
   color: #2B3674;
 }
 :deep(.text-warning) { color: #e6a817 !important; }
+
+/* SLA Dashboard */
+.sla-dashboard .sla-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+  display: flex;
+  align-items: center;
+  border-left: 4px solid transparent;
+}
+.sla-card.total { border-left-color: #4318FF; }
+.sla-card.on-time { border-left-color: #05CD99; }
+.sla-card.warning { border-left-color: #FFB547; }
+.sla-card.overdue { border-left-color: #EE5D50; }
+
+.sla-info { display: flex; flex-direction: column; }
+.sla-title { font-size: 13px; color: #8F9BBA; font-weight: 700; margin-bottom: 4px; }
+.sla-value { font-size: 24px; font-weight: 800; color: #2B3674; }
+
+:deep(.overdue-row) {
+  background-color: #FFF1F2 !important;
+}
+
+.sla-holding {
+  display: flex;
+  flex-direction: column;
+}
 </style>
