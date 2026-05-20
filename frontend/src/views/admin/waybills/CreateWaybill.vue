@@ -50,10 +50,13 @@
                 </el-col>
                 <el-col :span="10">
                   <el-form-item label="Dịch vụ vận chuyển" prop="service_type" class="mb-12">
-                    <el-radio-group v-model="waybillForm.service_type" class="custom-radio-group w-full">
-                      <el-radio-button value="EXPRESS">Hoả tốc</el-radio-button>
-                      <el-radio-button value="STANDARD">Tiêu chuẩn</el-radio-button>
-                    </el-radio-group>
+                    <el-select v-model="waybillForm.service_type" placeholder="Chọn dịch vụ..." class="w-full">
+                      <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
+                      <el-option label="Tiết kiệm (TK)" value="TK" />
+                      <el-option label="Hỏa tốc (HT)" value="HT" />
+                      <el-option label="Phát trước 9h (PT9H)" value="PT9H" />
+                      <el-option label="Quốc tế (QT)" value="QT" />
+                    </el-select>
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -149,6 +152,14 @@
                 <el-icon><Box /></el-icon><span>Hàng hóa & Thanh toán</span>
               </div>
               
+              <div class="form-item mb-12">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;">LOẠI HÀNG HÓA</label>
+                <el-radio-group v-model="packageType" class="w-full custom-radio-group">
+                  <el-radio-button value="goods">Hàng hóa</el-radio-button>
+                  <el-radio-button value="letter">Thư từ (Bưu phẩm)</el-radio-button>
+                </el-radio-group>
+              </div>
+              
               <el-row :gutter="16">
                 <el-col :span="10">
                   <el-form-item label="Khối lượng (kg)" prop="actual_weight" class="mb-12">
@@ -169,7 +180,7 @@
                 </el-col>
               </el-row>
 
-              <el-row :gutter="16">
+              <el-row :gutter="16" v-if="packageType === 'goods'">
                 <el-col :span="8">
                   <el-form-item label="Dài (cm)" prop="length" class="mb-12">
                     <el-input-number v-model="waybillForm.length" :min="0" :step="1" :controls="false" class="w-full modern-input-number" />
@@ -293,6 +304,15 @@ const router = useRouter();
 const formRef = ref(null);
 const phoneInputRef = ref(null); 
 const loading = ref(false);
+const packageType = ref('goods');
+
+watch(packageType, (newVal) => {
+  if (newVal === 'letter') {
+    waybillForm.length = 0;
+    waybillForm.width = 0;
+    waybillForm.height = 0;
+  }
+});
 
 const customers = ref([]);
 const hubs = ref([]);
@@ -300,7 +320,7 @@ const availableServices = ref([]);
 const servicesLoading = ref(false);
 
 const initialFormState = {
-  service_type: 'STANDARD',
+  service_type: 'CPN',
   sender_name: '',
   sender_phone: '',
   sender_address: '',

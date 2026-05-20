@@ -67,3 +67,11 @@ Dưới đây là danh sách chi tiết các hạng mục Frontend cần bổ su
 2. **Ưu tiên 2:** Sửa giao diện `CreateWaybill.vue` bổ sung Input Sender và logic Autofill gọi API để tăng UX thao tác cho nhân viên lên đơn.
 3. **Ưu tiên 3:** Bổ sung các cột SLA, Badge màu và CSS Row-Highlighting cho `WaybillList.vue`.
 4. **Ưu tiên 4:** Xây dựng Widget SLA Dashboard và Form Modal Điều chuyển đơn hàng trong `WaybillList.vue`.
+B. Những phần Web Frontend còn thiếu / Cần cải thiện
+Mặc dù Web đã đáp ứng 90% đặc tả nhưng vẫn còn một số điểm nhỏ trong tài liệu bàn giao cần được bổ sung để đạt chuẩn 100%:
+
+STT	Tính năng thiếu / Cần bổ sung trên Web	File cần tác động	Mô tả chi tiết & Hướng giải quyết
+1	Bộ mô phỏng giá (Price Simulator) cho CSKH	frontend/src/views/admin/pricing/PriceSimulator.vue	CSKH cần một màn hình riêng để tra cứu nhanh cước phí cho khách hàng mà không cần đăng nhập/chọn mã khách. Cần gọi API: POST /api/pricing/simulate.
+2	Bộ lọc Tìm kiếm Nâng cao trên bảng Vận đơn	WaybillList.vue	Bổ sung các bộ lọc trên thanh tìm kiếm: Lọc theo Bưu cục giữ (Kho), Lọc theo Bưu tá giữ, Lọc theo Trạng thái COD (Đã thu / Chưa thu).
+3	Thêm nơi Import File Excel tạo đơn hàng loạt	WaybillList.vue hoặc màn hình Tạo đơn	Hỗ trợ shop/nhân viên upload file Excel chứa danh sách hàng trăm đơn hàng thay vì chỉ tạo thủ công từng đơn một.
+4	Gợi ý địa chỉ thông minh (Auto Suggest)	Màn hình tạo đơn	Khi nhập địa chỉ người nhận, tích hợp gợi ý địa chỉ (tỉnh/quận/phường) để nhân viên gõ nhanh và chính xác hơn.

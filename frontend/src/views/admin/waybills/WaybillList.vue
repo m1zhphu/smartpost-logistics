@@ -21,7 +21,7 @@
             <el-icon v-else><Download /></el-icon>
             <span>Xuất Excel</span>
           </button>
-          <button class="btn-primary" @click="$router.push('/admin/waybills/create')">
+          <button class="btn-primary ml-2" @click="$router.push('/admin/waybills/create')" style="margin-left: 8px;">
             <el-icon><Plus /></el-icon>
             <span>Thêm mới (F2)</span>
           </button>
@@ -68,6 +68,7 @@
 
       <!-- Advanced Filter Section -->
       <div class="content-card filter-card animate-fade-in mb-24">
+        <!-- Row 1 -->
         <el-row :gutter="20" class="filter-row">
           <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Tìm kiếm</div>
@@ -82,7 +83,7 @@
             </el-input>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :lg="5" class="filter-col">
+          <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Trạng thái</div>
             <el-select v-model="statusFilter" placeholder="Tất cả trạng thái" clearable class="w-full modern-select">
               <el-option label="Mới tạo (CREATED)" value="CREATED" />
@@ -94,7 +95,7 @@
             </el-select>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :lg="7" class="filter-col">
+          <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Thời gian tạo</div>
             <el-date-picker
               v-model="dateRange"
@@ -105,6 +106,31 @@
               class="w-full modern-date-picker"
               format="DD/MM/YYYY"
             />
+          </el-col>
+          
+          <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
+            <div class="filter-label">Trạng thái COD</div>
+            <el-select v-model="codStatusFilter" placeholder="Tất cả trạng thái COD" clearable class="w-full modern-select">
+              <el-option label="Đã thu COD (PAID)" value="PAID" />
+              <el-option label="Chưa thu COD (UNPAID)" value="UNPAID" />
+            </el-select>
+          </el-col>
+        </el-row>
+        
+        <!-- Row 2 -->
+        <el-row :gutter="20" class="filter-row mt-20">
+          <el-col :xs="24" :sm="12" :lg="9" class="filter-col">
+            <div class="filter-label">Bưu cục giữ (Kho)</div>
+            <el-select v-model="holdingHubFilter" placeholder="Tất cả bưu cục giữ" clearable class="w-full modern-select">
+              <el-option v-for="hub in hubs" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
+            </el-select>
+          </el-col>
+          
+          <el-col :xs="24" :sm="12" :lg="9" class="filter-col">
+            <div class="filter-label">Bưu tá giữ (Shipper)</div>
+            <el-select v-model="holdingShipperFilter" placeholder="Tất cả bưu tá" clearable class="w-full modern-select">
+              <el-option v-for="shipper in shippers" :key="shipper.user_id" :label="`${shipper.full_name} (${shipper.username})`" :value="shipper.user_id" />
+            </el-select>
           </el-col>
           
           <el-col :xs="24" :sm="12" :lg="6" class="filter-action-col">
@@ -133,10 +159,17 @@
           style="width: 100%"
         >
           <!-- Mã vận đơn -->
-          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="140" fixed="left">
+          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="160" fixed="left">
             <template #default="{ row }">
-               <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình">
-                 {{ row.waybill_code }}
+               <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+                 <span class="fw-bold">{{ row.waybill_code }}</span>
+                 <!-- Cảnh báo chưa kiểm duyệt ảnh bill OCR -->
+                 <el-tag v-if="row.verify_status !== 'VERIFIED'" type="danger" size="small" effect="dark" class="verify-badge animate-pulse" style="font-size: 10px; font-weight: 700; border-radius: 4px; border: none; letter-spacing: 0.3px; padding: 2px 6px;">
+                   ⚠️ CHƯA DUYỆT OCR
+                 </el-tag>
+                 <el-tag v-else type="success" size="small" effect="plain" class="verify-badge" style="font-size: 10px; font-weight: 600; border-radius: 4px; padding: 2px 6px;">
+                   ✓ ĐÃ DUYỆT OCR
+                 </el-tag>
                </div>
             </template>
           </el-table-column>
@@ -271,7 +304,7 @@
                         <el-icon><Position /></el-icon> Điều chuyển bưu kiện
                       </el-dropdown-item>
                       <el-dropdown-item 
-                        v-if="row.status === 'CREATED'"
+                        v-if="row.status !== 'DELIVERED' && row.status !== 'SETTLED' && row.status !== 'CANCELLED'"
                         @click="handleDelete(row.waybill_code)"
                         class="text-danger"
                       >
@@ -541,12 +574,15 @@ import { ref, onMounted } from 'vue';
 import { 
   Search, Plus, Printer, Download, MoreFilled, Check, Edit, Delete, 
   Location, LocationInformation, Tickets, RefreshRight, Van, User, 
-  Phone, Right, Loading, UserFilled, Money, Warning, Position 
+  Phone, Right, Loading, UserFilled, Money, Warning, Position
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import moment from 'moment';
+import { useAuthStore } from '@/stores/auth';
 
+const auth = useAuthStore();
+const customers = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
 const statusFilter = ref('');
@@ -588,6 +624,29 @@ const overrideForm = ref({
   reason: ''
 });
 
+// --- ADVANCED SEARCH FILTER DATA ---
+const hubs = ref([]);
+const shippers = ref([]);
+const holdingHubFilter = ref(null);
+const holdingShipperFilter = ref(null);
+const codStatusFilter = ref('');
+
+const fetchHubsAndShippers = async () => {
+  try {
+    const [hubsRes, usersRes, customersRes] = await Promise.all([
+      api.get('/api/hubs').catch(() => ({ data: [] })),
+      api.get('/api/users').catch(() => ({ data: [] })),
+      api.get('/api/customers').catch(() => ({ data: [] }))
+    ]);
+    hubs.value = Array.isArray(hubsRes.data) ? hubsRes.data : (hubsRes.data.items || hubsRes.data.data || []);
+    const allUsers = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data.items || usersRes.data.data || []);
+    shippers.value = allUsers.filter(u => u.role_id === 4);
+    customers.value = Array.isArray(customersRes.data) ? customersRes.data : (customersRes.data.items || customersRes.data.data || []);
+  } catch (err) {
+    console.error('Không thể tải danh sách bưu cục/bưu tá/khách hàng:', err);
+  }
+};
+
 const formatCurrencyManual = (amount) => {
   if (amount === null || amount === undefined) return '0 đ';
   return amount.toLocaleString('vi-VN') + ' đ';
@@ -602,7 +661,10 @@ const handleSearch = async () => {
       waybill_code: searchQuery.value,
       status: statusFilter.value || null,
       start_date: dateRange.value?.[0] ? moment(dateRange.value[0]).toISOString() : null,
-      end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null
+      end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null,
+      holding_hub_id: holdingHubFilter.value || null,
+      holding_shipper_id: holdingShipperFilter.value || null,
+      cod_status: codStatusFilter.value || null
     };
     const response = await api.post('/api/waybills/search', filters);
     waybills.value = response.data.items || [];
@@ -626,7 +688,10 @@ const exportExcel = async () => {
       waybill_code: searchQuery.value,
       status: statusFilter.value || null,
       start_date: dateRange.value?.[0] ? moment(dateRange.value[0]).toISOString() : null,
-      end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null
+      end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null,
+      holding_hub_id: holdingHubFilter.value || null,
+      holding_shipper_id: holdingShipperFilter.value || null,
+      cod_status: codStatusFilter.value || null
     };
     const response = await api.post('/api/waybills/export', filters, {
       responseType: 'blob'
@@ -653,6 +718,9 @@ const resetFilters = () => {
   searchQuery.value = '';
   statusFilter.value = '';
   dateRange.value = [];
+  holdingHubFilter.value = null;
+  holdingShipperFilter.value = null;
+  codStatusFilter.value = '';
   handleSearch();
 };
 
@@ -896,6 +964,7 @@ const submitTransfer = async () => {
 onMounted(() => {
   handleSearch();
   fetchSLAStats();
+  fetchHubsAndShippers();
 });
 </script>
 
@@ -920,6 +989,7 @@ onMounted(() => {
 .mb-4 { margin-bottom: 16px; }
 .mb-0 { margin-bottom: 0 !important; }
 .mt-24 { margin-top: 24px; }
+.mt-20 { margin-top: 20px; }
 .w-full { width: 100%; }
 
 /* Header */
@@ -1194,5 +1264,13 @@ onMounted(() => {
 .sla-holding {
   display: flex;
   flex-direction: column;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.96); }
+}
+.animate-pulse {
+  animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>
