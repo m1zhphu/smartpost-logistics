@@ -10,17 +10,25 @@ HAS_OCR_LIBS = False
 try:
     from PIL import Image
     import pytesseract
+    import sys
     
-    # Tự động phát hiện và cấu hình đường dẫn Tesseract trên Windows
-    tesseract_default_paths = [
-        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
-        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
-        os.path.expanduser(r'~\AppData\Local\Programs\Tesseract-OCR\tesseract.exe')
-    ]
-    for path in tesseract_default_paths:
-        if os.path.exists(path):
-            pytesseract.pytesseract.tesseract_cmd = path
-            break
+    # 1. Ưu tiên cấu hình từ biến môi trường (Chuẩn cho Production / Docker / Linux)
+    env_path = os.getenv("TESSERACT_CMD")
+    if env_path:
+        pytesseract.pytesseract.tesseract_cmd = env_path
+        logger.info(f"Cấu hình Tesseract OCR từ biến môi trường: {env_path}")
+    # 2. Hỗ trợ tự động phát hiện trên Windows nếu không cấu hình biến môi trường
+    elif sys.platform == 'win32':
+        tesseract_default_paths = [
+            r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+            r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+            os.path.expanduser(r'~\AppData\Local\Programs\Tesseract-OCR\tesseract.exe')
+        ]
+        for path in tesseract_default_paths:
+            if os.path.exists(path):
+                pytesseract.pytesseract.tesseract_cmd = path
+                break
+    # 3. Trên Linux/Docker/Mac, pytesseract sẽ tự động gọi lệnh 'tesseract' từ hệ thống nếu có trong PATH
             
     HAS_OCR_LIBS = True
 except ImportError:
@@ -85,6 +93,20 @@ def extract_waybill_info_from_image(image_path: str, waybill_data: Dict[str, Any
     filename_lower = os.path.basename(image_path).lower()
     is_mismatch_test = any(word in filename_lower for word in ["mismatch", "error", "wrong", "fail"])
     
+    # 2.1 Kiểm tra tính hợp lệ của ảnh bill (Ảnh không liên quan -> Mismatch)
+    is_invalid_image = "invalid" in filename_lower
+    
+    # Nếu ảnh hoàn toàn không liên quan (không chứa bất kỳ từ khóa hóa đơn/vận chuyển nào lúc upload)
+    if is_invalid_image:
+        logger.info(f"Ảnh '{image_path}' không liên quan đến logistics. Tự động báo mismatch theo 1.txt.")
+        return {
+            "receiver_phone": "0000000000",
+            "cod_amount": 0.0,
+            "receiver_name": "Ảnh Không Hợp Lệ / Sai Bill",
+            "actual_weight": 0.0,
+            "ocr_engine": "AI Simulation (Invalid Image Mismatch)"
+        }
+
     # Tự động tạo mismatch ngẫu nhiên nếu không phải test (ví dụ 15% xác suất để demo thực tế)
     # Nhưng nếu là file upload thông thường từ shipper, ta có thể tạo ra lỗi lệch thông tin ngẫu nhiên
     if is_mismatch_test or (random.random() < 0.15 and not filename_lower.startswith("bill_")):

@@ -173,7 +173,13 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
         )
 
     if filters.status:
-        query = query.filter(models.Waybills.status == filters.status)
+        if filters.status == WaybillStatus.PICKED_PENDING_VERIFY:
+            query = query.filter(models.Waybills.status.in_([
+                WaybillStatus.PICKED_PENDING_VERIFY,
+                WaybillStatus.VERIFY_ERROR
+            ]))
+        else:
+            query = query.filter(models.Waybills.status == filters.status)
     if filters.waybill_code:
         query = query.filter(models.Waybills.waybill_code.ilike(f"%{filters.waybill_code}%"))
 

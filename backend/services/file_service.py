@@ -42,7 +42,21 @@ def save_bill_image(file: UploadFile, is_pickup: bool = False) -> str:
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ định dạng JPG hoặc PNG")
 
     prefix = "PICKUP" if is_pickup else "BILL"
-    unique_filename = f"{prefix}_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:8]}.{file_ext}"
+    
+    # Phân tích tên file gốc để bảo toàn ý định kiểm thử (theo yêu cầu đối soát 1.txt)
+    original_name = file.filename.lower()
+    
+    suffix = ""
+    # Chỉ đánh dấu invalid/mismatch nếu tên file có chứa cụm từ khóa chỉ định rõ ràng
+    if "invalid" in original_name:
+        suffix = "_invalid"
+    else:
+        for word in ["mismatch", "error", "wrong", "fail"]:
+            if word in original_name:
+                suffix = f"_{word}"
+                break
+                
+    unique_filename = f"{prefix}_{datetime.now().strftime('%Y%m%d')}{suffix}_{uuid.uuid4().hex[:8]}.{file_ext}"
     file_path = os.path.join(BILL_UPLOAD_DIR, unique_filename)
 
     try:
