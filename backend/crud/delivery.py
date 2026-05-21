@@ -148,3 +148,81 @@ def report_delivery_failure(db: Session, waybill: models.Waybills, reason_code: 
             note=f"Giao thất bại. Lý do: {reason_code}. Ghi chú: {note}"
         ))
     return affected
+
+# --- PICKUP REQUEST (BOOKING REQUEST) CRUD OPERATIONS ---
+import schemas.delivery as schema_delivery
+
+def create_booking_request(db: Session, data: schema_delivery.BookingRequestCreate, creator_id: int) -> models.BookingRequests:
+    import random
+    from datetime import datetime
+    today = datetime.utcnow().strftime("%Y%m%d")
+    rand_seq = random.randint(1000, 9999)
+    req_code = f"PKR-{today}-{rand_seq}"
+    
+    sender_phone = data.sender_phone
+    pickup_address = data.pickup_address
+    target_hub_id = data.target_hub_id
+    
+    if data.customer_id:
+        cust = db.query(models.Customers).filter(models.Customers.customer_id == data.customer_id).first()
+        if cust:
+            if not sender_phone:
+                sender_phone = cust.phone_number
+            if not pickup_address:
+                addr_parts = []
+                if cust.address_detail: addr_parts.append(cust.address_detail)
+                pickup_address = cust.address_detail or ""
+                
+    db_req = models.BookingRequests(
+        request_code=req_code,
+        source=data.source,
+        shop_order_code=data.shop_order_code,
+        customer_id=data.customer_id,
+        sender_phone=sender_phone,
+        pickup_address=pickup_address,
+        target_hub_id=target_hub_id,
+        product_type=data.product_type,
+        est_weight=data.est_weight,
+        is_vehicle_required=data.is_vehicle_required,
+        status="WAIT_PICKUP",
+        est_quantity=data.est_quantity,
+        priority=data.priority,
+        sla_deadline=data.sla_deadline,
+        notes=data.notes
+    )
+    db.add(db_req)
+    db.flush()
+    
+    db.add(models.BookingRequestLogs(
+        request_id=db_req.request_id,
+        user_id=creator_id,
+        action="Tạo yêu cầu lấy hàng",
+        note=f"Khởi tạo từ nguồn {data.source}"
+    ))
+    
+    return db_req
+
+def get_booking_request_by_code(db: Session, code: str) -> models.BookingRequests:
+    return db.query(models.BookingRequests).filter(models.BookingRequests.request_code == code).first()
+
+def get_booking_requests(db: Session, status: str = None, assigned_shipper_id: int = None, hub_id: int = None) -> list[models.BookingRequests]:
+    query = db.query(models.BookingRequests)
+    if status:
+        query = query.filter(models.BookingRequests.status == status)
+    if assigned_shipper_id:
+        query = query.filter(models.BookingRequests.assigned_shipper_id == assigned_shipper_id)
+    if hub_id:
+        query = query.filter(models.BookingRequests.target_hub_id == hub_id)
+    return query.all()
+
+def assign_shipper_to_pickup(db: Session, db_req: models.BookingRequests, shipper_id: int, user_id: int) -> models.BookingRequests:
+    db_req.status = "ASSIGNED_PICKUP"
+    db_req.assigned_shipper_id = shipper_id
+    
+    db.add(models.BookingRequestLogs(
+        request_id=db_req.request_id,
+        user_id=user_id,
+        action="Gán bưu tá lấy hàng",
+        note=f"Giao cho Bưu tá ID: {shipper_id}"
+    ))
+    return db_req

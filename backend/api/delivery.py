@@ -175,3 +175,87 @@ async def report_failure(
     res = {"status": "DELIVERY_FAILED", "waybill_code": data.waybill_code}
     commit_idempotency(idem_key, res) 
     return res
+
+# --- PICKUP REQUEST (BOOKING REQUEST) ENDPOINTS ---
+from typing import Optional
+
+@router.post("/pickup-requests", response_model=schema_delivery.BookingRequestResponse)
+def create_pickup_request(
+    data: schema_delivery.BookingRequestCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """CSKH hoặc Khách hàng tạo yêu cầu lấy hàng"""
+    if current_user.get("role_id") not in [1, 2, 3]:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền tạo yêu cầu lấy hàng.")
+        
+    db_req = crud_delivery.create_booking_request(db, data, current_user["user_id"])
+    db.commit()
+    db.refresh(db_req)
+    return db_req
+
+@router.get("/pickup-requests", response_model=list[schema_delivery.BookingRequestResponse])
+def list_pickup_requests(
+    status: Optional[str] = None,
+    assigned_shipper_id: Optional[int] = None,
+    hub_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy danh sách yêu cầu lấy hàng"""
+    if current_user.get("role_id") not in [1, 2, 3, 4]:
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập.")
+        
+    if current_user.get("role_id") == 2 and not hub_id:
+        hub_id = current_user.get("primary_hub_id")
+    if current_user.get("role_id") == 4:
+        assigned_shipper_id = current_user["user_id"]
+        
+    return crud_delivery.get_booking_requests(db, status, assigned_shipper_id, hub_id)
+
+@router.get("/pickup-requests/{code}", response_model=schema_delivery.BookingRequestResponse)
+def get_pickup_request_detail(
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy chi tiết yêu cầu lấy hàng theo mã"""
+    db_req = crud_delivery.get_booking_request_by_code(db, code)
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Không tìm thấy yêu cầu lấy hàng.")
+        
+    if current_user.get("role_id") == 4 and db_req.assigned_shipper_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Không có quyền xem yêu cầu này.")
+        
+    return db_req
+
+@router.post("/pickup-requests/{code}/assign")
+async def assign_shipper_pickup(
+    code: str,
+    data: schema_delivery.BookingRequestAssignRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    """Điều phối phân công bưu tá đi lấy hàng"""
+    if current_user.get("role_id") not in [1, 2, 3]:
+        raise HTTPException(status_code=403, detail="Chỉ điều phối/CSKH mới được phân công lấy hàng.")
+        
+    db_req = crud_delivery.get_booking_request_by_code(db, code)
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Không tìm thấy yêu cầu lấy hàng.")
+        
+    shipper = crud_delivery.get_active_shipper(db, data.shipper_id)
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Không tìm thấy Shipper hoạt động.")
+        
+    crud_delivery.assign_shipper_to_pickup(db, db_req, data.shipper_id, current_user["user_id"])
+    db.commit()
+    
+    if shipper.push_token:
+        title = "🔔 Yêu cầu lấy hàng mới"
+        body = f"Bạn vừa được gán yêu cầu lấy hàng {code} tại {db_req.pickup_address}."
+        print(f">>>>> [PUSH ALERT] Gửi thông báo lấy hàng tới token: {shipper.push_token}")
+        background_tasks.add_task(send_expo_push_notification, shipper.push_token, title, body, {"request_code": code})
+        
+    return {"status": "ASSIGNED_PICKUP", "request_code": code, "assigned_shipper_id": data.shipper_id}

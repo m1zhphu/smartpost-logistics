@@ -27,3 +27,37 @@ class ManifestLoadRequest(BaseModel):
 class ManifestUnloadRequest(BaseModel):
     manifest_code: str
     bag_codes: List[str]    
+
+# --- PICKUP BAG SCHEMAS ---
+from datetime import datetime
+
+class PickupBagCreate(BaseModel):
+    customer_id: int
+    bag_code: Optional[str] = None
+    est_quantity: Optional[int] = 0
+    note: Optional[str] = None
+
+class PickupBagResponse(BaseModel):
+    bag_id: int
+    bag_code: str
+    customer_id: Optional[int]
+    customer_code: Optional[str] = None
+    customer_name: Optional[str] = None
+    created_by: Optional[int]
+    shipper_name: Optional[str] = None
+    est_quantity: Optional[int]
+    actual_quantity: Optional[int] = 0
+    missing_quantity: Optional[int] = 0
+    status: Optional[str]
+    bag_type: Optional[str]
+    pickup_time: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class PickupBagDetailResponse(PickupBagResponse):
+    discrepancy: Optional[dict] = None
+    chain_of_custody: Optional[List[dict]] = None
+
+class PickupBagVerifyRequest(BaseModel):
+    waybill_codes: List[str]

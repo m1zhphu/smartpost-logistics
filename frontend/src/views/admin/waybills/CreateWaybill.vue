@@ -132,13 +132,22 @@
               </el-row>
               
               <el-form-item label="Địa chỉ giao hàng chi tiết" prop="receiver_address" class="mb-0">
-                <el-input 
-                  v-model="waybillForm.receiver_address" 
-                  type="textarea" 
-                  :rows="3" 
-                  placeholder="Số nhà, tên đường, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố..." 
-                  resize="none"
-                />
+                <el-autocomplete
+                  v-model="waybillForm.receiver_address"
+                  :fetch-suggestions="queryAddressSearch"
+                  placeholder="Số nhà, tên đường, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố..."
+                  clearable
+                  class="w-full"
+                  :trigger-on-focus="false"
+                >
+                  <template #prefix><el-icon><Location /></el-icon></template>
+                  <template #default="{ item }">
+                    <div class="addr-suggestion" style="display: flex; align-items: center; gap: 8px; padding: 6px 0;">
+                      <el-icon style="color: #4318FF; font-size: 16px;"><Location /></el-icon>
+                      <span style="font-size: 13px; color: #2b3674;">{{ item.value }}</span>
+                    </div>
+                  </template>
+                </el-autocomplete>
               </el-form-item>
             </div>
           </el-col>
@@ -443,6 +452,50 @@ const handleReceiverPhoneBlur = async () => {
     }
   } catch (err) {
   }
+};
+
+const queryAddressSearch = (queryString, cb) => {
+  if (!queryString) {
+    cb([]);
+    return;
+  }
+  
+  const query = queryString.toLowerCase().trim();
+  const commonLocations = [
+    "Phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh",
+    "Phường Bến Thành, Quận 1, Thành phố Hồ Chí Minh",
+    "Phường Đa Kao, Quận 1, Thành phố Hồ Chí Minh",
+    "Phường Võ Thị Sáu, Quận 3, Thành phố Hồ Chí Minh",
+    "Phường 15, Quận Bình Thạnh, Thành phố Hồ Chí Minh",
+    "Phường 2, Quận Tân Bình, Thành phố Hồ Chí Minh",
+    "Phường Tràng Tiền, Quận Hoàn Kiếm, Thành phố Hà Nội",
+    "Phường Hàng Đào, Quận Hoàn Kiếm, Thành phố Hà Nội",
+    "Phường Phan Chu Trinh, Quận Hoàn Kiếm, Thành phố Hà Nội",
+    "Phường Quán Thánh, Quận Ba Đình, Thành phố Hà Nội",
+    "Phường Liễu Giai, Quận Ba Đình, Thành phố Hà Nội",
+    "Phường Dịch Vọng, Quận Cầu Giấy, Thành phố Hà Nội",
+    "Phường Thạch Thang, Quận Hải Châu, Thành phố Đà Nẵng",
+    "Phường Hòa Thuận Đông, Quận Hải Châu, Thành phố Đà Nẵng",
+    "Phường Tân An, Quận Ninh Kiều, Thành phố Cần Thơ",
+    "Phường Hoàng Văn Thụ, Quận Hồng Bàng, Thành phố Hải Phòng"
+  ];
+  
+  const suggestions = commonLocations
+    .filter(loc => loc.toLowerCase().includes(query) || query.includes(loc.toLowerCase()))
+    .map(loc => {
+      // Nếu query chưa chứa tên địa danh thì ghép vào làm tiền tố gợi ý
+      const locLower = loc.toLowerCase();
+      const parts = query.split(/[\s,]+/);
+      const lastPart = parts[parts.length - 1];
+      
+      // Nếu người dùng nhập địa chỉ cụ thể như số nhà / tên đường, tự động gợi ý append
+      if (queryString.length > 2 && !locLower.includes(query)) {
+        return { value: `${queryString}, ${loc}` };
+      }
+      return { value: loc };
+    });
+    
+  cb(suggestions.slice(0, 5));
 };
 
 const saveWaybill = async (andPrint) => {

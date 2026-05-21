@@ -73,8 +73,13 @@
             <div class="filter-wrapper">
               <div class="filter-inputs">
                 <el-select v-model="filter.service_type" placeholder="Tất cả dịch vụ" clearable class="modern-select w-200">
+                  <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
+                  <el-option label="Tiết kiệm (TK)" value="TK" />
+                  <el-option label="Hỏa tốc (HT / EXPRESS)" value="HT" />
+                  <el-option label="Phát trước 9h (PT9H)" value="PT9H" />
+                  <el-option label="Quốc tế (QT)" value="QT" />
+                  <el-option label="Tiêu chuẩn (STANDARD)" value="STANDARD" />
                   <el-option label="⚡ Hoả tốc (EXPRESS)" value="EXPRESS" />
-                  <el-option label="🚚 Tiêu chuẩn (STANDARD)" value="STANDARD" />
                 </el-select>
                 <el-select v-model="filterHubId" placeholder="Lọc theo Bưu cục" clearable filterable class="modern-select w-260">
                   <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
@@ -128,9 +133,9 @@
               <!-- Dịch vụ -->
               <el-table-column label="Loại Dịch vụ" min-width="160" align="center">
                 <template #default="{ row }">
-                  <div class="modern-tag" :class="row.service_type === 'EXPRESS' ? 'tag-warning' : 'tag-info'">
+                  <div class="modern-tag" :class="getServiceTagClass(row.service_type)">
                     <span class="dot"></span>
-                    {{ row.service_type === 'EXPRESS' ? 'Hoả tốc (EXPRESS)' : 'Tiêu chuẩn (STANDARD)' }}
+                    {{ getServiceLabel(row.service_type) }}
                   </div>
                 </template>
               </el-table-column>
@@ -303,18 +308,15 @@
             </div>
             
             <el-form-item label="Loại dịch vụ áp dụng" prop="service_type">
-              <el-radio-group v-model="ruleForm.service_type" class="custom-radio-group w-full">
-                <el-radio-button label="EXPRESS">
-                  <div class="radio-content">
-                    <el-icon><Lightning /></el-icon> <span>Hoả tốc (EXPRESS)</span>
-                  </div>
-                </el-radio-button>
-                <el-radio-button label="STANDARD">
-                  <div class="radio-content">
-                    <el-icon><Van /></el-icon> <span>Tiêu chuẩn (STANDARD)</span>
-                  </div>
-                </el-radio-button>
-              </el-radio-group>
+              <el-select v-model="ruleForm.service_type" placeholder="Chọn loại dịch vụ" class="w-full modern-select">
+                <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
+                <el-option label="Tiết kiệm (TK)" value="TK" />
+                <el-option label="Hỏa tốc (HT / EXPRESS)" value="HT" />
+                <el-option label="Phát trước 9h (PT9H)" value="PT9H" />
+                <el-option label="Quốc tế (QT)" value="QT" />
+                <el-option label="Tiêu chuẩn (STANDARD)" value="STANDARD" />
+                <el-option label="⚡ Hoả tốc (EXPRESS)" value="EXPRESS" />
+              </el-select>
             </el-form-item>
 
             <el-row :gutter="24">
@@ -480,6 +482,26 @@ const canEditPricing = computed(() => user.value?.role_id === 1 || user.value?.r
 const activeTab = ref('main_routes');
 const policies = ref([]);
 const hubs = ref([]);
+
+const getServiceLabel = (type) => {
+  const map = {
+    'CPN': 'Chuyển phát nhanh (CPN)',
+    'TK': 'Tiết kiệm (TK)',
+    'HT': 'Hỏa tốc (HT)',
+    'PT9H': 'Phát trước 9h (PT9H)',
+    'QT': 'Quốc tế (QT)',
+    'STANDARD': 'Tiêu chuẩn (STANDARD)',
+    'EXPRESS': 'Hoả tốc (EXPRESS)'
+  };
+  return map[type] || type;
+};
+
+const getServiceTagClass = (type) => {
+  if (type === 'HT' || type === 'EXPRESS' || type === 'PT9H') return 'tag-warning';
+  if (type === 'QT') return 'tag-danger';
+  if (type === 'CPN') return 'tag-primary';
+  return 'tag-info';
+};
 
 // ================= STATE CHO CƯỚC CHÍNH =================
 const loading = ref(false);
@@ -833,6 +855,8 @@ onMounted(() => {
 .tag-warning .dot { background: #FFB547; box-shadow: 0 0 0 2px rgba(255,181,71,0.2); }
 .tag-primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
 .tag-primary .dot { background: #4318FF; }
+.tag-danger { background: rgba(238, 93, 80, 0.1); color: #EE5D50; }
+.tag-danger .dot { background: #EE5D50; box-shadow: 0 0 0 2px rgba(238,93,80,0.2); }
 
 .weight-badge { display: inline-flex; align-items: center; gap: 6px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 12px; border-radius: 10px; font-weight: 600; font-size: 13px; color: #2B3674; }
 

@@ -250,3 +250,93 @@ def get_incoming_manifests_data(db: Session, role_id: int, hub_id: int):
             "dispatched_at": dispatched_time.isoformat() if dispatched_time else None
         })
     return result
+
+def create_pickup_bag(db: Session, customer_id: int, creator_id: int, est_quantity: int, bag_code: str = None, note: str = None) -> models.Bags:
+    """Tạo túi lấy hàng (PICKUP bag)"""
+    if not bag_code:
+        # Lấy mã bưu cục của người tạo
+        creator = db.query(models.Users).filter(models.Users.user_id == creator_id).first()
+        hub_code = "GEN"
+        if creator and creator.primary_hub_id:
+            hub = db.query(models.Hubs).filter(models.Hubs.hub_id == creator.primary_hub_id).first()
+            if hub and hub.hub_code:
+                hub_code = hub.hub_code
+        
+        # Đếm số túi tạo trong ngày để sinh số thứ tự
+        today_str = datetime.now().strftime("%Y%m%d")
+        prefix = f"BAG-{hub_code}-{today_str}-"
+        count = db.query(models.Bags).filter(models.Bags.bag_code.like(f"{prefix}%")).count()
+        bag_code = f"{prefix}{count + 1:04d}"
+
+    bag = models.Bags(
+        bag_code=bag_code,
+        created_by=creator_id,
+        customer_id=customer_id,
+        bag_type="PICKUP",
+        est_quantity=est_quantity,
+        status="CREATED",
+        pickup_time=datetime.utcnow()
+    )
+    db.add(bag)
+    db.flush()
+    return bag
+
+def get_pickup_bag_discrepancy(db: Session, bag: models.Bags):
+    """
+    Phân tích chênh lệch và lỗi của túi lấy hàng (PICKUP bag).
+    Trả về danh sách lỗi/cảnh báo và các thống kê.
+    """
+    # Lấy các waybills đã quét thực tế vào túi
+    actual_waybills = db.query(models.Waybills).join(
+        models.BagItems, models.Waybills.waybill_id == models.BagItems.waybill_id
+    ).filter(models.BagItems.bag_id == bag.bag_id).all()
+
+    # Lấy các waybills dự kiến của khách hàng này đang ở trạng thái chờ lấy
+    # Hoặc liên kết với BookingRequest chưa lấy
+    expected_waybills = db.query(models.Waybills).filter(
+        models.Waybills.customer_id == bag.customer_id,
+        models.Waybills.status.in_(["CREATED", "WAIT_PICKUP"])
+    ).all()
+
+    actual_codes = {w.waybill_code for w in actual_waybills}
+    expected_codes = {w.waybill_code for w in expected_waybills}
+
+    # Phân loại lỗi/chênh lệch
+    errors = []
+    
+    # 1. Thừa bill (Quét nhưng không nằm trong danh sách dự kiến hoặc sai khách hàng)
+    extra_bills = []
+    for w in actual_waybills:
+        if w.customer_id != bag.customer_id:
+            errors.append(f"Bill {w.waybill_code}: Sai khách gửi (Khách của túi: {bag.customer_code}, Khách của đơn: {w.customer.customer_code if w.customer else 'N/A'})")
+            extra_bills.append(w.waybill_code)
+        elif w.waybill_code not in expected_codes:
+            # Thuộc khách này nhưng không nằm trong danh sách đơn chờ lấy dự kiến
+            extra_bills.append(w.waybill_code)
+
+    # 2. Thiếu bill (Dự kiến lấy nhưng thực tế không có trong túi)
+    missing_bills = []
+    for w in expected_waybills:
+        if w.waybill_code not in actual_codes:
+            missing_bills.append(w.waybill_code)
+
+    # 3. Sai COD / Sai người nhận / Chưa OCR
+    for w in actual_waybills:
+        if w.cod_amount is None:
+            errors.append(f"Bill {w.waybill_code}: Sai COD (Trống thông tin COD)")
+        if not w.receiver_name or not w.receiver_address:
+            errors.append(f"Bill {w.waybill_code}: Sai người nhận (Thiếu tên hoặc địa chỉ nhận)")
+        if not w.ocr_status or w.ocr_status not in ["SUCCESS", "SCANNED"]:
+            errors.append(f"Bill {w.waybill_code}: Bill chưa OCR")
+        if w.verify_status == "MISMATCH" or w.status == WaybillStatus.VERIFY_ERROR:
+            errors.append(f"Bill {w.waybill_code}: Lệch dữ liệu OCR (MISMATCH). Lý do: {w.verify_error_msg or 'Chưa duyệt lại'}")
+
+    return {
+        "est_quantity": bag.est_quantity or 0,
+        "actual_quantity": len(actual_waybills),
+        "missing_quantity": len(missing_bills),
+        "extra_quantity": len(extra_bills),
+        "missing_bills": missing_bills,
+        "extra_bills": extra_bills,
+        "errors": errors
+    }

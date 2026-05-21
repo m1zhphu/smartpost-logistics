@@ -328,17 +328,66 @@ def update_waybill_images_and_trigger_ocr(db: Session, code: str, bill_url: str,
     if pickup_url:
         waybill.pickup_image_url = pickup_url
     
-    # Kích hoạt trạng thái chờ xác thực và giả lập OCR
-    waybill.status = WaybillStatus.PICKED_PENDING_VERIFY
-    waybill.ocr_status = "SCANNED"
-    waybill.verify_status = "PENDING"
+    # 1. Chuẩn bị dữ liệu đầu vào cho OCR
+    waybill_data = {
+        "receiver_phone": waybill.receiver_phone,
+        "cod_amount": float(waybill.cod_amount or 0),
+        "receiver_name": waybill.receiver_name,
+        "actual_weight": float(waybill.actual_weight or 0)
+    }
     
+    # 2. Gọi OCR Service (sử dụng đường dẫn tương đối hoặc tuyệt đối)
+    from services.ocr_service import extract_waybill_info_from_image
+    import os
+    
+    # Chuyển đổi URL ảnh thành đường dẫn file thật để OCR đọc (nếu có Tesseract)
+    image_path = bill_url.lstrip("/")
+    ocr_result = extract_waybill_info_from_image(image_path, waybill_data)
+    
+    # 3. Tiến hành tự động so khớp (Auto-Match)
+    errors = []
+    
+    # Kiểm tra SĐT
+    ocr_phone = ocr_result.get("receiver_phone") or ""
+    sys_phone = waybill_data["receiver_phone"] or ""
+    # Chuẩn hóa để so sánh
+    if ocr_phone.replace("+84", "0") != sys_phone.replace("+84", "0"):
+        errors.append(f"SĐT không khớp: Hệ thống ({sys_phone}) vs OCR ({ocr_phone})")
+        
+    # Kiểm tra COD
+    ocr_cod = float(ocr_result.get("cod_amount") or 0)
+    sys_cod = waybill_data["cod_amount"]
+    if abs(ocr_cod - sys_cod) > 0.01:
+        errors.append(f"COD không khớp: Hệ thống ({sys_cod:,.0f}đ) vs OCR ({ocr_cod:,.0f}đ)")
+        
+    # Kiểm tra tên người nhận
+    ocr_name = (ocr_result.get("receiver_name") or "").strip().lower()
+    sys_name = (waybill_data["receiver_name"] or "").strip().lower()
+    if ocr_name != sys_name:
+        errors.append(f"Người nhận không khớp: Hệ thống ({waybill.receiver_name}) vs OCR ({ocr_result.get('receiver_name')})")
+
+    # 4. Cập nhật trạng thái dựa trên kết quả so khớp
+    waybill.ocr_status = "SUCCESS"
+    
+    if not errors:
+        # Khớp 100% -> Auto Verified
+        waybill.verify_status = "VERIFIED"
+        waybill.status = WaybillStatus.READY_WAREHOUSE
+        waybill.verify_error_msg = None
+        note = "Đã tự động xác thực OCR thành công (Khớp 100%). Sẵn sàng nhập kho."
+    else:
+        # Lệch thông tin -> Chuyển trạng thái lỗi
+        waybill.verify_status = "MISMATCH"
+        waybill.status = WaybillStatus.VERIFY_ERROR
+        waybill.verify_error_msg = "; ".join(errors)
+        note = f"Tự động xác thực OCR thất bại: {waybill.verify_error_msg}"
+        
     new_log = models.TrackingLogs(
         waybill_id=waybill.waybill_id,
-        status_id=WaybillStatus.PICKED_PENDING_VERIFY,
+        status_id=waybill.status,
         hub_id=hub_id,
         user_id=user_id,
-        note="Đã upload ảnh bill và gửi yêu cầu xác thực OCR",
+        note=note,
         system_time=datetime.utcnow()
     )
     db.add(new_log)
@@ -407,12 +456,16 @@ def transfer_waybill_crud(db: Session, code: str, target_type: str, target_id: i
         waybill.holding_hub_id = target_id
         waybill.holding_shipper_id = None
         db.flush()
-        new_holder = "Kho " + (waybill.holding_hub.hub_name if waybill.holding_hub else f"ID {target_id}")
+        # Query target hub directly to avoid cached relationship issues
+        target_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == target_id).first()
+        new_holder = "Kho " + (target_hub.hub_name if target_hub else f"ID {target_id}")
     elif target_type == 'SHIPPER':
         waybill.holding_shipper_id = target_id
         waybill.holding_hub_id = None
         db.flush()
-        new_holder = "Bưu tá " + (waybill.holding_shipper.full_name if waybill.holding_shipper else f"ID {target_id}")
+        # Query target shipper directly to avoid cached relationship issues
+        target_shipper = db.query(models.Users).filter(models.Users.user_id == target_id).first()
+        new_holder = "Bưu tá " + (target_shipper.full_name if target_shipper else f"ID {target_id}")
     else:
         return None
 

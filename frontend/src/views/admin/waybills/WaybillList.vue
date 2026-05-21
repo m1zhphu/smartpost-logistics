@@ -16,12 +16,16 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="btn-secondary" @click="exportExcel" :disabled="exporting">
+          <button class="btn-secondary" @click="exportExcel" :disabled="exporting" style="margin-right: 8px;">
             <el-icon class="is-loading mr-2" v-if="exporting"><Loading /></el-icon>
             <el-icon v-else><Download /></el-icon>
             <span>Xuất Excel</span>
           </button>
-          <button class="btn-primary ml-2" @click="$router.push('/admin/waybills/create')" style="margin-left: 8px;">
+          <button class="btn-secondary" @click="openImportDialog" style="margin-right: 8px;">
+            <el-icon><Upload /></el-icon>
+            <span>Nhập Excel</span>
+          </button>
+          <button class="btn-primary" @click="$router.push('/admin/waybills/create')">
             <el-icon><Plus /></el-icon>
             <span>Thêm mới (F2)</span>
           </button>
@@ -140,6 +144,29 @@
              <button class="btn-primary w-full" @click="handleSearch">
                <el-icon><Search /></el-icon> Tìm kiếm
              </button>
+          </el-col>
+        </el-row>
+
+        <!-- Row 3 -->
+        <el-row :gutter="20" class="filter-row mt-20">
+          <el-col :xs="24" :sm="12" :lg="9" class="filter-col">
+            <div class="filter-label">Dịch vụ vận chuyển</div>
+            <el-select v-model="serviceTypeFilter" placeholder="Tất cả dịch vụ" clearable class="w-full modern-select">
+              <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
+              <el-option label="Tiết kiệm (TK)" value="TK" />
+              <el-option label="Hỏa tốc (HT)" value="HT" />
+              <el-option label="Phát trước 9h (PT9H)" value="PT9H" />
+              <el-option label="Quốc tế (QT)" value="QT" />
+            </el-select>
+          </el-col>
+          
+          <el-col :xs="24" :sm="12" :lg="9" class="filter-col">
+            <div class="filter-label">Kiểm soát SLA</div>
+            <el-select v-model="slaStatusFilter" placeholder="Tất cả trạng thái SLA" clearable class="w-full modern-select">
+              <el-option label="Đúng hạn (ON_TIME)" value="ON_TIME" />
+              <el-option label="Sắp trễ (WARNING)" value="WARNING" />
+              <el-option label="Quá hạn (OVERDUE)" value="OVERDUE" />
+            </el-select>
           </el-col>
         </el-row>
       </div>
@@ -565,6 +592,103 @@
         </template>
       </el-dialog>
 
+      <!-- Import Excel Dialog -->
+      <el-dialog
+        v-model="importDialogVisible"
+        title="Nhập Excel tạo đơn hàng loạt"
+        width="540px"
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <div class="import-excel-container" style="padding: 10px 0;">
+          <div class="template-download-section mb-16" style="padding: 12px; background: #f0f7ff; border-radius: 8px; border: 1px solid #d0e7ff; margin-bottom: 16px;">
+            <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.6;">
+              Tải mẫu file Excel hoặc chuẩn bị file của bạn với các cột bắt buộc: 
+              <b>Họ tên, Số điện thoại, Địa chỉ nhận hàng, Khối lượng (kg)</b>. 
+              Các cột tự chọn khác: <i>COD, Dịch vụ (CPN/TK/HT), Tên hàng, Ghi chú, Dài, Rộng, Cao, Mã KH, Mã bưu cục nhận</i>.
+            </p>
+            <div style="margin-top: 8px; text-align: right;">
+              <el-link type="primary" :underline="false" @click="downloadTemplate" style="font-size: 13px; font-weight: 600;">
+                <el-icon class="mr-4"><Download /></el-icon> Tải File Mẫu (.csv)
+              </el-link>
+            </div>
+          </div>
+
+          <el-form label-position="top">
+            <el-form-item label="Chọn Khách hàng mặc định">
+              <el-select v-model="importCustomerId" placeholder="Chọn Khách hàng / Shop..." clearable filterable class="w-full">
+                <el-option 
+                  v-for="c in customers" 
+                  :key="c.customer_id" 
+                  :label="c.company_name ? `${c.customer_code} - ${c.company_name}` : `${c.customer_code} - ${c.name}`" 
+                  :value="c.customer_id" 
+                />
+              </el-select>
+              <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+                Mặc định áp dụng nếu trong file Excel không điền cột "Mã Khách Hàng".
+              </div>
+            </el-form-item>
+
+            <el-form-item label="Chọn File Excel / CSV">
+              <el-upload
+                class="excel-uploader"
+                drag
+                action=""
+                :auto-upload="false"
+                :on-change="handleFileChange"
+                :limit="1"
+                :on-exceed="handleExceed"
+                accept=".xlsx, .xls, .csv"
+                ref="uploadRef"
+              >
+                <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+                <div class="el-upload__text">
+                  Kéo thả file Excel/CSV vào đây hoặc <em>nhấp để tải lên</em>
+                </div>
+                <template #tip>
+                  <div class="el-upload__tip" style="color: #909399;">
+                    Hỗ trợ định dạng .xlsx, .xls, .csv.
+                  </div>
+                </template>
+              </el-upload>
+            </el-form-item>
+          </el-form>
+
+          <!-- Import Summary Result -->
+          <div v-if="importResult" class="import-result-section mt-16" style="margin-top: 16px; padding: 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
+              <span>Kết quả Import:</span>
+              <el-tag :type="importResult.status === 'success' ? 'success' : 'danger'" size="small">
+                {{ importResult.status === 'success' ? 'Hoàn tất' : 'Có lỗi xảy ra' }}
+              </el-tag>
+            </h4>
+            <div style="font-size: 13px; line-height: 1.8;">
+              <div>🟢 Tạo thành công: <strong style="color: #10b981;">{{ importResult.imported_count }} đơn</strong></div>
+              <div>🔴 Thất bại: <strong style="color: #ef4444;">{{ importResult.failed_count }} dòng</strong></div>
+            </div>
+            
+            <div v-if="importResult.errors && importResult.errors.length > 0" class="error-list" style="margin-top: 8px; max-height: 150px; overflow-y: auto; padding: 8px; background: #fff5f5; border-radius: 6px; border: 1px solid #fed7d7;">
+              <div v-for="err in importResult.errors" :key="err.row" style="font-size: 12px; color: #c53030; margin-bottom: 4px;">
+                Dòng {{ err.row }}: {{ err.error }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <button class="btn-secondary mr-2" @click="importDialogVisible = false">Đóng</button>
+          <button 
+            class="btn-primary" 
+            @click="submitImport" 
+            :disabled="!selectedFile || importSubmitting"
+          >
+            <el-icon class="is-loading mr-2" v-if="importSubmitting"><Loading /></el-icon>
+            <el-icon v-else><Upload /></el-icon>
+            <span>Bắt đầu Tải lên</span>
+          </button>
+        </template>
+      </el-dialog>
+
     </div>
   </div>
 </template>
@@ -574,7 +698,7 @@ import { ref, onMounted } from 'vue';
 import { 
   Search, Plus, Printer, Download, MoreFilled, Check, Edit, Delete, 
   Location, LocationInformation, Tickets, RefreshRight, Van, User, 
-  Phone, Right, Loading, UserFilled, Money, Warning, Position
+  Phone, Right, Loading, UserFilled, Money, Warning, Position, Upload, UploadFilled
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
@@ -586,11 +710,109 @@ const customers = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
 const statusFilter = ref('');
+const serviceTypeFilter = ref('');
+const slaStatusFilter = ref('');
 
 const slaStats = ref({ total: 0, on_time: 0, warning: 0, overdue: 0 });
 const transferDialogVisible = ref(false);
 const transferSubmitting = ref(false);
 const transferForm = ref({ waybill_code: '', target_type: 'HUB', target_id: null, reason: '' });
+
+// --- IMPORT EXCEL STATE ---
+const importDialogVisible = ref(false);
+const importSubmitting = ref(false);
+const importCustomerId = ref(null);
+const selectedFile = ref(null);
+const importResult = ref(null);
+const uploadRef = ref(null);
+
+const openImportDialog = () => {
+  importDialogVisible.value = true;
+  importResult.value = null;
+  selectedFile.value = null;
+  importCustomerId.value = null;
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles();
+  }
+};
+
+const handleFileChange = (file) => {
+  selectedFile.value = file.raw;
+  importResult.value = null;
+};
+
+const handleExceed = (files) => {
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles();
+    const file = files[0];
+    uploadRef.value.handleStart(file);
+    selectedFile.value = file;
+  }
+};
+
+const downloadTemplate = () => {
+  const headers = "Họ tên,Số điện thoại,Địa chỉ nhận hàng,Khối lượng (kg),COD,Dịch vụ,Tên hàng,Ghi chú,Dài,Rộng,Cao,Mã Khách Hàng,Mã bưu cục nhận\n";
+  const row1 = "Nguyen Van A,0987654321,123 Duong Le Loi Phuong 1 Quan 1 TpHCM,1.5,150000,CPN,Ao thun nam size L,Cho xem hang khong cho thu,30,20,15,KH0001,K01\n";
+  const row2 = "Tran Thi B,0912345678,456 Duong Nguyen Hue Quan Hoa Kiem Ha Noi,0.8,0,TK,Sach giao khoa Lop 12,Giao gio hanh chinh,20,15,5,KH0002,K02\n";
+  
+  const BOM = "\uFEFF";
+  const csvContent = BOM + headers + row1 + row2;
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "Mau_Import_Van_Don.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  ElMessage.success("Đã tải mẫu file CSV import thành công (Mở tốt trong Excel)!");
+};
+
+const submitImport = async () => {
+  if (!selectedFile.value) {
+    ElMessage.warning('Vui lòng chọn file Excel trước');
+    return;
+  }
+  
+  importSubmitting.value = true;
+  importResult.value = null;
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile.value);
+  if (importCustomerId.value) {
+    formData.append('customer_id', importCustomerId.value);
+  }
+  
+  try {
+    const response = await api.post('/api/waybills/import-excel', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    importResult.value = response.data;
+    if (response.data.failed_count === 0) {
+      ElMessage.success(`Nhập Excel thành công: Đã tạo ${response.data.imported_count} đơn hàng!`);
+      importDialogVisible.value = false;
+      handleSearch();
+      fetchSLAStats();
+    } else if (response.data.imported_count > 0) {
+      ElMessage.warning(`Import hoàn tất một phần: Thành công ${response.data.imported_count} đơn, thất bại ${response.data.failed_count} dòng.`);
+      handleSearch();
+      fetchSLAStats();
+    } else {
+      ElMessage.error(`Import thất bại hoàn toàn! ${response.data.failed_count} dòng có lỗi.`);
+    }
+  } catch (err) {
+    console.error(err);
+    const detail = err.response?.data?.detail || 'Lỗi hệ thống khi tải file lên';
+    ElMessage.error(`Lỗi import: ${detail}`);
+  } finally {
+    importSubmitting.value = false;
+  }
+};
+
 const dateRange = ref([]);
 const waybills = ref([]);
 const total = ref(0);
@@ -664,7 +886,9 @@ const handleSearch = async () => {
       end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null,
       holding_hub_id: holdingHubFilter.value || null,
       holding_shipper_id: holdingShipperFilter.value || null,
-      cod_status: codStatusFilter.value || null
+      cod_status: codStatusFilter.value || null,
+      service_type: serviceTypeFilter.value || null,
+      sla_status: slaStatusFilter.value || null
     };
     const response = await api.post('/api/waybills/search', filters);
     waybills.value = response.data.items || [];
@@ -691,7 +915,9 @@ const exportExcel = async () => {
       end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null,
       holding_hub_id: holdingHubFilter.value || null,
       holding_shipper_id: holdingShipperFilter.value || null,
-      cod_status: codStatusFilter.value || null
+      cod_status: codStatusFilter.value || null,
+      service_type: serviceTypeFilter.value || null,
+      sla_status: slaStatusFilter.value || null
     };
     const response = await api.post('/api/waybills/export', filters, {
       responseType: 'blob'
@@ -721,6 +947,8 @@ const resetFilters = () => {
   holdingHubFilter.value = null;
   holdingShipperFilter.value = null;
   codStatusFilter.value = '';
+  serviceTypeFilter.value = '';
+  slaStatusFilter.value = '';
   handleSearch();
 };
 

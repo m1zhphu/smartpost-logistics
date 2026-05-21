@@ -226,6 +226,7 @@ class Bags(Base):
     __table_args__ = (
         ForeignKeyConstraint(['created_by'], ['users.user_id'], name='bags_created_by_fkey'),
         ForeignKeyConstraint(['dest_hub_id'], ['hubs.hub_id'], name='bags_dest_hub_id_fkey'),
+        ForeignKeyConstraint(['customer_id'], ['customers.customer_id'], name='bags_customer_id_fkey'),
         PrimaryKeyConstraint('bag_id', name='bags_pkey'),
         UniqueConstraint('bag_code', name='bags_bag_code_key')
     )
@@ -237,11 +238,32 @@ class Bags(Base):
     total_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
     created_by: Mapped[Optional[int]] = mapped_column(Integer)
     status: Mapped[Optional[str]] = mapped_column(String(50))
+    
+    # NEW FIELDS FOR PICKUP BAGS
+    bag_type: Mapped[Optional[str]] = mapped_column(String(20), server_default=text("'EXPORT'")) # PICKUP hoặc EXPORT
+    est_quantity: Mapped[Optional[int]] = mapped_column(Integer)
+    pickup_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    customer_id: Mapped[Optional[int]] = mapped_column(Integer)
 
     users: Mapped[Optional['Users']] = relationship('Users', back_populates='bags')
     dest_hub: Mapped[Optional['Hubs']] = relationship('Hubs', back_populates='bags')
+    customer: Mapped[Optional['Customers']] = relationship('Customers')
     bag_items: Mapped[list['BagItems']] = relationship('BagItems', back_populates='bag')
+
     manifest_details: Mapped[list['ManifestDetails']] = relationship('ManifestDetails', back_populates='bag')
+
+    @property
+    def customer_code(self):
+        return self.customer.customer_code if self.customer else None
+
+    @property
+    def customer_name(self):
+        return self.customer.company_name if self.customer else None
+
+    @property
+    def shipper_name(self):
+        return self.users.full_name if self.users else None
+
 
 
 class Customers(Base):
@@ -435,10 +457,48 @@ class BookingRequests(Base):
     status: Mapped[Optional[str]] = mapped_column(String(50))
     assigned_shipper_id: Mapped[Optional[int]] = mapped_column(Integer)
 
+    # NEW FIELDS FOR PICKUP REQUESTS
+    est_quantity: Mapped[Optional[int]] = mapped_column(Integer)
+    priority: Mapped[Optional[str]] = mapped_column(String(20), server_default=text("'NORMAL'")) # NORMAL, URGENT, VIP, HT
+    sla_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
     assigned_shipper: Mapped[Optional['Users']] = relationship('Users', back_populates='booking_requests')
     customer: Mapped[Optional['Customers']] = relationship('Customers', back_populates='booking_requests')
     target_hub: Mapped[Optional['Hubs']] = relationship('Hubs', back_populates='booking_requests')
     waybills: Mapped[list['Waybills']] = relationship('Waybills', back_populates='request')
+    logs: Mapped[list['BookingRequestLogs']] = relationship('BookingRequestLogs', back_populates='request')
+
+    @property
+    def customer_code(self):
+        return self.customer.customer_code if self.customer else None
+
+    @property
+    def customer_name(self):
+        return self.customer.company_name if self.customer else None
+
+    @property
+    def assigned_shipper_name(self):
+        return self.assigned_shipper.full_name if self.assigned_shipper else None
+
+
+class BookingRequestLogs(Base):
+    __tablename__ = 'booking_request_logs'
+    __table_args__ = (
+        ForeignKeyConstraint(['request_id'], ['booking_requests.request_id'], name='booking_request_logs_request_id_fkey'),
+        ForeignKeyConstraint(['user_id'], ['users.user_id'], name='booking_request_logs_user_id_fkey'),
+        PrimaryKeyConstraint('log_id', name='booking_request_logs_pkey')
+    )
+
+    log_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    request_id: Mapped[int] = mapped_column(Integer)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer)
+    action: Mapped[str] = mapped_column(String(255), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    request: Mapped['BookingRequests'] = relationship('BookingRequests', back_populates='logs')
+    user: Mapped[Optional['Users']] = relationship('Users')
 
 
 class CustomerPriceMapping(Base):

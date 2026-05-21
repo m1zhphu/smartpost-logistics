@@ -172,18 +172,47 @@ async def scan_bagging(
                 )
 
             # --- KIỂM SOÁT VẬN ĐƠN TRƯỚC KHI XUẤT KHO ---
-            # Chặn nếu chưa Verify hoặc Verify bị lỗi (Mismatch/Pending/Null)
-            if not wb.verify_status or wb.verify_status != "VERIFIED":
+            # 1. Chưa có ảnh bill
+            if not wb.bill_image_url and not wb.pickup_image_url:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Đơn hàng {code} chưa được xác thực (VERIFY). Trạng thái hiện tại: {wb.verify_status or 'CHƯA CÓ'}. Không thể xuất kho!"
+                    detail=f"Đơn hàng {code} chưa có ảnh chụp bill/hàng hóa. Bưu tá phải chụp ảnh khi lấy hàng trước khi xuất kho!"
                 )
             
-            if not wb.bill_image_url and not wb.pickup_image_url:
-                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} chưa có ảnh bill. Không thể xuất kho!")
-            
-            if not wb.receiver_address:
-                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} thiếu địa chỉ nhận. Không thể xuất kho!")
+            # 2. Chưa quét OCR
+            if not wb.ocr_status or wb.ocr_status not in ["SUCCESS", "SCANNED"]:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Đơn hàng {code} chưa được chạy kiểm tra OCR. Không thể xuất kho!"
+                )
+                
+            # 3. Chưa xác thực (Chờ duyệt)
+            if wb.verify_status == "PENDING" or not wb.verify_status:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Đơn hàng {code} đang chờ CSKH kiểm duyệt hình ảnh và thông tin. Không thể xuất kho!"
+                )
+                
+            # 4. Lệch dữ liệu OCR (Mismatch)
+            if wb.verify_status == "MISMATCH" or wb.status == WaybillStatus.VERIFY_ERROR:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Đơn hàng {code} bị lệch dữ liệu so với ảnh bill (MISMATCH). Lý do: {wb.verify_error_msg or 'Chưa duyệt lại'}. Không thể xuất kho!"
+                )
+                
+            # 5. Thiếu thông tin COD
+            if wb.cod_amount is None:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Đơn hàng {code} bị lỗi thông tin COD (Trống dữ liệu COD). Vui lòng cập nhật trước khi xuất kho!"
+                )
+                
+            # 6. Thiếu địa chỉ nhận
+            if not wb.receiver_address or wb.receiver_address.strip() == "":
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Đơn hàng {code} thiếu địa chỉ nhận hàng. Không thể xuất kho!"
+                )
 
             if wb.status == WaybillStatus.BAGGED:
                 raise HTTPException(status_code=400, detail=f"Đơn hàng {code} đã nằm trong túi hàng khác.")
@@ -421,3 +450,313 @@ def get_manifest_bags(
     except Exception as e:
         import traceback; traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# PICKUP BAGGING ENDPOINTS (PHẦN 2)
+# ==========================================
+
+@router.post("/pickup-bags", response_model=schema_wh.PickupBagResponse)
+def create_pickup_bag(
+    data: schema_wh.PickupBagCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """CSKH hoặc Bưu tá tạo túi lấy hàng (PICKUP Bag)"""
+    if current_user.get("role_id") not in [1, 2, 3, 4]:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền tạo túi lấy hàng")
+    
+    customer = db.query(models.Customers).filter(models.Customers.customer_id == data.customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Không tìm thấy khách hàng")
+        
+    bag = crud_wh.create_pickup_bag(
+        db=db,
+        customer_id=data.customer_id,
+        creator_id=current_user["user_id"],
+        est_quantity=data.est_quantity,
+        bag_code=data.bag_code,
+        note=data.note
+    )
+    db.commit()
+    
+    # Gán tạm để response model nhận dạng
+    bag.actual_quantity = 0
+    bag.missing_quantity = data.est_quantity
+    return bag
+
+@router.get("/pickup-bags", response_model=list[schema_wh.PickupBagResponse])
+def list_pickup_bags(
+    status: str = Query(None),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy danh sách các túi lấy hàng kèm số lượng chênh lệch thực tế"""
+    role_id = current_user.get("role_id")
+    user_id = current_user.get("user_id")
+    hub_id = current_user.get("primary_hub_id")
+    
+    query = db.query(models.Bags).filter(models.Bags.bag_type == "PICKUP")
+    
+    if status:
+        query = query.filter(models.Bags.status == status)
+        
+    # Phân quyền lọc dữ liệu
+    if role_id == 4: # Bưu tá: chỉ xem túi của mình
+        query = query.filter(models.Bags.created_by == user_id)
+    elif role_id in [2, 3]: # Manager / Kho: xem các túi trong Hub
+        query = query.join(models.Users, models.Bags.created_by == models.Users.user_id)\
+                     .filter(models.Users.primary_hub_id == hub_id)
+                     
+    bags = query.order_by(models.Bags.bag_id.desc()).all()
+    
+    result = []
+    for b in bags:
+        disc = crud_wh.get_pickup_bag_discrepancy(db, b)
+        b.actual_quantity = disc["actual_quantity"]
+        b.missing_quantity = disc["missing_quantity"]
+        result.append(b)
+    return result
+
+@router.get("/pickup-bags/{bag_code}", response_model=schema_wh.PickupBagDetailResponse)
+def get_pickup_bag_detail(
+    bag_code: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy chi tiết túi lấy hàng kèm chênh lệch và danh sách bill"""
+    bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code, models.Bags.bag_type == "PICKUP").first()
+    if not bag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy túi lấy hàng")
+        
+    disc = crud_wh.get_pickup_bag_discrepancy(db, bag)
+    bag.actual_quantity = disc["actual_quantity"]
+    bag.missing_quantity = disc["missing_quantity"]
+    
+    # Xây dựng Chain of Custody động
+    chain = []
+    creator = db.query(models.Users).filter(models.Users.user_id == bag.created_by).first()
+    creator_name = creator.full_name if (creator and creator.full_name) else (creator.username if creator else f"Bưu tá #{bag.created_by}")
+    time_base = bag.pickup_time if bag.pickup_time else datetime.utcnow()
+    
+    chain.append({
+        "time": time_base.isoformat(),
+        "handler": creator_name,
+        "action": "Khởi tạo túi gom lấy hàng (CREATED)"
+    })
+    
+    if bag.status in ["PICKED", "INBOUND", "OPENED", "PROCESSING", "VERIFIED", "CLOSED"]:
+        chain.append({
+            "time": time_base.isoformat(),
+            "handler": creator_name,
+            "action": "Bưu tá gom hàng thành công (PICKED)"
+        })
+        
+    if bag.status in ["INBOUND", "OPENED", "PROCESSING", "VERIFIED", "CLOSED"]:
+        dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == bag.dest_hub_id).first()
+        dest_hub_name = dest_hub.hub_name if dest_hub else f"Kho #{bag.dest_hub_id}"
+        chain.append({
+            "time": time_base.isoformat(),
+            "handler": dest_hub_name,
+            "action": "Nhập kho bưu cục nhận (INBOUND)"
+        })
+        
+    if bag.status in ["OPENED", "PROCESSING", "VERIFIED", "CLOSED"]:
+        dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == bag.dest_hub_id).first()
+        dest_hub_name = dest_hub.hub_name if dest_hub else f"Kho #{bag.dest_hub_id}"
+        chain.append({
+            "time": time_base.isoformat(),
+            "handler": dest_hub_name,
+            "action": f"Mở túi niêm phong và đối soát ({bag.status})"
+        })
+        
+    bag.discrepancy = disc
+    bag.chain_of_custody = chain
+    return bag
+
+@router.post("/pickup-bags/{bag_code}/pick")
+def pick_pickup_bag(
+    bag_code: str,
+    data: schema_wh.PickupBagVerifyRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bưu tá quét chốt các bill tại điểm lấy hàng và chuyển trạng thái túi sang PICKED"""
+    if current_user.get("role_id") not in [1, 2, 4]:
+        raise HTTPException(status_code=403, detail="Chỉ bưu tá hoặc admin mới được xác nhận lấy hàng")
+        
+    bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code, models.Bags.bag_type == "PICKUP").first()
+    if not bag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy túi lấy hàng")
+        
+    user_id = current_user.get("user_id")
+    hub_id = current_user.get("primary_hub_id")
+    
+    bag.status = "PICKED"
+    bag.pickup_time = datetime.utcnow()
+    
+    # Xóa các liên kết cũ nếu có để cập nhật mới
+    db.query(models.BagItems).filter(models.BagItems.bag_id == bag.bag_id).delete()
+    
+    for code in data.waybill_codes:
+        wb = crud_wh.get_waybill(db, code)
+        if not wb:
+            continue
+            
+        crud_wh.add_item_to_bag(db, bag.bag_id, wb.waybill_id)
+        
+        # Chuyển đổi trạng thái đơn hàng sang PICKED_PENDING_VERIFY (chờ xác thực tại kho)
+        try:
+            validate_state_transition(wb.status, WaybillStatus.PICKED_PENDING_VERIFY)
+            wb.status = WaybillStatus.PICKED_PENDING_VERIFY
+            wb.holding_shipper_id = user_id
+            wb.holding_hub_id = None
+            wb.version += 1
+            
+            crud_wh.create_log(
+                db, wb.waybill_id, WaybillStatus.PICKED_PENDING_VERIFY,
+                hub_id, user_id, f"Bưu tá quét lấy hàng vào túi lấy hàng {bag_code}"
+            )
+        except Exception:
+            # Cho phép bỏ qua nếu đơn đã ở trạng thái tiếp theo hoặc không đổi được
+            pass
+            
+    db.commit()
+    return {"message": "Xác nhận lấy hàng thành công", "bag_code": bag_code, "status": bag.status}
+
+@router.post("/pickup-bags/{bag_code}/inbound")
+def inbound_pickup_bag(
+    bag_code: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Kho quét xác nhận túi lấy hàng về đến kho (Trạng thái INBOUND)"""
+    verify_warehouse_access(current_user)
+    
+    bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code, models.Bags.bag_type == "PICKUP").first()
+    if not bag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy túi lấy hàng")
+        
+    bag.status = "INBOUND"
+    db.commit()
+    return {"message": "Túi đã về đến kho", "bag_code": bag_code, "status": bag.status}
+
+@router.post("/pickup-bags/{bag_code}/open")
+def open_pickup_bag(
+    bag_code: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Kho mở túi lấy hàng (Trạng thái OPENED)"""
+    verify_warehouse_access(current_user)
+    
+    bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code, models.Bags.bag_type == "PICKUP").first()
+    if not bag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy túi lấy hàng")
+        
+    bag.status = "OPENED"
+    db.commit()
+    return {"message": "Đã mở túi hàng thành công", "bag_code": bag_code, "status": bag.status}
+
+@router.post("/pickup-bags/{bag_code}/verify")
+def verify_pickup_bag(
+    bag_code: str,
+    data: schema_wh.PickupBagVerifyRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Kho quét từng bill trong túi để đối soát khớp số lượng và kiểm tra các lỗi"""
+    verify_warehouse_access(current_user)
+    
+    bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code, models.Bags.bag_type == "PICKUP").first()
+    if not bag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy túi lấy hàng")
+        
+    user_id = current_user.get("user_id")
+    hub_id = current_user.get("primary_hub_id")
+    
+    bag.status = "PROCESSING"
+    db.flush()
+    
+    # Cập nhật danh sách quét thực tế vào túi
+    db.query(models.BagItems).filter(models.BagItems.bag_id == bag.bag_id).delete()
+    
+    for code in data.waybill_codes:
+        wb = crud_wh.get_waybill(db, code)
+        if not wb:
+            continue
+            
+        crud_wh.add_item_to_bag(db, bag.bag_id, wb.waybill_id)
+        
+        # Khi kho quét và xác nhận thủ công, nếu đơn hàng hợp lệ:
+        # 1. Chuyển verify_status thành VERIFIED
+        # 2. Chuyển trạng thái đơn hàng sang IN_HUB (Nhập kho thành công)
+        wb.verify_status = "VERIFIED"
+        wb.verify_error_msg = None
+        wb.holding_hub_id = hub_id
+        wb.holding_shipper_id = None
+        
+        try:
+            # Đi qua READY_WAREHOUSE và IN_HUB
+            if wb.status == WaybillStatus.PICKED_PENDING_VERIFY:
+                wb.status = WaybillStatus.READY_WAREHOUSE
+                db.flush()
+            validate_state_transition(wb.status, WaybillStatus.IN_HUB)
+            wb.status = WaybillStatus.IN_HUB
+            wb.version += 1
+            
+            crud_wh.create_log(
+                db, wb.waybill_id, WaybillStatus.IN_HUB,
+                hub_id, user_id, f"Quét xác nhận nhập kho thành công từ túi lấy hàng {bag_code}"
+            )
+        except Exception:
+            # Fallback nếu trạng thái không cho phép transition
+            wb.status = WaybillStatus.IN_HUB
+            wb.version += 1
+            crud_wh.create_log(
+                db, wb.waybill_id, WaybillStatus.IN_HUB,
+                hub_id, user_id, f"Quét nhập kho trực tiếp từ túi lấy hàng {bag_code}"
+            )
+            
+    db.commit()
+    
+    # Kiểm nghiệm sai lệch
+    disc = crud_wh.get_pickup_bag_discrepancy(db, bag)
+    
+    # Nếu không có bất kỳ lỗi nào, tự động nâng trạng thái túi lên VERIFIED
+    if not disc["errors"] and disc["missing_quantity"] == 0 and disc["extra_quantity"] == 0:
+        bag.status = "VERIFIED"
+    else:
+        bag.status = "PROCESSING"
+        
+    db.commit()
+    
+    return {
+        "bag_code": bag.bag_code,
+        "status": bag.status,
+        "discrepancy": disc
+    }
+
+@router.post("/pickup-bags/{bag_code}/close")
+def close_pickup_bag(
+    bag_code: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Kho đóng/hoàn tất xử lý túi lấy hàng (Trạng thái CLOSED)"""
+    verify_warehouse_access(current_user)
+    
+    bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code, models.Bags.bag_type == "PICKUP").first()
+    if not bag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy túi lấy hàng")
+        
+    # Phải verify xong hoặc thủ kho chốt chấp nhận sai lệch mới cho đóng túi
+    disc = crud_wh.get_pickup_bag_discrepancy(db, bag)
+    if bag.status != "VERIFIED" and (disc["errors"] or disc["missing_quantity"] > 0):
+        # Có cảnh báo chênh lệch nhưng thủ kho vẫn được chốt đóng túi thủ công
+        bag.status = "CLOSED"
+    else:
+        bag.status = "CLOSED"
+        
+    db.commit()
+    return {"message": "Đã chốt hoàn tất túi lấy hàng thành công", "bag_code": bag_code, "status": bag.status}

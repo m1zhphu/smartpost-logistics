@@ -100,6 +100,12 @@ const adminRoutes = [
         component: () => import('../views/admin/warehouse/BagList.vue'),
         meta: { requiresAuth: true }
       },
+      {
+        path: 'warehouse/pickup-bags',
+        name: 'PickupBagList',
+        component: () => import('../views/admin/warehouse/PickupBagList.vue'),
+        meta: { requiresAuth: true }
+      },
           // Delivery
       {
         path: 'delivery/assign',

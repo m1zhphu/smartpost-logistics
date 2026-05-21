@@ -155,10 +155,10 @@ const loadStoredUser = async () => {
 // Cấu hình xin quyền Push Notification từ thiết bị
 const registerForPushNotificationsAsync = async () => {
   try {
-    // Kiểm tra xem có phải thiết bị thật không (Simulator thường không nhận được push)
+    // Kiểm tra xem có phải thiết bị thật không (Simulator thường không nhận được push thực tế từ Expo)
     if (!Device.isDevice) {
-      console.log("[PUSH] Running on simulator - push notifications disabled");
-      return null;
+      console.log("[PUSH] Running on simulator - generating dummy push token for testing flow");
+      return "ExponentPushToken[dummy_token_123_for_simulator]";
     }
 
     // Xin quyền thông báo

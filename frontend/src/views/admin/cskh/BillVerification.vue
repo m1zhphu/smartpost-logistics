@@ -86,23 +86,43 @@
     <!-- Dialog Đối chiếu Side-by-Side AI OCR -->
     <el-dialog v-model="compareDialogVisible" title="ĐỐI CHIẾU AI OCR VẬN ĐƠN" width="850px" destroy-on-close>
       <div v-if="selectedWaybill" class="compare-layout">
-        <!-- Cột trái: Ảnh Bill -->
+        <!-- Cột trái: Ảnh Bill & Kiện hàng -->
         <div class="compare-image-side">
-          <div class="side-title">📷 Ảnh chụp Bill giấy</div>
-          <div class="image-wrapper">
-            <el-image
-              v-if="selectedWaybill.bill_image_url"
-              :src="getMediaUrl(selectedWaybill.bill_image_url)"
-              :preview-src-list="[getMediaUrl(selectedWaybill.bill_image_url)]"
-              fit="contain"
-              class="bill-large-image"
-              preview-teleported
-            />
-            <div v-else class="no-image-placeholder">
-              <el-icon style="font-size: 48px; color: #cbd5e1;"><Picture /></el-icon>
-              <p style="margin-top: 8px;">Không có ảnh bill bưu tá tải lên</p>
-            </div>
-          </div>
+          <div class="side-title">📷 Hình ảnh đối chiếu</div>
+          <el-tabs type="border-card" class="image-tabs" style="border-radius: 8px; overflow: hidden; height: 400px;">
+            <el-tab-pane label="Ảnh Bill giấy">
+              <div class="image-wrapper" style="height: 330px; border: none;">
+                <el-image
+                  v-if="selectedWaybill.bill_image_url"
+                  :src="getMediaUrl(selectedWaybill.bill_image_url)"
+                  :preview-src-list="[getMediaUrl(selectedWaybill.bill_image_url)]"
+                  fit="contain"
+                  class="bill-large-image"
+                  preview-teleported
+                />
+                <div v-else class="no-image-placeholder">
+                  <el-icon style="font-size: 48px; color: #cbd5e1;"><Picture /></el-icon>
+                  <p style="margin-top: 8px;">Không có ảnh bill bưu tá tải lên</p>
+                </div>
+              </div>
+            </el-tab-pane>
+            <el-tab-pane label="Ảnh Kiện hàng">
+              <div class="image-wrapper" style="height: 330px; border: none;">
+                <el-image
+                  v-if="selectedWaybill.pickup_image_url"
+                  :src="getMediaUrl(selectedWaybill.pickup_image_url)"
+                  :preview-src-list="[getMediaUrl(selectedWaybill.pickup_image_url)]"
+                  fit="contain"
+                  class="bill-large-image"
+                  preview-teleported
+                />
+                <div v-else class="no-image-placeholder">
+                  <el-icon style="font-size: 48px; color: #cbd5e1;"><Picture /></el-icon>
+                  <p style="margin-top: 8px;">Không có ảnh kiện hàng bưu tá chụp</p>
+                </div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
         </div>
 
         <!-- Cột phải: Bảng đối soát Side-by-Side -->

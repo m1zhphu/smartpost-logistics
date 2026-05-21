@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 from typing import List, Optional
@@ -276,7 +276,8 @@ def update_waybill_weight(
     try:
         new_fee = calculate_shipping_fee(
             db, updated_waybill.origin_hub_id, updated_waybill.dest_hub_id, 
-            float(new_weight), updated_waybill.service_type or 'STANDARD'
+            float(new_weight), updated_waybill.service_type or 'STANDARD',
+            customer_id=updated_waybill.customer_id
         )
         crud_wb.update_waybill_fee_and_log(
             db, updated_waybill, new_fee, new_weight, 
@@ -534,3 +535,221 @@ def get_sla_dashboard(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi thống kê SLA: {str(e)}")
+
+@router.post("/import-excel")
+async def import_waybills_excel(
+    file: UploadFile = File(...),
+    customer_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Import danh sách vận đơn từ file Excel"""
+    try:
+        contents = await file.read()
+        df = pd.read_excel(BytesIO(contents))
+        
+        # Chuẩn hóa khoảng trắng các ô kiểu chuỗi
+        df = df.applymap(lambda s: s.strip() if isinstance(s, str) else s)
+        
+        # Ánh xạ cột tự động dựa trên từ khóa gợi ý
+        columns_mapping = {}
+        for col in df.columns:
+            col_lower = str(col).lower().strip()
+            if any(k in col_lower for k in ["tên người nhận", "họ tên", "tên nhận", "receiver name", "tên", "nguoi nhan"]):
+                columns_mapping["receiver_name"] = col
+            elif any(k in col_lower for k in ["sđt", "số điện thoại", "phone", "sdt", "dien thoai"]):
+                columns_mapping["receiver_phone"] = col
+            elif any(k in col_lower for k in ["địa chỉ", "dia chi", "address", "địa chỉ nhận"]):
+                columns_mapping["receiver_address"] = col
+            elif any(k in col_lower for k in ["khối lượng", "trọng lượng", "cân nặng", "weight", "khoi luong"]):
+                columns_mapping["actual_weight"] = col
+            elif any(k in col_lower for k in ["cod", "thu hộ", "thu ho"]):
+                columns_mapping["cod_amount"] = col
+            elif any(k in col_lower for k in ["dịch vụ", "dich vu", "service"]):
+                columns_mapping["service_type"] = col
+            elif any(k in col_lower for k in ["sản phẩm", "san pham", "tên hàng", "product"]):
+                columns_mapping["product_name"] = col
+            elif any(k in col_lower for k in ["ghi chú", "ghi chu", "note"]):
+                columns_mapping["note"] = col
+            elif any(k in col_lower for k in ["dài", "dai", "length"]):
+                columns_mapping["length"] = col
+            elif any(k in col_lower for k in ["rộng", "rong", "width"]):
+                columns_mapping["width"] = col
+            elif any(k in col_lower for k in ["cao", "height"]):
+                columns_mapping["height"] = col
+            elif any(k in col_lower for k in ["khách hàng", "khach hang", "customer", "mã kh", "ma kh"]):
+                columns_mapping["customer_code"] = col
+            elif any(k in col_lower for k in ["bưu cục nhận", "buu cuc nhan", "dest hub", "mã kho nhận", "ma kho nhan", "kho nhan"]):
+                columns_mapping["dest_hub_code"] = col
+                
+        # Validate cột bắt buộc
+        required_cols = ["receiver_name", "receiver_phone", "receiver_address", "actual_weight"]
+        missing_cols = [c for c in required_cols if c not in columns_mapping]
+        if missing_cols:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Thiếu các cột bắt buộc trong Excel: {', '.join(missing_cols)}. Vui lòng kiểm tra lại tiêu đề cột."
+            )
+            
+        success_count = 0
+        error_rows = []
+        created_codes = []
+        
+        origin_id = current_user.get("primary_hub_id")
+        if not origin_id:
+            first_hub = db.query(models.Hubs).first()
+            origin_id = first_hub.hub_id if first_hub else 1
+            
+        # Default customer if none selected and none in excel
+        if not customer_id:
+            default_customer = db.query(models.Customers).first()
+            if default_customer:
+                customer_id = default_customer.customer_id
+                
+        for index, row in df.iterrows():
+            row_num = index + 2
+            try:
+                # 1. Trích xuất thông tin
+                rec_name = str(row[columns_mapping["receiver_name"]])
+                rec_phone = str(row[columns_mapping["receiver_phone"]])
+                rec_address = str(row[columns_mapping["receiver_address"]])
+                
+                # Phone cleanup: convert float format like 987654321.0 to clean string
+                if rec_phone.endswith('.0'):
+                    rec_phone = rec_phone[:-2]
+                rec_phone = rec_phone.strip()
+                if not rec_phone.startswith('0') and len(rec_phone) == 9:
+                    rec_phone = '0' + rec_phone
+                
+                weight_val = row[columns_mapping["actual_weight"]]
+                try:
+                    weight = float(weight_val)
+                except:
+                    weight = 0.5
+                    
+                cod_val = row.get(columns_mapping.get("cod_amount"), 0)
+                try:
+                    cod_amount = float(cod_val) if not pd.isna(cod_val) else 0.0
+                except:
+                    cod_amount = 0.0
+                    
+                srv_type = str(row.get(columns_mapping.get("service_type"), "STANDARD")).upper().strip()
+                if "TIẾT KIỆM" in srv_type or "TIET KIEM" in srv_type or "TK" in srv_type:
+                    srv_type = "TK"
+                elif "CPN" in srv_type or "NHANH" in srv_type:
+                    srv_type = "CPN"
+                elif "HỎA TỐC" in srv_type or "HOA TOC" in srv_type or "HT" in srv_type:
+                    srv_type = "HT"
+                elif "TRƯỚC 9H" in srv_type or "PT9H" in srv_type:
+                    srv_type = "PT9H"
+                elif "QUỐC TẾ" in srv_type or "QUOC TE" in srv_type or "QT" in srv_type:
+                    srv_type = "QT"
+                else:
+                    srv_type = "CPN"
+                    
+                prod_name = str(row.get(columns_mapping.get("product_name"), "Hàng hóa"))
+                if pd.isna(row.get(columns_mapping.get("product_name"))):
+                    prod_name = "Hàng hóa"
+                    
+                note_val = str(row.get(columns_mapping.get("note"), ""))
+                if pd.isna(row.get(columns_mapping.get("note"))):
+                    note_val = ""
+                
+                length_val = row.get(columns_mapping.get("length"), 0)
+                width_val = row.get(columns_mapping.get("width"), 0)
+                height_val = row.get(columns_mapping.get("height"), 0)
+                
+                try:
+                    length = float(length_val) if not pd.isna(length_val) else 0
+                    width = float(width_val) if not pd.isna(width_val) else 0
+                    height = float(height_val) if not pd.isna(height_val) else 0
+                except:
+                    length, width, height = 0, 0, 0
+                
+                # Check custom customer code
+                row_customer_id = customer_id
+                if "customer_code" in columns_mapping:
+                    cust_code = str(row[columns_mapping["customer_code"]])
+                    if cust_code and not pd.isna(row[columns_mapping["customer_code"]]):
+                        cust = db.query(models.Customers).filter(models.Customers.customer_code == cust_code).first()
+                        if cust:
+                            row_customer_id = cust.customer_id
+                            
+                if not row_customer_id:
+                    raise Exception("Không xác định được ID Khách hàng tương ứng cho dòng này.")
+                    
+                # Look up dest hub
+                dest_id = origin_id
+                if "dest_hub_code" in columns_mapping:
+                    dest_code = str(row[columns_mapping["dest_hub_code"]])
+                    if dest_code and not pd.isna(row[columns_mapping["dest_hub_code"]]):
+                        hub = db.query(models.Hubs).filter(models.Hubs.hub_code == dest_code).first()
+                        if not hub:
+                            hub = db.query(models.Hubs).filter(models.Hubs.hub_name.ilike(f"%{dest_code}%")).first()
+                        if hub:
+                            dest_id = hub.hub_id
+                            
+                # 2. Tính cước
+                fee = calculate_shipping_fee(db, origin_id, dest_id, weight, srv_type, customer_id=row_customer_id)
+                
+                # 3. Tạo record payload
+                save_data = {
+                    "customer_id": row_customer_id,
+                    "service_type": srv_type,
+                    "sender_name": "",
+                    "sender_phone": "",
+                    "sender_address": "",
+                    "receiver_name": rec_name,
+                    "receiver_phone": rec_phone,
+                    "receiver_address": rec_address,
+                    "actual_weight": weight,
+                    "length": length,
+                    "width": width,
+                    "height": height,
+                    "product_name": prod_name,
+                    "payment_method": "SENDER_PAY",
+                    "cod_amount": cod_amount,
+                    "note": note_val,
+                    "origin_hub_id": origin_id,
+                    "dest_hub_id": dest_id,
+                    "extra_services": [],
+                    "shipping_fee": fee
+                }
+                
+                # Fill sender info from Customer profile
+                cust_details = db.query(models.Customers).filter(models.Customers.customer_id == row_customer_id).first()
+                if cust_details:
+                    save_data["sender_name"] = cust_details.company_name or cust_details.name or ""
+                    save_data["sender_phone"] = cust_details.phone or ""
+                    save_data["sender_address"] = cust_details.address or ""
+                
+                new_waybill = crud_wb.create_waybill_record(db, save_data, fee=fee)
+                crud_wb.create_initial_log(db, new_waybill.waybill_id, origin_id, current_user['user_id'])
+                
+                from crud.accounting import create_ledger_entry
+                if fee > 0:
+                    create_ledger_entry(
+                        db, new_waybill.waybill_id, row_customer_id, 
+                        "DEBIT", float(fee), "FEE"
+                    )
+                    
+                created_codes.append(new_waybill.waybill_code)
+                success_count += 1
+            except Exception as row_err:
+                error_rows.append({"row": row_num, "error": str(row_err)})
+                
+        if success_count > 0:
+            db.commit()
+            
+        return {
+            "status": "success",
+            "imported_count": success_count,
+            "failed_count": len(error_rows),
+            "errors": error_rows,
+            "created_codes": created_codes
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Lỗi khi import Excel: {str(e)}")

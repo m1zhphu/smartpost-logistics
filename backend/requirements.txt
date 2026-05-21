@@ -20,6 +20,7 @@ python-dotenv
 pandas
 openpyxl
 Pillow
+pytesseract
 
 # --- In ấn Bill & Barcode ---
 python-barcode
