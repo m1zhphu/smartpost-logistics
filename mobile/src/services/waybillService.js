@@ -36,6 +36,19 @@ export const waybillService = {
     return data && data.history ? data.history : data;
   },
 
+  getTimeline: async (token, waybillRef) => {
+    return requestJson(
+      ENDPOINTS.GET_WAYBILL_TIMELINE(waybillRef),
+      {
+        method: "GET",
+        headers: createAuthHeaders(token, {
+          "Content-Type": "application/json",
+        }),
+      },
+      "Không thể tải lịch sử hành trình vận đơn.",
+    );
+  },
+
   createWaybill: async (token, payload) => {
     return requestJson(
       ENDPOINTS.CREATE_WAYBILL,
@@ -105,6 +118,24 @@ export const waybillService = {
       "Không thể tải danh sách khách hàng.",
     );
 
+    return data && data.items ? data.items : data || [];
+  },
+
+  // Search customers with optional query param q
+  searchCustomers: async (token, q) => {
+    const url = q
+      ? `${ENDPOINTS.GET_CUSTOMERS}?q=${encodeURIComponent(q)}`
+      : ENDPOINTS.GET_CUSTOMERS;
+    const data = await requestJson(
+      url,
+      {
+        method: "GET",
+        headers: createAuthHeaders(token, {
+          "Content-Type": "application/json",
+        }),
+      },
+      "Không thể tìm kiếm khách hàng.",
+    );
     return data && data.items ? data.items : data || [];
   },
 

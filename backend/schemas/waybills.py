@@ -54,6 +54,64 @@ class PublicTrackingResponse(BaseModel):
     waybill_info: PublicWaybillInfo
     history: List[TrackingLogResponse] # Dùng lại log đã có
 
+
+# === NEW: WAYBILL RESPONSE SCHEMAS WITH SLA INFO ===
+
+class WaybillResponse(BaseModel):
+    """Schema trả về chi tiết vận đơn với các trường SLA"""
+    waybill_id: int
+    waybill_code: str
+    status: str
+    receiver_name: Optional[str]
+    receiver_phone: Optional[str]
+    receiver_address: Optional[str]
+    cod_amount: float
+    shipping_fee: float
+    actual_weight: float
+    service_type: Optional[str]
+    product_name: Optional[str]
+    note: Optional[str]
+    
+    # Hub and Shipper Info
+    origin_hub_id: Optional[int]
+    origin_hub_name: Optional[str]
+    dest_hub_id: Optional[int]
+    dest_hub_name: Optional[str]
+    holding_hub_id: Optional[int]
+    holding_hub_name: Optional[str]
+    holding_shipper_id: Optional[int]
+    holding_shipper_name: Optional[str]
+    
+    # SLA Fields
+    sla_deadline: Optional[datetime]
+    sla_status: str  # ON_TIME, WARNING, OVERDUE
+    sla_remaining_hours: Optional[float]  # Số giờ còn lại
+    current_holder: Optional[str]  # Tên kho hoặc tên shipper đang giữ
+    action_by: Optional[str]  # Hành động cuối cùng bởi ai
+    
+    class Config:
+        from_attributes = True
+
+
+class WaybillTimelineItem(BaseModel):
+    """Mỗi item trong timeline lịch sử vận đơn"""
+    time: str  # Format: "08:00 22/05"
+    action: str  # Hành động (Tạo đơn, Nhập kho, Phân công, v.v.)
+    actor: str  # Người thực hiện
+    location: str  # Địa điểm (tên kho, tên shipper, Hệ thống)
+    note: Optional[str] = None
+
+
+class WaybillTimelineResponse(BaseModel):
+    """Response cho endpoint timeline"""
+    waybill_code: str
+    status: str
+    created_at: datetime
+    timeline: List[WaybillTimelineItem]
+    
+    class Config:
+        from_attributes = True
+
 class WaybillFilter(BaseModel):
     waybill_code: Optional[str] = None
     status: Optional[str] = None
@@ -66,6 +124,7 @@ class WaybillFilter(BaseModel):
     size: int = 20
 
     # NEW ADVANCED FILTERS
+    search_term: Optional[str] = None
     keyword: Optional[str] = None
     service_type: Optional[str] = None
     holding_hub_id: Optional[int] = None

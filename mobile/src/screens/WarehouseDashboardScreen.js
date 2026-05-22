@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -30,6 +31,7 @@ export default function WarehouseDashboardScreen({ navigation }) {
     warning: 0,
     overdue: 0,
   });
+  const [systemAlert, setSystemAlert] = useState(null);
 
   useEffect(() => {
     if (!isRouteAllowed(user, "WarehouseDashboard")) {
@@ -98,6 +100,17 @@ export default function WarehouseDashboardScreen({ navigation }) {
           warning: summaryRes?.warning || 0,
           overdue: summaryRes?.overdue || 0,
         });
+        if ((summaryRes?.warning || 0) > 0 || (summaryRes?.overdue || 0) > 0) {
+          Toast.show({
+            type: "error",
+            position: "top",
+            text1: "Cảnh báo quá SLA",
+            text2:
+              "Một số đơn đang có nguy cơ quá SLA. Vui lòng kiểm tra ngay.",
+            visibilityTime: 5000,
+            topOffset: Platform.OS === "android" ? 50 : 70,
+          });
+        }
       }
     } catch (error) {
       Alert.alert(
@@ -129,6 +142,7 @@ export default function WarehouseDashboardScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
+      {/* Toast container is registered globally in App.js */}
 
       <View style={styles.headerArea}>
         <Text style={styles.headerTitle}>Bảng điều khiển kho</Text>
@@ -158,6 +172,63 @@ export default function WarehouseDashboardScreen({ navigation }) {
                 <View style={styles.statCard}>
                   <Text style={styles.statLabel}>Tồn kho</Text>
                   <Text style={styles.statValue}>{stats.inHubInventory}</Text>
+                </View>
+              </View>
+              <View style={styles.widgetGrid}>
+                <View style={styles.widgetCard}>
+                  <Text style={styles.widgetTitle}>Tổng đơn</Text>
+                  <Text style={styles.widgetValue}>{slaSummary.total}</Text>
+                  <View
+                    style={[
+                      styles.widgetBadge,
+                      { backgroundColor: COLORS.primary },
+                    ]}
+                  >
+                    <Text style={styles.widgetBadgeText}>Tổng</Text>
+                  </View>
+                </View>
+                <View style={styles.widgetCard}>
+                  <Text style={styles.widgetTitle}>Đúng SLA</Text>
+                  <Text style={styles.widgetValue}>
+                    {Math.max(
+                      0,
+                      slaSummary.total -
+                        slaSummary.warning -
+                        slaSummary.overdue,
+                    )}
+                  </Text>
+                  <View
+                    style={[
+                      styles.widgetBadge,
+                      { backgroundColor: COLORS.SLA_ON_TIME },
+                    ]}
+                  >
+                    <Text style={styles.widgetBadgeText}>Đúng SLA</Text>
+                  </View>
+                </View>
+                <View style={styles.widgetCard}>
+                  <Text style={styles.widgetTitle}>Sắp trễ</Text>
+                  <Text style={styles.widgetValue}>{slaSummary.warning}</Text>
+                  <View
+                    style={[
+                      styles.widgetBadge,
+                      { backgroundColor: COLORS.SLA_WARNING },
+                    ]}
+                  >
+                    <Text style={styles.widgetBadgeText}>Cảnh báo</Text>
+                  </View>
+                </View>
+                <View style={styles.widgetCard}>
+                  <Text style={styles.widgetTitle}>Quá SLA</Text>
+                  <Text style={styles.widgetValue}>{slaSummary.overdue}</Text>
+                  <View
+                    style={[
+                      styles.widgetBadge,
+                      { backgroundColor: COLORS.SLA_OVERDUE },
+                    ]}
+                  >
+                    <Text style={styles.widgetBadgeText}>Quá SLA</Text>
+                  </View>
                 </View>
               </View>
               <View style={styles.statsRow}>

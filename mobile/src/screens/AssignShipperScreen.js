@@ -1,307 +1,429 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StatusBar,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import UniversalScanner from '../components/UniversalScanner';
-import AssignShipperStyles from '../styles/AssignShipperStyles';
-import { deliveryService } from '../services/deliveryService';
-import { useUser } from '../context/UserContext';
-import { COLORS } from '../constants/colors';
-import { isRouteAllowed } from '../utils/roleUtils';
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
+import UniversalScanner from "../components/UniversalScanner";
+import AssignShipperStyles from "../styles/AssignShipperStyles";
+import { deliveryService } from "../services/deliveryService";
+import { hubService } from "../services/hubService";
+import { useUser } from "../context/UserContext";
+import { COLORS } from "../constants/colors";
+import { isRouteAllowed } from "../utils/roleUtils";
+
+const ASSIGN_TYPE = {
+  SHIPPER: "SHIPPER",
+  HUB: "HUB",
+};
+
+const getPickupCode = (item) =>
+  item.waybill_code || item.bill_code || item.pickup_code || item.code || "";
+const getCustomerName = (item) =>
+  item.customer_name || item.recipient_name || item.name || "Khách hàng";
+const getCustomerPhone = (item) =>
+  item.customer_phone || item.phone || item.recipient_phone || "";
+const getPickupAddress = (item) =>
+  item.pickup_address || item.address || item.address_from || "Địa chỉ chưa rõ";
+const getEstimatedCount = (item) =>
+  Number(item.estimated_count ?? item.quantity ?? item.count ?? 0);
 
 export default function AssignShipperScreen({ navigation }) {
-    const { user } = useUser();
-    const [scannedCodes, setScannedCodes] = useState([]);
-    const [shippers, setShippers] = useState([]);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedShipper, setSelectedShipper] = useState(null);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [loading, setLoading] = useState(false);
+  const { user } = useUser();
+  const [pendingPickups, setPendingPickups] = useState([]);
+  const [selectedPickupCodes, setSelectedPickupCodes] = useState([]);
+  const [assignType, setAssignType] = useState(ASSIGN_TYPE.SHIPPER);
+  const [selectedAssignee, setSelectedAssignee] = useState(null);
+  const [shippers, setShippers] = useState([]);
+  const [hubs, setHubs] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (!isRouteAllowed(user, 'AssignShipper')) {
-            Alert.alert('Truy cập bị từ chối', 'Bạn không có quyền truy cập trang này.', [
-                { text: 'OK', onPress: () => navigation.goBack() },
-            ]);
-        }
-    }, [user]);
+  useEffect(() => {
+    if (!isRouteAllowed(user, "AssignShipper")) {
+      Alert.alert(
+        "Truy cập bị từ chối",
+        "Bạn không có quyền truy cập trang này.",
+        [{ text: "OK", onPress: () => navigation.goBack() }],
+      );
+    }
+  }, [user]);
 
-    useEffect(() => {
-        if (!user.token) return;
+  useEffect(() => {
+    if (!user.token) return;
+    fetchPendingPickups();
+    fetchShippers();
+    fetchHubs();
+  }, [user.token]);
 
-        deliveryService.getShippers(user.token)
-            .then((data) => setShippers(Array.isArray(data) ? data : []))
-            .catch((error) => Alert.alert('Lỗi', error.message || 'Không thể tải danh sách shipper.'));
-    }, [user.token]);
+  const fetchPendingPickups = async () => {
+    setLoading(true);
+    try {
+      const data = await deliveryService.getPendingPickups(user.token);
+      setPendingPickups(Array.isArray(data) ? data : data?.items || []);
+    } catch (error) {
+      Alert.alert(
+        "Lỗi",
+        error.message || "Không thể tải danh sách đơn chờ nhận.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const filteredShippers = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
-        if (!query) return shippers;
+  const fetchShippers = async () => {
+    try {
+      const data = await deliveryService.getShippers(user.token);
+      setShippers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      Alert.alert("Lỗi", error.message || "Không thể tải danh sách bưu tá.");
+    }
+  };
 
-        return shippers.filter((item) => {
-            const fullName = (item.full_name || '').toLowerCase();
-            const username = (item.username || '').toLowerCase();
-            const phone = item.phone || '';
-            return fullName.includes(query) || username.includes(query) || phone.includes(query);
-        });
-    }, [searchQuery, shippers]);
+  const fetchHubs = async () => {
+    try {
+      const data = await hubService.getHubs(user.token);
+      setHubs(Array.isArray(data) ? data : []);
+    } catch (error) {
+      Alert.alert(
+        "Lỗi",
+        error.message || "Không thể tải danh sách kho/bưu cục.",
+      );
+    }
+  };
 
-    const handleScan = async (code) => {
-        if (!selectedShipper) {
-            Alert.alert('Lỗi', 'Vui lòng chọn shipper trước khi quét đơn.');
-            return;
-        }
-
-        if (scannedCodes.includes(code)) return;
-
-        setScannedCodes((prev) => [code, ...prev]);
-    };
-
-    const handleConfirmAssign = async () => {
-        if (!selectedShipper) {
-            Alert.alert('Thiếu thông tin', 'Vui lòng chọn shipper trước.');
-            return;
-        }
-
-        if (scannedCodes.length === 0) {
-            Alert.alert('Thiếu thông tin', 'Vui lòng quét ít nhất 1 vận đơn.');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            await deliveryService.assignShipper(user.token, {
-                shipper_id: selectedShipper.user_id,
-                waybill_codes: scannedCodes,
-            });
-            Alert.alert(
-                'Thành công',
-                `Đã bàn giao ${scannedCodes.length} đơn cho ${selectedShipper.full_name || selectedShipper.username}.`
-            );
-            navigation.goBack();
-        } catch (error) {
-            Alert.alert('Lỗi', error.message || 'Không thể phân công đơn.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <View style={AssignShipperStyles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#000" />
-
-            {/* --- Camera Scanner Section --- */}
-            <View style={AssignShipperStyles.scannerWrapper}>
-                <UniversalScanner
-                    title="BÀN GIAO ĐƠN"
-                    instruction={
-                        selectedShipper
-                            ? `Đang quét cho: ${selectedShipper.full_name || selectedShipper.username}`
-                            : 'Bấm ở bên dưới để chọn shipper trước khi quét'
-                    }
-                    onScan={handleScan}
-                />
-
-                <View style={AssignShipperStyles.camHeader}>
-                    <TouchableOpacity style={AssignShipperStyles.backBtn} onPress={() => navigation.goBack()}>
-                        <Ionicons name="chevron-back" size={24} color={COLORS.white} />
-                    </TouchableOpacity>
-
-                    {selectedShipper ? (
-                        <View style={AssignShipperStyles.liveBadge}>
-                            <Text style={AssignShipperStyles.liveBadgeText}>SẴN SÀNG QUÉT</Text>
-                        </View>
-                    ) : <View style={{ width: 40 }} />}
-                </View>
-            </View>
-
-            {/* --- Bottom Sheet Panel --- */}
-            <View style={AssignShipperStyles.bottomSheet}>
-                <TouchableOpacity
-                    style={AssignShipperStyles.selector}
-                    onPress={() => setModalVisible(true)}
-                    activeOpacity={0.8}
-                >
-                    <View style={AssignShipperStyles.selectorIcon}>
-                        <Ionicons
-                            name="bicycle"
-                            size={24}
-                            color={selectedShipper ? COLORS.secondary : COLORS.textMuted}
-                        />
-                    </View>
-
-                    <View style={{ flex: 1, marginLeft: 16 }}>
-                        <Text style={AssignShipperStyles.selectorMeta}>NHÂN VIÊN GIAO HÀNG</Text>
-                        <Text
-                            style={[
-                                AssignShipperStyles.selectorText,
-                                !selectedShipper && AssignShipperStyles.selectorPlaceholder,
-                            ]}
-                        >
-                            {selectedShipper
-                                ? (selectedShipper.full_name || selectedShipper.username)
-                                : 'Nhấn để chọn shipper...'}
-                        </Text>
-                    </View>
-
-                    <Ionicons name="chevron-forward" size={20} color={COLORS.textGray} />
-                </TouchableOpacity>
-
-                <View style={AssignShipperStyles.listHeaderRow}>
-                    <Text style={AssignShipperStyles.listTitle}>Danh sách đơn bàn giao</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={AssignShipperStyles.badgeCount}>
-                            <Text style={AssignShipperStyles.badgeCountText}>{scannedCodes.length}</Text>
-                        </View>
-
-                        {scannedCodes.length > 0 ? (
-                            <TouchableOpacity onPress={() => setScannedCodes([])} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <Text style={AssignShipperStyles.clearAllText}>Xóa hết</Text>
-                            </TouchableOpacity>
-                        ) : null}
-                    </View>
-                </View>
-
-                <FlatList
-                    data={scannedCodes}
-                    keyExtractor={(item) => item}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={AssignShipperStyles.listContent}
-                    renderItem={({ item, index }) => {
-                        const isFirst = index === 0;
-                        return (
-                            <View style={[AssignShipperStyles.listItem, isFirst && AssignShipperStyles.firstItem]}>
-                                <View style={AssignShipperStyles.listItemLeft}>
-                                    <View style={[AssignShipperStyles.itemIconWrap, isFirst && AssignShipperStyles.itemIconWrapPrimary]}>
-                                        <Ionicons name="cube" size={20} color={isFirst ? COLORS.white : COLORS.secondary} />
-                                    </View>
-                                    <Text style={[AssignShipperStyles.itemText, isFirst && AssignShipperStyles.itemTextPrimary]}>
-                                        {item}
-                                    </Text>
-                                </View>
-
-                                <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => setScannedCodes(scannedCodes.filter((code) => code !== item))}>
-                                    <Ionicons
-                                        name="close-circle"
-                                        size={26}
-                                        color={isFirst ? 'rgba(255,255,255,0.8)' : COLORS.borderLight}
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                        );
-                    }}
-                    ListEmptyComponent={
-                        <View style={AssignShipperStyles.emptyWrap}>
-                            <View style={AssignShipperStyles.emptyIconCircle}>
-                                <Ionicons name="barcode-outline" size={48} color={COLORS.textGray} />
-                            </View>
-                            <Text style={AssignShipperStyles.emptyText}>Đưa mã vận đơn vào khung camera để quét.</Text>
-                        </View>
-                    }
-                />
-
-                {scannedCodes.length > 0 ? (
-                    <View style={AssignShipperStyles.footer}>
-                        <TouchableOpacity
-                            style={AssignShipperStyles.confirmBtn}
-                            onPress={handleConfirmAssign}
-                            disabled={loading}
-                            activeOpacity={0.8}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color={COLORS.white} />
-                            ) : (
-                                <>
-                                    <Ionicons name="checkmark-done" size={22} color={COLORS.white} style={{ marginRight: 8 }} />
-                                    <Text style={AssignShipperStyles.btnText}>XÁC NHẬN BÀN GIAO</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                ) : null}
-            </View>
-
-            {/* --- Modal Chọn Shipper --- */}
-            <Modal visible={modalVisible} animationType="slide" transparent>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-                    <TouchableOpacity style={AssignShipperStyles.modalOverlay} activeOpacity={1} onPress={() => setModalVisible(false)}>
-                        <View style={AssignShipperStyles.modalContent} onStartShouldSetResponder={() => true}>
-                            <View style={AssignShipperStyles.sheetHandle} />
-
-                            <View style={AssignShipperStyles.modalHeader}>
-                                <Text style={AssignShipperStyles.modalTitle}>Chọn Shipper Giao Hàng</Text>
-                                <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                    <Ionicons name="close-circle" size={28} color={COLORS.borderLight} />
-                                </TouchableOpacity>
-                            </View>
-
-                            <View style={AssignShipperStyles.searchBar}>
-                                <Ionicons name="search" size={20} color={COLORS.textMuted} style={{ marginRight: 10 }} />
-                                <TextInput
-                                    style={AssignShipperStyles.searchInput}
-                                    placeholder="Tìm theo tên hoặc số điện thoại..."
-                                    placeholderTextColor={COLORS.textGray}
-                                    value={searchQuery}
-                                    onChangeText={setSearchQuery}
-                                />
-                                {searchQuery ? (
-                                    <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                        <Ionicons name="close-circle" size={20} color={COLORS.textGray} />
-                                    </TouchableOpacity>
-                                ) : null}
-                            </View>
-
-                            <FlatList
-                                data={filteredShippers}
-                                keyExtractor={(item, index) => String(item.user_id || index)}
-                                keyboardShouldPersistTaps="handled"
-                                renderItem={({ item }) => {
-                                    const isSelected = selectedShipper && selectedShipper.user_id === item.user_id;
-                                    return (
-                                        <TouchableOpacity
-                                            style={[AssignShipperStyles.shipperItem, isSelected && AssignShipperStyles.shipperItemActive]}
-                                            onPress={() => {
-                                                setSelectedShipper(item);
-                                                setModalVisible(false);
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={[AssignShipperStyles.shipperAvatar, isSelected && { backgroundColor: COLORS.secondary }]}>
-                                                <Ionicons name="person" size={20} color={isSelected ? COLORS.white : COLORS.primary} />
-                                            </View>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={[AssignShipperStyles.shipperName, isSelected && { color: COLORS.primary }]}>
-                                                    {item.full_name || item.username}
-                                                </Text>
-                                                <Text style={AssignShipperStyles.shipperPhone}>
-                                                    {item.phone || 'Không có SĐT'}
-                                                </Text>
-                                            </View>
-                                            {isSelected && (
-                                                <Ionicons name="checkmark-circle" size={24} color={COLORS.secondary} />
-                                            )}
-                                        </TouchableOpacity>
-                                    );
-                                }}
-                                ListEmptyComponent={
-                                    <Text style={AssignShipperStyles.modalEmptyText}>Không tìm thấy shipper phù hợp.</Text>
-                                }
-                            />
-                        </View>
-                    </TouchableOpacity>
-                </KeyboardAvoidingView>
-            </Modal>
-        </View>
+  const handleTogglePickup = (pickupCode) => {
+    if (!pickupCode) return;
+    setSelectedPickupCodes((prev) =>
+      prev.includes(pickupCode)
+        ? prev.filter((code) => code !== pickupCode)
+        : [...prev, pickupCode],
     );
+  };
+
+  const handleScan = async (code) => {
+    const normalized = String(code || "").trim();
+    if (!normalized) return;
+
+    const exists = pendingPickups.some(
+      (item) => getPickupCode(item) === normalized,
+    );
+
+    if (!exists) {
+      Alert.alert(
+        "Không tìm thấy đơn",
+        "Mã quét không khớp với danh sách đơn nhận hàng đang chờ.",
+      );
+      return;
+    }
+
+    handleTogglePickup(normalized);
+  };
+
+  const assigneeList = useMemo(
+    () => (assignType === ASSIGN_TYPE.SHIPPER ? shippers : hubs),
+    [assignType, shippers, hubs],
+  );
+
+  const selectedAssigneeId = selectedAssignee
+    ? String(selectedAssignee.id)
+    : "";
+
+  const handleSelectAssignee = (value) => {
+    if (!value) {
+      setSelectedAssignee(null);
+      return;
+    }
+
+    const selected = assigneeList.find(
+      (item) =>
+        String(
+          item[assignType === ASSIGN_TYPE.SHIPPER ? "user_id" : "hub_id"],
+        ) === String(value),
+    );
+
+    if (selected) {
+      setSelectedAssignee({
+        ...selected,
+        id: value,
+      });
+    }
+  };
+
+  const handleAssignPickup = async () => {
+    if (selectedPickupCodes.length === 0) {
+      Alert.alert("Thiếu thông tin", "Vui lòng chọn ít nhất một đơn.");
+      return;
+    }
+
+    if (!selectedAssignee) {
+      Alert.alert(
+        "Thiếu thông tin",
+        "Vui lòng chọn " +
+          (assignType === ASSIGN_TYPE.SHIPPER ? "bưu tá" : "kho/bưu cục") +
+          ".",
+      );
+      return;
+    }
+
+    const payload = {
+      waybill_codes: selectedPickupCodes,
+      assignee_type: assignType,
+    };
+
+    if (assignType === ASSIGN_TYPE.SHIPPER) {
+      payload.shipper_id = selectedAssignee.user_id;
+    } else {
+      payload.hub_id = selectedAssignee.hub_id;
+    }
+
+    setLoading(true);
+    try {
+      await deliveryService.assignPickup(user.token, payload);
+      setPendingPickups((prev) =>
+        prev.filter(
+          (item) => !selectedPickupCodes.includes(getPickupCode(item)),
+        ),
+      );
+      setSelectedPickupCodes([]);
+      Alert.alert(
+        "Thành công",
+        "Đã điều phối " + selectedPickupCodes.length + " đơn thành công.",
+      );
+    } catch (error) {
+      Alert.alert("Lỗi", error.message || "Không thể điều phối nhận hàng.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={AssignShipperStyles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
+
+      <View style={AssignShipperStyles.scannerWrapper}>
+        <UniversalScanner
+          title="Điều phối nhận hàng"
+          instruction={
+            selectedPickupCodes.length > 0
+              ? "Đã chọn " +
+                selectedPickupCodes.length +
+                " đơn. Quét mã để chọn/hủy."
+              : "Quét mã để chọn đơn nhận hàng."
+          }
+          onScan={handleScan}
+        />
+
+        <View style={AssignShipperStyles.camHeader}>
+          <TouchableOpacity
+            style={AssignShipperStyles.backBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="chevron-back" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={AssignShipperStyles.liveBadge}>
+            <Text style={AssignShipperStyles.liveBadgeText}>
+              CHỌN ĐƠN NHẬN HÀNG
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={AssignShipperStyles.bottomSheet}>
+        <Text style={AssignShipperStyles.headerTitle}>Điều phối nhận hàng</Text>
+        <Text style={AssignShipperStyles.subTitle}>
+          Chọn đơn đang chờ nhận, sau đó gán cho bưu tá hoặc kho/bưu cục.
+        </Text>
+
+        <View style={AssignShipperStyles.radioGroup}>
+          <TouchableOpacity
+            style={[
+              AssignShipperStyles.radioOption,
+              assignType === ASSIGN_TYPE.SHIPPER &&
+                AssignShipperStyles.radioOptionActive,
+            ]}
+            onPress={() => {
+              setAssignType(ASSIGN_TYPE.SHIPPER);
+              setSelectedAssignee(null);
+            }}
+          >
+            <View
+              style={[
+                AssignShipperStyles.radioCircle,
+                assignType === ASSIGN_TYPE.SHIPPER &&
+                  AssignShipperStyles.radioCircleSelected,
+              ]}
+            >
+              {assignType === ASSIGN_TYPE.SHIPPER && (
+                <Ionicons name="checkmark" size={14} color={COLORS.white} />
+              )}
+            </View>
+            <Text style={AssignShipperStyles.radioLabel}>Bưu Tá</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              AssignShipperStyles.radioOption,
+              assignType === ASSIGN_TYPE.HUB &&
+                AssignShipperStyles.radioOptionActive,
+            ]}
+            onPress={() => {
+              setAssignType(ASSIGN_TYPE.HUB);
+              setSelectedAssignee(null);
+            }}
+          >
+            <View
+              style={[
+                AssignShipperStyles.radioCircle,
+                assignType === ASSIGN_TYPE.HUB &&
+                  AssignShipperStyles.radioCircleSelected,
+              ]}
+            >
+              {assignType === ASSIGN_TYPE.HUB && (
+                <Ionicons name="checkmark" size={14} color={COLORS.white} />
+              )}
+            </View>
+            <Text style={AssignShipperStyles.radioLabel}>Kho/Bưu cục</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={AssignShipperStyles.pickerWrap}>
+          <Picker
+            selectedValue={selectedAssigneeId}
+            onValueChange={handleSelectAssignee}
+          >
+            <Picker.Item
+              label={
+                assignType === ASSIGN_TYPE.SHIPPER
+                  ? "Chọn bưu tá..."
+                  : "Chọn kho/bưu cục..."
+              }
+              value=""
+            />
+            {assigneeList.map((item) => {
+              const itemId =
+                assignType === ASSIGN_TYPE.SHIPPER
+                  ? String(item.user_id)
+                  : String(item.hub_id);
+              const label =
+                assignType === ASSIGN_TYPE.SHIPPER
+                  ? item.full_name || item.username || "---"
+                  : item.hub_name || item.hub_code || "---";
+              return <Picker.Item key={itemId} label={label} value={itemId} />;
+            })}
+          </Picker>
+        </View>
+
+        <View style={AssignShipperStyles.listHeaderRow}>
+          <Text style={AssignShipperStyles.listTitle}>
+            Danh sách đơn chờ nhận
+          </Text>
+          <View style={AssignShipperStyles.badgeCount}>
+            <Text style={AssignShipperStyles.badgeCountText}>
+              {selectedPickupCodes.length} đã chọn
+            </Text>
+          </View>
+        </View>
+
+        <FlatList
+          data={pendingPickups}
+          keyExtractor={(item, index) =>
+            getPickupCode(item) || item.pickup_id || String(index)
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={AssignShipperStyles.listContent}
+          renderItem={({ item }) => {
+            const code = getPickupCode(item);
+            const isSelected = selectedPickupCodes.includes(code);
+            return (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[
+                  AssignShipperStyles.pickupCard,
+                  isSelected && AssignShipperStyles.pickupCardSelected,
+                ]}
+                onPress={() => handleTogglePickup(code)}
+              >
+                <View style={AssignShipperStyles.pickupCardLeft}>
+                  <View style={AssignShipperStyles.checkbox}>
+                    <Ionicons
+                      name={isSelected ? "checkbox" : "square-outline"}
+                      size={22}
+                      color={isSelected ? COLORS.secondary : COLORS.textGray}
+                    />
+                  </View>
+                  <View style={AssignShipperStyles.pickupCardContent}>
+                    <Text style={AssignShipperStyles.pickupTitle}>{code}</Text>
+                    <Text
+                      style={AssignShipperStyles.pickupMeta}
+                      numberOfLines={1}
+                    >
+                      {getCustomerName(item)} • {getCustomerPhone(item)}
+                    </Text>
+                    <Text
+                      style={AssignShipperStyles.pickupMeta}
+                      numberOfLines={2}
+                    >
+                      {getPickupAddress(item)}
+                    </Text>
+                    <View style={AssignShipperStyles.pickupInfoRow}>
+                      <Text style={AssignShipperStyles.pickupInfoLabel}>
+                        Số lượng ước tính
+                      </Text>
+                      <Text style={AssignShipperStyles.pickupInfoValue}>
+                        {getEstimatedCount(item)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            loading ? (
+              <View style={AssignShipperStyles.emptyWrap}>
+                <ActivityIndicator size="large" color={COLORS.secondary} />
+              </View>
+            ) : (
+              <View style={AssignShipperStyles.emptyWrap}>
+                <View style={AssignShipperStyles.emptyIconCircle}>
+                  <Ionicons
+                    name="clipboard-outline"
+                    size={48}
+                    color={COLORS.textGray}
+                  />
+                </View>
+                <Text style={AssignShipperStyles.emptyText}>
+                  Không có đơn chờ nhận. Vui lòng làm mới hoặc kiểm tra lại kết
+                  nối.
+                </Text>
+              </View>
+            )
+          }
+        />
+
+        <View style={AssignShipperStyles.footer}>
+          <TouchableOpacity
+            style={AssignShipperStyles.confirmBtn}
+            onPress={handleAssignPickup}
+            disabled={loading || selectedPickupCodes.length === 0}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <Text style={AssignShipperStyles.btnText}>
+                Gán / Điều phối ({selectedPickupCodes.length})
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
 }

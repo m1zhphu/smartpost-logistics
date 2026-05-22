@@ -9,10 +9,13 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ENDPOINTS } from "../constants/data";
+import { createAuthHeadersAsync } from "./apiClient";
 
 const BACKGROUND_LOCATION_TASK = "SMARTPOST_LOCATION_TRACKING";
-const STORAGE_USER_KEY = "@SmartPostApp:user";
-const API_LOCATION_URL = process.env.EXPO_PUBLIC_LOCATION_URL;
+const STORAGE_USER_KEY = "@SpeedlightAppFn:user";
+const API_LOCATION_URL =
+  process.env.EXPO_PUBLIC_LOCATION_URL || ENDPOINTS.POST_DELIVERY_LOCATIONS;
 const WS_BASE_URL =
   process.env.EXPO_PUBLIC_WS_URL || process.env.EXPO_PUBLIC_API_WS_URL;
 const WS_PATH = "/ws/location";
@@ -43,11 +46,13 @@ const sendLocationPayload = async (payload) => {
   }
 
   try {
+    const headers = await createAuthHeadersAsync({
+      "Content-Type": "application/json",
+    });
+
     await fetch(API_LOCATION_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      ...headers,
       body: JSON.stringify(payload),
     });
   } catch (err) {
@@ -160,6 +165,16 @@ export const locationService = {
     } catch (e) {
       console.warn("[locationService] Lỗi xin quyền:", e);
       return false;
+    }
+  },
+
+  postLocation: async (loc) => {
+    try {
+      const payload = await buildPayloadFromLocation(loc);
+      if (!payload) return;
+      await sendLocationPayload(payload);
+    } catch (error) {
+      console.warn("[locationService] postLocation error:", error);
     }
   },
 

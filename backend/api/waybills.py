@@ -9,9 +9,9 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
 from core.database import get_db
 from core.security import get_current_user
+from core.pricing import calculate_shipping_fee, calculate_sla_status, get_waybill_current_holder, get_waybill_action_by
 import schemas.waybills as schema_wb
 import crud.waybills as crud_wb
-from core.pricing import calculate_shipping_fee
 from core.permissions import PermissionChecker
 import models
 
@@ -126,14 +126,48 @@ def get_today_scan_count(
     return {"total": count}
 
 # --- 2. TÌM KIẾM VẬN ĐƠN ---
+@router.get("/search")
+def search_waybills_query(
+    search_term: Optional[str] = None,
+    service_type: Optional[str] = None,
+    sla_status: Optional[str] = None,
+    cod_status: Optional[str] = None,
+    status: Optional[str] = None,
+    origin_hub_id: Optional[int] = None,
+    dest_hub_id: Optional[int] = None,
+    page: int = 1,
+    size: int = 20,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Tìm kiếm vận đơn với query parameters"""
+    filters = schema_wb.WaybillFilter(
+        search_term=search_term,
+        service_type=service_type,
+        sla_status=sla_status,
+        cod_status=cod_status,
+        status=status,
+        origin_hub_id=origin_hub_id,
+        dest_hub_id=dest_hub_id,
+        page=page,
+        size=size
+    )
+    return search_waybills(filters=filters, db=db, current_user=current_user)
+
+
 @router.post("/search")
 def search_waybills(
     filters: schema_wb.WaybillFilter,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    """Tìm kiếm vận đơn với bộ lọc nâng cao"""
     user_role = current_user.get("role_id")
     user_hub_id = current_user.get("primary_hub_id")
+
+    # Nếu có search_term, mapping nó vào keyword
+    if hasattr(filters, 'search_term') and filters.search_term and not filters.keyword:
+        filters.keyword = filters.search_term
 
     hub_filter = None
     if user_role != 1:
@@ -154,16 +188,10 @@ def search_waybills(
 
         result = []
         for w in items:
-            # Dynamic SLA calculation
-            sla_status = "ON_TIME"
-            if w.sla_deadline:
-                now = datetime.utcnow()
-                if w.status in ["DELIVERED", "SETTLED"]:
-                    sla_status = "ON_TIME"
-                elif w.sla_deadline < now:
-                    sla_status = "OVERDUE"
-                elif (w.sla_deadline - now).total_seconds() <= 14400: # 4 hours
-                    sla_status = "WARNING"
+            # Sử dụng helper function để tính SLA status và remaining hours
+            sla_status, remaining_hours = calculate_sla_status(w)
+            current_holder = get_waybill_current_holder(w)
+            action_by = get_waybill_action_by(db, w)
 
             result.append({
                 "waybill_id": w.waybill_id,
@@ -189,6 +217,9 @@ def search_waybills(
                 "holding_shipper": {"user_id": w.holding_shipper.user_id, "full_name": w.holding_shipper.full_name} if w.holding_shipper else None,
                 "sla_deadline": w.sla_deadline.isoformat() if w.sla_deadline else None,
                 "sla_status": sla_status,
+                "sla_remaining_hours": remaining_hours,
+                "current_holder": current_holder,
+                "action_by": action_by,
                 "bill_image_url": w.bill_image_url,
                 "pickup_image_url": w.pickup_image_url,
                 "ocr_status": w.ocr_status,
@@ -206,6 +237,102 @@ def search_waybills(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=f"Lỗi hệ thống khi tìm kiếm: {str(e)}"
         )
+
+
+# --- 2.1. TIMELINE VẬN ĐƠN ---
+@router.get("/{waybill_ref}/timeline", response_model=schema_wb.WaybillTimelineResponse)
+def get_waybill_timeline(
+    waybill_ref: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy lịch sử các sự kiện của vận đơn (Timeline)"""
+    waybill = None
+    if waybill_ref.isdigit():
+        waybill = db.query(models.Waybills).filter(
+            models.Waybills.waybill_id == int(waybill_ref),
+            models.Waybills.is_deleted == False
+        ).first()
+
+    if not waybill:
+        waybill = db.query(models.Waybills).filter(
+            models.Waybills.waybill_code == waybill_ref,
+            models.Waybills.is_deleted == False
+        ).first()
+
+    if not waybill:
+        raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
+    
+    # Data isolation: Kiểm tra quyền truy cập
+    user_role = current_user.get("role_id")
+    if user_role != 1:  # Không phải super admin
+        user_hub_id = current_user.get("primary_hub_id")
+        if waybill.origin_hub_id != user_hub_id and waybill.dest_hub_id != user_hub_id:
+            raise HTTPException(status_code=403, detail="Bạn không có quyền xem vận đơn này")
+    
+    # Lấy tracking logs sắp xếp theo thời gian
+    tracking_logs = db.query(models.TrackingLogs).filter(
+        models.TrackingLogs.waybill_id == waybill.waybill_id
+    ).order_by(models.TrackingLogs.system_time.asc()).all()
+    
+    # Chuyển đổi thành timeline items
+    timeline_items = []
+    status_descriptions = {
+        "CREATED": "Tạo đơn",
+        "IN_HUB": "Nhập kho",
+        "DELIVERING": "Phân công giao",
+        "DELIVERED": "Giao hàng thành công",
+        "DELIVERY_FAILED": "Giao hàng thất bại",
+        "RETURNED": "Trả về",
+        "CANCELLED": "Hủy đơn",
+        "ARRIVED": "Đã đến bưu cục đích",
+        "VERIFIED": "Xác thực thành công",
+        "VERIFY_ERROR": "Lỗi xác thực",
+        "PICKED_PENDING_VERIFY": "Chụp ảnh chờ xác thực",
+    }
+    
+    for log in tracking_logs:
+        # Xác định actor (người/đơn vị thực hiện)
+        actor = "Hệ thống"
+        if log.user_id:
+            user = db.query(models.Users).filter(models.Users.user_id == log.user_id).first()
+            if user:
+                actor = user.full_name
+        elif log.hub_id:
+            hub = db.query(models.Hubs).filter(models.Hubs.hub_id == log.hub_id).first()
+            if hub:
+                actor = hub.hub_name
+        
+        # Xác định location
+        location = "Hệ thống"
+        if log.hub_id:
+            hub = db.query(models.Hubs).filter(models.Hubs.hub_id == log.hub_id).first()
+            if hub:
+                location = hub.hub_name
+        
+        # Format time
+        action_time = log.action_time or log.system_time
+        time_str = action_time.strftime("%H:%M %d/%m") if action_time else ""
+        
+        # Get action description
+        action = status_descriptions.get(log.status_id, log.status_id)
+        
+        timeline_item = schema_wb.WaybillTimelineItem(
+            time=time_str,
+            action=action,
+            actor=actor,
+            location=location,
+            note=log.note
+        )
+        timeline_items.append(timeline_item)
+    
+    return schema_wb.WaybillTimelineResponse(
+        waybill_code=waybill.waybill_code,
+        status=waybill.status,
+        created_at=waybill.created_at if hasattr(waybill, 'created_at') else datetime.utcnow(),
+        timeline=timeline_items
+    )
+
 
 # --- 3. TẠO MỚI VẬN ĐƠN ---
 @router.post("", response_model=dict)
@@ -416,7 +543,10 @@ def get_waybill_tracking(code: str, db: Session = Depends(get_db)):
     if not waybill:
         raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
     logs = crud_wb.get_tracking_logs(db, waybill.waybill_id)
-    return {"history": [{"status_id": l.status_id, "note": l.note, "time": l.system_time} for l in logs]}
+    return {
+        "waybill_id": waybill.waybill_id,
+        "history": [{"status_id": l.status_id, "note": l.note, "time": l.system_time} for l in logs],
+    }
 
 @router.delete("/{code}")
 def delete_waybill(code: str, db: Session = Depends(get_db)):

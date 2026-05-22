@@ -1,6 +1,29 @@
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 import models
+
+def search_customers(db: Session, query: str, limit: int = 50):
+    """Tìm kiếm khách hàng theo mã, tên, hoặc số điện thoại"""
+    if not query:
+        return []
+
+    keyword = f"%{query.strip()}%"
+    return (
+        db.query(models.Customers)
+        .options(joinedload(models.Customers.bank_accounts))
+        .filter(
+            or_(
+                models.Customers.customer_code.ilike(keyword),
+                models.Customers.company_name.ilike(keyword),
+                models.Customers.transaction_name.ilike(keyword),
+                models.Customers.phone_number.ilike(keyword),
+            )
+        )
+        .limit(limit)
+        .all()
+    )
+
 
 def get_all_customers_with_bank(db: Session, skip: int = 0, limit: int = 200):
     """Lấy danh sách khách hàng kèm thông tin ngân hàng (Eager Loading)"""

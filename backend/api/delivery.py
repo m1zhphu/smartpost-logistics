@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from datetime import datetime
 from core.database import get_db
 from core.idempotency import validate_idempotency, commit_idempotency
 from core.security import get_current_user
@@ -7,6 +8,7 @@ from core.state_machine import WaybillStatus, validate_state_transition
 import crud.delivery as crud_delivery
 import schemas.delivery as schema_delivery
 import crud.waybills as crud_wb
+import models
 from core.push import send_expo_push_notification
 
 router = APIRouter(prefix="/api/delivery", tags=["Delivery Operations"])
@@ -93,6 +95,100 @@ async def assign_shipper(
     except Exception as e:
         db.rollback()
         raise e
+
+@router.post("/reassign", response_model=schema_delivery.ReassignWaybillResponse)
+def reassign_waybill(
+    data: schema_delivery.ReassignWaybillRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Điều chuyển đơn hàng giữa hub hoặc shipper"""
+    verify_manager_access(current_user)
+
+    if not data.new_hub_id and not data.new_shipper_id:
+        raise HTTPException(status_code=400, detail="Phải cung cấp new_hub_id hoặc new_shipper_id để điều chuyển.")
+    if data.new_hub_id and data.new_shipper_id:
+        raise HTTPException(status_code=400, detail="Chỉ được điều chuyển sang hub hoặc shipper, không được đồng thời.")
+
+    waybill = crud_wb.get_waybill_by_code(db, data.waybill_id)
+    if not waybill:
+        raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
+
+    if current_user.get("role_id") != 1 and waybill.dest_hub_id != current_user.get("primary_hub_id"):
+        raise HTTPException(status_code=403, detail="Bạn không có quyền điều chuyển vận đơn này")
+
+    if data.new_hub_id:
+        target_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.new_hub_id).first()
+        if not target_hub:
+            raise HTTPException(status_code=404, detail="Không tìm thấy bưu cục đích mới")
+    else:
+        target_hub = None
+
+    if data.new_shipper_id:
+        target_shipper = db.query(models.Users).filter(models.Users.user_id == data.new_shipper_id, models.Users.role_id == 4).first()
+        if not target_shipper:
+            raise HTTPException(status_code=404, detail="Không tìm thấy Shipper mới")
+    else:
+        target_shipper = None
+
+    updated_waybill = crud_delivery.reassign_waybill(
+        db,
+        waybill,
+        new_hub_id=data.new_hub_id,
+        new_shipper_id=data.new_shipper_id,
+        reason=data.reason,
+        note=data.note,
+        user_id=current_user.get("user_id")
+    )
+
+    if not updated_waybill:
+        raise HTTPException(status_code=500, detail="Không thể điều chuyển vận đơn")
+
+    db.commit()
+    new_holder = None
+    if target_shipper:
+        new_holder = target_shipper.full_name
+    elif target_hub:
+        new_holder = target_hub.hub_name
+
+    return {
+        "status": "SUCCESS",
+        "waybill_code": waybill.waybill_code,
+        "message": "Điều chuyển vận đơn thành công.",
+        "new_holder": new_holder
+    }
+
+@router.post("/locations", response_model=schema_delivery.ShipperLocationResponse)
+def record_shipper_location(
+    data: schema_delivery.ShipperLocationRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lưu tọa độ GPS của shipper"""
+    if current_user.get("role_id") not in [1, 4] and current_user.get("user_id") != data.shipper_id:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền gửi vị trí GPS cho shipper này.")
+
+    shipper = db.query(models.Users).filter(models.Users.user_id == data.shipper_id, models.Users.role_id == 4).first()
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Không tìm thấy Shipper")
+
+    saved = crud_delivery.save_shipper_location(
+        db,
+        shipper_id=data.shipper_id,
+        latitude=data.latitude,
+        longitude=data.longitude,
+        timestamp=data.timestamp,
+        accuracy=data.accuracy,
+        note=data.note
+    )
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "shipper_id": data.shipper_id,
+        "message": "Vị trí GPS đã được ghi nhận.",
+        "timestamp": saved["timestamp"]
+    }
 
 @router.get("/my-tasks")
 def get_shipper_tasks(
@@ -258,4 +354,101 @@ async def assign_shipper_pickup(
         print(f">>>>> [PUSH ALERT] Gửi thông báo lấy hàng tới token: {shipper.push_token}")
         background_tasks.add_task(send_expo_push_notification, shipper.push_token, title, body, {"request_code": code})
         
-    return {"status": "ASSIGNED_PICKUP", "request_code": code, "assigned_shipper_id": data.shipper_id}
+    return {"status": "ASSIGNED_PICKUP", "request_code": code, "assigned_shipper_id": data.shipper_id}
+
+
+# --- NEW: REASSIGN & LOCATION ENDPOINTS ---
+
+@router.post("/reassign", response_model=schema_delivery.ReassignWaybillResponse)
+def reassign_waybill(
+    data: schema_delivery.ReassignWaybillRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """API điều chuyển vận đơn sang hub/shipper khác"""
+    verify_manager_access(current_user)
+    
+    # Kiểm tra vận đơn tồn tại
+    waybill = db.query(models.Waybills).filter(models.Waybills.waybill_id == data.waybill_id).first()
+    if not waybill:
+        raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
+    
+    # Data isolation: Chỉ manager của hub có thể điều chuyển đơn
+    if current_user.get("role_id") != 1:
+        user_hub = current_user.get("primary_hub_id")
+        if waybill.holding_hub_id != user_hub and waybill.dest_hub_id != user_hub:
+            raise HTTPException(status_code=403, detail="Bạn không có quyền điều chuyển đơn này")
+    
+    try:
+        # Kiểm tra tham số đầu vào
+        if not data.new_hub_id and not data.new_shipper_id:
+            raise HTTPException(status_code=400, detail="Phải chỉ định hub hoặc shipper mới")
+        
+        # Thực hiện điều chuyển
+        updated_waybill, new_holder = crud_delivery.reassign_waybill(
+            db, waybill, 
+            new_hub_id=data.new_hub_id,
+            new_shipper_id=data.new_shipper_id,
+            user_id=current_user["user_id"],
+            reason=data.reason,
+            note=data.note or ""
+        )
+        
+        db.commit()
+        
+        return schema_delivery.ReassignWaybillResponse(
+            status="SUCCESS",
+            waybill_code=waybill.waybill_code,
+            message=f"Đã điều chuyển vận đơn thành công",
+            new_holder=new_holder
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Lỗi khi điều chuyển: {str(e)}")
+
+
+@router.post("/locations", response_model=schema_delivery.ShipperLocationResponse)
+def save_shipper_location(
+    data: schema_delivery.ShipperLocationRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """API lưu vị trí GPS của Shipper"""
+    # Chỉ Shipper hoặc Super Admin có thể lưu vị trí
+    if current_user.get("role_id") not in [1, 4]:
+        raise HTTPException(status_code=403, detail="Chỉ Shipper mới được cập nhật vị trí")
+    
+    # Shipper thường chỉ có thể lưu vị trí của chính mình
+    if current_user.get("role_id") == 4 and data.shipper_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Bạn chỉ được cập nhật vị trí của chính mình")
+    
+    try:
+        success, message = crud_delivery.save_shipper_location(
+            db, 
+            shipper_id=data.shipper_id,
+            latitude=data.latitude,
+            longitude=data.longitude,
+            accuracy=data.accuracy,
+            note=data.note or ""
+        )
+        
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+        
+        db.commit()
+        
+        return schema_delivery.ShipperLocationResponse(
+            status="SUCCESS",
+            shipper_id=data.shipper_id,
+            message=message,
+            timestamp=data.timestamp or datetime.utcnow()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Lỗi khi lưu vị trí: {str(e)}")

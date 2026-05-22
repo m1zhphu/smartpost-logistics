@@ -97,6 +97,38 @@ def list_customers(skip: int = 0, limit: int = 200, db: Session = Depends(get_db
         })
     return result
 
+@router.get("/search", response_model=List[dict])
+def search_customers(q: str = "", limit: int = 50, db: Session = Depends(get_db)):
+    """API tìm kiếm khách hàng theo mã, tên hoặc số điện thoại"""
+    if not q:
+        return []
+
+    customers = crud_customers.search_customers(db, q, limit=limit)
+    result = []
+    for c in customers:
+        bank = None
+        if c.bank_accounts:
+            bank = c.bank_accounts[0] if isinstance(c.bank_accounts, list) else c.bank_accounts
+
+        result.append({
+            "id": c.customer_id,
+            "customer_id": c.customer_id,
+            "customer_code": c.customer_code,
+            "name": c.company_name or c.transaction_name or c.customer_code,
+            "company_name": c.company_name,
+            "transaction_name": c.transaction_name,
+            "email": c.email,
+            "phone": c.phone_number,
+            "customer_type": c.customer_type,
+            "status": c.status,
+            "address": c.address_detail,
+            "representative_name": c.representative_name,
+            "bank_name": bank.bank_name if bank else None,
+            "account_number": bank.account_number if bank else None,
+            "account_name": bank.account_name if bank else None,
+        })
+    return result
+
 @router.put("/{customer_id}")
 def update_customer(customer_id: int, data: CustomerCreate, db: Session = Depends(get_db)):
     """API cập nhật thông tin khách hàng"""

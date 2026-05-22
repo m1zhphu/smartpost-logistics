@@ -1,3 +1,7 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const STORAGE_USER_KEY = "@SpeedlightAppFn:user";
+
 const getErrorMessage = (data, fallbackMessage) => {
   if (!data) {
     return fallbackMessage;
@@ -41,6 +45,19 @@ const parseJsonSafely = async (response) => {
   }
 };
 
+const getStoredUser = async () => {
+  try {
+    const stored = await AsyncStorage.getItem(STORAGE_USER_KEY);
+    if (!stored) {
+      return null;
+    }
+    return JSON.parse(stored);
+  } catch (error) {
+    console.warn("Failed to read stored user for auth headers", error);
+    return null;
+  }
+};
+
 export const createAuthHeaders = (token, extraHeaders) => {
   const headers = {
     ...(extraHeaders || {}),
@@ -53,6 +70,19 @@ export const createAuthHeaders = (token, extraHeaders) => {
   return headers;
 };
 
+export const createAuthHeadersAsync = async (extraHeaders = {}) => {
+  const storedUser = await getStoredUser();
+  const headers = {
+    ...extraHeaders,
+  };
+
+  if (storedUser?.token) {
+    headers.Authorization = `Bearer ${storedUser.token}`;
+  }
+
+  return headers;
+};
+
 const generateIdempotencyKey = () =>
   `idempotency_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
 
@@ -60,9 +90,7 @@ const ensureIdempotencyHeader = (options = {}) => {
   const method = (options.method || "GET").toUpperCase();
   if (method === "POST") {
     const headers = options.headers || {};
-
     const hasHeader = headers["Idempotency-Key"] || headers["idempotency-key"];
-
     if (!hasHeader) {
       const mergedHeaders = {
         ...headers,
@@ -74,8 +102,22 @@ const ensureIdempotencyHeader = (options = {}) => {
       };
     }
   }
-
   return options;
+};
+
+const handleErrorResponse = async (response, fallbackMessage) => {
+  const data = await parseJsonSafely(response);
+  const message = getErrorMessage(data, fallbackMessage);
+  const error = new Error(message);
+  error.status = response.status;
+  error.data = data;
+  if (response.status === 401) {
+    error.isUnauthorized = true;
+  }
+  if (response.status >= 500) {
+    error.isServerError = true;
+  }
+  throw error;
 };
 
 export const requestJson = async (
@@ -86,20 +128,38 @@ export const requestJson = async (
   try {
     const requestOptions = ensureIdempotencyHeader(options);
     const response = await fetch(url, requestOptions);
-    const data = await parseJsonSafely(response);
-
     if (!response.ok) {
-      const err = new Error(getErrorMessage(data, fallbackMessage));
-      err.status = response.status;
-      throw err;
+      await handleErrorResponse(response, fallbackMessage);
     }
-
-    return data;
+    return await parseJsonSafely(response);
   } catch (error) {
     if (error.message && error.message !== "Network request failed") {
       throw error;
     }
+    throw new Error("Lỗi không xác định. Vui lòng thử lại.");
+  }
+};
 
+export const requestJsonWithAuth = async (
+  url,
+  options = {},
+  fallbackMessage = "Lỗi không xác định. Vui lòng thử lại.",
+) => {
+  try {
+    const authHeaders = await createAuthHeadersAsync(options.headers || {});
+    const requestOptions = ensureIdempotencyHeader({
+      ...options,
+      headers: authHeaders,
+    });
+    const response = await fetch(url, requestOptions);
+    if (!response.ok) {
+      await handleErrorResponse(response, fallbackMessage);
+    }
+    return await parseJsonSafely(response);
+  } catch (error) {
+    if (error.message && error.message !== "Network request failed") {
+      throw error;
+    }
     throw new Error("Lỗi không xác định. Vui lòng thử lại.");
   }
 };
@@ -114,8 +174,7 @@ export const requestArrayBuffer = async (
     const response = await fetch(url, requestOptions);
 
     if (!response.ok) {
-      const data = await parseJsonSafely(response);
-      throw new Error(getErrorMessage(data, fallbackMessage));
+      await handleErrorResponse(response, fallbackMessage);
     }
 
     return response.arrayBuffer();
@@ -123,7 +182,6 @@ export const requestArrayBuffer = async (
     if (error.message && error.message !== "Network request failed") {
       throw error;
     }
-
-    throw new Error("Loi khong xac dinh. Vui long thu lai.");
+    throw new Error("Lỗi không xác định. Vui lòng thử lại.");
   }
 };

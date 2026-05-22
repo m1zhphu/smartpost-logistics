@@ -139,13 +139,20 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
         joinedload(models.Waybills.holding_shipper),
     ).filter(models.Waybills.is_deleted == False)
 
-    # Tìm kiếm theo keyword đa năng (Mã đơn, Tên/SĐT nhận, Mã KH/Tên shop gửi)
+    # Tìm kiếm theo keyword / search_term đa năng (Mã đơn, Tên/SĐT nhận, Mã KH/Tên shop gửi, Người gửi)
+    search_keyword = None
     if hasattr(filters, 'keyword') and filters.keyword:
-        kw = f"%{filters.keyword}%"
+        search_keyword = filters.keyword
+    elif hasattr(filters, 'search_term') and filters.search_term:
+        search_keyword = filters.search_term
+
+    if search_keyword:
+        kw = f"%{search_keyword}%"
         query = query.join(models.Customers, models.Waybills.customer_id == models.Customers.customer_id, isouter=True).filter(
             (models.Waybills.waybill_code.ilike(kw)) |
             (models.Waybills.receiver_name.ilike(kw)) |
             (models.Waybills.receiver_phone.ilike(kw)) |
+            (models.Waybills.sender_name.ilike(kw)) |
             (models.Customers.customer_code.ilike(kw)) |
             (models.Customers.company_name.ilike(kw)) |
             (models.Customers.transaction_name.ilike(kw))
@@ -493,4 +500,4 @@ def transfer_waybill_crud(db: Session, code: str, target_type: str, target_id: i
     )
     db.add(new_log)
     db.flush()
-    return waybill
+    return waybill

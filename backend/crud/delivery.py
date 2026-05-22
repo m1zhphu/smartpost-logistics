@@ -80,7 +80,9 @@ def assign_shipper_to_waybill(db: Session, waybill: models.Waybills, shipper_id:
         models.Waybills.version == current_version
     ).update({
         "status": WaybillStatus.DELIVERING,
-        "version": current_version + 1
+        "version": current_version + 1,
+        "holding_shipper_id": shipper_id,
+        "holding_hub_id": None
     })
 
     if affected_rows > 0:
@@ -100,6 +102,54 @@ def assign_shipper_to_waybill(db: Session, waybill: models.Waybills, shipper_id:
             note=f"Đã phân công cho Shipper ID: {shipper_id}"
         ))
     return affected_rows
+
+
+def reassign_waybill(db: Session, waybill: models.Waybills, new_hub_id: int = None, new_shipper_id: int = None, reason: str = None, note: str = None, user_id: int = None):
+    """Điều chuyển vận đơn giữa hub hoặc shipper và ghi log hành động"""
+    if not waybill:
+        return None
+
+    if new_hub_id is None and new_shipper_id is None:
+        return None
+
+    if new_hub_id is not None:
+        waybill.holding_hub_id = new_hub_id
+        waybill.holding_shipper_id = None
+    if new_shipper_id is not None:
+        waybill.holding_shipper_id = new_shipper_id
+        waybill.holding_hub_id = None
+
+    db.add(models.TrackingLogs(
+        waybill_id=waybill.waybill_id,
+        status_id="REASSIGNED",
+        hub_id=new_hub_id,
+        user_id=user_id,
+        system_time=datetime.utcnow(),
+        note=f"Điều chuyển: {reason or 'Không rõ lý do'}. {note or ''}".strip()
+    ))
+    db.flush()
+    return waybill
+
+
+def save_shipper_location(db: Session, shipper_id: int, latitude: float, longitude: float, timestamp: datetime, accuracy: float = None, note: str = None):
+    """Lưu vị trí GPS của shipper. Hiện tại lưu mock vào TrackingLogs"""
+    db.add(models.TrackingLogs(
+        waybill_id=None,
+        status_id="GPS_LOCATION",
+        user_id=shipper_id,
+        system_time=datetime.utcnow(),
+        action_time=timestamp,
+        note=f"GPS: {latitude},{longitude} acc={accuracy}. {note or ''}".strip()
+    ))
+    db.flush()
+    return {
+        "shipper_id": shipper_id,
+        "latitude": latitude,
+        "longitude": longitude,
+        "timestamp": timestamp,
+        "accuracy": accuracy,
+        "note": note
+    }
 
 def confirm_delivery_record(db: Session, waybill: models.Waybills, actual_cod: float, pod_url: str, user_id: int, hub_id: int, note: str):
     """Cập nhật trạng thái giao thành công và thực thu COD"""
@@ -226,3 +276,89 @@ def assign_shipper_to_pickup(db: Session, db_req: models.BookingRequests, shippe
         note=f"Giao cho Bưu tá ID: {shipper_id}"
     ))
     return db_req
+
+
+# --- NEW: REASSIGN & LOCATION OPERATIONS ---
+
+def reassign_waybill(db: Session, waybill: models.Waybills, new_hub_id: int = None, new_shipper_id: int = None, user_id: int = None, reason: str = "", note: str = ""):
+    """Điều chuyển vận đơn sang hub/shipper khác"""
+    old_holder = None
+    new_holder = None
+    
+    # Lưu holder cũ để log
+    if waybill.holding_shipper_id and waybill.holding_shipper:
+        old_holder = waybill.holding_shipper.full_name
+    elif waybill.holding_hub_id and waybill.holding_hub:
+        old_holder = waybill.holding_hub.hub_name
+    
+    # Cập nhật holder mới
+    if new_shipper_id:
+        waybill.holding_shipper_id = new_shipper_id
+        waybill.holding_hub_id = None
+        shipper = db.query(models.Users).filter(models.Users.user_id == new_shipper_id).first()
+        new_holder = shipper.full_name if shipper else f"Shipper {new_shipper_id}"
+    elif new_hub_id:
+        waybill.holding_hub_id = new_hub_id
+        waybill.holding_shipper_id = None
+        hub = db.query(models.Hubs).filter(models.Hubs.hub_id == new_hub_id).first()
+        new_holder = hub.hub_name if hub else f"Hub {new_hub_id}"
+    
+    waybill.version += 1
+    
+    # Ghi log
+    log_note = f"Điều chuyển từ {old_holder} sang {new_holder}. Lý do: {reason}"
+    if note:
+        log_note += f". Ghi chú: {note}"
+    
+    db.add(models.TrackingLogs(
+        waybill_id=waybill.waybill_id,
+        status_id=waybill.status,
+        hub_id=waybill.holding_hub_id,
+        user_id=user_id,
+        system_time=datetime.utcnow(),
+        note=log_note
+    ))
+    
+    return waybill, new_holder
+
+
+def save_shipper_location(db: Session, shipper_id: int, latitude: float, longitude: float, accuracy: float = None, note: str = ""):
+    """Lưu vị trí GPS của Shipper"""
+    # Kiểm tra xem Shipper có tồn tại không
+    shipper = db.query(models.Users).filter(
+        models.Users.user_id == shipper_id,
+        models.Users.role_id == 4
+    ).first()
+    
+    if not shipper:
+        return False, "Không tìm thấy Shipper"
+    
+    # Lưu vị trí vào log hoặc bảng tracking (tùy yêu cầu)
+    # Tạm sử dụng TrackingLogs để lưu vị trí
+    location_data = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "accuracy": accuracy,
+        "note": note
+    }
+    
+    # Tìm các đơn hàng đang giao của shipper để liên kết
+    active_waybills = db.query(models.Waybills).join(models.DeliveryResults).filter(
+        models.DeliveryResults.shipper_id == shipper_id,
+        models.Waybills.status == WaybillStatus.DELIVERING
+    ).all()
+    
+    # Ghi log vị trí cho các đơn hàng đang giao
+    logged_count = 0
+    for wb in active_waybills:
+        db.add(models.TrackingLogs(
+            waybill_id=wb.waybill_id,
+            status_id=wb.status,
+            hub_id=None,  # Shipper không có hub
+            user_id=shipper_id,
+            system_time=datetime.utcnow(),
+            note=f"[GPS] Vị trí: ({latitude}, {longitude}). Độ chính xác: {accuracy}m. {note if note else ''}"
+        ))
+        logged_count += 1
+    
+    return True, f"Đã lưu vị trí cho {logged_count} đơn hàng"

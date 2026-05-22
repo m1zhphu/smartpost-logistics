@@ -146,6 +146,20 @@ const ScanBaggingStyles = StyleSheet.create({
     marginBottom: 2,
   },
   bagCodeText: { fontSize: 14, fontWeight: "bold", color: "#5b665f" },
+  progressCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#edf1ed",
+  },
+  progressLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
   badgeCount: {
     backgroundColor: COLORS.secondary,
     paddingHorizontal: 12,

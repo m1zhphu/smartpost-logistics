@@ -34,9 +34,11 @@ import TaskListScreen from "./src/screens/TaskListScreen";
 import TaskDetailScreen from "./src/screens/TaskDetailScreen";
 import { QueueProvider } from "./src/context/QueueContext";
 import { UserProvider, useUser } from "./src/context/UserContext";
+import { WaybillProvider } from "./src/context/WaybillContext";
 import { getRoleKey, roleRouteGroups } from "./src/utils/roleUtils";
 import "./src/services/locationService";
 import LocationGuard from "./src/components/LocationGuard";
+import Toast from "react-native-toast-message";
 
 // Cấu hình xử lý notification khi app mở
 Notifications.setNotificationHandler({
@@ -57,21 +59,7 @@ function AppRoutes() {
   // Xác định màn hình khởi đầu phù hợp theo vai trò
   let authInitialRoute = "Login";
   if (user.isAuthenticated) {
-    if (roleKey === "shipper") {
-      // Người giao hàng → Thẳng vào danh sách nhiệm vụ
-      authInitialRoute = "TaskList";
-    } else if (roleKey === "accountant") {
-      // Kế toán → Thẳng vào menu nghiệp vụ kế toán
-      authInitialRoute = "AccountantMenu";
-    } else if (roleKey === "warehouse" || roleKey === "hub_manager") {
-      // Nhân viên kho / Quản lý kho → Vào menu kho
-      authInitialRoute = "WarehouseMenu";
-    } else {
-      // Admin hoặc mặc định → Trang chủ
-      authInitialRoute = allowedRoutes.includes("Home")
-        ? "Home"
-        : allowedRoutes[0] || "Home";
-    }
+    authInitialRoute = "Home";
   }
 
   return (
@@ -185,13 +173,16 @@ function AppRoutes() {
 export default function App() {
   return (
     <UserProvider>
-      <QueueProvider>
-        <LocationGuard>
-          <NavigationContainer>
-            <AppRoutes />
-          </NavigationContainer>
-        </LocationGuard>
-      </QueueProvider>
+      <WaybillProvider>
+        <QueueProvider>
+          <LocationGuard>
+            <NavigationContainer>
+              <AppRoutes />
+            </NavigationContainer>
+            <Toast />
+          </LocationGuard>
+        </QueueProvider>
+      </WaybillProvider>
     </UserProvider>
   );
 }

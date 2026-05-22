@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useReducer } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,11 +17,15 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import CreateWaybillStyles from "../styles/CreateWaybillStyles";
+import CustomerAutocomplete from "../components/CustomerAutocomplete";
 import { waybillService } from "../services/waybillService";
 import { pricingService } from "../services/pricingService";
+import { createWaybillService } from "../services/createWaybillService";
 import { useUser } from "../context/UserContext";
 import { isRouteAllowed } from "../utils/roleUtils";
+import { debounce } from "../utils/debounce";
 import { COLORS } from "../constants/colors";
+import { ITEM_TYPES } from "../constants/waybillFormOptions";
 
 const TABS = ["Gửi & nhận", "Hàng hóa", "Dịch vụ", "Cước phí"];
 
@@ -38,31 +42,89 @@ export default function CreateWaybillScreen({ navigation, route }) {
   const [dataLoading, setDataLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("Gửi & nhận");
-  const [form, setForm] = useState({
+  const initialFormState = {
+    // Sender
+    customer_code: "",
     customer_id: "",
-    service_type: "STANDARD",
-    origin_hub_id: "",
-    dest_hub_id: "",
     sender_name: "",
     sender_phone: "",
     sender_address: "",
+    sender_province: "",
+    // Receiver
     receiver_name: "",
     receiver_phone: "",
     receiver_address: "",
-    actual_weight: "0.5",
-    length: "",
-    width: "",
-    height: "",
+    receiver_province: "",
+    // Goods
+    item_type: "PARCEL", // LETTER / PARCEL / GOOD
+    weight: "0.5",
+    dimensions: { length: "", width: "", height: "" },
+    cod_amount: "0",
+    // Services
+    service_type: "CPN",
+    extra_services: [],
+    // Fee breakdown
+    feeBreakdown: {
+      main_fee: 0,
+      fuel_surcharge: 0,
+      vat: 0,
+      extra_fee: 0,
+      total_fee: 0,
+    },
+    // Meta
+    origin_hub_id: "",
+    dest_hub_id: "",
     product_name: "",
     payment_method: "SENDER_PAY",
-    cod_amount: "0",
     note: "",
-    extra_services: [],
     receiver_address_detail: "",
     bank_branch: "",
     unit_code: "",
     waybill_code: "",
-  });
+  };
+
+  function formReducer(state, action) {
+    switch (action.type) {
+      case "PATCH":
+        return { ...state, ...action.payload };
+      case "REPLACE":
+        return { ...action.payload };
+      case "UPDATE_FIELD":
+        return { ...state, [action.field]: action.value };
+      case "UPDATE_DIMENSIONS":
+        return {
+          ...state,
+          dimensions: { ...state.dimensions, ...action.payload },
+        };
+      case "UPDATE_SERVICES":
+        return {
+          ...state,
+          service_type: action.payload.service_type ?? state.service_type,
+          extra_services: action.payload.extra_services ?? state.extra_services,
+        };
+      case "SET_FEE":
+        return {
+          ...state,
+          feeBreakdown: { ...state.feeBreakdown, ...action.payload },
+        };
+      case "RESET":
+        return { ...initialFormState };
+      default:
+        return state;
+    }
+  }
+
+  const [form, dispatchForm] = useReducer(formReducer, initialFormState);
+
+  // compatibility helper to preserve existing setForm(...) usage
+  const setForm = (patch) => {
+    if (typeof patch === "function") {
+      const next = patch(form);
+      dispatchForm({ type: "REPLACE", payload: next });
+    } else if (typeof patch === "object") {
+      dispatchForm({ type: "PATCH", payload: patch });
+    }
+  };
   const [fees, setFees] = useState({
     main_fee: 0,
     extra_fee: 0,
@@ -87,6 +149,11 @@ export default function CreateWaybillScreen({ navigation, route }) {
     address: "",
   });
   const [isCreatingCust, setIsCreatingCust] = useState(false);
+
+  // Customer search state (PHASE 2)
+  const [customerSearchResults, setCustomerSearchResults] = useState([]);
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const customerSearchTimeoutRef = useRef(null);
 
   // Address Picker State
   const [provinces, setProvinces] = useState([]);
@@ -240,7 +307,7 @@ export default function CreateWaybillScreen({ navigation, route }) {
 
   useEffect(() => {
     const fetchFee = async () => {
-      const weight = Number(form.actual_weight);
+      const weight = Number(form.weight);
       if (!weight || weight <= 0 || !form.origin_hub_id || !form.dest_hub_id) {
         setFees({ main_fee: 0, extra_fee: 0, remote_fee: 0, vat: 0, total: 0 });
         setPricingSource("");
@@ -255,9 +322,9 @@ export default function CreateWaybillScreen({ navigation, route }) {
           dest_district_id: receiverDistrict?.code || null,
           dest_ward_id: receiverWard?.code || null,
           weight,
-          length: Number(form.length) || 0,
-          width: Number(form.width) || 0,
-          height: Number(form.height) || 0,
+          length: Number(form.dimensions.length) || 0,
+          width: Number(form.dimensions.width) || 0,
+          height: Number(form.dimensions.height) || 0,
           service_type: form.service_type,
           extra_services: form.extra_services,
           cod_amount: Number(form.cod_amount),
@@ -280,16 +347,16 @@ export default function CreateWaybillScreen({ navigation, route }) {
     };
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => fetchFee(), 400);
+    typingTimeoutRef.current = setTimeout(() => fetchFee(), 500);
 
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [
-    form.actual_weight,
-    form.length,
-    form.width,
-    form.height,
+    form.weight,
+    form.dimensions.length,
+    form.dimensions.width,
+    form.dimensions.height,
     form.service_type,
     form.origin_hub_id,
     form.dest_hub_id,
@@ -385,7 +452,7 @@ export default function CreateWaybillScreen({ navigation, route }) {
         "Lỗi dữ liệu",
         "Số điện thoại người nhận phải đúng 10 chữ số.",
       );
-    const weight = Number(form.actual_weight);
+    const weight = Number(form.weight);
     if (isNaN(weight) || weight <= 0)
       return Alert.alert("Lỗi dữ liệu", "Khối lượng phải lớn hơn 0 kg.");
     if (!form.customer_id)
@@ -416,11 +483,11 @@ export default function CreateWaybillScreen({ navigation, route }) {
         dest_hub_id: Number(form.dest_hub_id),
         dest_district_id: receiverDistrict?.code || null,
         dest_ward_id: receiverWard?.code || null,
-        actual_weight: weight,
+        weight,
         cod_amount: Number(form.cod_amount) || 0,
-        length: Number(form.length) || 0,
-        width: Number(form.width) || 0,
-        height: Number(form.height) || 0,
+        length: Number(form.dimensions.length) || 0,
+        width: Number(form.dimensions.width) || 0,
+        height: Number(form.dimensions.height) || 0,
         shipping_fee: fees.total,
         receiver_address: fullReceiverAddress,
       });
@@ -600,30 +667,105 @@ export default function CreateWaybillScreen({ navigation, route }) {
               Khách hàng gửi (Shop){" "}
               <Text style={CreateWaybillStyles.req}>*</Text>
             </Text>
-            <TouchableOpacity
-              style={CreateWaybillStyles.mockInput}
-              onPress={() => {
-                setCustSearch("");
-                setShowCustModal(true);
+            {/* PHASE 2: Autocomplete component for customer search */}
+            <CustomerAutocomplete
+              value={
+                customers.find(
+                  (c) => String(c.customer_id) === form.customer_id,
+                )?.name || ""
+              }
+              onSelect={(item) => {
+                // Auto-fill sender fields and customer_id
+                setForm((prev) => ({
+                  ...prev,
+                  customer_id: String(item.customer_id || item.id || ""),
+                  sender_name:
+                    item.contact_name || item.name || prev.sender_name,
+                  sender_phone:
+                    item.contact_phone || item.phone || prev.sender_phone,
+                  sender_address: item.address || prev.sender_address,
+                  sender_province:
+                    item.province_code ||
+                    item.province?.name ||
+                    prev.sender_province,
+                }));
+              }}
+              placeholder="Tìm khách hàng: Tên, SĐT, Mã..."
+            />
+
+            {/* PHASE 2: Sender Info Section - Improved Flexbox Layout */}
+            <View style={{ marginTop: 16, marginBottom: 8 }}>
+              <Text style={CreateWaybillStyles.label}>
+                Thông tin người gửi{" "}
+                <Text style={CreateWaybillStyles.req}>*</Text>
+              </Text>
+            </View>
+
+            {/* Row 1: Sender Name (flex:1) | Sender Phone (flex:1) */}
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 10,
+                marginBottom: 12,
               }}
             >
-              <Text
-                style={
-                  form.customer_id
-                    ? CreateWaybillStyles.textMain
-                    : CreateWaybillStyles.textMuted
-                }
-              >
-                {form.customer_id
-                  ? customers.find(
-                      (item) => String(item.customer_id) === form.customer_id,
-                    )?.name
-                  : "Tìm tên, SĐT, mã khách..."}
-              </Text>
-              <Ionicons name="search" size={20} color={COLORS.textGray} />
-            </TouchableOpacity>
+              {/* Sender Name */}
+              <View style={{ flex: 1 }}>
+                <TextInput
+                  style={CreateWaybillStyles.input}
+                  placeholder="Tên người gửi"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={form.sender_name}
+                  onChangeText={(t) => setForm({ ...form, sender_name: t })}
+                />
+              </View>
 
-            <Text style={CreateWaybillStyles.label}>Dịch vụ vận chuyển</Text>
+              {/* Sender Phone */}
+              <View style={{ flex: 1 }}>
+                <TextInput
+                  style={CreateWaybillStyles.input}
+                  placeholder="SĐT"
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={form.sender_phone}
+                  onChangeText={(t) =>
+                    setForm({ ...form, sender_phone: t.replace(/[^0-9]/g, "") })
+                  }
+                />
+              </View>
+            </View>
+
+            {/* Row 2: Sender Address (width: 100%) */}
+            <View style={{ marginBottom: 16 }}>
+              <TextInput
+                style={[
+                  CreateWaybillStyles.input,
+                  {
+                    height: 90,
+                    textAlignVertical: "top",
+                    paddingTop: 15,
+                  },
+                ]}
+                placeholder="Địa chỉ gửi (đường, số, phường/xã)..."
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={3}
+                value={form.sender_address}
+                onChangeText={(t) => setForm({ ...form, sender_address: t })}
+              />
+            </View>
+
+            {/* Separator */}
+            <View style={CreateWaybillStyles.dividerDashed} />
+
+            <View style={{ marginTop: 12, marginBottom: 12 }}>
+              <Text style={CreateWaybillStyles.label}>
+                Dịch vụ vận chuyển{" "}
+                <Text style={CreateWaybillStyles.req}>*</Text>
+              </Text>
+            </View>
+
             <View style={CreateWaybillStyles.serviceTypeRow}>
               {["STANDARD", "EXPRESS", "ECONOMY"].map((type) => (
                 <TouchableOpacity
@@ -938,6 +1080,82 @@ export default function CreateWaybillScreen({ navigation, route }) {
               </Text>
             </View>
 
+            <View style={{ marginBottom: 16 }}>
+              <Text style={CreateWaybillStyles.label}>Loại hàng hóa</Text>
+              <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                {ITEM_TYPES.map((itemType) => (
+                  <TouchableOpacity
+                    key={itemType.id}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor:
+                        form.item_type === itemType.id
+                          ? COLORS.secondary
+                          : COLORS.borderLight,
+                      backgroundColor:
+                        form.item_type === itemType.id
+                          ? COLORS.secondary + "15"
+                          : "transparent",
+                    }}
+                    onPress={() =>
+                      setForm({
+                        ...form,
+                        item_type: itemType.id,
+                        dimensions:
+                          itemType.id === "GOOD"
+                            ? form.dimensions
+                            : { length: "", width: "", height: "" },
+                      })
+                    }
+                  >
+                    <View
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        borderWidth: 2,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        borderColor:
+                          form.item_type === itemType.id
+                            ? COLORS.secondary
+                            : COLORS.borderLight,
+                      }}
+                    >
+                      {form.item_type === itemType.id && (
+                        <View
+                          style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: 5,
+                            backgroundColor: COLORS.secondary,
+                          }}
+                        />
+                      )}
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color:
+                          form.item_type === itemType.id
+                            ? COLORS.secondary
+                            : COLORS.textMain,
+                      }}
+                    >
+                      {itemType.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             <View style={CreateWaybillStyles.row}>
               <View style={{ flex: 0.4 }}>
                 <Text style={CreateWaybillStyles.label}>Khối lượng</Text>
@@ -947,9 +1165,11 @@ export default function CreateWaybillScreen({ navigation, route }) {
                       CreateWaybillStyles.inputFlex,
                       { fontWeight: "800", fontSize: 18 },
                     ]}
-                    keyboardType="numeric"
-                    value={form.actual_weight}
-                    onChangeText={(t) => setForm({ ...form, actual_weight: t })}
+                    keyboardType="decimal-pad"
+                    value={form.weight}
+                    onChangeText={(t) =>
+                      setForm({ ...form, weight: t.replace(/[^0-9.]/g, "") })
+                    }
                   />
                   <Text
                     style={{
@@ -973,46 +1193,64 @@ export default function CreateWaybillScreen({ navigation, route }) {
               </View>
             </View>
 
-            <View style={CreateWaybillStyles.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={CreateWaybillStyles.label}>Dài (cm)</Text>
-                <TextInput
-                  style={CreateWaybillStyles.input}
-                  keyboardType="numeric"
-                  placeholder="0"
-                  value={form.length}
-                  onChangeText={(t) =>
-                    setForm({ ...form, length: t.replace(/[^0-9.]/g, "") })
-                  }
-                />
+            {form.item_type === "GOOD" && (
+              <View style={CreateWaybillStyles.row}>
+                <View style={{ flex: 1 }}>
+                  <Text style={CreateWaybillStyles.label}>Dài (cm)</Text>
+                  <TextInput
+                    style={CreateWaybillStyles.input}
+                    keyboardType="decimal-pad"
+                    placeholder="0"
+                    value={form.dimensions.length}
+                    onChangeText={(t) =>
+                      setForm({
+                        ...form,
+                        dimensions: {
+                          ...form.dimensions,
+                          length: t.replace(/[^0-9.]/g, ""),
+                        },
+                      })
+                    }
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={CreateWaybillStyles.label}>Rộng (cm)</Text>
+                  <TextInput
+                    style={CreateWaybillStyles.input}
+                    keyboardType="decimal-pad"
+                    placeholder="0"
+                    value={form.dimensions.width}
+                    onChangeText={(t) =>
+                      setForm({
+                        ...form,
+                        dimensions: {
+                          ...form.dimensions,
+                          width: t.replace(/[^0-9.]/g, ""),
+                        },
+                      })
+                    }
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={CreateWaybillStyles.label}>Cao (cm)</Text>
+                  <TextInput
+                    style={CreateWaybillStyles.input}
+                    keyboardType="decimal-pad"
+                    placeholder="0"
+                    value={form.dimensions.height}
+                    onChangeText={(t) =>
+                      setForm({
+                        ...form,
+                        dimensions: {
+                          ...form.dimensions,
+                          height: t.replace(/[^0-9.]/g, ""),
+                        },
+                      })
+                    }
+                  />
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={CreateWaybillStyles.label}>Rộng (cm)</Text>
-                <TextInput
-                  style={CreateWaybillStyles.input}
-                  keyboardType="numeric"
-                  placeholder="0"
-                  value={form.width}
-                  onChangeText={(t) =>
-                    setForm({ ...form, width: t.replace(/[^0-9.]/g, "") })
-                  }
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={CreateWaybillStyles.label}>Cao (cm)</Text>
-                <TextInput
-                  style={CreateWaybillStyles.input}
-                  keyboardType="numeric"
-                  placeholder="0"
-                  value={form.height}
-                  onChangeText={(t) =>
-                    setForm({ ...form, height: t.replace(/[^0-9.]/g, "") })
-                  }
-                />
-              </View>
-            </View>
-
-            <Text style={CreateWaybillStyles.label}>Người thanh toán cước</Text>
+            )}
             <View style={CreateWaybillStyles.paymentRow}>
               <TouchableOpacity
                 style={[

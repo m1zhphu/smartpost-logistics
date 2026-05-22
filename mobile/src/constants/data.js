@@ -10,7 +10,10 @@ export const ENDPOINTS = {
   REPORT_FAILURE: `${API_PREFIX}/delivery/report-failure`,
   GET_SHIPPERS: `${API_PREFIX}/users/shippers`,
   ASSIGN_SHIPPER: `${API_PREFIX}/delivery/assign-shipper`,
+  GET_PENDING_PICKUPS: `${API_PREFIX}/delivery/pending-pickups`,
+  ASSIGN_PICKUP: `${API_PREFIX}/delivery/assign-pickup`,
   GET_PENDING_COD: `${API_PREFIX}/delivery/my-pending-cod`,
+  POST_DELIVERY_LOCATIONS: `${API_PREFIX}/delivery/locations`,
 
   SCAN_IN_HUB: `${API_PREFIX}/scans/in-hub`,
   UPDATE_SCAN_WEIGHT: (waybillCode) =>
@@ -55,6 +58,15 @@ export const ENDPOINTS = {
   UPLOAD_POD: `${API_PREFIX}/upload/pod`,
   UPLOAD_BILL_IMAGE: `${API_PREFIX}/upload/bill`,
   UPDATE_BILL_IMAGES: (code) => `${API_PREFIX}/waybills/${code}/bill-images`,
+  REASSIGN_WAYBILL: `${API_PREFIX}/delivery/reassign`,
+  GET_WAYBILL_TIMELINE: (waybillRef) =>
+    `${API_PREFIX}/waybills/${waybillRef}/timeline`,
+
+  CREATE_BAG: `${API_PREFIX}/bags/create`,
+  ADD_BILLS_TO_BAG: (bagCode) => `${API_PREFIX}/bags/${bagCode}/add-bills`,
+  VERIFY_BAG: (bagCode) => `${API_PREFIX}/bags/${bagCode}/verify`,
+  SUBMIT_VERIFICATION: (bagCode) =>
+    `${API_PREFIX}/bags/${bagCode}/verify-submit`,
 
   TRANSFER_WAYBILL: (code, targetType, targetId, reason, note) =>
     `${API_PREFIX}/waybills/${code}/transfer?target_type=${encodeURIComponent(

@@ -48,6 +48,46 @@ class BookingRequestLogResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+# --- NEW: REASSIGN & LOCATION SCHEMAS ---
+
+class ReassignWaybillRequest(BaseModel):
+    """Schema cho API điều chuyển vận đơn"""
+    waybill_id: int
+    new_hub_id: Optional[int] = Field(None, description="Hub đích mới (nếu điều chuyển sang hub khác)")
+    new_shipper_id: Optional[int] = Field(None, description="Shipper mới (nếu giao lại cho shipper khác)")
+    reason: str = Field(..., description="Lý do điều chuyển (e.g., 'address_error', 'customer_request', 'overload')")
+    note: Optional[str] = Field(None, description="Ghi chú thêm về điều chuyển")
+
+
+class ShipperLocationRequest(BaseModel):
+    """Schema cho API lưu vị trí GPS của Shipper"""
+    shipper_id: int
+    latitude: float = Field(..., description="Vĩ độ")
+    longitude: float = Field(..., description="Kinh độ")
+    timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Thời gian ghi nhận vị trí")
+    accuracy: Optional[float] = Field(None, description="Độ chính xác của GPS (mét)")
+    note: Optional[str] = Field(None, description="Ghi chú (e.g., 'at_customer', 'on_route')")
+
+
+class ReassignWaybillResponse(BaseModel):
+    """Response cho API điều chuyển"""
+    status: str  # "SUCCESS", "FAILED"
+    waybill_code: str
+    message: str
+    new_holder: Optional[str] = None  # Tên kho/shipper mới
+    
+    class Config:
+        from_attributes = True
+
+
+class ShipperLocationResponse(BaseModel):
+    """Response cho API lưu vị trí"""
+    status: str  # "SUCCESS", "FAILED"
+    shipper_id: int
+    message: str
+    timestamp: datetime
+
 class BookingRequestResponse(BaseModel):
     request_id: int
     request_code: str
