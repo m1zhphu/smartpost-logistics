@@ -5,6 +5,7 @@ import {
     FlatList,
     KeyboardAvoidingView,
     Modal,
+    Platform,
     ScrollView,
     StatusBar,
     Switch,
@@ -50,6 +51,7 @@ export default function PricingRulesScreen({ navigation }) {
             Alert.alert('Truy cập bị từ chối', 'Bạn không có quyền truy cập trang này.', [
                 { text: 'OK', onPress: () => navigation.goBack() },
             ]);
+            return;
         }
     }, [user]);
     const [serviceForm, setServiceForm] = useState({

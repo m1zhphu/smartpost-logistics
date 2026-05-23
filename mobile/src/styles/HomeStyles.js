@@ -3,14 +3,481 @@ import { COLORS } from "../constants/colors";
 
 const { width, height } = Dimensions.get("window");
 
-// Khung quét tối ưu cho việc chụp ngang (Landscape) khi cầm máy dọc
 export const FRAME_W = width * 0.9;
 export const FRAME_H = height * 0.65;
 
 const HomeStyles = StyleSheet.create({
+  // ═══════════════════════════════════════════════════════════════
+  // HOME SCREEN — Light theme
+  // ═══════════════════════════════════════════════════════════════
+
+  homeContainer: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSoft,
+  },
+
+  // ── Header banner xanh lá primary ───────────────────────────────
+  headerBanner: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 8 : 18,
+    paddingBottom: 30,
+  },
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  homeTextGroup: {
+    flex: 1,
+    paddingRight: 14,
+  },
+  homeGreeting: {
+    color: COLORS.appTaglineColor, // #a5d6a7 — xanh nhạt trên nền dark
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  homeName: {
+    color: COLORS.white,
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  rolePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 5,
+    marginTop: 8,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  roleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.secondary,
+  },
+  roleText: {
+    color: COLORS.secondaryLight,
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  profileButton: {
+    alignItems: "center",
+    gap: 5,
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.secondaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  profileButtonText: {
+    color: COLORS.appTaglineColor,
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+  },
+
+  // ── Stat row — nổi lên từ banner ────────────────────────────────
+  statRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    paddingHorizontal: 16,
+    marginTop: -18,
+    marginBottom: 6,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    // color inject inline per card
+  },
+  statLabel: {
+    color: COLORS.textGray,
+    fontSize: 10,
+    fontWeight: "500",
+    marginTop: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+
+  // ── Scroll content ───────────────────────────────────────────────
+  homeContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 110,
+  },
+
+  // ── Section header ───────────────────────────────────────────────
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: COLORS.neutralDark,
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.1,
+  },
+  sectionSub: {
+    color: COLORS.textGray,
+    fontSize: 12,
+    fontWeight: "400",
+  },
+
+  // ── Action grid ──────────────────────────────────────────────────
+  actionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  actionCard: {
+    width: "48.5%",
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  // Accent bar 3px trên đầu card, màu theo nhóm
+  cardTopAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
+  actionIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+    marginTop: 6, // chừa chỗ cho accent bar
+  },
+  actionLabel: {
+    color: COLORS.neutralDark,
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  actionSub: {
+    color: COLORS.textGray,
+    fontSize: 11,
+    fontWeight: "400",
+    marginTop: 3,
+  },
+
+  // ── Activity feed ────────────────────────────────────────────────
+  activityCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  activityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  actDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  actTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.neutralDark,
+  },
+  actBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  actBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  // Badge presets — textColor dùng cho Text, rest cho View
+  badgeGreen: {
+    backgroundColor: COLORS.successBg,
+    textColor: COLORS.successAccent,
+  },
+  badgeAmber: {
+    backgroundColor: COLORS.amberAccentBg,
+    textColor: COLORS.amberAccentText,
+  },
+  badgeBlue: {
+    backgroundColor: COLORS.blueAccentBg,
+    textColor: COLORS.blueAccent,
+  },
+
+  // ── Empty state ──────────────────────────────────────────────────
+  emptyState: {
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    alignItems: "center",
+    gap: 10,
+  },
+  emptyTitle: {
+    color: COLORS.neutralDark,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  emptyText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
+  customizeActionText: {
+    color: COLORS.secondary,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  viewMoreButton: {
+    alignSelf: "flex-start",
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: COLORS.secondaryLight,
+  },
+  viewMoreText: {
+    color: COLORS.secondary,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  loadingActivity: {
+    paddingVertical: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 32,
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    padding: 18,
+    maxHeight: "86%",
+  },
+  modalTitle: {
+    color: COLORS.neutralDark,
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  modalSubtitle: {
+    color: COLORS.textGray,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  modalList: {
+    marginBottom: 12,
+  },
+  modalListContent: {
+    paddingBottom: 12,
+  },
+  modalItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: COLORS.backgroundSoft,
+    marginBottom: 10,
+  },
+  modalItemText: {
+    color: COLORS.neutralDark,
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+    marginRight: 12,
+  },
+  modalItemAction: {
+    color: COLORS.secondary,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  modalRemoveText: {
+    color: COLORS.dangerAccent,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  modalSection: {
+    marginTop: 16,
+  },
+  modalSectionTitle: {
+    color: COLORS.neutralDark,
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 8,
+  },
+  modalCancelButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: COLORS.borderLight,
+  },
+  modalCancelText: {
+    color: COLORS.neutralDark,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  // ── Floating Action Button ───────────────────────────────────────
+  floatingAction: {
+    position: "absolute",
+    right: 18,
+    bottom: Platform.OS === "ios" ? 100 : 88,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  floatingText: {
+    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  // ── Bottom tabs ──────────────────────────────────────────────────
+  bottomTabsContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingHorizontal: 8,
+    paddingBottom: Platform.OS === "ios" ? 24 : 10,
+    paddingTop: 8,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  bottomTabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+  },
+  bottomTabIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  bottomTabIconActive: {
+    backgroundColor: COLORS.greenSubtle,
+  },
+  bottomTabLabel: {
+    color: COLORS.textGray,
+    fontSize: 10,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  bottomTabActive: {
+    color: COLORS.secondary,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // CAMERA SCREEN — giữ nguyên để không phá CameraPOD
+  // ═══════════════════════════════════════════════════════════════
+
   container: { flex: 1, backgroundColor: "#000" },
 
-  // --- Permission Screen ---
   permissionContainer: {
     flex: 1,
     justifyContent: "center",
@@ -57,13 +524,10 @@ const HomeStyles = StyleSheet.create({
   },
   btnPermissionText: { color: COLORS.white, fontWeight: "700", fontSize: 16 },
 
-  // --- Camera Overlays ---
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "space-between",
   },
-
-  // Mask layer (Tạo hiệu ứng kính mờ xung quanh khung quét)
   maskContainer: { ...StyleSheet.absoluteFillObject },
   maskTop: { flex: 1, width: "100%", backgroundColor: "rgba(0,0,0,0.65)" },
   maskBottom: { flex: 1, width: "100%", backgroundColor: "rgba(0,0,0,0.65)" },
@@ -88,7 +552,6 @@ const HomeStyles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  // --- Header ---
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -147,7 +610,6 @@ const HomeStyles = StyleSheet.create({
   },
   badgeText: { color: COLORS.white, fontSize: 10, fontWeight: "800" },
 
-  // --- Corners Focus ---
   corner: { position: "absolute", width: 40, height: 40, zIndex: 30 },
   cornerHorizontal: {
     position: "absolute",
@@ -168,7 +630,6 @@ const HomeStyles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  // --- Bottom Bar ---
   bottomBar: {
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === "ios" ? 45 : 30,
@@ -217,8 +678,6 @@ const HomeStyles = StyleSheet.create({
     marginTop: 4,
     fontWeight: "600",
   },
-
-  // Camera Shutter Button
   shutterOuter: {
     width: 80,
     height: 80,
@@ -237,7 +696,6 @@ const HomeStyles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   versionText: {
     color: "rgba(255,255,255,0.2)",
     fontSize: 10,
@@ -245,164 +703,10 @@ const HomeStyles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  homeContainer: { flex: 1, backgroundColor: COLORS.primary },
-  homeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 40 : 30,
-    paddingBottom: 24,
-    backgroundColor: COLORS.primary,
-  },
-  homeTextGroup: { flex: 1, paddingRight: 16 },
-  homeHello: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  homeName: { color: COLORS.white, fontSize: 24, fontWeight: "800" },
-  homeRole: { color: COLORS.secondaryLight, fontSize: 13, marginTop: 4 },
-  profileButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 72,
-    height: 72,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.14)",
-  },
-  profileButtonText: {
-    marginTop: 6,
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  homeContent: { paddingHorizontal: 20, paddingBottom: 170 },
-  sectionHeader: { marginBottom: 18 },
-  sectionTitle: {
-    color: COLORS.white,
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 6,
-  },
-  sectionSubtitle: {
-    color: COLORS.secondaryLight,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  actionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  actionCard: {
-    width: "48%",
-    backgroundColor: COLORS.headerBg,
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  actionIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  actionLabel: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 20,
-  },
-  bottomTabsContainer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 90,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 6,
-    backgroundColor: COLORS.headerBg,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
-  },
-  bottomTabItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-  },
-  bottomTabIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  bottomTabLabel: {
-    color: COLORS.textGray,
-    fontSize: 11,
-    textAlign: "center",
-  },
-  bottomTabActive: {
-    color: COLORS.white,
-  },
-  emptyState: {
-    paddingVertical: 38,
-    paddingHorizontal: 20,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyTitle: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: COLORS.textGray,
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  floatingAction: {
-    position: "absolute",
-    right: 20,
-    bottom: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.secondary,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
-    elevation: 12,
-  },
-  floatingText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: "700",
-    marginLeft: 10,
-  },
+  // ═══════════════════════════════════════════════════════════════
+  // BOTTOM SHEETS / MENU (dùng chung)
+  // ═══════════════════════════════════════════════════════════════
 
-  // --- Menus & Bottom Sheets ---
   toastLayer: {
     position: "absolute",
     top: 0,

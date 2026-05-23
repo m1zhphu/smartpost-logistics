@@ -155,19 +155,28 @@ const loadStoredUser = async () => {
 // Cấu hình xin quyền Push Notification từ thiết bị
 const registerForPushNotificationsAsync = async () => {
   try {
+    console.log("[PUSH] registerForPushNotificationsAsync started");
+
     // Kiểm tra xem có phải thiết bị thật không (Simulator thường không nhận được push thực tế từ Expo)
     if (!Device.isDevice) {
-      console.log("[PUSH] Running on simulator - generating dummy push token for testing flow");
+      console.log(
+        "[PUSH] Running on simulator - generating dummy push token for testing flow",
+      );
       return "ExponentPushToken[dummy_token_123_for_simulator]";
     }
 
     // Xin quyền thông báo
     const { status: existingStatus } =
       await Notifications.getPermissionsAsync();
+    console.log(
+      "[PUSH] Existing notification permission status:",
+      existingStatus,
+    );
     let finalStatus = existingStatus;
 
     if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
+      console.log("[PUSH] Requested notification permission status:", status);
       finalStatus = status;
     }
 
@@ -207,11 +216,17 @@ const registerForPushNotificationsAsync = async () => {
         try {
           token = await Notifications.getExpoPushTokenAsync();
         } catch (fallbackError) {
-          console.warn("[PUSH] Fallback without projectId also failed:", fallbackError.message || fallbackError);
+          console.warn(
+            "[PUSH] Fallback without projectId also failed:",
+            fallbackError.message || fallbackError,
+          );
           return null;
         }
       } else {
-        console.warn("[PUSH] getExpoPushTokenAsync failed:", errorWithProjectId.message || errorWithProjectId);
+        console.warn(
+          "[PUSH] getExpoPushTokenAsync failed:",
+          errorWithProjectId.message || errorWithProjectId,
+        );
         return null;
       }
     }
@@ -252,6 +267,7 @@ export const UserProvider = ({ children }) => {
   // Khởi tạo các bộ lắng nghe (Listeners) cho thông báo đẩy khi ứng dụng đang chạy nền/foreground
   useEffect(() => {
     let notificationSubscription;
+    let notificationResponseSubscription;
 
     notificationSubscription = Notifications.addNotificationReceivedListener(
       (notification) => {
@@ -262,8 +278,18 @@ export const UserProvider = ({ children }) => {
       },
     );
 
+    notificationResponseSubscription =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("[PUSH] Notification response received:", response);
+        console.log(
+          "[PUSH] Notification response content:",
+          response.notification.request.content,
+        );
+      });
+
     return () => {
       notificationSubscription?.remove();
+      notificationResponseSubscription?.remove();
     };
   }, []);
 
@@ -312,7 +338,13 @@ export const UserProvider = ({ children }) => {
               syncError,
             );
           }
+        } else {
+          console.warn(
+            "[PUSH] No authenticated user token available, skipping backend sync.",
+          );
         }
+      } else {
+        console.warn("[PUSH] No push token was obtained from Expo");
       }
     } catch (error) {
       console.error("[PUSH] Failed to setup push notifications:", error);

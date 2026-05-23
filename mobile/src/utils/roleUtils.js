@@ -170,13 +170,23 @@ export const getRoleLabel = (user) => {
 // Danh sách toàn bộ mục menu của ứng dụng.
 // Mỗi mục được lọc theo quyền hạn vai trò khi hiển thị.
 const allMenuItems = [
-  { route: "Profile", label: "Hồ sơ cá nhân", icon: "person-circle-outline" },
+  {
+    route: "Profile",
+    label: "Hồ sơ cá nhân",
+    icon: "person-circle-outline",
+    showInHome: false,
+  },
   {
     route: "CreateWaybill",
     label: "Tạo vận đơn",
     icon: "document-text-outline",
   },
-  { route: "ProcessedList", label: "Danh sách đã xử lý", icon: "list-outline" },
+  {
+    route: "ProcessedList",
+    label: "Danh sách đã xử lý",
+    icon: "list-outline",
+    showInHome: false,
+  },
   // --- NGHIỆP VỤ KHO ---
   { route: "ScanInHub", label: "Quét nhập kho", icon: "cube-outline" },
   { route: "ScanBagging", label: "Đóng túi hàng", icon: "archive-outline" },
@@ -195,23 +205,36 @@ const allMenuItems = [
     label: "Tổng quan kho",
     icon: "speedometer-outline",
   },
-  { route: "WarehouseMenu", label: "Nghiệp vụ kho", icon: "grid-outline" },
+  {
+    route: "WarehouseMenu",
+    label: "Nghiệp vụ kho",
+    icon: "grid-outline",
+    showInHome: false,
+  },
   // --- NGHIỆP VỤ GIAO HÀNG ---
-  { route: "ScanTask", label: "Quét mã nhiệm vụ", icon: "qr-code-outline" },
+  {
+    route: "ScanTask",
+    label: "Quét mã nhiệm vụ",
+    icon: "qr-code-outline",
+    showInHome: false,
+  },
   {
     route: "TaskList",
     label: "Danh sách nhiệm vụ",
     icon: "list-circle-outline",
+    showInHome: false,
   },
   {
     route: "UpdateStatus",
     label: "Cập nhật trạng thái đơn",
     icon: "refresh-circle-outline",
+    showInHome: false,
   },
   {
     route: "CameraPOD",
     label: "Chụp ảnh xác nhận (POD)",
     icon: "camera-outline",
+    showInHome: false,
   },
   // --- QUẢN LÝ BƯU CỤC ---
   {
@@ -240,11 +263,13 @@ const allMenuItems = [
     route: "AccountingDashboard",
     label: "Tổng quan tài chính",
     icon: "stats-chart-outline",
+    showInHome: false,
   },
   {
     route: "AccountantMenu",
     label: "Nghiệp vụ kế toán",
     icon: "pie-chart-outline",
+    showInHome: false,
   },
   // --- QUẢN TRỊ VIÊN ---
   {
@@ -267,7 +292,9 @@ const allMenuItems = [
 export const getHomeMenuItems = (user) => {
   const roleKey = getRoleKey(user);
   const allowedRoutes = roleRouteGroups[roleKey] || roleRouteGroups.default;
-  return allMenuItems.filter((item) => allowedRoutes.includes(item.route));
+  return allMenuItems.filter(
+    (item) => allowedRoutes.includes(item.route) && item.showInHome !== false,
+  );
 };
 
 const bottomTabItemsByRole = {

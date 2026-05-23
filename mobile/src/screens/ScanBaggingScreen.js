@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import UniversalScanner from "../components/UniversalScanner";
@@ -21,6 +22,7 @@ import { COLORS } from "../constants/colors";
 import { isRouteAllowed } from "../utils/roleUtils";
 
 export default function ScanBaggingScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { user } = useUser();
   const { sessionState, initBag, addScannedBill, resetSession } =
     useBaggingSession();
@@ -163,10 +165,10 @@ export default function ScanBaggingScreen({ navigation }) {
   const { bagCode, estimatedCount, scannedBills } = sessionState;
 
   return (
-    <View style={ScanBaggingStyles.container}>
+    <SafeAreaView edges={['top', 'bottom']} style={ScanBaggingStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-      <View style={ScanBaggingStyles.cameraArea}>
+      <View style={[ScanBaggingStyles.cameraArea, { paddingTop: insets.top + 12 }]}> 
         <UniversalScanner
           title={bagCode ? `Túi: ${bagCode}` : "Quét mã túi để bắt đầu"}
           instruction={
@@ -177,7 +179,7 @@ export default function ScanBaggingScreen({ navigation }) {
           onScan={handleScannerScan}
         />
 
-        <View style={ScanBaggingStyles.camHeader}>
+        <View style={[ScanBaggingStyles.camHeader, { top: 8 }]}> 
           <TouchableOpacity
             style={ScanBaggingStyles.backBtn}
             onPress={() => navigation.goBack()}
@@ -198,7 +200,7 @@ export default function ScanBaggingScreen({ navigation }) {
         </View>
 
         {bagCode ? (
-          <View style={ScanBaggingStyles.manualInputContainer}>
+          <View style={[ScanBaggingStyles.manualInputContainer, { bottom: 16 }]}> 
             <View style={ScanBaggingStyles.inputBox}>
               <Ionicons
                 name="search"
@@ -226,7 +228,7 @@ export default function ScanBaggingScreen({ navigation }) {
         ) : null}
       </View>
 
-      <View style={ScanBaggingStyles.bottomSheet}>
+      <View style={[ScanBaggingStyles.bottomSheet, { paddingBottom: insets.bottom + 16 }]}> 
         {bagCode ? (
           <>
             <View style={ScanBaggingStyles.sheetHeader}>
@@ -253,7 +255,7 @@ export default function ScanBaggingScreen({ navigation }) {
               data={scannedBills}
               keyExtractor={(item) => item}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={ScanBaggingStyles.listContent}
+              contentContainerStyle={[ScanBaggingStyles.listContent, { paddingBottom: insets.bottom + 120 }]}
               renderItem={({ item, index }) => {
                 const isFirst = index === 0;
                 return (
@@ -394,6 +396,6 @@ export default function ScanBaggingScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }

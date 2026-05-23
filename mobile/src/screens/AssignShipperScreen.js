@@ -51,6 +51,7 @@ export default function AssignShipperScreen({ navigation }) {
         "Bạn không có quyền truy cập trang này.",
         [{ text: "OK", onPress: () => navigation.goBack() }],
       );
+      return;
     }
   }, [user]);
 
@@ -107,11 +108,13 @@ export default function AssignShipperScreen({ navigation }) {
   };
 
   const handleScan = async (code) => {
-    const normalized = String(code || "").trim();
+    const normalized = String(code || "")
+      .trim()
+      .toUpperCase();
     if (!normalized) return;
 
     const exists = pendingPickups.some(
-      (item) => getPickupCode(item) === normalized,
+      (item) => getPickupCode(item).trim().toUpperCase() === normalized,
     );
 
     if (!exists) {

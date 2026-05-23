@@ -10,6 +10,7 @@ import {
   View,
   Vibration,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import UniversalScanner from "../components/UniversalScanner";
 import ScanInHubStyles from "../styles/ScanInHubStyles";
@@ -82,6 +83,7 @@ const normalizeExpectedBills = (payload = []) => {
 };
 
 export default function ScanInHubScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState("expected");
   const [manualCode, setManualCode] = useState("");
@@ -290,17 +292,17 @@ export default function ScanInHubScreen({ navigation }) {
     : "Quét mã túi để lấy danh sách bill dự kiến";
 
   return (
-    <View style={ScanInHubStyles.container}>
+    <SafeAreaView edges={['top', 'bottom']} style={ScanInHubStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-      <View style={ScanInHubStyles.cameraArea}>
+      <View style={[ScanInHubStyles.cameraArea, { paddingTop: insets.top + 12 }]}> 
         <UniversalScanner
           title={scannerTitle}
           instruction={scannerInstruction}
           onScan={handleScan}
         />
 
-        <View style={ScanInHubStyles.camHeader}>
+        <View style={[ScanInHubStyles.camHeader, { top: 8 }]}> 
           <TouchableOpacity
             style={ScanInHubStyles.backBtn}
             onPress={() => navigation.goBack()}
@@ -333,7 +335,7 @@ export default function ScanInHubScreen({ navigation }) {
           </View>
         </View>
 
-        <View style={ScanInHubStyles.manualInputContainer}>
+        <View style={[ScanInHubStyles.manualInputContainer, { bottom: insets.bottom + 16 }]}> 
           <View style={ScanInHubStyles.inputBox}>
             <Ionicons
               name="search"
@@ -363,7 +365,7 @@ export default function ScanInHubScreen({ navigation }) {
         </View>
       </View>
 
-      <View style={ScanInHubStyles.contentArea}>
+      <View style={[ScanInHubStyles.contentArea, { paddingBottom: insets.bottom + 16 }]}>
         <View style={ScanInHubStyles.headerCard}>
           <View style={ScanInHubStyles.headerTitleRow}>
             <Text style={ScanInHubStyles.headerTitle}>Túi đối soát</Text>
@@ -596,6 +598,6 @@ export default function ScanInHubScreen({ navigation }) {
           </Text>
         ) : null}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

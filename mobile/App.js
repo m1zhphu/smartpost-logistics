@@ -1,6 +1,7 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -59,7 +60,11 @@ function AppRoutes() {
   // Xác định màn hình khởi đầu phù hợp theo vai trò
   let authInitialRoute = "Login";
   if (user.isAuthenticated) {
-    authInitialRoute = "Home";
+    if (roleKey === "shipper") authInitialRoute = "TaskList";
+    else if (roleKey === "accountant") authInitialRoute = "AccountantMenu";
+    else if (roleKey === "warehouse" || roleKey === "hub_manager")
+      authInitialRoute = "WarehouseMenu";
+    else authInitialRoute = "Home";
   }
 
   return (
@@ -176,9 +181,11 @@ export default function App() {
       <WaybillProvider>
         <QueueProvider>
           <LocationGuard>
-            <NavigationContainer>
-              <AppRoutes />
-            </NavigationContainer>
+            <SafeAreaProvider>
+              <NavigationContainer>
+                <AppRoutes />
+              </NavigationContainer>
+            </SafeAreaProvider>
             <Toast />
           </LocationGuard>
         </QueueProvider>

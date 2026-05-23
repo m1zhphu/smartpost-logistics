@@ -6,7 +6,7 @@ const ScanBaggingStyles = StyleSheet.create({
   cameraArea: { height: "50%", position: "relative" },
   camHeader: {
     position: "absolute",
-    top: 50,
+    top: 0,
     left: 20,
     right: 20,
     flexDirection: "row",
@@ -44,7 +44,7 @@ const ScanBaggingStyles = StyleSheet.create({
   },
   manualInputContainer: {
     position: "absolute",
-    bottom: 30,
+    bottom: 0,
     left: 20,
     right: 20,
     flexDirection: "row",

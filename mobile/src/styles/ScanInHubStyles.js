@@ -13,7 +13,7 @@ const ScanInHubStyles = StyleSheet.create({
   },
   camHeader: {
     position: "absolute",
-    top: 50,
+    top: 0,
     left: 20,
     right: 20,
     zIndex: 10,
@@ -46,7 +46,7 @@ const ScanInHubStyles = StyleSheet.create({
     position: "absolute",
     left: 20,
     right: 20,
-    bottom: 26,
+    bottom: 0,
     flexDirection: "row",
     alignItems: "center",
   },

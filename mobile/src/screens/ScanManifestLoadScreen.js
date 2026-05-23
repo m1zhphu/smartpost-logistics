@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import UniversalScanner from '../components/UniversalScanner';
 import ScanManifestLoadStyles from '../styles/ScanManifestLoadStyles';
@@ -22,6 +23,7 @@ import { COLORS } from '../constants/colors';
 import { isRouteAllowed } from '../utils/roleUtils';
 
 export default function ScanManifestLoadScreen({ navigation }) {
+    const insets = useSafeAreaInsets();
     const { user } = useUser();
     const [isLocked, setIsLocked] = useState(false);
     const [manifestCode, setManifestCode] = useState('');
@@ -138,10 +140,10 @@ export default function ScanManifestLoadScreen({ navigation }) {
     };
 
     return (
-        <View style={ScanManifestLoadStyles.container}>
+        <SafeAreaView edges={['top', 'bottom']} style={ScanManifestLoadStyles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-            <View style={ScanManifestLoadStyles.cameraArea}>
+            <View style={[ScanManifestLoadStyles.cameraArea, { paddingTop: insets.top + 12 }]}> 
                 {isLocked ? (
                     <UniversalScanner
                         title="ĐANG BỐC XE"
@@ -155,7 +157,7 @@ export default function ScanManifestLoadScreen({ navigation }) {
                     </View>
                 )}
 
-                <View style={ScanManifestLoadStyles.camHeader}>
+                <View style={[ScanManifestLoadStyles.camHeader, { top: 8 }]}> 
                     <TouchableOpacity style={ScanManifestLoadStyles.backBtn} onPress={() => navigation.goBack()}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
@@ -168,7 +170,7 @@ export default function ScanManifestLoadScreen({ navigation }) {
                 </View>
 
                 {isLocked ? (
-                    <View style={ScanManifestLoadStyles.manualInputContainer}>
+                    <View style={[ScanManifestLoadStyles.manualInputContainer, { bottom: insets.bottom + 16 }]}> 
                         <View style={ScanManifestLoadStyles.inputBox}>
                             <Ionicons name="search" size={20} color="#94A3B8" style={{ marginRight: 8 }} />
                             <TextInput
@@ -188,9 +190,9 @@ export default function ScanManifestLoadScreen({ navigation }) {
                 ) : null}
             </View>
 
-            <View style={ScanManifestLoadStyles.bottomSheet}>
+            <View style={[ScanManifestLoadStyles.bottomSheet, { paddingBottom: insets.bottom + 16 }]}> 
                 {!isLocked ? (
-                    <ScrollView contentContainerStyle={ScanManifestLoadStyles.configArea}>
+                    <ScrollView contentContainerStyle={[ScanManifestLoadStyles.configArea, { paddingBottom: insets.bottom + 30 }] }>
                         <View style={ScanManifestLoadStyles.cardHeaderRow}>
                             <View style={ScanManifestLoadStyles.iconCirclePrimary}>
                                 <Ionicons name="bus" size={20} color={COLORS.primary} />
@@ -255,7 +257,7 @@ export default function ScanManifestLoadScreen({ navigation }) {
                             data={scannedBags}
                             keyExtractor={(item) => item.code}
                             showsVerticalScrollIndicator={false}
-                            contentContainerStyle={ScanManifestLoadStyles.listContent}
+                            contentContainerStyle={[ScanManifestLoadStyles.listContent, { paddingBottom: insets.bottom + 120 }]}
                             renderItem={({ item, index }) => {
                                 const isFirst = index === 0;
                                 return (
@@ -294,7 +296,7 @@ export default function ScanManifestLoadScreen({ navigation }) {
                         />
 
                         {scannedBags.length > 0 ? (
-                            <View style={ScanManifestLoadStyles.summaryFooter}>
+                            <View style={[ScanManifestLoadStyles.summaryFooter, { bottom: insets.bottom }]}> 
                                 <TouchableOpacity
                                     style={ScanManifestLoadStyles.finishBtn}
                                     onPress={handleSubmit}
@@ -348,6 +350,6 @@ export default function ScanManifestLoadScreen({ navigation }) {
                     </View>
                 </TouchableOpacity>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 }

@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import UniversalScanner from '../components/UniversalScanner';
 import ScanManifestUnloadStyles from '../styles/ScanManifestUnloadStyles';
@@ -19,6 +20,7 @@ import { COLORS } from '../constants/colors';
 import { isRouteAllowed } from '../utils/roleUtils';
 
 export default function ScanManifestUnloadScreen({ navigation }) {
+    const insets = useSafeAreaInsets();
     const { user } = useUser();
     const [isLocked, setIsLocked] = useState(false);
     const [manifestCode, setManifestCode] = useState('');
@@ -161,10 +163,10 @@ export default function ScanManifestUnloadScreen({ navigation }) {
     };
 
     return (
-        <View style={ScanManifestUnloadStyles.container}>
+        <SafeAreaView edges={['top', 'bottom']} style={ScanManifestUnloadStyles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-            <View style={ScanManifestUnloadStyles.cameraArea}>
+            <View style={[ScanManifestUnloadStyles.cameraArea, { paddingTop: insets.top + 12 }]}> 
                 {isLocked ? (
                     <UniversalScanner
                         title="ĐANG DỠ HÀNG"
@@ -178,7 +180,7 @@ export default function ScanManifestUnloadScreen({ navigation }) {
                     </View>
                 )}
 
-                <View style={ScanManifestUnloadStyles.camHeader}>
+                <View style={[ScanManifestUnloadStyles.camHeader, { top: 8 }]}> 
                     <TouchableOpacity style={ScanManifestUnloadStyles.backBtn} onPress={() => navigation.goBack()}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
@@ -190,9 +192,9 @@ export default function ScanManifestUnloadScreen({ navigation }) {
                 </View>
             </View>
 
-            <View style={ScanManifestUnloadStyles.bottomSheet}>
+            <View style={[ScanManifestUnloadStyles.bottomSheet, { paddingBottom: insets.bottom + 16 }]}> 
                 {!isLocked ? (
-                    <ScrollView contentContainerStyle={ScanManifestUnloadStyles.configArea}>
+                    <ScrollView contentContainerStyle={[ScanManifestUnloadStyles.configArea, { paddingBottom: insets.bottom + 30 }] }>
                         <View style={ScanManifestUnloadStyles.cardHeaderRow}>
                             <View style={ScanManifestUnloadStyles.iconCircleSuccess}>
                                 <Ionicons name="download" size={20} color={COLORS.secondary} />
@@ -252,7 +254,7 @@ export default function ScanManifestUnloadScreen({ navigation }) {
                             data={expectedBags}
                             keyExtractor={(item) => item.bag_code}
                             showsVerticalScrollIndicator={false}
-                            contentContainerStyle={ScanManifestUnloadStyles.listContent}
+                            contentContainerStyle={[ScanManifestUnloadStyles.listContent, { paddingBottom: insets.bottom + 120 }]}
                             renderItem={({ item }) => (
                                 <View
                                     style={[
@@ -297,7 +299,7 @@ export default function ScanManifestUnloadScreen({ navigation }) {
                             ListEmptyComponent={<Text style={ScanManifestUnloadStyles.emptyText}>Chuyến xe này không có túi hàng nào.</Text>}
                         />
 
-                        <View style={ScanManifestUnloadStyles.summaryFooter}>
+                        <View style={[ScanManifestUnloadStyles.summaryFooter, { bottom: insets.bottom }]}>
                             <TouchableOpacity
                                 style={ScanManifestUnloadStyles.finishBtn}
                                 onPress={handleSubmit}
@@ -350,6 +352,6 @@ export default function ScanManifestUnloadScreen({ navigation }) {
                     </View>
                 </TouchableOpacity>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 }
