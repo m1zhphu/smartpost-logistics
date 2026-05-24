@@ -11,7 +11,7 @@ export const deliveryService = {
           "Content-Type": "application/json",
         }),
       },
-      "Khong the tai danh sach nhiem vu.",
+      "Không thể tải danh sách nhiệm vụ.",
     );
 
     return data && data.items ? data.items : [];
@@ -27,7 +27,7 @@ export const deliveryService = {
         }),
         body: JSON.stringify(payload),
       },
-      "Khong the xac nhan giao thanh cong.",
+      "Không thể xác nhận giao thành công.",
     );
   },
 
@@ -41,7 +41,7 @@ export const deliveryService = {
         }),
         body: JSON.stringify(payload),
       },
-      "Khong the bao cao giao that bai.",
+      "Không thể báo cáo giao thất bại.",
     );
   },
 
@@ -54,7 +54,7 @@ export const deliveryService = {
           "Content-Type": "application/json",
         }),
       },
-      "Khong the tai danh sach shipper.",
+      "Không thể tải danh sách shipper.",
     );
   },
 
@@ -67,7 +67,7 @@ export const deliveryService = {
           "Content-Type": "application/json",
         }),
       },
-      "Khong the tai danh sach pickup dang cho.",
+      "Không thể tải danh sách pickup đang chờ.",
     );
   },
 
@@ -81,7 +81,7 @@ export const deliveryService = {
         }),
         body: JSON.stringify(payload),
       },
-      "Khong the phan cong pickup.",
+      "Không thể phân công pickup.",
     );
   },
 
@@ -95,7 +95,7 @@ export const deliveryService = {
         }),
         body: JSON.stringify(payload),
       },
-      "Khong the phan cong shipper.",
+      "Không thể phân công shipper.",
     );
   },
 
@@ -109,7 +109,7 @@ export const deliveryService = {
         }),
         body: JSON.stringify(payload),
       },
-      "Khong the dieu chuyen van don.",
+      "Không thể điều chuyển vận đơn.",
     );
   },
 
@@ -122,7 +122,7 @@ export const deliveryService = {
           "Content-Type": "application/json",
         }),
       },
-      "Khong the tai thong tin COD dang cho.",
+      "Không thể tải thông tin COD đang chờ.",
     );
   },
 };

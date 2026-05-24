@@ -1,9 +1,6 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   FlatList,
-  Platform,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -17,6 +14,21 @@ import { waybillService } from "../services/waybillService";
 import { accountingService } from "../services/accountingService";
 import { COLORS } from "../constants/colors";
 import styles from "../styles/WarehouseDashboardStyles";
+import SkeletonLoader from "../components/SkeletonLoader";
+import EmptyState from "../components/EmptyState";
+
+const DashboardSkeleton = () => (
+  <View style={styles.content}>
+    <View style={styles.skeletonGrid}>
+      {[1, 2, 3, 4].map((item) => (
+        <View key={item} style={styles.skeletonCard}>
+          <SkeletonLoader height={16} width="50%" />
+          <SkeletonLoader height={28} width="65%" style={styles.skeletonLine} />
+        </View>
+      ))}
+    </View>
+  </View>
+);
 
 export default function WarehouseDashboardScreen({ navigation }) {
   const { user } = useUser();
@@ -32,19 +44,18 @@ export default function WarehouseDashboardScreen({ navigation }) {
     warning: 0,
     overdue: 0,
   });
-  const [systemAlert, setSystemAlert] = useState(null);
 
   useEffect(() => {
     if (!isRouteAllowed(user, "WarehouseDashboard")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
-      return;
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
     fetchDashboard();
-  }, [user.token]);
+  }, [navigation, user.token]);
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -107,17 +118,17 @@ export default function WarehouseDashboardScreen({ navigation }) {
             position: "top",
             text1: "Cảnh báo quá SLA",
             text2:
-              "Một số đơn đang có nguy cơ quá SLA. Vui lòng kiểm tra ngay.",
+              "Một số đơn hàng đang có nguy cơ hoặc đã quá SLA. Vui lòng kiểm tra chi tiết.",
             visibilityTime: 5000,
-            topOffset: Platform.OS === "android" ? 50 : 70,
           });
         }
       }
     } catch (error) {
-      Alert.alert(
-        "Lỗi",
-        error.message || "Không thể tải dữ liệu bảng điều khiển.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: error.message || "Không thể tải dữ liệu bảng điều khiển.",
+      });
     } finally {
       setLoading(false);
     }
@@ -140,10 +151,24 @@ export default function WarehouseDashboardScreen({ navigation }) {
     { id: "AssignShipper", label: "Giao shipper", icon: "people-outline" },
   ];
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
+        <View style={styles.headerArea}>
+          <Text style={styles.headerTitle}>Bảng điều khiển kho</Text>
+          <Text style={styles.headerSubtitle}>
+            Tổng quan hoạt động kho và lô hàng
+          </Text>
+        </View>
+        <DashboardSkeleton />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
-      {/* Toast container is registered globally in App.js */}
 
       <View style={styles.headerArea}>
         <Text style={styles.headerTitle}>Bảng điều khiển kho</Text>
@@ -152,138 +177,79 @@ export default function WarehouseDashboardScreen({ navigation }) {
         </Text>
       </View>
 
-      {loading ? (
-        <ActivityIndicator
-          color={COLORS.secondary}
-          size="large"
-          style={styles.loading}
-        />
-      ) : (
-        <FlatList
-          data={quickActions}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.content}
-          ListHeaderComponent={() => (
-            <View>
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Hôm nay</Text>
-                  <Text style={styles.statValue}>{stats.todayOrders}</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Tồn kho</Text>
-                  <Text style={styles.statValue}>{stats.inHubInventory}</Text>
-                </View>
+      <FlatList
+        data={quickActions}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.content}
+        ListEmptyComponent={
+          <EmptyState
+            icon="view-grid-outline"
+            title="Không có chức năng nhanh"
+            message="Không có chức năng nhanh nào cho vai trò hiện tại."
+          />
+        }
+        ListHeaderComponent={() => (
+          <View style={styles.activitySection}>
+            <Text style={styles.sectionTitle}>Thống kê đơn hàng</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Đơn hôm nay</Text>
+                <Text style={styles.statValue}>{stats.todayOrders}</Text>
               </View>
-              <View style={styles.widgetGrid}>
-                <View style={styles.widgetCard}>
-                  <Text style={styles.widgetTitle}>Tổng đơn</Text>
-                  <Text style={styles.widgetValue}>{slaSummary.total}</Text>
-                  <View
-                    style={[
-                      styles.widgetBadge,
-                      { backgroundColor: COLORS.primary },
-                    ]}
-                  >
-                    <Text style={styles.widgetBadgeText}>Tổng</Text>
-                  </View>
-                </View>
-                <View style={styles.widgetCard}>
-                  <Text style={styles.widgetTitle}>Đúng SLA</Text>
-                  <Text style={styles.widgetValue}>
-                    {Math.max(
-                      0,
-                      slaSummary.total -
-                        slaSummary.warning -
-                        slaSummary.overdue,
-                    )}
-                  </Text>
-                  <View
-                    style={[
-                      styles.widgetBadge,
-                      { backgroundColor: COLORS.SLA_ON_TIME },
-                    ]}
-                  >
-                    <Text style={styles.widgetBadgeText}>Đúng SLA</Text>
-                  </View>
-                </View>
-                <View style={styles.widgetCard}>
-                  <Text style={styles.widgetTitle}>Sắp trễ</Text>
-                  <Text style={styles.widgetValue}>{slaSummary.warning}</Text>
-                  <View
-                    style={[
-                      styles.widgetBadge,
-                      { backgroundColor: COLORS.SLA_WARNING },
-                    ]}
-                  >
-                    <Text style={styles.widgetBadgeText}>Cảnh báo</Text>
-                  </View>
-                </View>
-                <View style={styles.widgetCard}>
-                  <Text style={styles.widgetTitle}>Quá SLA</Text>
-                  <Text style={styles.widgetValue}>{slaSummary.overdue}</Text>
-                  <View
-                    style={[
-                      styles.widgetBadge,
-                      { backgroundColor: COLORS.SLA_OVERDUE },
-                    ]}
-                  >
-                    <Text style={styles.widgetBadgeText}>Quá SLA</Text>
-                  </View>
-                </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Tồn kho</Text>
+                <Text style={styles.statValue}>{stats.inHubInventory}</Text>
               </View>
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>COD chờ</Text>
-                  <Text style={styles.statValue}>{stats.pendingShippers}</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Tiền COD</Text>
-                  <Text style={styles.statValue}>
-                    {stats.pendingCodTotal.toLocaleString()} đ
-                  </Text>
-                </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>COD chưa xử lý</Text>
+                <Text style={styles.statValue}>{stats.pendingShippers}</Text>
               </View>
-              {[1, 2].includes(Number(user?.role_id)) && (
-                <View>
-                  <Text style={styles.sectionTitle}>SLA & Trễ hạn</Text>
-                  <View style={styles.slaRow}>
-                    <View style={styles.slaCard}>
-                      <Text style={styles.slaLabel}>Đang giữ</Text>
-                      <Text style={styles.slaValue}>{slaSummary.total}</Text>
-                    </View>
-                    <View style={styles.slaCard}>
-                      <Text style={styles.slaLabel}>Cảnh báo</Text>
-                      <Text style={styles.slaValue}>{slaSummary.warning}</Text>
-                    </View>
-                    <View style={styles.slaCard}>
-                      <Text style={styles.slaLabel}>Trễ hạn</Text>
-                      <Text style={styles.slaValue}>{slaSummary.overdue}</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-              <Text style={styles.sectionTitle}>Chức năng nhanh</Text>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Tiền COD</Text>
+                <Text style={styles.statValue}>
+                  {stats.pendingCodTotal.toLocaleString()} d
+                </Text>
+              </View>
             </View>
-          )}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => navigation.navigate(item.id)}
-            >
-              <View style={styles.iconWrap}>
-                <Ionicons name={item.icon} size={26} color={COLORS.primary} />
+
+            {[1, 2].includes(Number(user?.role_id)) ? (
+              <View style={styles.activitySection}>
+                <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
+                <View style={styles.activityRow}>
+                  <Text style={styles.activityLabel}>Tổng đơn SLA</Text>
+                  <Text style={styles.activityValue}>{slaSummary.total}</Text>
+                </View>
+                <View style={styles.activityRow}>
+                  <Text style={styles.activityLabel}>Cảnh báo SLA</Text>
+                  <Text style={styles.activityValue}>{slaSummary.warning}</Text>
+                </View>
+                <View style={styles.activityRow}>
+                  <Text style={styles.activityLabel}>Quá SLA</Text>
+                  <Text style={styles.activityValue}>{slaSummary.overdue}</Text>
+                </View>
               </View>
-              <Text style={styles.actionLabel}>{item.label}</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={COLORS.textMuted}
-              />
-            </TouchableOpacity>
-          )}
-        />
-      )}
+            ) : null}
+
+            <Text style={styles.sectionTitle}>Chức năng nhanh</Text>
+          </View>
+        )}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate(item.id)}
+          >
+            <View style={styles.iconWrap}>
+              <Ionicons name={item.icon} size={26} color={COLORS.primary} />
+            </View>
+            <Text style={styles.actionLabel}>{item.label}</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={COLORS.textMuted}
+            />
+          </TouchableOpacity>
+        )}
+      />
     </View>
   );
 }

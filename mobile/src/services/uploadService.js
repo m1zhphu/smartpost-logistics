@@ -18,7 +18,7 @@ export const uploadService = {
         headers: createAuthHeaders(token),
         body: formData,
       },
-      "Khong the tai anh POD len server.",
+      "Không thể tải ảnh POD lên server.",
     );
 
     return data ? data.image_url : "";

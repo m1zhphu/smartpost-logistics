@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useReducer } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -26,6 +25,7 @@ import { isRouteAllowed } from "../utils/roleUtils";
 import { debounce } from "../utils/debounce";
 import { COLORS } from "../constants/colors";
 import { ITEM_TYPES } from "../constants/waybillFormOptions";
+import Toast from "react-native-toast-message";
 
 const TABS = ["Gửi & nhận", "Hàng hóa", "Dịch vụ", "Cước phí"];
 
@@ -173,11 +173,12 @@ export default function CreateWaybillScreen({ navigation, route }) {
 
   useEffect(() => {
     if (!isRouteAllowed(user, "CreateWaybill")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
   }, [user]);
 
@@ -297,7 +298,11 @@ export default function CreateWaybillScreen({ navigation, route }) {
           }
         }
       } catch (error) {
-        Alert.alert("Lỗi", "Không thể tải dữ liệu danh mục.");
+        Toast.show({
+          type: "error",
+          text1: "Lỗi hệ thống",
+          text2: "Không thể tải dữ liệu.",
+        });
       } finally {
         setDataLoading(false);
       }
@@ -447,23 +452,37 @@ export default function CreateWaybillScreen({ navigation, route }) {
 
   const handleSubmit = async () => {
     Keyboard.dismiss();
-    if (!form.receiver_phone.match(/^[0-9]{10}$/))
-      return Alert.alert(
-        "Lỗi dữ liệu",
-        "Số điện thoại người nhận phải đúng 10 chữ số.",
-      );
+    if (!form.receiver_phone.match(/^[0-9]{10}$/)) return;
+    Toast.show({
+      type: "error",
+      text1: "Lỗi dữ liệu",
+      text2: "Số điện thoại người nhận phải đúng 10 chữ số.",
+    });
     const weight = Number(form.weight);
     if (isNaN(weight) || weight <= 0)
-      return Alert.alert("Lỗi dữ liệu", "Khối lượng phải lớn hơn 0 kg.");
+      return Toast.show({
+        type: "error",
+        text1: "Lỗi dữ liệu",
+        text2: "Khối lượng phải lớn hơn 0 kg.",
+      });
     if (!form.customer_id)
-      return Alert.alert("Thiếu thông tin", "Vui lòng chọn khách hàng gửi.");
+      return Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng chọn khách hàng gửi.",
+      });
     if (!form.dest_hub_id)
-      return Alert.alert("Thiếu thông tin", "Vui lòng chọn bưu cục nhận hàng.");
+      return Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng chọn bưu cục nhận hàng.",
+      });
     if (!form.receiver_name || (!form.receiver_address && !receiverProvince))
-      return Alert.alert(
-        "Thiếu thông tin",
-        "Vui lòng nhập đủ tên và địa chỉ người nhận.",
-      );
+      return Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập đủ tên và địa chỉ người nhận.",
+      });
 
     const addressParts = [
       form.receiver_address_detail,
@@ -491,10 +510,18 @@ export default function CreateWaybillScreen({ navigation, route }) {
         shipping_fee: fees.total,
         receiver_address: fullReceiverAddress,
       });
-      Alert.alert("Thành công", `Tạo vận đơn ${res.waybill_code} thành công.`);
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: `Tạo vận đơn ${res.waybill_code} thành công.`,
+      });
       navigation.goBack();
     } catch (error) {
-      Alert.alert("Lỗi hệ thống", error.message || "Lưu đơn hàng thất bại.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi hệ thống",
+        text2: error.message || "Lưu đơn hàng thất bại.",
+      });
     } finally {
       setSubmitLoading(false);
     }
@@ -502,7 +529,11 @@ export default function CreateWaybillScreen({ navigation, route }) {
 
   const handleCreateCustomer = async () => {
     if (!newCustForm.name || !newCustForm.phone)
-      return Alert.alert("Lỗi", "Vui lòng nhập tên và số điện thoại.");
+      return Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Vui lòng nhập tên và số điện thoại.",
+      });
     setIsCreatingCust(true);
     try {
       const payload = {
@@ -517,12 +548,20 @@ export default function CreateWaybillScreen({ navigation, route }) {
       const newCust = await waybillService.createCustomer(user.token, payload);
       setCustomers([newCust, ...customers]);
       setForm({ ...form, customer_id: String(newCust.customer_id) });
-      Alert.alert("Thành công", "Đã lưu thông tin khách hàng mới.");
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Đã lưu thông tin khách hàng mới.",
+      });
       setShowCreateCustModal(false);
       setShowCustModal(false);
       setNewCustForm({ name: "", phone: "", address: "" });
     } catch (error) {
-      Alert.alert("Lỗi", error.message || "Không thể tạo khách hàng lúc này.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: error.message || "Không thể tạo khách hàng lúc này.",
+      });
     } finally {
       setIsCreatingCust(false);
     }
@@ -993,7 +1032,11 @@ export default function CreateWaybillScreen({ navigation, route }) {
               ]}
               onPress={() => {
                 if (!receiverProvince)
-                  return Alert.alert("Lỗi", "Chọn Tỉnh/TP trước.");
+                  return Toast.show({
+                    type: "error",
+                    text1: "Lỗi",
+                    text2: "Chọn Tỉnh/TP trước.",
+                  });
                 setDistrictSearch("");
                 setShowDistrictModal(true);
               }}
@@ -1024,7 +1067,11 @@ export default function CreateWaybillScreen({ navigation, route }) {
               ]}
               onPress={() => {
                 if (!receiverDistrict)
-                  return Alert.alert("Lỗi", "Chọn Quận/Huyện trước.");
+                  return Toast.show({
+                    type: "error",
+                    text1: "Lỗi",
+                    text2: "Chọn Quận/Huyện trước.",
+                  });
                 setWardSearch("");
                 setShowWardModal(true);
               }}

@@ -1,6 +1,5 @@
 ﻿import React, { useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   Keyboard,
   Modal,
@@ -9,177 +8,180 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Vibration,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import UniversalScanner from "../components/UniversalScanner";
 import ScanBaggingStyles from "../styles/ScanBaggingStyles";
 import { bagService } from "../services/bagService";
-import { useBaggingSession } from "../hooks/useBaggingSession";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
 import { isRouteAllowed } from "../utils/roleUtils";
+import ConfirmModal from "../components/ConfirmModal";
 
 export default function ScanBaggingScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
   const { user } = useUser();
-  const { sessionState, initBag, addScannedBill, resetSession } =
-    useBaggingSession();
-  const [bagInitModalVisible, setBagInitModalVisible] = useState(false);
-  const [pendingBagCode, setPendingBagCode] = useState("");
-  const [estimatedCountInput, setEstimatedCountInput] = useState("");
+  const [bagCode, setBagCode] = useState("");
+  const [scannedItems, setScannedItems] = useState([]);
   const [manualCode, setManualCode] = useState("");
+  const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [baggingErrorModalVisible, setBaggingErrorModalVisible] =
+    useState(false);
+  const [baggingErrorMessage, setBaggingErrorMessage] = useState("");
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
 
   useEffect(() => {
     if (!isRouteAllowed(user, "ScanBagging")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
-  }, [user]);
+  }, [navigation, user]);
 
-  const handleScannerScan = (code) => {
-    const scannedValue = String(code || "").trim();
-    if (!scannedValue) return;
-
-    if (!sessionState.bagCode) {
-      setPendingBagCode(scannedValue);
-      setEstimatedCountInput("");
-      setBagInitModalVisible(true);
-      return;
-    }
-
-    if (sessionState.scannedBills.includes(scannedValue)) {
-      return;
-    }
-
-    addScannedBill(scannedValue);
-  };
-
-  const handleConfirmBagInit = async () => {
-    const estimatedCount = Number(estimatedCountInput);
-    if (!pendingBagCode) {
-      return;
-    }
-
-    if (Number.isNaN(estimatedCount) || estimatedCount < 1) {
-      Alert.alert(
-        "Thiếu thông tin",
-        "Số lượng bill ước tính phải là số nguyên lớn hơn 0.",
-      );
+  const handleCreateBag = async () => {
+    if (!user?.primary_hub_id) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không xác định được bưu cục hiện tại. Vui lòng đăng nhập lại.",
+      });
       return;
     }
 
     setLoading(true);
     try {
-      await bagService.createBag(user.token, {
-        bag_code: pendingBagCode,
-        estimated_count: estimatedCount,
-      });
-      initBag({ bagCode: pendingBagCode, estimatedCount });
+      const timeStr = new Date()
+        .toISOString()
+        .replace(/[^0-9]/g, "")
+        .slice(2, 14);
+      const code = `BG-${user.primary_hub_id}-${timeStr}`;
+
+      setBagCode(code);
+      setScannedItems([]);
+      setIsLocked(true);
       Toast.show({
         type: "success",
         text1: "Tạo túi thành công",
-        text2: `Mã túi: ${pendingBagCode}`,
+        text2: `Mã túi: ${code}`,
       });
-      setBagInitModalVisible(false);
-      setPendingBagCode("");
     } catch (error) {
-      Alert.alert("Lỗi tạo túi", error.message || "Không thể tạo túi mới.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi tạo túi",
+        text2: error.message || "Không thể tạo túi mới.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleScanItem = async (waybillCode) => {
+    if (!waybillCode) return;
+
+    if (!bagCode) {
+      Toast.show({
+        type: "error",
+        text1: "Tạo túi trước",
+        text2: "Vui lòng tạo túi mới trước khi quét vận đơn.",
+      });
+      return;
+    }
+
+    if (scannedItems.find((item) => item.code === waybillCode)) return;
+
+    try {
+      await bagService.scanBagIn(
+        user.token,
+        bagCode,
+        user.primary_hub_id,
+        waybillCode,
+      );
+
+      const timeStr = new Date().toLocaleTimeString("vi-VN", { hour12: false });
+      setScannedItems((prev) => [
+        { code: waybillCode, time: timeStr },
+        ...prev,
+      ]);
+    } catch (error) {
+      if (error.status === 400) {
+        Vibration.vibrate([0, 120, 40, 120]);
+        setBaggingErrorMessage(
+          "LỖI! Đơn hàng chưa được xác thực Bill. Không thể xuất kho!",
+        );
+        setBaggingErrorModalVisible(true);
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Lỗi không xác định",
+          text2: error.message || "Đã xảy ra lỗi, vui lòng thử lại sau.",
+        });
+      }
+    }
+  };
+
   const handleManualSubmit = () => {
     Keyboard.dismiss();
-    if (!manualCode.trim()) return;
-    if (!sessionState.bagCode) {
-      Alert.alert("Tạo túi trước", "Vui lòng quét mã túi trước khi thêm bill.");
-      return;
-    }
-
-    const code = manualCode.trim();
-    if (sessionState.scannedBills.includes(code)) {
+    if (manualCode.trim()) {
+      handleScanItem(manualCode.trim());
       setManualCode("");
-      return;
     }
+  };
 
-    addScannedBill(code);
+  const finishBagging = () => {
+    if (!bagCode) return;
+    setShowFinishConfirm(true);
+  };
+
+  const executeFinishBagging = () => {
+    Toast.show({
+      type: "success",
+      text1: "Hoàn tất",
+      text2: `Đã hoàn tất túi ${bagCode}.`,
+    });
+    setShowFinishConfirm(false);
+    setBagCode("");
+    setScannedItems([]);
     setManualCode("");
+    setIsLocked(false);
   };
 
-  const handleFinishBag = () => {
-    if (!sessionState.bagCode) {
-      Alert.alert("Chưa có túi", "Vui lòng quét mã túi trước khi chốt.");
-      return;
-    }
-
-    if (sessionState.scannedBills.length === 0) {
-      Alert.alert(
-        "Chưa có bill",
-        "Vui lòng quét ít nhất một bill trước khi chốt túi.",
-      );
-      return;
-    }
-
-    Alert.alert(
-      "Chốt Túi & Mang về kho",
-      `Bạn có chắc chắn muốn chốt túi ${sessionState.bagCode} với ${sessionState.scannedBills.length} bill?`,
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xác nhận",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await bagService.addBillsToBag(
-                user.token,
-                sessionState.bagCode,
-                sessionState.scannedBills,
-              );
-              Toast.show({
-                type: "success",
-                text1: "Chốt túi thành công",
-                text2: `Đã thêm ${sessionState.scannedBills.length} bill vào túi.`,
-              });
-              resetSession();
-            } catch (error) {
-              Alert.alert(
-                "Lỗi chốt túi",
-                error.message || "Không thể chốt túi. Vui lòng thử lại.",
-              );
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ],
-    );
+  const handleResetBag = () => {
+    setBagCode("");
+    setScannedItems([]);
+    setManualCode("");
+    setIsLocked(false);
   };
-
-  const { bagCode, estimatedCount, scannedBills } = sessionState;
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={ScanBaggingStyles.container}>
+    <View style={ScanBaggingStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-      <View style={[ScanBaggingStyles.cameraArea, { paddingTop: insets.top + 12 }]}> 
-        <UniversalScanner
-          title={bagCode ? `Túi: ${bagCode}` : "Quét mã túi để bắt đầu"}
-          instruction={
-            bagCode
-              ? "Quét mã bill để thêm vào túi"
-              : "Quét mã túi vỏ túi để khởi tạo phiên bagging"
-          }
-          onScan={handleScannerScan}
-        />
+      <View style={ScanBaggingStyles.cameraArea}>
+        {bagCode ? (
+          <UniversalScanner
+            title={`Túi: ${bagCode}`}
+            instruction="Quét mã vận đơn để thêm vào túi"
+            onScan={handleScanItem}
+          />
+        ) : (
+          <View style={ScanBaggingStyles.cameraOverlayLock}>
+            <Ionicons
+              name="archive-outline"
+              size={60}
+              color="rgba(255,255,255,0.6)"
+            />
+            <Text style={ScanBaggingStyles.lockText}>
+              Nhấn Tạo Túi Mới để bắt đầu
+            </Text>
+          </View>
+        )}
 
-        <View style={[ScanBaggingStyles.camHeader, { top: 8 }]}> 
+        <View style={ScanBaggingStyles.camHeader}>
           <TouchableOpacity
             style={ScanBaggingStyles.backBtn}
             onPress={() => navigation.goBack()}
@@ -200,7 +202,7 @@ export default function ScanBaggingScreen({ navigation }) {
         </View>
 
         {bagCode ? (
-          <View style={[ScanBaggingStyles.manualInputContainer, { bottom: 16 }]}> 
+          <View style={ScanBaggingStyles.manualInputContainer}>
             <View style={ScanBaggingStyles.inputBox}>
               <Ionicons
                 name="search"
@@ -210,7 +212,7 @@ export default function ScanBaggingScreen({ navigation }) {
               />
               <TextInput
                 style={ScanBaggingStyles.input}
-                placeholder="Nhập mã bill thủ công..."
+                placeholder="Nhập mã đơn thủ công..."
                 placeholderTextColor="#9fb1a5"
                 value={manualCode}
                 onChangeText={setManualCode}
@@ -228,34 +230,63 @@ export default function ScanBaggingScreen({ navigation }) {
         ) : null}
       </View>
 
-      <View style={[ScanBaggingStyles.bottomSheet, { paddingBottom: insets.bottom + 16 }]}> 
-        {bagCode ? (
+      <View style={ScanBaggingStyles.bottomSheet}>
+        {!bagCode ? (
+          <View style={ScanBaggingStyles.configArea}>
+            <View style={ScanBaggingStyles.cardHeaderRow}>
+              <View style={ScanBaggingStyles.iconCircleWarning}>
+                <Ionicons
+                  name="archive-outline"
+                  size={20}
+                  color={COLORS.processScanOrange}
+                />
+              </View>
+              <Text style={ScanBaggingStyles.configTitle}>TẠO TÚI MỚI</Text>
+            </View>
+
+            <Text style={ScanBaggingStyles.label}>
+              Tạo mã túi tự động, sau đó quét mã vận đơn để thêm vào túi.
+            </Text>
+
+            <TouchableOpacity
+              style={ScanBaggingStyles.startBtn}
+              onPress={handleCreateBag}
+              disabled={loading}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={24}
+                color="#FFF"
+                style={{ marginRight: 8 }}
+              />
+              <Text style={ScanBaggingStyles.startBtnText}>
+                {loading ? "Đang tạo..." : "TẠO TÚI MỚI"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
           <>
             <View style={ScanBaggingStyles.sheetHeader}>
               <View>
-                <Text style={ScanBaggingStyles.sheetTitle}>Mã túi</Text>
-                <Text style={ScanBaggingStyles.bagCodeText}>{bagCode}</Text>
+                <Text style={ScanBaggingStyles.sheetTitle}>Chi tiết túi</Text>
+                <Text style={ScanBaggingStyles.bagCodeText}>
+                  Mã: <Text style={{ color: COLORS.secondary }}>{bagCode}</Text>
+                </Text>
               </View>
               <View style={ScanBaggingStyles.badgeCount}>
                 <Text
                   style={{ color: "#FFF", fontWeight: "bold", fontSize: 15 }}
                 >
-                  {scannedBills.length}
+                  {scannedItems.length}
                 </Text>
               </View>
             </View>
 
-            <View style={ScanBaggingStyles.progressCard}>
-              <Text style={ScanBaggingStyles.progressLabel}>
-                Đã quét: {scannedBills.length} / Ước tính: {estimatedCount}
-              </Text>
-            </View>
-
             <FlatList
-              data={scannedBills}
-              keyExtractor={(item) => item}
+              data={scannedItems}
+              keyExtractor={(item) => item.code}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={[ScanBaggingStyles.listContent, { paddingBottom: insets.bottom + 120 }]}
+              contentContainerStyle={ScanBaggingStyles.listContent}
               renderItem={({ item, index }) => {
                 const isFirst = index === 0;
                 return (
@@ -280,7 +311,7 @@ export default function ScanBaggingScreen({ navigation }) {
                             isFirst && ScanBaggingStyles.itemCodePrimary,
                           ]}
                         >
-                          {item}
+                          {item.code}
                         </Text>
                         <Text
                           style={[
@@ -288,17 +319,27 @@ export default function ScanBaggingScreen({ navigation }) {
                             isFirst && ScanBaggingStyles.itemTimePrimary,
                           ]}
                         >
-                          Đã quét
+                          {item.time} - Đã quét
                         </Text>
                       </View>
                     </View>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={24}
+                      color={isFirst ? "#fff" : COLORS.secondary}
+                    />
                   </View>
                 );
               }}
               ListEmptyComponent={
                 <View style={ScanBaggingStyles.emptyWrap}>
+                  <Ionicons
+                    name="briefcase-outline"
+                    size={60}
+                    color="#d1d8d3"
+                  />
                   <Text style={ScanBaggingStyles.emptyText}>
-                    Chưa có bill nào được quét.
+                    Quét mã vận đơn để thêm vào túi.
                   </Text>
                 </View>
               }
@@ -307,95 +348,68 @@ export default function ScanBaggingScreen({ navigation }) {
             <View style={ScanBaggingStyles.summaryFooter}>
               <TouchableOpacity
                 style={ScanBaggingStyles.finishBtn}
-                onPress={handleFinishBag}
-                disabled={loading}
+                onPress={finishBagging}
               >
+                <Ionicons
+                  name="lock-closed"
+                  size={22}
+                  color="#FFF"
+                  style={{ marginRight: 8 }}
+                />
                 <Text style={ScanBaggingStyles.finishBtnText}>
-                  CHỐT TÚI & MANG VỀ KHO
+                  HOÀN TẤT TÚI ({scannedItems.length})
                 </Text>
               </TouchableOpacity>
             </View>
-          </>
-        ) : (
-          <View style={ScanBaggingStyles.configArea}>
-            <View style={ScanBaggingStyles.cardHeaderRow}>
-              <View style={ScanBaggingStyles.iconCircleWarning}>
-                <Ionicons
-                  name="archive-outline"
-                  size={20}
-                  color={COLORS.processScanOrange}
-                />
-              </View>
-              <Text style={ScanBaggingStyles.configTitle}>KHỞI TẠO TÚI</Text>
-            </View>
-            <Text style={ScanBaggingStyles.label}>
-              Quét mã vỏ túi để khởi tạo phiên đóng túi, sau đó quét bill vào
-              túi.
-            </Text>
             <TouchableOpacity
-              style={ScanBaggingStyles.startBtn}
-              onPress={() => setBagInitModalVisible(true)}
+              style={[
+                ScanBaggingStyles.startBtn,
+                { marginTop: 12, backgroundColor: "#555" },
+              ]}
+              onPress={handleResetBag}
             >
-              <Ionicons
-                name="barcode-outline"
-                size={24}
-                color="#FFF"
-                style={{ marginRight: 8 }}
-              />
-              <Text style={ScanBaggingStyles.startBtnText}>
-                NHẬP MÃ TÚI THỦ CÔNG
-              </Text>
+              <Text style={ScanBaggingStyles.startBtnText}>TẠO LẠI TÚI</Text>
             </TouchableOpacity>
-          </View>
+          </>
         )}
       </View>
 
-      <Modal visible={bagInitModalVisible} transparent animationType="slide">
-        <View style={ScanBaggingStyles.modalOverlay}>
-          <View style={ScanBaggingStyles.modalContent}>
-            <View style={ScanBaggingStyles.modalHeader}>
-              <Text style={ScanBaggingStyles.modalTitle}>Tạo túi mới</Text>
-              <TouchableOpacity onPress={() => setBagInitModalVisible(false)}>
-                <Ionicons name="close" size={24} color={COLORS.primary} />
-              </TouchableOpacity>
+      <Modal
+        visible={baggingErrorModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBaggingErrorModalVisible(false)}
+      >
+        <View style={ScanBaggingStyles.errorModalOverlay}>
+          <View style={ScanBaggingStyles.errorModalCard}>
+            <View style={ScanBaggingStyles.errorModalIconWrap}>
+              <Ionicons name="warning" size={36} color="#DC2626" />
             </View>
-            <Text style={ScanBaggingStyles.label}>
-              Quét trực tiếp mã túi hoặc nhập mã thủ công ở đây.
+            <Text style={ScanBaggingStyles.errorModalTitle}>LỖI!</Text>
+            <Text style={ScanBaggingStyles.errorModalText}>
+              {baggingErrorMessage}
             </Text>
-            <View style={ScanBaggingStyles.inputBox}>
-              <TextInput
-                style={ScanBaggingStyles.input}
-                placeholder="Mã túi (BAG_XXX)"
-                placeholderTextColor="#9fb1a5"
-                value={pendingBagCode}
-                onChangeText={setPendingBagCode}
-              />
-            </View>
-            <Text style={ScanBaggingStyles.label}>
-              Nhập số lượng bill ước tính lấy từ khách.
-            </Text>
-            <View style={ScanBaggingStyles.inputBox}>
-              <TextInput
-                style={ScanBaggingStyles.input}
-                placeholder="Ước tính số bill"
-                placeholderTextColor="#9fb1a5"
-                keyboardType="number-pad"
-                value={estimatedCountInput}
-                onChangeText={setEstimatedCountInput}
-              />
-            </View>
             <TouchableOpacity
-              style={[ScanBaggingStyles.startBtn, { marginTop: 16 }]}
-              onPress={handleConfirmBagInit}
-              disabled={loading}
+              style={ScanBaggingStyles.errorModalCloseBtn}
+              onPress={() => setBaggingErrorModalVisible(false)}
             >
-              <Text style={ScanBaggingStyles.startBtnText}>
-                {loading ? "Đang xử lý..." : "KHỞI TẠO TÚI"}
-              </Text>
+              <Text style={ScanBaggingStyles.errorModalCloseText}>ĐÓNG</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      <ConfirmModal
+        visible={showFinishConfirm}
+        title="Chốt túi hàng"
+        description={`Bạn có chắc chắn muốn hoàn tất túi ${bagCode} với ${scannedItems.length} đơn?`}
+        cancelText="Hủy"
+        confirmText="Xác nhận"
+        tone="info"
+        iconName="lock-closed"
+        onCancel={() => setShowFinishConfirm(false)}
+        onConfirm={executeFinishBagging}
+      />
+    </View>
   );
 }

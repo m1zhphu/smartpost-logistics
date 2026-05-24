@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Linking,
   Modal,
@@ -19,6 +18,8 @@ import { useUser } from "../context/UserContext";
 import { useWaybill } from "../context/WaybillContext";
 import { COLORS } from "../constants/colors";
 import { isRouteAllowed } from "../utils/roleUtils";
+import Toast from "react-native-toast-message";
+import ConfirmModal from "../components/ConfirmModal";
 
 const getStartOfToday = () => {
   const date = new Date();
@@ -62,6 +63,7 @@ export default function WaybillListScreen({ navigation }) {
   const [actionItem, setActionItem] = useState(null);
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [newWeight, setNewWeight] = useState("");
   const [searchTimer, setSearchTimer] = useState(null);
 
@@ -80,11 +82,12 @@ export default function WaybillListScreen({ navigation }) {
 
   useEffect(() => {
     if (!isRouteAllowed(user, "WaybillList")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
   }, [user]);
 
@@ -119,7 +122,11 @@ export default function WaybillListScreen({ navigation }) {
       );
       setWaybills(response && response.items ? response.items : []);
     } catch (error) {
-      Alert.alert("Lỗi", error.message || "Không thể tải danh sách vận đơn.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: error.message || "Không thể tải danh sách vận đơn.",
+      });
     } finally {
       setLoading(false);
     }
@@ -140,15 +147,21 @@ export default function WaybillListScreen({ navigation }) {
   };
 
   const handleExportExcel = async () => {
-    Alert.alert(
-      "Thông báo",
-      "Tính năng xuất Excel sẽ được kích hoạt sau khi bổ sung gói chia sẻ tệp cho project này.",
-    );
+    Toast.show({
+      type: "info",
+      text1: "Thông báo",
+      text2:
+        "Tính năng xuất Excel sẽ được kích hoạt sau khi bổ sung gói chia sẻ tệp cho project này.",
+    });
   };
 
   const handleUpdateWeight = async () => {
     if (!newWeight || isNaN(Number(newWeight))) {
-      Alert.alert("Lỗi", "Vui lòng nhập số hợp lệ.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Vui lòng nhập số hợp lệ.",
+      });
       return;
     }
 
@@ -158,45 +171,54 @@ export default function WaybillListScreen({ navigation }) {
         actionItem.waybill_code,
         Number(newWeight),
       );
-      Alert.alert("Thành công", "Đã cập nhật trọng lượng.");
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Đã cập nhật trọng lượng.",
+      });
       setShowWeightModal(false);
       setActionItem(null);
       setNewWeight("");
       loadWaybills();
     } catch (error) {
-      Alert.alert("Lỗi", error.message || "Thất bại.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: error.message || "Thất bại.",
+      });
     }
   };
 
   const handleCancelWaybill = () => {
-    Alert.alert(
-      "Cảnh báo nguy hiểm",
-      `Hủy vận đơn ${actionItem.waybill_code}? Hành động này không thể hoàn tác.`,
-      [
-        { text: "Quay lại", style: "cancel" },
-        {
-          text: "Hủy đơn",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await waybillService.cancelWaybill(
-                user.token,
-                actionItem.waybill_code,
-              );
-              Alert.alert("Thành công", "Đã hủy đơn hàng.");
-              setActionItem(null);
-              loadWaybills();
-            } catch (error) {
-              Alert.alert("Lỗi", error.message || "Không thể hủy đơn này.");
-            }
-          },
-        },
-      ],
-    );
+    setShowCancelConfirm(true);
+  };
+
+  const executeCancelWaybill = async () => {
+    if (!actionItem) return;
+
+    const waybillCode = actionItem.waybill_code;
+    setShowCancelConfirm(false);
+
+    try {
+      await waybillService.cancelWaybill(user.token, waybillCode);
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Đã hủy đơn hàng.",
+      });
+      setActionItem(null);
+      loadWaybills();
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: error.message || "Không thể hủy đơn này.",
+      });
+    }
   };
 
   const openMap = (address) => {
-    const url = `http://maps.google.com/?q=${encodeURIComponent(address || "")}`;
+    const url = `https://maps.google.com/?q=${encodeURIComponent(address || "")}`;
     Linking.openURL(url);
   };
 
@@ -339,7 +361,6 @@ export default function WaybillListScreen({ navigation }) {
   return (
     <View style={WaybillListStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
-
       <View style={WaybillListStyles.headerArea}>
         <View style={WaybillListStyles.headerCircleDecoration} />
 
@@ -390,7 +411,6 @@ export default function WaybillListScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
-
       {isLoading ? (
         <ActivityIndicator
           size="large"
@@ -414,14 +434,12 @@ export default function WaybillListScreen({ navigation }) {
           }
         />
       )}
-
       <TouchableOpacity
         style={WaybillListStyles.fab}
         onPress={() => navigation.navigate("CreateWaybill")}
       >
         <Ionicons name="add" size={32} color={COLORS.white} />
       </TouchableOpacity>
-
       <Modal visible={showFilterModal} animationType="fade" transparent>
         <TouchableOpacity
           style={WaybillListStyles.modalOverlay}
@@ -587,7 +605,6 @@ export default function WaybillListScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
-
       <Modal
         visible={!!actionItem && !showWeightModal && !showDetailModal}
         animationType="fade"
@@ -710,7 +727,6 @@ export default function WaybillListScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
-
       <Modal visible={showDetailModal} animationType="slide" transparent>
         <TouchableOpacity
           style={WaybillListStyles.modalOverlay}
@@ -796,7 +812,6 @@ export default function WaybillListScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
-
       <Modal visible={showWeightModal} animationType="slide" transparent>
         <View style={WaybillListStyles.modalOverlay}>
           <View style={WaybillListStyles.modalContent}>
@@ -851,6 +866,17 @@ export default function WaybillListScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+      <ConfirmModal
+        visible={showCancelConfirm}
+        title="Cảnh báo nguy hiểm"
+        description={`Hủy vận đơn ${actionItem?.waybill_code || ""}? Hành động này không thể hoàn tác.`}
+        cancelText="Quay lại"
+        confirmText="Hủy đơn"
+        tone="danger"
+        iconName="warning"
+        onCancel={() => setShowCancelConfirm(false)}
+        onConfirm={executeCancelWaybill}
+      />{" "}
     </View>
   );
 }

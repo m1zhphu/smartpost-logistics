@@ -1,9 +1,10 @@
 import React from "react";
+import { StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
+import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 import HomeScreen from "./src/screens/HomeScreen";
 import SuccessScreen from "./src/screens/SuccessScreen";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -37,11 +38,16 @@ import { QueueProvider } from "./src/context/QueueContext";
 import { UserProvider, useUser } from "./src/context/UserContext";
 import { WaybillProvider } from "./src/context/WaybillContext";
 import { getRoleKey, roleRouteGroups } from "./src/utils/roleUtils";
+import { COLORS } from "./src/constants/colors";
+import {
+  BORDER_RADIUS,
+  SHADOWS,
+  SPACING,
+  TYPOGRAPHY,
+} from "./src/constants/theme";
 import "./src/services/locationService";
 import LocationGuard from "./src/components/LocationGuard";
-import Toast from "react-native-toast-message";
 
-// Cấu hình xử lý notification khi app mở
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -52,25 +58,96 @@ Notifications.setNotificationHandler({
 
 const Stack = createStackNavigator();
 
+const HIDE_GLOBAL_HEADER_ROUTES = new Set([
+  "Login",
+  "Register",
+  "Home",
+  "CameraPOD",
+]);
+const ROUTE_TITLES = {
+  Login: "Dang nhap",
+  Register: "Dang ky",
+  Home: "Trang chu",
+  Profile: "Ho so ca nhan",
+  CreateWaybill: "Tao van don",
+  Success: "Tao don thanh cong",
+  OrderDetail: "Chi tiet van don",
+  ProcessedList: "Danh sach xu ly",
+  ScanBagging: "Dong tui",
+  ScanInHub: "Nhap kho",
+  ScanManifestLoad: "Len xe",
+  ScanManifestUnload: "Xuong xe",
+  ScanTask: "Quet nhiem vu",
+  HubManagement: "Quan ly buu cuc",
+  ShopStatement: "Doi soat shop",
+  WarehouseDashboard: "Tong quan kho",
+  WarehouseMenu: "Menu kho",
+  AccountingDashboard: "Tong quan ke toan",
+  AccountantMenu: "Menu ke toan",
+  AdminOperations: "Van hanh he thong",
+  StaffManagement: "Quan ly nhan su",
+  UpdateStatus: "Cap nhat trang thai",
+  WaybillList: "Danh sach van don",
+  PricingRules: "Bang gia",
+  AssignShipper: "Phan cong shipper",
+  CashConfirm: "Xac nhan COD",
+  CameraPOD: "Chup anh POD",
+  TaskList: "Danh sach nhiem vu",
+  TaskDetail: "Chi tiet nhiem vu",
+};
+
+const toastConfig = {
+  success: (props) => (
+    <BaseToast
+      {...props}
+      style={[styles.toastBase, styles.toastSuccess]}
+      contentContainerStyle={styles.toastContentContainer}
+      text1Style={styles.toastTitle}
+      text2Style={styles.toastMessage}
+    />
+  ),
+  error: (props) => (
+    <ErrorToast
+      {...props}
+      style={[styles.toastBase, styles.toastError]}
+      contentContainerStyle={styles.toastContentContainer}
+      text1Style={styles.toastTitle}
+      text2Style={styles.toastMessage}
+    />
+  ),
+  warning: (props) => (
+    <BaseToast
+      {...props}
+      style={[styles.toastBase, styles.toastWarning]}
+      contentContainerStyle={styles.toastContentContainer}
+      text1Style={styles.toastTitle}
+      text2Style={styles.toastMessage}
+    />
+  ),
+};
+
 function AppRoutes() {
   const { user } = useUser();
   const roleKey = getRoleKey(user);
   const allowedRoutes = roleRouteGroups[roleKey] || roleRouteGroups.default;
 
-  // Xác định màn hình khởi đầu phù hợp theo vai trò
   let authInitialRoute = "Login";
   if (user.isAuthenticated) {
     if (roleKey === "shipper") authInitialRoute = "TaskList";
     else if (roleKey === "accountant") authInitialRoute = "AccountantMenu";
-    else if (roleKey === "warehouse" || roleKey === "hub_manager")
+    else if (roleKey === "warehouse" || roleKey === "hub_manager") {
       authInitialRoute = "WarehouseMenu";
-    else authInitialRoute = "Home";
+    } else {
+      authInitialRoute = "Home";
+    }
   }
 
   return (
     <Stack.Navigator
-      screenOptions={{ headerShown: false }}
       initialRouteName={authInitialRoute}
+      screenOptions={{
+        headerShown: false,
+      }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
@@ -177,19 +254,60 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <UserProvider>
-      <WaybillProvider>
-        <QueueProvider>
-          <LocationGuard>
-            <SafeAreaProvider>
+    <SafeAreaProvider>
+      <UserProvider>
+        <WaybillProvider>
+          <QueueProvider>
+            <LocationGuard>
               <NavigationContainer>
                 <AppRoutes />
               </NavigationContainer>
-            </SafeAreaProvider>
-            <Toast />
-          </LocationGuard>
-        </QueueProvider>
-      </WaybillProvider>
-    </UserProvider>
+              <Toast config={toastConfig} />
+            </LocationGuard>
+          </QueueProvider>
+        </WaybillProvider>
+      </UserProvider>
+    </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  toastBase: {
+    borderLeftWidth: 0,
+    borderRadius: BORDER_RADIUS.lg,
+    minHeight: SPACING.xxl + SPACING.sm,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.xs,
+    ...SHADOWS.md,
+  },
+  toastContentContainer: {
+    paddingHorizontal: SPACING.md,
+  },
+  toastSuccess: {
+    backgroundColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+  },
+  toastError: {
+    backgroundColor: COLORS.error,
+    borderWidth: 1,
+    borderColor: COLORS.dangerAccent,
+  },
+  toastWarning: {
+    backgroundColor: COLORS.amberAccent,
+    borderWidth: 1,
+    borderColor: COLORS.warningText,
+  },
+  toastTitle: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  toastMessage: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.regular,
+  },
+});

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   Linking,
   Modal,
@@ -16,25 +15,18 @@ import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import { jwtDecode } from "jwt-decode";
 import { locationService } from "../services/locationService";
+import { requestJson, createAuthHeaders } from "../services/apiClient";
 import { COLORS } from "../constants/colors";
+import ConfirmModal from "./ConfirmModal";
 
-/**
- * LocationGuard — Áp dụng cho TẤT CẢ người dùng, mọi vai trò.
- * - Xin quyền foreground + background ngay khi app khởi động
- * - Chặn giao diện bằng modal nếu GPS tắt hoặc chưa cấp quyền
- * - Khởi động tracking nền khi điều kiện đạt
- * - Lắng nghe AppState để tự kiểm tra lại khi app active trở lại
- */
 export default function LocationGuard({ children }) {
-  const [status, setStatus] = useState("checking"); // 'checking' | 'no_permission' | 'disabled' | 'ok'
+  const [status, setStatus] = useState("checking");
   const [requesting, setRequesting] = useState(false);
+  const [showSettingsConfirm, setShowSettingsConfirm] = useState(false);
   const appStateRef = useRef(AppState.currentState);
-  const watchSubscriptionRef = useRef(null);
 
-  // ── Hàm kiểm tra tổng hợp ──────────────────────────────────────────────
   const evaluateLocationState = async () => {
     try {
-      // 1. Dịch vụ GPS của thiết bị có bật không?
       const serviceEnabled = await Location.hasServicesEnabledAsync();
       if (!serviceEnabled) {
         await locationService.stopTracking();
@@ -42,7 +34,6 @@ export default function LocationGuard({ children }) {
         return;
       }
 
-      // 2. Kiểm tra quyền foreground
       const { status: fgStatus } =
         await Location.getForegroundPermissionsAsync();
       if (fgStatus !== "granted") {
@@ -51,7 +42,6 @@ export default function LocationGuard({ children }) {
         return;
       }
 
-      // 3. Kiểm tra quyền background
       const { status: bgStatus } =
         await Location.getBackgroundPermissionsAsync();
       if (bgStatus !== "granted") {
@@ -60,60 +50,20 @@ export default function LocationGuard({ children }) {
         return;
       }
 
-      // 4. Tất cả OK — bật tracking nền
       setStatus("ok");
       await locationService.startTracking();
-      await activateForegroundWatcher();
-    } catch (e) {
-      console.warn("[LocationGuard] evaluateLocationState error:", e);
-      setStatus("ok"); // không chặn user nếu lỗi không mong muốn
-    }
-  };
-
-  const activateForegroundWatcher = async () => {
-    try {
-      if (watchSubscriptionRef.current) {
-        watchSubscriptionRef.current.remove();
-        watchSubscriptionRef.current = null;
-      }
-
-      const foregroundSubscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 15000,
-          distanceInterval: 20,
-          mayShowUserSettingsDialog: true,
-        },
-        async (location) => {
-          if (!location || !location.coords) return;
-          await locationService.postLocation(location);
-        },
-      );
-
-      watchSubscriptionRef.current = foregroundSubscription;
     } catch (error) {
-      console.warn("[LocationGuard] Không thể bật foreground watcher:", error);
+      console.warn("[LocationGuard] evaluateLocationState error:", error);
+      setStatus("ok");
     }
   };
 
-  // ── Xin quyền rồi đánh giá lại ────────────────────────────────────────
   const handleRequestPermission = async () => {
     setRequesting(true);
     try {
       const granted = await locationService.requestPermissions();
       if (!granted) {
-        // Hướng dẫn mở Cài đặt nếu người dùng từ chối
-        Alert.alert(
-          "Cần cấp quyền vị trí",
-          'Ứng dụng cần quyền "Luôn luôn" để theo dõi vị trí trong nền. Vui lòng mở Cài đặt và cấp quyền.',
-          [
-            { text: "Huỷ", style: "cancel" },
-            {
-              text: "Mở Cài đặt",
-              onPress: () => Linking.openSettings(),
-            },
-          ],
-        );
+        setShowSettingsConfirm(true);
       }
     } finally {
       setRequesting(false);
@@ -123,7 +73,6 @@ export default function LocationGuard({ children }) {
 
   const postLocation = async () => {
     try {
-      // Lấy toạ độ hiện tại
       const hasFg = await Location.getForegroundPermissionsAsync();
       if (hasFg.status !== "granted") return;
 
@@ -137,35 +86,29 @@ export default function LocationGuard({ children }) {
         location.coords;
       const timestamp = location.timestamp;
 
-      // Đọc dữ liệu user từ AsyncStorage
       const stored = await AsyncStorage.getItem("@SpeedlightAppFn:user");
       if (!stored) return;
 
       const user = JSON.parse(stored);
       if (!user || !user.token) return;
 
-      // Luôn decode lại JWT để lấy thông tin mới nhất (bỏ qua dữ liệu cũ cached)
       let decoded = {};
       try {
         decoded = jwtDecode(user.token);
-      } catch (e) {
-        console.warn("[ForegroundPost] Không decode được token:", e.message);
+      } catch (error) {
+        console.warn(
+          "[ForegroundPost] Không decode được token:",
+          error.message,
+        );
       }
 
-      // Ưu tiên decoded JWT > stored user object
-      const userId = decoded.user_id || user.user_id || null;
-      const username = decoded.sub || user.username || "";
-      const roleId = decoded.role_id || user.role_id || null;
-      const hubId =
-        decoded.primary_hub_id || user.primary_hub_id || user.hub_id || null;
-      const fullName = user.full_name || decoded.full_name || "";
-
       const payload = {
-        user_id: userId,
-        username: username,
-        full_name: fullName,
-        role_id: roleId,
-        hub_id: hubId,
+        user_id: decoded.user_id || user.user_id || null,
+        username: decoded.sub || user.username || "",
+        full_name: user.full_name || decoded.full_name || "",
+        role_id: decoded.role_id || user.role_id || null,
+        hub_id:
+          decoded.primary_hub_id || user.primary_hub_id || user.hub_id || null,
         latitude,
         longitude,
         altitude: altitude ?? null,
@@ -174,34 +117,35 @@ export default function LocationGuard({ children }) {
         speed: speed ?? null,
         timestamp,
         reported_at: new Date().toISOString(),
+        is_mocked: location.mocked || false,
       };
 
-      const LOCATION_URL =
+      const locationUrl =
         process.env.EXPO_PUBLIC_LOCATION_URL ||
         "https://maps.xien.io.vn/update_location.php";
 
-      const headers = { "Content-Type": "application/json" };
-      if (user.token) headers["Authorization"] = `Bearer ${user.token}`;
-
-      const response = await fetch(LOCATION_URL, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
+      await requestJson(
+        locationUrl,
+        {
+          method: "POST",
+          headers: createAuthHeaders(user.token, {
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify(payload),
+        },
+        "Lỗi định vị foreground",
+      );
     } catch (error) {
       console.warn("[ForegroundPost] Lỗi định vị foreground:", error);
     }
   };
 
-  // ── Khởi tạo và theo dõi ──────────────────────────────────────────────
   useEffect(() => {
     evaluateLocationState();
-
-    // Chạy polling và lắng nghe vị trí foreground với thay đổi đáng kể
     postLocation();
-    const trackingPoll = setInterval(postLocation, 15000);
 
-    // Theo dõi AppState — kiểm tra lại khi app active
+    const trackingPoll = setInterval(postLocation, 15000);
+    const poll = setInterval(evaluateLocationState, 20000);
     const subscription = AppState.addEventListener(
       "change",
       async (nextState) => {
@@ -213,21 +157,32 @@ export default function LocationGuard({ children }) {
       },
     );
 
-    // Poll định kỳ 20s để phát hiện người dùng tắt GPS giữa chừng
-    const poll = setInterval(evaluateLocationState, 20000);
-
     return () => {
       subscription.remove();
-      if (watchSubscriptionRef.current) {
-        watchSubscriptionRef.current.remove();
-        watchSubscriptionRef.current = null;
-      }
       clearInterval(poll);
       clearInterval(trackingPoll);
     };
   }, []);
 
-  // ── Render: Đang kiểm tra ──────────────────────────────────────────────
+  const settingsConfirm = (
+    <ConfirmModal
+      visible={showSettingsConfirm}
+      title="Cần cấp quyền vị trí"
+      description={
+        'Ứng dụng cần quyền "Luôn luôn" để theo dõi vị trí trong nền. Vui lòng mở Cài đặt và cấp quyền.'
+      }
+      cancelText="Hủy"
+      confirmText="Mở Cài đặt"
+      tone="warning"
+      iconName="settings-outline"
+      onCancel={() => setShowSettingsConfirm(false)}
+      onConfirm={() => {
+        setShowSettingsConfirm(false);
+        Linking.openSettings();
+      }}
+    />
+  );
+
   if (status === "checking") {
     return (
       <View style={styles.centerContainer}>
@@ -237,7 +192,6 @@ export default function LocationGuard({ children }) {
     );
   }
 
-  // ── Render: GPS tắt ────────────────────────────────────────────────────
   if (status === "disabled") {
     return (
       <>
@@ -282,7 +236,7 @@ export default function LocationGuard({ children }) {
                 style={styles.retryBtn}
                 onPress={evaluateLocationState}
               >
-                <Text style={styles.retryText}>Đã bật — Thử lại</Text>
+                <Text style={styles.retryText}>Đã bật - Thử lại</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -291,7 +245,6 @@ export default function LocationGuard({ children }) {
     );
   }
 
-  // ── Render: Chưa cấp quyền ────────────────────────────────────────────
   if (status === "no_permission") {
     return (
       <>
@@ -320,7 +273,8 @@ export default function LocationGuard({ children }) {
                   color={COLORS.primary}
                 />
                 <Text style={styles.infoText}>
-                  Dữ liệu vị trí chỉ được dùng trong nội bộ hệ thống quản lý
+                  Dữ liệu vị trí chỉ được dùng trong nội bộ hệ thống quản lý để
+                  tính SLA.
                 </Text>
               </View>
               <TouchableOpacity
@@ -345,11 +299,11 @@ export default function LocationGuard({ children }) {
             </View>
           </View>
         </Modal>
+        {settingsConfirm}
       </>
     );
   }
 
-  // ── Render: OK — app chạy bình thường ────────────────────────────────
   return children;
 }
 
@@ -360,11 +314,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#f8fafc",
   },
-  checkingText: {
-    marginTop: 16,
-    fontSize: 14,
-    color: "#64748b",
-  },
+  checkingText: { marginTop: 16, fontSize: 14, color: "#64748b" },
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.75)",
@@ -410,12 +360,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     gap: 8,
   },
-  infoText: {
-    fontSize: 12,
-    color: "#15803d",
-    flex: 1,
-    lineHeight: 18,
-  },
+  infoText: { fontSize: 12, color: "#15803d", flex: 1, lineHeight: 18 },
   button: {
     flexDirection: "row",
     alignItems: "center",
@@ -427,17 +372,7 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 12,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  retryBtn: {
-    paddingVertical: 10,
-  },
-  retryText: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  retryBtn: { paddingVertical: 10 },
+  retryText: { color: COLORS.primary, fontSize: 14, fontWeight: "600" },
 });

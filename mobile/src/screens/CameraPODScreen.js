@@ -1,14 +1,13 @@
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
-  SafeAreaView,
+  Pressable,
   StatusBar,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import CameraPODStyles from "../styles/CameraPODStyles";
@@ -17,6 +16,10 @@ import { useUser } from "../context/UserContext";
 import { isRouteAllowed } from "../utils/roleUtils";
 import { uploadService } from "../services/uploadService";
 import { waybillService } from "../services/waybillService";
+import CustomButton from "../components/CustomButton";
+import Toast from "react-native-toast-message";
+
+const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
 
 export default function CameraPODScreen({ navigation, route }) {
   const cameraRef = useRef(null);
@@ -33,13 +36,14 @@ export default function CameraPODScreen({ navigation, route }) {
 
   React.useEffect(() => {
     if (!isRouteAllowed(user, "CameraPOD")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
-  }, [user]);
+  }, [navigation, user]);
 
   const takePicture = async () => {
     if (!cameraRef.current || taking) {
@@ -51,7 +55,11 @@ export default function CameraPODScreen({ navigation, route }) {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
       setPreview(photo && photo.uri ? photo.uri : null);
     } catch (error) {
-      Alert.alert("Lỗi chụp ảnh", "Không thể chụp ảnh lúc này.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi chụp ảnh",
+        text2: error.message || "Không thể chụp ảnh lúc này.",
+      });
     } finally {
       setTaking(false);
     }
@@ -64,12 +72,14 @@ export default function CameraPODScreen({ navigation, route }) {
   const toggleCameraMode = () => {
     const newMode = cameraMode === "POD_MODE" ? "PICKUP_MODE" : "POD_MODE";
     setCameraMode(newMode);
-    Alert.alert(
-      "Chuyển chế độ",
-      newMode === "PICKUP_MODE"
-        ? "Chế độ: Xác minh lấy hàng\n\nChụp ảnh vận đơn để tải lên và xác thực."
-        : "Chế độ: Chứng minh giao hàng\n\nChụp ảnh bằng chứng giao hàng cho khách hàng.",
-    );
+    Toast.show({
+      type: "info",
+      text1: "Chuyển chế độ",
+      text2:
+        newMode === "PICKUP_MODE"
+          ? "Chế độ: Xác minh lấy hàng\n\nChụp ảnh vận đơn để tải lên và xác thực."
+          : "Chế độ: Chứng minh giao hàng\n\nChụp ảnh bảng chứng giao hàng cho khách hàng.",
+    });
   };
 
   const confirmPhoto = async () => {
@@ -78,7 +88,6 @@ export default function CameraPODScreen({ navigation, route }) {
       return;
     }
 
-    // Normal POD mode
     if (returnScreen) {
       navigation.navigate({
         name: returnScreen,
@@ -93,14 +102,16 @@ export default function CameraPODScreen({ navigation, route }) {
 
   const handlePickupImageUpload = async () => {
     if (!preview || !waybill?.waybill_code) {
-      Alert.alert("Lỗi", "Thiếu thông tin vận đơn hoặc ảnh.");
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập mã vận đơn và tải ảnh lên.",
+      });
       return;
     }
 
     setUploading(true);
     try {
-      // Step 1: Upload ảnh lấy hàng
-      console.log("[PICKUP] Uploading pickup image...");
       const billImageUrl = await uploadService.uploadBillImage(
         user?.token,
         preview,
@@ -108,40 +119,30 @@ export default function CameraPODScreen({ navigation, route }) {
       );
 
       if (!billImageUrl) {
-        throw new Error("Không thể lấy URL ảnh từ server.");
+        throw new Error("Khong the lay URL anh tu server.");
       }
 
-      console.log("[PICKUP] Image uploaded. URL:", billImageUrl);
-
-      // Step 2: Gọi API updateBillImages để cập nhật bill_image_url cho đơn hàng
-      console.log("[PICKUP] Updating waybill with bill image URL...");
-      const updateResult = await waybillService.updateBillImages(
+      await waybillService.updateBillImages(
         user?.token,
         waybill.waybill_code,
         billImageUrl,
         null,
       );
 
-      console.log("[PICKUP] Update result:", updateResult);
-
-      // Step 3: Hiển thị thành công
       setPreview(null);
-      Alert.alert(
-        "✓ Tải ảnh thành công",
-        "Đơn hàng đang chờ CSKH xác thực. Vui lòng quay lại danh sách nhiệm vụ.",
-        [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ],
-      );
+      Toast.show({
+        type: "success",
+        text1: "Tải ảnh thành công",
+        text2:
+          "Đơn hàng đang chờ CSKH xác thực. Vui lòng quay lại danh sách nhiệm vụ.",
+      });
     } catch (error) {
-      console.error("[PICKUP] Error:", error);
-      Alert.alert(
-        "Lỗi tải ảnh",
-        error?.message || "Không thể tải ảnh lên server. Vui lòng thử lại.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Lỗi tải ảnh",
+        text2:
+          error?.message || "Không thể tải ảnh lên server. Vui lòng thử lại.",
+      });
     } finally {
       setUploading(false);
     }
@@ -162,21 +163,21 @@ export default function CameraPODScreen({ navigation, route }) {
           <Ionicons name="camera-outline" size={42} color={COLORS.secondary} />
         </View>
         <Text style={CameraPODStyles.authText}>
-          Ứng dụng cần quyền camera để chụp ảnh bằng chứng.
+          Ung dung can quyen camera de chup anh bang chung.
         </Text>
-        <TouchableOpacity
-          style={CameraPODStyles.authBtn}
+        <CustomButton
+          title="Cap Quyen Camera"
           onPress={requestPermission}
-        >
-          <Text style={CameraPODStyles.authBtnText}>Cấp Quyền Camera</Text>
-        </TouchableOpacity>
+          variant="secondary"
+          style={CameraPODStyles.authBtn}
+        />
       </View>
     );
   }
 
   if (preview) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+      <View style={CameraPODStyles.rootCameraBg}>
         <StatusBar hidden />
 
         <View style={CameraPODStyles.previewContainer}>
@@ -190,20 +191,20 @@ export default function CameraPODScreen({ navigation, route }) {
               <Ionicons
                 name="cube"
                 size={14}
-                color="#fff"
-                style={{ marginRight: 5 }}
+                color={COLORS.white}
+                style={CameraPODStyles.watermarkIcon}
               />
               <Text style={CameraPODStyles.watermarkText}>
                 {(waybill && waybill.waybill_code) || "N/A"}
               </Text>
             </View>
 
-            <View style={CameraPODStyles.watermarkRow}>
+            <View style={CameraPODStyles.watermarkRowNoMargin}>
               <Ionicons
                 name="time"
                 size={14}
-                color="#fff"
-                style={{ marginRight: 5 }}
+                color={COLORS.white}
+                style={CameraPODStyles.watermarkIcon}
               />
               <Text style={CameraPODStyles.watermarkText}>
                 {new Date().toLocaleString("vi-VN")}
@@ -212,86 +213,88 @@ export default function CameraPODScreen({ navigation, route }) {
           </View>
         </View>
 
-        <View style={CameraPODStyles.previewActions}>
-          <TouchableOpacity
-            style={CameraPODStyles.actionBtnReject}
-            onPress={() => setPreview(null)}
-            disabled={uploading}
-          >
-            <Ionicons name="refresh-circle" size={24} color="#fff" />
-            <Text style={CameraPODStyles.actionText}>Chụp Lại</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              CameraPODStyles.actionBtnAccept,
-              uploading && { opacity: 0.6 },
-            ]}
-            onPress={confirmPhoto}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={CameraPODStyles.actionText}>Đang tải...</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                <Text style={CameraPODStyles.actionText}>Dùng Ảnh Này</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+        <SafeAreaView
+          edges={["bottom"]}
+          style={CameraPODStyles.previewActionsSafeArea}
+        >
+          <View style={CameraPODStyles.previewActions}>
+            <CustomButton
+              title="Chup lai"
+              variant="outline"
+              onPress={() => setPreview(null)}
+              disabled={uploading}
+              style={CameraPODStyles.previewButton}
+            />
+            <CustomButton
+              title={uploading ? "Dang tai..." : "Xac nhan"}
+              variant="primary"
+              onPress={confirmPhoto}
+              loading={uploading}
+              disabled={uploading}
+              style={CameraPODStyles.previewButton}
+            />
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={CameraPODStyles.rootCameraBg}>
       <StatusBar hidden />
 
       <CameraView
         ref={cameraRef}
-        style={{ flex: 1 }}
+        style={CameraPODStyles.cameraFill}
         facing="back"
         flash="off"
         enableTorch={flash === "on"}
       >
-        <View style={CameraPODStyles.topActions}>
-          <TouchableOpacity
-            style={CameraPODStyles.iconBtn}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="close" size={28} color="#fff" />
-          </TouchableOpacity>
+        <SafeAreaView edges={["top"]} style={CameraPODStyles.topSafeArea}>
+          <View style={CameraPODStyles.topActions}>
+            <Pressable
+              hitSlop={HIT_SLOP}
+              style={CameraPODStyles.iconBtn}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="close" size={28} color={COLORS.white} />
+            </Pressable>
 
-          <View
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-          >
-            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>
-              {cameraMode === "PICKUP_MODE" ? "🔍 Lấy Hàng" : "📸 POD"}
-            </Text>
+            <View style={CameraPODStyles.modeCenterWrap}>
+              <Text style={CameraPODStyles.modeCenterText}>
+                {cameraMode === "PICKUP_MODE" ? "Lay Hang" : "POD"}
+              </Text>
+            </View>
+
+            <View style={CameraPODStyles.rightControlsWrap}>
+              <Pressable
+                hitSlop={HIT_SLOP}
+                style={CameraPODStyles.iconBtn}
+                onPress={toggleCameraMode}
+              >
+                <Ionicons
+                  name="swap-horizontal"
+                  size={24}
+                  color={COLORS.white}
+                />
+              </Pressable>
+
+              <Pressable
+                hitSlop={HIT_SLOP}
+                style={CameraPODStyles.iconBtn}
+                onPress={toggleFlash}
+              >
+                <Ionicons
+                  name={flash === "on" ? "flash" : "flash-off"}
+                  size={24}
+                  color={
+                    flash === "on" ? COLORS.processScanOrange : COLORS.white
+                  }
+                />
+              </Pressable>
+            </View>
           </View>
-
-          <TouchableOpacity
-            style={CameraPODStyles.iconBtn}
-            onPress={toggleCameraMode}
-          >
-            <Ionicons name="swap-horizontal" size={24} color="#fff" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={CameraPODStyles.iconBtn}
-            onPress={toggleFlash}
-          >
-            <Ionicons
-              name={flash === "on" ? "flash" : "flash-off"}
-              size={24}
-              color={flash === "on" ? COLORS.processScanOrange : "#fff"}
-            />
-          </TouchableOpacity>
-        </View>
+        </SafeAreaView>
 
         <View style={CameraPODStyles.overlay}>
           <View style={CameraPODStyles.frame}>
@@ -307,24 +310,30 @@ export default function CameraPODScreen({ navigation, route }) {
 
           <Text style={CameraPODStyles.guideText}>
             {cameraMode === "PICKUP_MODE"
-              ? "Chụp rõ vận đơn để xác minh thông tin"
-              : "Căn chỉnh rõ mã vận đơn và gói hàng"}
+              ? "Chup ro van don de xac minh thong tin"
+              : "Can chinh ro ma van don va goi hang"}
           </Text>
         </View>
 
-        <View style={CameraPODStyles.bottomActions}>
-          <TouchableOpacity
-            style={CameraPODStyles.captureBtn}
-            onPress={takePicture}
-            disabled={taking}
-          >
-            {taking ? (
-              <ActivityIndicator size="large" color={COLORS.primary} />
-            ) : (
-              <View style={CameraPODStyles.captureInner} />
-            )}
-          </TouchableOpacity>
-        </View>
+        <SafeAreaView
+          edges={["bottom"]}
+          style={CameraPODStyles.bottomActionsSafeArea}
+        >
+          <View style={CameraPODStyles.bottomActions}>
+            <Pressable
+              hitSlop={HIT_SLOP}
+              style={CameraPODStyles.captureBtn}
+              onPress={takePicture}
+              disabled={taking}
+            >
+              {taking ? (
+                <ActivityIndicator size="large" color={COLORS.white} />
+              ) : (
+                <View style={CameraPODStyles.captureInner} />
+              )}
+            </Pressable>
+          </View>
+        </SafeAreaView>
       </CameraView>
     </View>
   );

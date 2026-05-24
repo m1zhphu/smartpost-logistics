@@ -11,7 +11,7 @@ export const accountingService = {
           "Content-Type": "application/json",
         }),
       },
-      "Khong the tai danh sach doi soat COD.",
+      "Không thể tải danh sách đối soát COD.",
     );
   },
 
@@ -25,10 +25,10 @@ export const accountingService = {
         }),
         body: JSON.stringify({
           waybill_codes: waybillCodes,
-          note: note || "Xac nhan thu tien mat",
+          note: note || "Xác nhận thu tiền mặt",
         }),
       },
-      "Khong the xac nhan thu tien shipper.",
+      "Không thể xác nhận thu tiền shipper.",
     );
   },
 
@@ -41,7 +41,7 @@ export const accountingService = {
           "Content-Type": "application/json",
         }),
       },
-      "Khong the tao bang ke doi soat cho shop.",
+      "Không thể tạo bảng kê đối soát cho shop.",
     );
   },
 

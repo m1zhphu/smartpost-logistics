@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { createWaybillService } from "../services/createWaybillService";
@@ -167,16 +168,17 @@ export default function CustomerAutocomplete({ value, onSelect, placeholder }) {
       {/* Dropdown Results */}
       {isOpen && !isLoading && results.length > 0 && (
         <View style={styles.dropdown}>
-          <FlatList
-            data={results}
-            keyExtractor={(item, idx) =>
-              String(item.customer_id || item.id || idx)
-            }
-            renderItem={renderItem}
+          <ScrollView
             keyboardShouldPersistTaps="handled"
             scrollEnabled={results.length > 4}
             nestedScrollEnabled={true}
-          />
+          >
+            {results.map((item, idx) => (
+              <React.Fragment key={item.customer_id || item.id || idx}>
+                {renderItem({ item, index: idx })}
+              </React.Fragment>
+            ))}
+          </ScrollView>
         </View>
       )}
 
@@ -196,6 +198,9 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     marginBottom: 12,
+    position: "relative",
+    zIndex: 999, // Allow dropdown to overlap subsequent items
+    elevation: 999,
   },
 
   // Search Input Wrapper
@@ -221,18 +226,23 @@ const styles = StyleSheet.create({
 
   // Dropdown overlay
   dropdown: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
     marginTop: 8,
     backgroundColor: COLORS.cardBg || "#FFF",
     borderRadius: 12,
     maxHeight: 300,
     borderWidth: 1,
     borderColor: COLORS.borderLight || "#E0E0E0",
-    elevation: 3,
+    elevation: 10,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
     overflow: "hidden",
+    zIndex: 1000,
   },
 
   // Individual item
@@ -266,6 +276,10 @@ const styles = StyleSheet.create({
 
   // Empty state
   emptyState: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
     marginTop: 8,
     paddingVertical: 20,
     paddingHorizontal: 16,
@@ -274,6 +288,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: COLORS.borderLight || "#E0E0E0",
+    zIndex: 1000,
+    elevation: 10,
   },
 
   emptyText: {

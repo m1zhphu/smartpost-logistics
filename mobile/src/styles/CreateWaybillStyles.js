@@ -1,100 +1,626 @@
-import { StyleSheet, Platform, Dimensions } from 'react-native';
-import { COLORS } from '../constants/colors';
-
-const { width, height } = Dimensions.get('window');
+import { StyleSheet } from "react-native";
+import { COLORS } from "../constants/colors";
+import {
+  BORDER_RADIUS,
+  SHADOWS,
+  SPACING,
+  TOUCH_TARGET,
+  TYPOGRAPHY,
+} from "../constants/theme";
 
 const CreateWaybillStyles = StyleSheet.create({
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.backgroundSoft },
-    container: { flex: 1, backgroundColor: COLORS.backgroundSoft },
-
-    // --- Modern Header ---
-    mainHeader: { backgroundColor: COLORS.headerBg, paddingTop: Platform.OS === 'ios' ? 55 : 40, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 15, shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 5, zIndex: 10 },
-    headerTopRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16 },
-    backCircleBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-    headerTitleWrap: { flex: 1, paddingHorizontal: 16 },
-    headerHubName: { color: COLORS.secondary, fontSize: 12, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 },
-    headerMainTitle: { color: COLORS.white, fontSize: 20, fontWeight: '800' },
-
-    // --- Pill Tabs ---
-    tabScroll: { paddingHorizontal: 20, alignItems: 'center', gap: 10 },
-    tabItem: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    tabActive: { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary, shadowColor: COLORS.secondary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    tabText: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
-    tabTextActive: { color: COLORS.white, fontWeight: '800' },
-
-    // --- Content & Cards ---
-    scrollContent: { padding: 16, paddingTop: 20, paddingBottom: 120 },
-    card: { backgroundColor: COLORS.white, borderRadius: 24, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
-
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-    dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-    sectionTitle: { fontSize: 15, fontWeight: '800', color: COLORS.primary, letterSpacing: 0.5 },
-
-    label: { fontSize: 13, fontWeight: '700', color: COLORS.primary, marginBottom: 8, marginTop: 4 },
-    req: { color: COLORS.error },
-
-    // --- Modern Inputs ---
-    mockInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.inputBg, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 15, marginBottom: 16, borderWidth: 1, borderColor: COLORS.inputBorderColor },
-    textMain: { color: COLORS.primary, fontSize: 15, fontWeight: '700', flex: 1 },
-    textMuted: { color: COLORS.textMuted, fontSize: 15, fontWeight: '500', flex: 1 },
-
-    input: { backgroundColor: COLORS.inputBg, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 15, fontSize: 15, color: COLORS.primary, fontWeight: '600', marginBottom: 16, borderWidth: 1, borderColor: COLORS.inputBorderColor },
-    inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.inputBg, borderRadius: 14, marginBottom: 16, borderWidth: 1, borderColor: COLORS.inputBorderColor },
-    inputFlex: { flex: 1, paddingHorizontal: 16, paddingVertical: 15, fontSize: 15, color: COLORS.primary, fontWeight: '600' },
-
-    row: { flexDirection: 'row', gap: 12 },
-    rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    dividerDashed: { height: 1, borderWidth: 1, borderColor: COLORS.borderLight, borderStyle: 'dashed', marginVertical: 16 },
-
-    // --- Services & Toggles ---
-    serviceTypeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-    serviceBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 12, backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: 'transparent' },
-    serviceBtnActive: { backgroundColor: COLORS.secondaryLight, borderColor: COLORS.secondary },
-    serviceBtnText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
-    serviceBtnTextActive: { color: COLORS.primary, fontWeight: '800' },
-
-    paymentRow: { flexDirection: 'row', backgroundColor: COLORS.inputBg, borderRadius: 14, padding: 4, marginBottom: 20 },
-    payBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 10 },
-    payBtnActive: { backgroundColor: COLORS.white, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-    payBtnText: { fontSize: 14, color: COLORS.textMuted, fontWeight: '600' },
-    payBtnTextActive: { color: COLORS.primary, fontWeight: '800' },
-
-    // --- COD Box ---
-    codBox: { backgroundColor: COLORS.warningBg, padding: 20, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#FEF3C7' },
-    codLabel: { fontSize: 12, fontWeight: '800', color: COLORS.warningText, marginBottom: 8, letterSpacing: 0.5 },
-    codInput: { fontSize: 28, fontWeight: '800', color: '#92400E', minWidth: 120, padding: 0 },
-    codCurrency: { fontSize: 20, fontWeight: '800', color: '#92400E', marginLeft: 6 },
-    codIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.processScanOrange, justifyContent: 'center', alignItems: 'center', shadowColor: COLORS.processScanOrange, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 2 },
-
-    serviceBox: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#F9FAFB', borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: COLORS.inputBg },
-    serviceBoxActive: { backgroundColor: COLORS.secondaryLight, borderColor: COLORS.secondary },
-    serviceName: { fontSize: 15, fontWeight: '700', color: COLORS.primary, marginBottom: 4 },
-    serviceDesc: { fontSize: 13, color: COLORS.textMuted },
-
-    // --- Fees ---
-    badge: { backgroundColor: COLORS.secondaryLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: COLORS.secondary },
-    badgeText: { color: COLORS.secondary, fontSize: 12, fontWeight: '800' },
-    feeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-    feeLabel: { color: COLORS.textMuted, fontSize: 14, fontWeight: '500' },
-    feeValue: { color: COLORS.primary, fontSize: 15, fontWeight: '700' },
-    totalLabel: { fontSize: 16, color: COLORS.primary, fontWeight: '800' },
-    totalValue: { fontSize: 26, fontWeight: '800', color: COLORS.secondary },
-
-    // --- Footer ---
-    bottomFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.white, paddingHorizontal: 20, paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 34 : 20, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 10 },
-    submitBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 16, justifyContent: 'center', alignItems: 'center', shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    submitBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
-
-    // --- Bottom Sheet Modals ---
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContainer: { backgroundColor: COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: height * 0.85 },
-    sheetHandle: { width: 40, height: 5, backgroundColor: COLORS.borderLight, borderRadius: 3, alignSelf: 'center', marginBottom: 20 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: '800', color: COLORS.primary },
-
-    searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.inputBg, borderRadius: 14, marginBottom: 16, paddingHorizontal: 12 },
-    searchItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: COLORS.inputBg },
-    createNewBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, padding: 16, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 16 },
+  flex1: {
+    flex: 1,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.backgroundSoft,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSoft,
+  },
+  mainHeader: {
+    backgroundColor: COLORS.headerBg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.md,
+    borderBottomLeftRadius: BORDER_RADIUS.xl,
+    borderBottomRightRadius: BORDER_RADIUS.xl,
+    ...SHADOWS.md,
+    zIndex: 10,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
+  },
+  backCircleBtn: {
+    width: TOUCH_TARGET.androidMin,
+    height: TOUCH_TARGET.androidMin,
+    minWidth: TOUCH_TARGET.androidMin,
+    minHeight: TOUCH_TARGET.androidMin,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitleWrap: {
+    flex: 1,
+    paddingHorizontal: SPACING.md,
+  },
+  headerHubName: {
+    color: COLORS.secondary,
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    textTransform: "uppercase",
+  },
+  headerMainTitle: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.fontSize.headingSm,
+    lineHeight: TYPOGRAPHY.lineHeight.headingSm,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  tabScroll: {
+    paddingHorizontal: SPACING.md,
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
+  tabItem: {
+    minHeight: TOUCH_TARGET.androidMin,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1,
+    borderColor: COLORS.inputBorderColor,
+    justifyContent: "center",
+  },
+  tabActive: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.secondary,
+    ...SHADOWS.sm,
+  },
+  tabText: {
+    color: COLORS.greenSubtleText,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  tabTextActive: {
+    color: COLORS.white,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  scrollContent: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xxl,
+    gap: SPACING.md,
+  },
+  card: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.md,
+    gap: SPACING.sm,
+    ...SHADOWS.sm,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SPACING.sm,
+  },
+  dot: {
+    width: SPACING.sm,
+    height: SPACING.sm,
+    borderRadius: BORDER_RADIUS.round,
+    marginRight: SPACING.sm,
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    color: COLORS.primary,
+  },
+  label: {
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+    color: COLORS.textMuted,
+    textTransform: "uppercase",
+  },
+  req: {
+    color: COLORS.error,
+  },
+  mockInput: {
+    minHeight: TOUCH_TARGET.androidMin,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: COLORS.inputBg,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.inputBorderColor,
+  },
+  textMain: {
+    color: COLORS.primary,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+    flex: 1,
+  },
+  textMuted: {
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.medium,
+    flex: 1,
+  },
+  input: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    minHeight: TOUCH_TARGET.androidMin,
+    paddingHorizontal: SPACING.md,
+    color: COLORS.textMain,
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+  },
+  inputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    minHeight: TOUCH_TARGET.androidMin,
+    paddingHorizontal: SPACING.md,
+  },
+  inputFlex: {
+    flex: 1,
+    color: COLORS.textMain,
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+    paddingVertical: SPACING.sm,
+  },
+  row: {
+    flexDirection: "row",
+    gap: SPACING.sm,
+  },
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dividerDashed: {
+    height: SPACING.hairline,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderStyle: "dashed",
+    marginVertical: SPACING.md,
+  },
+  serviceTypeRow: {
+    flexDirection: "row",
+    gap: SPACING.sm,
+  },
+  serviceBtn: {
+    flex: 1,
+    minHeight: TOUCH_TARGET.androidMin,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.inputBg,
+    borderWidth: 1,
+    borderColor: COLORS.inputBorderColor,
+  },
+  serviceBtnActive: {
+    backgroundColor: COLORS.secondaryLight,
+    borderColor: COLORS.secondary,
+  },
+  serviceBtnText: {
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    color: COLORS.textMuted,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  serviceBtnTextActive: {
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  paymentRow: {
+    flexDirection: "row",
+    backgroundColor: COLORS.inputBg,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.xs,
+    gap: SPACING.xs,
+  },
+  payBtn: {
+    flex: 1,
+    minHeight: TOUCH_TARGET.androidMin,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BORDER_RADIUS.md,
+  },
+  payBtnActive: {
+    backgroundColor: COLORS.white,
+    ...SHADOWS.sm,
+  },
+  payBtnText: {
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    color: COLORS.textMuted,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  payBtnTextActive: {
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  codBox: {
+    backgroundColor: COLORS.warningBg,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.amberAccentBg,
+    padding: SPACING.md,
+  },
+  codLabel: {
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    color: COLORS.warningText,
+    textTransform: "uppercase",
+  },
+  codInput: {
+    fontSize: TYPOGRAPHY.fontSize.heading,
+    lineHeight: TYPOGRAPHY.lineHeight.heading,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    color: COLORS.amberAccentText,
+  },
+  codCurrency: {
+    fontSize: TYPOGRAPHY.fontSize.subtitle,
+    lineHeight: TYPOGRAPHY.lineHeight.subtitle,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    color: COLORS.amberAccentText,
+  },
+  codWarningText: {
+    color: COLORS.amberAccentText,
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.medium,
+  },
+  codIconWrap: {
+    width: TOUCH_TARGET.androidMin,
+    height: TOUCH_TARGET.androidMin,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.processScanOrange,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  serviceBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: SPACING.md,
+    backgroundColor: COLORS.backgroundSoft,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  serviceBoxActive: {
+    backgroundColor: COLORS.secondaryLight,
+    borderColor: COLORS.secondary,
+  },
+  serviceName: {
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+    color: COLORS.primary,
+  },
+  serviceDesc: {
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    color: COLORS.textMuted,
+  },
+  badge: {
+    backgroundColor: COLORS.secondaryLight,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+  },
+  badgeText: {
+    color: COLORS.secondary,
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  feeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: SPACING.xs,
+  },
+  feeLabel: {
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.regular,
+  },
+  feeValue: {
+    color: COLORS.primary,
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  totalLabel: {
+    fontSize: TYPOGRAPHY.fontSize.subtitle,
+    lineHeight: TYPOGRAPHY.lineHeight.subtitle,
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  totalValue: {
+    fontSize: TYPOGRAPHY.fontSize.headingSm,
+    lineHeight: TYPOGRAPHY.lineHeight.headingSm,
+    color: COLORS.secondary,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  bottomFooter: {
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
+    ...SHADOWS.md,
+  },
+  submitBtn: {
+    minHeight: TOUCH_TARGET.androidMin,
+  },
+  submitBtnText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.inputWrapperBg,
+    justifyContent: "flex-end",
+  },
+  modalContainer: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: BORDER_RADIUS.xl,
+    borderTopRightRadius: BORDER_RADIUS.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.lg,
+    maxHeight: "85%",
+  },
+  sheetHandle: {
+    width: SPACING.xl,
+    height: SPACING.xs,
+    backgroundColor: COLORS.borderLight,
+    borderRadius: BORDER_RADIUS.round,
+    alignSelf: "center",
+    marginBottom: SPACING.md,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: TYPOGRAPHY.fontSize.subtitle,
+    lineHeight: TYPOGRAPHY.lineHeight.subtitle,
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  searchWrap: {
+    marginBottom: SPACING.sm,
+  },
+  searchItem: {
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  createNewBtn: {
+    minHeight: TOUCH_TARGET.androidMin,
+    marginTop: SPACING.md,
+  },
+  senderRow: {
+    flexDirection: "row",
+    gap: SPACING.md_sm,
+    marginBottom: SPACING.md_sm,
+  },
+  sectionDivider: {
+    height: SPACING.hairline,
+    backgroundColor: COLORS.inputBg,
+    marginVertical: SPACING.md_sm,
+  },
+  sectionCaption: {
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+    textTransform: "uppercase",
+  },
+  ocrSuggestionCard: {
+    backgroundColor: COLORS.warningBg,
+    borderWidth: 1,
+    borderColor: COLORS.amberAccentBg,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md_sm,
+    marginBottom: SPACING.md,
+  },
+  ocrSuggestionTitle: {
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    color: COLORS.warningText,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    marginBottom: SPACING.xs,
+  },
+  ocrSuggestionAction: {
+    color: COLORS.processScanOrange,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+  },
+  itemTypeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md_sm,
+    paddingVertical: SPACING.md_sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+  },
+  itemTypeChipActive: {
+    borderColor: COLORS.secondary,
+    backgroundColor: COLORS.greenSubtle,
+  },
+  itemTypeChipInactive: {
+    borderColor: COLORS.borderLight,
+    backgroundColor: COLORS.white,
+  },
+  itemTypeRadioOuter: {
+    width: SPACING.md_sm + SPACING.xs + SPACING.xs,
+    height: SPACING.md_sm + SPACING.xs + SPACING.xs,
+    borderRadius: BORDER_RADIUS.round,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  itemTypeRadioOuterActive: {
+    borderColor: COLORS.secondary,
+  },
+  itemTypeRadioOuterInactive: {
+    borderColor: COLORS.borderLight,
+  },
+  itemTypeRadioInner: {
+    width: SPACING.md_sm - SPACING.xs / 2,
+    height: SPACING.md_sm - SPACING.xs / 2,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.secondary,
+  },
+  itemTypeText: {
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  itemTypeTextActive: {
+    color: COLORS.secondary,
+  },
+  itemTypeTextInactive: {
+    color: COLORS.textMain,
+  },
+  unitKgText: {
+    marginRight: SPACING.md,
+    color: COLORS.textGray,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  feeLoadingText: {
+    color: COLORS.secondary,
+    marginBottom: SPACING.md,
+    fontStyle: "italic",
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  feeWarningText: {
+    color: COLORS.error,
+    marginBottom: SPACING.md,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  modalOptionTitlePrimary: {
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+    color: COLORS.primary,
+  },
+  modalAddCustomerText: {
+    color: COLORS.white,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+  },
+  modalOptionTitleSemibold: {
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+    color: COLORS.primary,
+  },
+  modalEmptyText: {
+    textAlign: "center",
+    marginTop: SPACING.lg,
+    color: COLORS.textGray,
+    fontWeight: TYPOGRAPHY.fontWeight.medium,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+  },
+  weightInputText: {
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    fontSize: TYPOGRAPHY.fontSize.subtitle,
+    lineHeight: TYPOGRAPHY.lineHeight.subtitle,
+  },
+  mtMdMbSm: {
+    marginTop: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  mbMd: {
+    marginBottom: SPACING.md,
+  },
+  myMdSm: {
+    marginTop: SPACING.md_sm,
+    marginBottom: SPACING.md_sm,
+  },
+  centerWithNegativeTop: {
+    justifyContent: "center",
+    marginTop: SPACING.xs,
+  },
+  rowCenter: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  mrMdSm: {
+    marginRight: SPACING.md_sm,
+  },
+  mlMd: {
+    marginLeft: SPACING.md,
+  },
+  mrSmPlus: {
+    marginRight: SPACING.md_sm,
+  },
+  rowWrapGapSmPlus: {
+    flexDirection: "row",
+    gap: SPACING.md_sm,
+    flexWrap: "wrap",
+  },
+  flexFourTenths: {
+    flex: 0.4,
+  },
+  flexSixTenths: {
+    flex: 0.6,
+  },
+  textGrayItalic: {
+    color: COLORS.textGray,
+    fontStyle: "italic",
+  },
+  flexOnePrSmPlus: {
+    flex: 1,
+    paddingRight: SPACING.md_sm,
+  },
+  mrSm: {
+    marginRight: SPACING.sm,
+  },
+  textMutedMtXs: {
+    color: COLORS.textMuted,
+    marginTop: SPACING.xs,
+  },
+  mrXsPlus: {
+    marginRight: SPACING.sm,
+  },
 });
 
 export default CreateWaybillStyles;

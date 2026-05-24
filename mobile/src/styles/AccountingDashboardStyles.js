@@ -1,78 +1,82 @@
-import { StyleSheet, Platform } from 'react-native';
-import { COLORS } from '../constants/colors';
+﻿import { Platform, StyleSheet } from "react-native";
+import { COLORS } from "../constants/colors";
+import {
+  BORDER_RADIUS,
+  SHADOWS,
+  SPACING,
+  TYPOGRAPHY,
+} from "../constants/theme";
 
 const AccountingDashboardStyles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.backgroundSoft },
-
-    headerArea: {
-        paddingHorizontal: 24,
-        paddingTop: Platform.OS === 'ios' ? 60 : 40,
-        paddingBottom: 30,
-        backgroundColor: COLORS.headerBg,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 5,
-        zIndex: 10,
-    },
-    headerTitle: { color: COLORS.white, fontSize: 24, fontWeight: '800', marginBottom: 4 },
-    headerSubtitle: { color: COLORS.secondary, fontSize: 14, fontWeight: '600' },
-
-    loading: { marginTop: 60 },
-    content: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
-
-    summaryCard: {
-        backgroundColor: COLORS.white,
-        borderRadius: 24,
-        padding: 24,
-        marginBottom: 24,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.02)',
-    },
-    summaryTitle: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: COLORS.textMuted,
-        marginBottom: 8,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    summaryValue: { fontSize: 42, fontWeight: '800', color: COLORS.primary },
-
-    actionCard: {
-        backgroundColor: COLORS.white,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOpacity: 0.03,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 8,
-        borderWidth: 1,
-        borderColor: COLORS.borderLight,
-    },
-    iconWrap: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
-        backgroundColor: COLORS.secondaryLight,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    actionLabel: { flex: 1, fontSize: 16, fontWeight: '700', color: COLORS.primary },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSoft,
+  },
+  headerArea: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: Platform.OS === "ios" ? SPACING.xxl + SPACING.sm : SPACING.xl + SPACING.sm,
+    paddingBottom: SPACING.lg,
+    backgroundColor: COLORS.headerBg,
+    borderBottomLeftRadius: BORDER_RADIUS.xl,
+    borderBottomRightRadius: BORDER_RADIUS.xl,
+    ...SHADOWS.md,
+  },
+  headerTitle: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.fontSize.headingSm,
+    lineHeight: TYPOGRAPHY.lineHeight.headingSm,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    marginBottom: SPACING.xs,
+  },
+  headerSubtitle: {
+    color: COLORS.secondary,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  loadingWrap: {
+    padding: SPACING.md,
+    gap: SPACING.sm,
+  },
+  content: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    gap: SPACING.sm,
+  },
+  summaryCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    ...SHADOWS.sm,
+  },
+  summaryTitle: {
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.sm,
+    textTransform: "uppercase",
+  },
+  summaryValue: {
+    fontSize: TYPOGRAPHY.fontSize.headingLg,
+    lineHeight: TYPOGRAPHY.lineHeight.headingLg,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    color: COLORS.primary,
+  },
+  actionCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderColor: COLORS.borderLight,
+    backgroundColor: COLORS.white,
+    ...SHADOWS.sm,
+  },
+  actionContent: {
+    width: "100%",
+    justifyContent: "space-between",
+  },
 });
 
 export default AccountingDashboardStyles;

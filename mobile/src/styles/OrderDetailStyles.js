@@ -1,105 +1,160 @@
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Dimensions } from "react-native";
+import { StyleSheet } from "react-native";
 import { COLORS } from "../constants/colors";
-
-const { width } = Dimensions.get("window");
+import { BORDER_RADIUS, SHADOWS, SPACING, TOUCH_TARGET, TYPOGRAPHY } from "../constants/theme";
 
 const OrderDetailStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a1f13" },
-  centerBox: {
+  container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#0a1f13",
+    backgroundColor: COLORS.backgroundSoft,
   },
   header: {
+    backgroundColor: COLORS.headerBg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 15,
-    height: 60,
-    marginTop: StatusBar.currentHeight || 20,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
-  headerTitle: { color: "white", fontSize: 18, fontWeight: "bold" },
-  content: { flex: 1, padding: 15 },
-
-  card: {
-    backgroundColor: "#1d3b2e",
-    padding: 20,
-    borderRadius: 10,
+  headerBtn: {
+    width: TOUCH_TARGET.androidMin,
+    height: TOUCH_TARGET.androidMin,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
   },
-  label: { color: "#aaa", fontSize: 12, marginBottom: 5 },
+  headerTitle: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.fontSize.subtitle,
+    lineHeight: TYPOGRAPHY.lineHeight.subtitle,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  headerRightPlaceholder: {
+    width: TOUCH_TARGET.androidMin,
+    height: TOUCH_TARGET.androidMin,
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xl,
+    gap: SPACING.md,
+  },
+  heroCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    alignItems: "center",
+    gap: SPACING.xs,
+    ...SHADOWS.sm,
+  },
+  heroLabel: {
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+    textTransform: "uppercase",
+  },
   trackingNumber: {
-    color: COLORS.secondary,
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 5,
+    color: COLORS.primary,
+    fontSize: TYPOGRAPHY.fontSize.headingSm,
+    lineHeight: TYPOGRAPHY.lineHeight.headingSm,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
   },
-  date: { color: "#888", fontSize: 13, marginBottom: 10 },
+  dateText: {
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.regular,
+  },
   statusBadge: {
-    backgroundColor: "rgba(76, 175, 80, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.round,
+    marginTop: SPACING.sm,
   },
-  statusText: { color: COLORS.secondary, fontSize: 12, fontWeight: "bold" },
-
-  section: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
+  statusText: {
+    fontSize: TYPOGRAPHY.fontSize.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.caption,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  sectionCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    gap: SPACING.sm,
+    ...SHADOWS.sm,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
+    gap: SPACING.sm,
+    paddingBottom: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
-    paddingBottom: 10,
+    borderBottomColor: COLORS.borderLight,
   },
-  sectionTitle: { color: COLORS.secondary, fontWeight: "bold", marginLeft: 10 },
-  timelineSection: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-  },
-  timelineHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+    color: COLORS.secondary,
+    textTransform: "uppercase",
   },
   timelineTitle: {
     color: COLORS.secondary,
-    fontWeight: "bold",
-    marginLeft: 10,
-    fontSize: 15,
   },
-
-  infoRow: { flexDirection: "row", marginBottom: 8 },
-  infoLabel: { color: "#aaa", width: 60, fontSize: 14 },
-  infoValue: { color: "white", flex: 1, fontSize: 14, fontWeight: "500" },
-
-  btnBack: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: "#333",
-    borderRadius: 5,
+  sectionBody: {
+    gap: SPACING.sm,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SPACING.sm,
+  },
+  infoLabel: {
+    width: SPACING.xxl,
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  },
+  infoValue: {
+    flex: 1,
+    color: COLORS.textMain,
+    fontSize: TYPOGRAPHY.fontSize.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
+    fontWeight: TYPOGRAPHY.fontWeight.regular,
   },
   homeBtn: {
-    marginTop: 20,
-    marginBottom: 20,
-    backgroundColor: "#1b5e20",
-    padding: 15,
-    borderRadius: 30,
+    minHeight: TOUCH_TARGET.androidMin,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: COLORS.secondary,
+    ...SHADOWS.sm,
   },
-  homeBtnText: { color: "white", fontWeight: "bold" },
+  homeBtnText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.fontSize.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
+    fontWeight: TYPOGRAPHY.fontWeight.bold,
+  },
+  skeletonWrap: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    gap: SPACING.md,
+  },
+  skeletonSpacingSm: {
+    marginTop: SPACING.sm,
+  },
+  skeletonSpacingMd: {
+    marginTop: SPACING.md,
+  },
 });
 
 export default OrderDetailStyles;

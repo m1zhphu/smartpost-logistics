@@ -1,22 +1,47 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  KeyboardAvoidingView,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StatusBar,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
+  Pressable,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import TaskDetailStyles from "../styles/TaskDetailStyles";
 import { waybillService } from "../services/waybillService";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
 import { isRouteAllowed } from "../utils/roleUtils";
+import CustomButton from "../components/CustomButton";
+import CustomInput from "../components/CustomInput";
+import SkeletonLoader from "../components/SkeletonLoader";
+import EmptyState from "../components/EmptyState";
+import Toast from "react-native-toast-message";
+
+const TimelineSkeleton = () => (
+  <View style={TaskDetailStyles.skeletonWrap}>
+    {[1, 2, 3].map((item) => (
+      <View key={item} style={TaskDetailStyles.card}>
+        <SkeletonLoader height={16} width="45%" />
+        <SkeletonLoader
+          height={20}
+          width="100%"
+          style={TaskDetailStyles.skeletonLine}
+        />
+        <SkeletonLoader
+          height={20}
+          width="80%"
+          style={TaskDetailStyles.skeletonLine}
+        />
+      </View>
+    ))}
+  </View>
+);
 
 export default function TaskDetailScreen({ route, navigation }) {
   const { user } = useUser();
@@ -31,13 +56,14 @@ export default function TaskDetailScreen({ route, navigation }) {
 
   useEffect(() => {
     if (!isRouteAllowed(user, "TaskDetail")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
-  }, [user]);
+  }, [navigation, user]);
 
   useEffect(() => {
     if (!waybill || !user.token) {
@@ -81,12 +107,20 @@ export default function TaskDetailScreen({ route, navigation }) {
 
   const handleSubmitTransfer = async () => {
     if (!transferTargetId.trim() || !transferReason.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ đích đến và lý do.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Vui lòng nhập đầy đủ thông tin.",
+      });
       return;
     }
 
     if (!user.token) {
-      Alert.alert("Lỗi", "Không tìm thấy thông tin đăng nhập.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không tìm th?y thông tin dang nh?p.",
+      });
       return;
     }
 
@@ -99,15 +133,20 @@ export default function TaskDetailScreen({ route, navigation }) {
         Number(transferTargetId),
         transferReason,
       );
-      Alert.alert("Thành công", "Đã điều chuyển vận đơn thành công.");
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Ðã điều chuyển vận đơn thành công.",
+      });
       setTransferModalVisible(false);
       setTransferTargetId("");
       setTransferReason("");
     } catch (error) {
-      Alert.alert(
-        "Lỗi điều chuyển",
-        error.message || "Không thể điều chuyển vận đơn.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: error.message || "Không thể điều chuyển vận đơn.",
+      });
     } finally {
       setTransferLoading(false);
     }
@@ -122,10 +161,11 @@ export default function TaskDetailScreen({ route, navigation }) {
   }
 
   const handlePrint = () => {
-    Alert.alert(
-      "Thông báo",
-      "Tính năng in vận đơn chưa được bật trong dự án hiện tại.",
-    );
+    Toast.show({
+      type: "info",
+      text1: "Thông báo",
+      text2: "Tính năng in đang phát triển.",
+    });
   };
 
   const isExpress = waybill.service_type === "EXPRESS";
@@ -138,26 +178,27 @@ export default function TaskDetailScreen({ route, navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
 
       <View style={TaskDetailStyles.headerArea}>
-        <View style={TaskDetailStyles.headerCircleDecoration} />
         <View style={TaskDetailStyles.headerTop}>
-          <TouchableOpacity
+          <Pressable
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={() => navigation.goBack()}
             style={TaskDetailStyles.iconBtn}
           >
-            <Ionicons name="chevron-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={{ alignItems: "center" }}>
-            <Text style={TaskDetailStyles.headerSub}>CHI TIẾT ĐƠN</Text>
+            <Ionicons name="chevron-back" size={24} color={COLORS.white} />
+          </Pressable>
+          <View style={TaskDetailStyles.headerTitleWrap}>
+            <Text style={TaskDetailStyles.headerSub}>CHI TIẾT VẬN ĐƠN</Text>
             <Text style={TaskDetailStyles.headerTitle}>
               {waybill.waybill_code}
             </Text>
           </View>
-          <TouchableOpacity
+          <Pressable
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={TaskDetailStyles.iconBtn}
             onPress={handlePrint}
           >
-            <Ionicons name="print-outline" size={22} color="#fff" />
-          </TouchableOpacity>
+            <Ionicons name="print-outline" size={22} color={COLORS.white} />
+          </Pressable>
         </View>
 
         <View style={TaskDetailStyles.badgeRow}>
@@ -180,9 +221,8 @@ export default function TaskDetailScreen({ route, navigation }) {
             name="person-circle-outline"
             size={36}
             color={COLORS.primary}
-            style={{ marginRight: 10 }}
           />
-          <View style={{ flex: 1 }}>
+          <View style={TaskDetailStyles.custInfo}>
             <Text style={TaskDetailStyles.custName} numberOfLines={1}>
               {waybill.receiver_name}
             </Text>
@@ -190,18 +230,20 @@ export default function TaskDetailScreen({ route, navigation }) {
               {waybill.receiver_phone}
             </Text>
           </View>
-          <TouchableOpacity
+          <Pressable
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={TaskDetailStyles.actionBtnCall}
             onPress={callCustomer}
           >
-            <Ionicons name="call" size={18} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
+            <Ionicons name="call" size={18} color={COLORS.white} />
+          </Pressable>
+          <Pressable
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={TaskDetailStyles.actionBtnMap}
             onPress={openMap}
           >
             <Ionicons name="location" size={18} color={COLORS.primary} />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <View style={TaskDetailStyles.divider} />
@@ -210,8 +252,7 @@ export default function TaskDetailScreen({ route, navigation }) {
           <Ionicons
             name="location-outline"
             size={16}
-            color="#7b867e"
-            style={{ marginTop: 2, marginRight: 8 }}
+            color={COLORS.textMuted}
           />
           <Text style={TaskDetailStyles.addressText} numberOfLines={2}>
             {waybill.receiver_address}
@@ -226,26 +267,24 @@ export default function TaskDetailScreen({ route, navigation }) {
       >
         <View style={TaskDetailStyles.infoGrid}>
           <View style={TaskDetailStyles.codBox}>
-            <Text style={TaskDetailStyles.codLabel}>THU HỘ COD</Text>
+            <Text style={TaskDetailStyles.codLabel}>Thu hộ COD</Text>
             <Text style={TaskDetailStyles.codValue}>
               {Number(waybill.cod_amount || 0).toLocaleString("vi-VN")}
             </Text>
-            <Text style={TaskDetailStyles.codUnit}>đồng</Text>
+            <Text style={TaskDetailStyles.codUnit}>d?ng</Text>
           </View>
 
           <View style={TaskDetailStyles.rightStats}>
             <View style={TaskDetailStyles.statBox}>
-              <Text style={TaskDetailStyles.statLabel}>KHỐI LƯỢNG</Text>
+              <Text style={TaskDetailStyles.statLabel}>Khối lượng</Text>
               <Text style={TaskDetailStyles.statValue}>
-                {waybill.actual_weight || 0}{" "}
-                <Text style={TaskDetailStyles.statUnitInline}>kg</Text>
+                {waybill.actual_weight || 0} kg
               </Text>
             </View>
-            <View style={[TaskDetailStyles.statBox, { marginTop: 10 }]}>
-              <Text style={TaskDetailStyles.statLabel}>CƯỚC PHÍ</Text>
+            <View style={TaskDetailStyles.statBox}>
+              <Text style={TaskDetailStyles.statLabel}>Cước phí</Text>
               <Text style={TaskDetailStyles.statValue}>
-                {Number(waybill.shipping_fee || 0).toLocaleString("vi-VN")}{" "}
-                <Text style={TaskDetailStyles.statUnitInline}>đ</Text>
+                {Number(waybill.shipping_fee || 0).toLocaleString("vi-VN")} d
               </Text>
             </View>
           </View>
@@ -253,7 +292,7 @@ export default function TaskDetailScreen({ route, navigation }) {
 
         {waybill.note ? (
           <View style={TaskDetailStyles.card}>
-            <Text style={TaskDetailStyles.noteLabel}>GHI CHÚ TỪ SHOP</Text>
+            <Text style={TaskDetailStyles.noteLabel}>Ghi chú từ shop</Text>
             <Text style={TaskDetailStyles.noteText}>{waybill.note}</Text>
           </View>
         ) : null}
@@ -262,21 +301,20 @@ export default function TaskDetailScreen({ route, navigation }) {
           <View style={TaskDetailStyles.timelineHeaderRow}>
             <View style={TaskDetailStyles.dotPrimaryTitle} />
             <Text style={TaskDetailStyles.timelineTitle}>
-              LỊCH SỬ HÀNH TRÌNH
+              Lịch sử hành trình
             </Text>
           </View>
 
           {loading ? (
-            <ActivityIndicator
-              color={COLORS.secondary}
-              style={{ marginVertical: 20 }}
-            />
+            <TimelineSkeleton />
           ) : tracking.length === 0 ? (
-            <Text style={TaskDetailStyles.emptyText}>
-              Chưa có thông tin hành trình
-            </Text>
+            <EmptyState
+              icon="timeline-clock-outline"
+              title="Chưa có hành trình"
+              message="Chưa có thông tin hành trình cho vận đơn này."
+            />
           ) : (
-            <View style={{ marginTop: 15 }}>
+            <View>
               {tracking.map((item, index) => {
                 const isFirst = index === 0;
                 const isLast = index === tracking.length - 1;
@@ -319,29 +357,35 @@ export default function TaskDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {canUpdate ? (
-        <View
-          style={{
-            paddingHorizontal: 16,
-            paddingBottom: 12,
-            backgroundColor: COLORS.white,
-          }}
-        >
-          <TouchableOpacity
-            style={[
-              TaskDetailStyles.updateBtn,
-              { marginBottom: 10, backgroundColor: COLORS.secondary },
-            ]}
-            onPress={handleOpenTransferModal}
-          >
-            <Ionicons
-              name="swap-horizontal-outline"
-              size={20}
-              color="#FFF"
-              style={{ marginRight: 8 }}
+        <SafeAreaView edges={["bottom"]} style={TaskDetailStyles.actionSection}>
+          <View style={TaskDetailStyles.actionRow}>
+            <CustomButton
+              title="Điều chuyển"
+              onPress={handleOpenTransferModal}
+              variant="outline"
+              style={TaskDetailStyles.actionBtn}
+              leftIcon={
+                <Ionicons
+                  name="swap-horizontal-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
+              }
             />
-            <Text style={TaskDetailStyles.updateBtnText}>Điều chuyển</Text>
-          </TouchableOpacity>
-        </View>
+            <CustomButton
+              title="Hoàn thành nhiệm vụ"
+              onPress={() => navigation.navigate("UpdateStatus", { waybill })}
+              style={TaskDetailStyles.actionBtn}
+              leftIcon={
+                <Ionicons
+                  name="checkbox-outline"
+                  size={20}
+                  color={COLORS.white}
+                />
+              }
+            />
+          </View>
+        </SafeAreaView>
       ) : null}
 
       <Modal
@@ -350,148 +394,83 @@ export default function TaskDetailScreen({ route, navigation }) {
         animationType="fade"
         onRequestClose={() => setTransferModalVisible(false)}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.55)",
-            justifyContent: "center",
-            padding: 20,
-          }}
+        <KeyboardAvoidingView
+          style={TaskDetailStyles.transferModalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <View
-            style={{ backgroundColor: "#fff", borderRadius: 18, padding: 20 }}
-          >
-            <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 12 }}>
-              Điều chuyển vận đơn
-            </Text>
-            <View style={{ flexDirection: "row", marginBottom: 12 }}>
-              {["HUB", "SHIPPER"].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  onPress={() => setTransferTargetType(type)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor:
-                      transferTargetType === type ? COLORS.primary : "#d1d5db",
-                    backgroundColor:
-                      transferTargetType === type ? COLORS.primary : "#fff",
-                    marginRight: type === "HUB" ? 8 : 0,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color:
-                        transferTargetType === type ? "#fff" : COLORS.textMuted,
-                      fontWeight: "600",
-                    }}
+          <View style={TaskDetailStyles.transferModalContent}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={TaskDetailStyles.transferFormContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={TaskDetailStyles.transferModalTitle}>
+                Điều chuyển vận đơn
+              </Text>
+              <View style={TaskDetailStyles.transferTypeRow}>
+                {["HUB", "SHIPPER"].map((type) => (
+                  <Pressable
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    key={type}
+                    onPress={() => setTransferTargetType(type)}
+                    style={[
+                      TaskDetailStyles.transferTypeBtn,
+                      transferTargetType === type &&
+                        TaskDetailStyles.transferTypeBtnActive,
+                    ]}
                   >
-                    {type === "HUB" ? "Kho" : "Shipper"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={[
+                        TaskDetailStyles.transferTypeText,
+                        transferTargetType === type &&
+                          TaskDetailStyles.transferTypeTextActive,
+                      ]}
+                    >
+                      {type === "HUB" ? "Kho" : "Shipper"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
 
-            <Text
-              style={{ marginBottom: 6, color: "#374151", fontWeight: "600" }}
-            >
-              ID đích đến
-            </Text>
-            <TextInput
-              value={transferTargetId}
-              onChangeText={setTransferTargetId}
-              keyboardType="number-pad"
-              placeholder={
-                transferTargetType === "HUB" ? "Nhập Hub ID" : "Nhập Shipper ID"
-              }
-              style={{
-                borderWidth: 1,
-                borderColor: "#d1d5db",
-                borderRadius: 12,
-                padding: 12,
-                marginBottom: 12,
-              }}
-            />
+              <CustomInput
+                label="ID đích đến"
+                value={transferTargetId}
+                onChangeText={setTransferTargetId}
+                keyboardType="number-pad"
+                placeholder={
+                  transferTargetType === "HUB"
+                    ? "Nhập Hub ID"
+                    : "Nhập Shipper ID"
+                }
+              />
 
-            <Text
-              style={{ marginBottom: 6, color: "#374151", fontWeight: "600" }}
-            >
-              Lý do
-            </Text>
-            <TextInput
-              value={transferReason}
-              onChangeText={setTransferReason}
-              placeholder="Nhập lý do điều chuyển"
-              multiline
-              style={{
-                borderWidth: 1,
-                borderColor: "#d1d5db",
-                borderRadius: 12,
-                padding: 12,
-                minHeight: 90,
-                textAlignVertical: "top",
-                marginBottom: 16,
-              }}
-            />
+              <CustomInput
+                label="Lý do"
+                value={transferReason}
+                onChangeText={setTransferReason}
+                placeholder="Nhập lý do điều chuyển"
+                multiline
+                inputStyle={TaskDetailStyles.transferReasonInput}
+              />
 
-            <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-              <TouchableOpacity
-                onPress={() => setTransferModalVisible(false)}
-                style={{
-                  marginRight: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                }}
-              >
-                <Text style={{ color: COLORS.textMuted }}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSubmitTransfer}
-                disabled={transferLoading}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  backgroundColor: COLORS.primary,
-                  opacity: transferLoading ? 0.7 : 1,
-                }}
-              >
-                <Text style={{ color: "#fff", fontWeight: "700" }}>
-                  {transferLoading ? "Đang chuyển..." : "Xác nhận"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <View style={TaskDetailStyles.transferActions}>
+                <CustomButton
+                  title="Hủy"
+                  variant="outline"
+                  onPress={() => setTransferModalVisible(false)}
+                  style={TaskDetailStyles.transferActionBtn}
+                />
+                <CustomButton
+                  title="Xác nhận"
+                  onPress={handleSubmitTransfer}
+                  loading={transferLoading}
+                  style={TaskDetailStyles.transferActionBtn}
+                />
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
-
-      {canUpdate ? (
-        <View style={TaskDetailStyles.bottomBar}>
-          <TouchableOpacity
-            style={TaskDetailStyles.printerBtn}
-            onPress={handlePrint}
-          >
-            <Ionicons name="print-outline" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={TaskDetailStyles.updateBtn}
-            onPress={() => navigation.navigate("UpdateStatus", { waybill })}
-          >
-            <Ionicons
-              name="checkbox-outline"
-              size={20}
-              color="#FFF"
-              style={{ marginRight: 8 }}
-            />
-            <Text style={TaskDetailStyles.updateBtnText}>
-              Cập nhật trạng thái giao
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
     </View>
   );
 }

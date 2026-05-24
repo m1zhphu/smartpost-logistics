@@ -1,16 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
+  Pressable,
   StatusBar,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +17,31 @@ import { accountingService } from "../services/accountingService";
 import { useUser } from "../context/UserContext";
 import { isRouteAllowed } from "../utils/roleUtils";
 import { COLORS } from "../constants/colors";
+import CustomInput from "../components/CustomInput";
+import CustomButton from "../components/CustomButton";
+import SkeletonLoader from "../components/SkeletonLoader";
+import EmptyState from "../components/EmptyState";
+import Toast from "react-native-toast-message";
+
+const StatementSkeleton = () => (
+  <View style={ShopStatementStyles.skeletonWrap}>
+    {[1, 2, 3, 4].map((item) => (
+      <View key={item} style={ShopStatementStyles.card}>
+        <SkeletonLoader height={16} width="40%" />
+        <SkeletonLoader
+          height={20}
+          width="100%"
+          style={ShopStatementStyles.skeletonLine}
+        />
+        <SkeletonLoader
+          height={20}
+          width="80%"
+          style={ShopStatementStyles.skeletonLine}
+        />
+      </View>
+    ))}
+  </View>
+);
 
 export default function ShopStatementScreen({ navigation }) {
   const { user } = useUser();
@@ -34,43 +56,40 @@ export default function ShopStatementScreen({ navigation }) {
 
   useEffect(() => {
     if (!isRouteAllowed(user, "ShopStatement")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
       return;
     }
     fetchCustomers();
-  }, [user.token]);
+  }, [navigation, user.token]);
 
   const filteredCustomers = useMemo(() => {
     const keyword = searchTxt.trim().toLowerCase();
-    if (!keyword) {
-      return customers;
-    }
-
-    return customers.filter((item) => {
-      return (
+    if (!keyword) return customers;
+    return customers.filter(
+      (item) =>
         (item.name || "").toLowerCase().includes(keyword) ||
-        (item.phone || "").includes(keyword)
-      );
-    });
+        (item.phone || "").includes(keyword),
+    );
   }, [customers, searchTxt]);
 
   const fetchCustomers = async () => {
-    if (!user.token) {
-      return;
-    }
+    if (!user.token) return;
 
+    setLoading(true);
     try {
       const response = await waybillService.getCustomers(user.token);
       setCustomers(Array.isArray(response) ? response : []);
     } catch (error) {
-      Alert.alert(
-        "Lỗi",
-        error.message || "Không thể tải danh sách khách hàng.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: error.message || "Không thể tải danh sách khách hàng.",
+      });
     } finally {
       setLoading(false);
     }
@@ -78,7 +97,11 @@ export default function ShopStatementScreen({ navigation }) {
 
   const handleCreateStatement = async () => {
     if (!selectedShop) {
-      Alert.alert("Lỗi", "Vui lòng chọn shop để đối soát.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Vui lòng chọn shop để đối soát.",
+      });
       return;
     }
 
@@ -94,31 +117,33 @@ export default function ShopStatementScreen({ navigation }) {
               user.token,
               selectedShop.customer_id,
             );
+
       setStatementResult(response);
-      const typeLabel = statementType === "COD" ? "Thu hộ" : "Cước";
+      const typeLabel = statementType === "COD" ? "Thu h?" : "Cu?c";
       const codeLabel = response.statement_code || `#${response.statement_id}`;
       const totalAmount = Number(
         response.total_amount || response.grand_total || 0,
       ).toLocaleString("vi-VN");
-      Alert.alert(
-        "Thành công",
-        `Đã tạo bảng kê ${typeLabel} ${codeLabel} với tổng tiền ${totalAmount} đ`,
-      );
+      Toast.show({
+        type: "success",
+        text1: "Hoàn thành",
+        text2: `Đã tạo bảng kê ${typeLabel} ${codeLabel} với tổng tiền ${totalAmount} d`,
+      });
     } catch (error) {
-      Alert.alert(
-        "Lỗi",
-        error.message || "Không có đơn hàng nào chờ đối soát cho shop này.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2:
+          error.message ||
+          "Không thể tạo bảng kê đối soát cho shop này lúc này.",
+      });
     } finally {
       setSubmitLoading(false);
     }
   };
 
   const downloadExcel = () => {
-    if (!statementResult || !user.token) {
-      return;
-    }
-
+    if (!statementResult || !user.token) return;
     const url = accountingService.getExportStatementUrl(
       statementResult.statement_id,
       statementType,
@@ -128,10 +153,7 @@ export default function ShopStatementScreen({ navigation }) {
   };
 
   const downloadCsv = () => {
-    if (!statementResult || !user.token) {
-      return;
-    }
-
+    if (!statementResult || !user.token) return;
     const url = accountingService.getExportStatementCsvUrl(
       statementResult.statement_id,
       user.token,
@@ -144,44 +166,41 @@ export default function ShopStatementScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
 
       <View style={ShopStatementStyles.headerArea}>
-        <View style={ShopStatementStyles.headerCircleDecoration} />
         <View style={ShopStatementStyles.headerTop}>
-          <TouchableOpacity
+          <Pressable
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={ShopStatementStyles.backBtn}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-back" size={24} color="#FFF" />
-          </TouchableOpacity>
+            <Ionicons name="chevron-back" size={24} color={COLORS.white} />
+          </Pressable>
           <Text style={ShopStatementStyles.headerTitle}>
-            Đối Soát Khách Hàng
+            Ðối soát khách hàng
           </Text>
-          <View style={{ width: 36 }} />
+          <View style={ShopStatementStyles.headerRightPlaceholder} />
         </View>
       </View>
 
       <View style={ShopStatementStyles.contentWrapper}>
         <View style={ShopStatementStyles.card}>
-          <Text style={ShopStatementStyles.label}>
-            Chọn Shop (Khách hàng){" "}
-            <Text style={{ color: COLORS.error }}>*</Text>
-          </Text>
+          <Text style={ShopStatementStyles.label}>Chọn Shop (khách hàng)</Text>
 
-          <TouchableOpacity
+          <Pressable
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={ShopStatementStyles.mockInput}
             onPress={() => setShowSearchModal(true)}
-            activeOpacity={0.8}
           >
-            <View style={{ flex: 1 }}>
+            <View style={ShopStatementStyles.flex1}>
               <Text
                 style={[
                   ShopStatementStyles.textMain,
-                  !selectedShop && { color: "#7b867e", fontWeight: "normal" },
+                  !selectedShop && ShopStatementStyles.selectorPlaceholder,
                 ]}
                 numberOfLines={1}
               >
                 {selectedShop
                   ? selectedShop.name
-                  : "Nhấn để tìm kiếm tên, SĐT..."}
+                  : "Nhận để tìm kiếm tên, SÐT..."}
               </Text>
               {selectedShop ? (
                 <Text style={ShopStatementStyles.textSub}>
@@ -192,51 +211,38 @@ export default function ShopStatementScreen({ navigation }) {
             <View style={ShopStatementStyles.searchIconWrap}>
               <Ionicons name="search" size={20} color={COLORS.secondary} />
             </View>
-          </TouchableOpacity>
+          </Pressable>
 
           {selectedShop ? (
             <View style={ShopStatementStyles.infoCard}>
               <View style={ShopStatementStyles.infoRow}>
-                <Ionicons
-                  name="business"
-                  size={18}
-                  color="#7b867e"
-                  style={{ marginRight: 10 }}
-                />
+                <Ionicons name="business" size={18} color={COLORS.textMuted} />
                 <Text style={ShopStatementStyles.infoText}>
                   Ngân hàng:{" "}
-                  <Text style={{ color: COLORS.primary, fontWeight: "bold" }}>
+                  <Text style={ShopStatementStyles.boldPrimary}>
                     {selectedShop.bank_name || "Chưa cập nhật"}
                   </Text>
                 </Text>
               </View>
-              <View
-                style={[
-                  ShopStatementStyles.infoRow,
-                  { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
-                ]}
-              >
-                <Ionicons
-                  name="card"
-                  size={18}
-                  color="#7b867e"
-                  style={{ marginRight: 10 }}
-                />
+              <View style={ShopStatementStyles.infoRow}>
+                <Ionicons name="card" size={18} color={COLORS.textMuted} />
                 <Text style={ShopStatementStyles.infoText}>
                   Số TK:{" "}
-                  <Text style={{ color: COLORS.secondary, fontWeight: "bold" }}>
+                  <Text style={ShopStatementStyles.boldSecondary}>
                     {selectedShop.account_number || "Chưa cập nhật"}
                   </Text>
                 </Text>
               </View>
             </View>
           ) : null}
+
           <View style={ShopStatementStyles.statementTypeRow}>
             {[
-              { key: "DEBT", label: "Bảng kê Cước" },
-              { key: "COD", label: "Bảng kê Thu hộ" },
+              { key: "DEBT", label: "Bảng kê công nợ" },
+              { key: "COD", label: "Bảng kê thu hộ" },
             ].map((option) => (
-              <TouchableOpacity
+              <Pressable
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 key={option.key}
                 style={[
                   ShopStatementStyles.statementTypeButton,
@@ -244,7 +250,6 @@ export default function ShopStatementScreen({ navigation }) {
                     ShopStatementStyles.statementTypeButtonActive,
                 ]}
                 onPress={() => setStatementType(option.key)}
-                activeOpacity={0.8}
               >
                 <Text
                   style={[
@@ -255,44 +260,40 @@ export default function ShopStatementScreen({ navigation }) {
                 >
                   {option.label}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
-          <TouchableOpacity
-            style={[
-              ShopStatementStyles.submitBtn,
-              (!selectedShop || submitLoading) &&
-                ShopStatementStyles.submitBtnDisabled,
-            ]}
-            disabled={!selectedShop || submitLoading}
+
+          <CustomButton
+            title="Tạo bảng kê đối soát"
             onPress={handleCreateStatement}
-          >
-            {submitLoading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Ionicons
-                  name="calculator"
-                  size={20}
-                  color="#FFF"
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={ShopStatementStyles.submitBtnText}>
-                  TẠO BẢNG KÊ ĐỐI SOÁT
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+            loading={submitLoading}
+            disabled={!selectedShop}
+            style={ShopStatementStyles.submitBtn}
+            leftIcon={
+              <Ionicons name="calculator" size={20} color={COLORS.white} />
+            }
+          />
         </View>
+
+        {loading ? <StatementSkeleton /> : null}
+
+        {!loading && !statementResult ? (
+          <EmptyState
+            icon="file-document-outline"
+            title="Chưa có dữ liệu đối soát"
+            message="Shop chưa có dữ liệu đối soát trong khoảng thời gian hiện tại."
+          />
+        ) : null}
 
         {statementResult ? (
           <View style={ShopStatementStyles.resultTicket}>
             <View style={ShopStatementStyles.ticketTop}>
               <View style={ShopStatementStyles.successCircle}>
-                <Ionicons name="checkmark" size={32} color="#FFF" />
+                <Ionicons name="checkmark" size={32} color={COLORS.white} />
               </View>
               <Text style={ShopStatementStyles.resTitle}>
-                Tạo Bảng Kê Thành Công
+                Tạo bảng kê thành công
               </Text>
               <Text style={ShopStatementStyles.resCode}>
                 Mã phiếu:{" "}
@@ -301,58 +302,59 @@ export default function ShopStatementScreen({ navigation }) {
               </Text>
             </View>
 
-            <View style={ShopStatementStyles.ticketDivider}>
-              <View style={ShopStatementStyles.ticketNotchLeft} />
-              <View style={ShopStatementStyles.ticketNotchRight} />
-              <View style={ShopStatementStyles.dashedLine} />
-            </View>
-
             <View style={ShopStatementStyles.ticketBottom}>
-              <Text style={ShopStatementStyles.resAmountLabel}>
-                TỔNG TIỀN ĐỐI SOÁT
-              </Text>
-              <Text style={ShopStatementStyles.resAmountValue}>
-                {(
-                  Number(
-                    statementResult.total_amount || statementResult.grand_total,
-                  ) || 0
-                ).toLocaleString("vi-VN")}{" "}
-                đ
-              </Text>
+              <View style={ShopStatementStyles.rowMoney}>
+                <Text style={ShopStatementStyles.moneyLabel}>
+                  Tiền shop nhận
+                </Text>
+                <Text style={ShopStatementStyles.moneyCod}>
+                  {(
+                    Number(
+                      statementResult.total_amount ||
+                        statementResult.grand_total,
+                    ) || 0
+                  ).toLocaleString("vi-VN")}{" "}
+                  d
+                </Text>
+              </View>
+              <View style={ShopStatementStyles.rowMoney}>
+                <Text style={ShopStatementStyles.moneyLabel}>
+                  Phí vận chuyển
+                </Text>
+                <Text style={ShopStatementStyles.moneyFee}>
+                  {Number(statementResult.fee_amount || 0).toLocaleString(
+                    "vi-VN",
+                  )}{" "}
+                  d
+                </Text>
+              </View>
 
-              <View style={{ flexDirection: "row", marginTop: 14 }}>
-                <TouchableOpacity
-                  style={[
-                    ShopStatementStyles.downloadBtn,
-                    { flex: 1, marginRight: 8 },
-                  ]}
+              <View style={ShopStatementStyles.downloadRow}>
+                <CustomButton
+                  title="Tải Excel"
                   onPress={downloadExcel}
-                >
-                  <Ionicons
-                    name="download-outline"
-                    size={20}
-                    color="#FFF"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text style={ShopStatementStyles.downloadText}>
-                    TẢI EXCEL
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    ShopStatementStyles.downloadBtn,
-                    { flex: 1, backgroundColor: "#15803d" },
-                  ]}
+                  style={ShopStatementStyles.downloadBtn}
+                  leftIcon={
+                    <Ionicons
+                      name="download-outline"
+                      size={18}
+                      color={COLORS.white}
+                    />
+                  }
+                />
+                <CustomButton
+                  title="Tải CSV"
                   onPress={downloadCsv}
-                >
-                  <Ionicons
-                    name="document-text-outline"
-                    size={20}
-                    color="#FFF"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text style={ShopStatementStyles.downloadText}>TẢI CSV</Text>
-                </TouchableOpacity>
+                  variant="secondary"
+                  style={ShopStatementStyles.downloadBtn}
+                  leftIcon={
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color={COLORS.white}
+                    />
+                  }
+                />
               </View>
             </View>
           </View>
@@ -362,11 +364,11 @@ export default function ShopStatementScreen({ navigation }) {
       <Modal visible={showSearchModal} animationType="slide" transparent>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
+          style={ShopStatementStyles.flex1}
         >
-          <TouchableOpacity
+          <Pressable
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={ShopStatementStyles.modalOverlay}
-            activeOpacity={1}
             onPress={() => setShowSearchModal(false)}
           >
             <View
@@ -375,42 +377,42 @@ export default function ShopStatementScreen({ navigation }) {
             >
               <View style={ShopStatementStyles.modalHeader}>
                 <Text style={ShopStatementStyles.modalTitle}>
-                  Tìm Kiếm Shop (Khách hàng)
+                  Tìm kiếm shop (khách hàng)
                 </Text>
-                <TouchableOpacity onPress={() => setShowSearchModal(false)}>
+                <Pressable
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  onPress={() => setShowSearchModal(false)}
+                >
                   <Ionicons name="close" size={28} color={COLORS.primary} />
-                </TouchableOpacity>
+                </Pressable>
               </View>
 
-              <View style={ShopStatementStyles.searchWrap}>
-                <Ionicons
-                  name="search"
-                  size={20}
-                  color="#7b867e"
-                  style={{ marginHorizontal: 10 }}
-                />
-                <TextInput
-                  style={ShopStatementStyles.searchInput}
-                  placeholder="Nhập SĐT, Tên, Mã KH..."
-                  placeholderTextColor="#7b867e"
-                  value={searchTxt}
-                  onChangeText={setSearchTxt}
-                  autoFocus
-                />
-                {searchTxt ? (
-                  <TouchableOpacity
-                    onPress={() => setSearchTxt("")}
-                    style={{ paddingHorizontal: 10 }}
-                  >
-                    <Ionicons name="close-circle" size={20} color="#c8d0ca" />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+              <CustomInput
+                containerStyle={ShopStatementStyles.searchWrap}
+                placeholder="Nhập SĐT, Tên, Mã KH..."
+                value={searchTxt}
+                onChangeText={setSearchTxt}
+                leftIcon={
+                  <Ionicons name="search" size={20} color={COLORS.textMuted} />
+                }
+                rightIcon={
+                  searchTxt ? (
+                    <Pressable
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      onPress={() => setSearchTxt("")}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={20}
+                        color={COLORS.textGray}
+                      />
+                    </Pressable>
+                  ) : null
+                }
+              />
 
               {loading ? (
-                <View style={{ padding: 40, alignItems: "center" }}>
-                  <ActivityIndicator color={COLORS.secondary} size="large" />
-                </View>
+                <StatementSkeleton />
               ) : (
                 <FlatList
                   data={filteredCustomers}
@@ -420,7 +422,8 @@ export default function ShopStatementScreen({ navigation }) {
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                   renderItem={({ item }) => (
-                    <TouchableOpacity
+                    <Pressable
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       style={ShopStatementStyles.searchItem}
                       onPress={() => {
                         setSelectedShop(item);
@@ -428,9 +431,7 @@ export default function ShopStatementScreen({ navigation }) {
                         setStatementResult(null);
                       }}
                     >
-                      <View
-                        style={{ flexDirection: "row", alignItems: "center" }}
-                      >
+                      <View style={ShopStatementStyles.searchItemRow}>
                         <View style={ShopStatementStyles.custIcon}>
                           <Ionicons
                             name="person"
@@ -438,45 +439,26 @@ export default function ShopStatementScreen({ navigation }) {
                             color={COLORS.secondary}
                           />
                         </View>
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={{
-                              fontWeight: "bold",
-                              fontSize: 15,
-                              color: COLORS.primary,
-                            }}
-                          >
+                        <View style={ShopStatementStyles.flex1}>
+                          <Text style={ShopStatementStyles.searchName}>
                             {item.name}
                           </Text>
-                          <Text
-                            style={{
-                              color: "#7b867e",
-                              fontSize: 13,
-                              marginTop: 2,
-                            }}
-                          >
+                          <Text style={ShopStatementStyles.searchMeta}>
                             {item.phone} | {item.customer_code}
                           </Text>
                         </View>
                       </View>
-                    </TouchableOpacity>
+                    </Pressable>
                   )}
                   ListEmptyComponent={
-                    <Text
-                      style={{
-                        textAlign: "center",
-                        marginTop: 30,
-                        color: "#7b867e",
-                        fontStyle: "italic",
-                      }}
-                    >
+                    <Text style={ShopStatementStyles.emptyText}>
                       Không tìm thấy khách hàng nào.
                     </Text>
                   }
                 />
               )}
             </View>
-          </TouchableOpacity>
+          </Pressable>
         </KeyboardAvoidingView>
       </Modal>
     </View>

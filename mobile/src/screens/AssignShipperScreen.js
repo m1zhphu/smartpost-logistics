@@ -1,22 +1,29 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
+import CustomButton from "../components/CustomButton";
+import CustomInput from "../components/CustomInput";
+import EmptyState from "../components/EmptyState";
 import UniversalScanner from "../components/UniversalScanner";
 import AssignShipperStyles from "../styles/AssignShipperStyles";
 import { deliveryService } from "../services/deliveryService";
 import { hubService } from "../services/hubService";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
+import { SPACING } from "../constants/theme";
 import { isRouteAllowed } from "../utils/roleUtils";
+import Toast from "react-native-toast-message";
 
 const ASSIGN_TYPE = {
   SHIPPER: "SHIPPER",
@@ -26,7 +33,10 @@ const ASSIGN_TYPE = {
 const getPickupCode = (item) =>
   item.waybill_code || item.bill_code || item.pickup_code || item.code || "";
 const getCustomerName = (item) =>
-  item.customer_name || item.recipient_name || item.name || "Khách hàng";
+  item.customer_name ||
+  item.recipient_name ||
+  item.name ||
+  "Khách hàng chưa rõ";
 const getCustomerPhone = (item) =>
   item.customer_phone || item.phone || item.recipient_phone || "";
 const getPickupAddress = (item) =>
@@ -42,16 +52,18 @@ export default function AssignShipperScreen({ navigation }) {
   const [selectedAssignee, setSelectedAssignee] = useState(null);
   const [shippers, setShippers] = useState([]);
   const [hubs, setHubs] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [shipperSearch, setShipperSearch] = useState("");
+  const [loadingData, setLoadingData] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     if (!isRouteAllowed(user, "AssignShipper")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
-      return;
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
   }, [user]);
 
@@ -63,17 +75,18 @@ export default function AssignShipperScreen({ navigation }) {
   }, [user.token]);
 
   const fetchPendingPickups = async () => {
-    setLoading(true);
+    setLoadingData(true);
     try {
       const data = await deliveryService.getPendingPickups(user.token);
       setPendingPickups(Array.isArray(data) ? data : data?.items || []);
     } catch (error) {
-      Alert.alert(
-        "Lỗi",
-        error.message || "Không thể tải danh sách đơn chờ nhận.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Lỗi tải dữ liệu",
+        text2: error.message || "Không thể tải danh sách đơn cho nhận.",
+      });
     } finally {
-      setLoading(false);
+      setLoadingData(false);
     }
   };
 
@@ -82,7 +95,11 @@ export default function AssignShipperScreen({ navigation }) {
       const data = await deliveryService.getShippers(user.token);
       setShippers(Array.isArray(data) ? data : []);
     } catch (error) {
-      Alert.alert("Lỗi", error.message || "Không thể tải danh sách bưu tá.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi tải dữ liệu",
+        text2: error.message || "Không thể tải danh sách bưu tá.",
+      });
     }
   };
 
@@ -91,10 +108,11 @@ export default function AssignShipperScreen({ navigation }) {
       const data = await hubService.getHubs(user.token);
       setHubs(Array.isArray(data) ? data : []);
     } catch (error) {
-      Alert.alert(
-        "Lỗi",
-        error.message || "Không thể tải danh sách kho/bưu cục.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Lỗi tải dữ liệu",
+        text2: error.message || "Không thể tải danh sách kho/bưu cục.",
+      });
     }
   };
 
@@ -118,10 +136,11 @@ export default function AssignShipperScreen({ navigation }) {
     );
 
     if (!exists) {
-      Alert.alert(
-        "Không tìm thấy đơn",
-        "Mã quét không khớp với danh sách đơn nhận hàng đang chờ.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Đơn không hợp lệ",
+        text2: "Mã quét không khớp với danh sách đơn cho nhận.",
+      });
       return;
     }
 
@@ -133,44 +152,61 @@ export default function AssignShipperScreen({ navigation }) {
     [assignType, shippers, hubs],
   );
 
+  const filteredShippers = useMemo(() => {
+    const keyword = shipperSearch.trim().toLowerCase();
+    if (!keyword) return shippers;
+
+    return shippers.filter((item) => {
+      const fullName = String(item.full_name || "").toLowerCase();
+      const username = String(item.username || "").toLowerCase();
+      const phone = String(item.phone || "").toLowerCase();
+      return (
+        fullName.includes(keyword) ||
+        username.includes(keyword) ||
+        phone.includes(keyword)
+      );
+    });
+  }, [shipperSearch, shippers]);
+
   const selectedAssigneeId = selectedAssignee
     ? String(selectedAssignee.id)
     : "";
 
-  const handleSelectAssignee = (value) => {
+  const handleSelectHub = (value) => {
     if (!value) {
       setSelectedAssignee(null);
       return;
     }
 
-    const selected = assigneeList.find(
-      (item) =>
-        String(
-          item[assignType === ASSIGN_TYPE.SHIPPER ? "user_id" : "hub_id"],
-        ) === String(value),
-    );
-
+    const selected = hubs.find((item) => String(item.hub_id) === String(value));
     if (selected) {
-      setSelectedAssignee({
-        ...selected,
-        id: value,
-      });
+      setSelectedAssignee({ ...selected, id: value });
     }
+  };
+
+  const handleSelectShipper = (item) => {
+    setSelectedAssignee({ ...item, id: String(item.user_id) });
   };
 
   const handleAssignPickup = async () => {
     if (selectedPickupCodes.length === 0) {
-      Alert.alert("Thiếu thông tin", "Vui lòng chọn ít nhất một đơn.");
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng chọn ít nhất một đơn.",
+      });
       return;
     }
 
     if (!selectedAssignee) {
-      Alert.alert(
-        "Thiếu thông tin",
-        "Vui lòng chọn " +
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2:
+          "Vui lòng chọn " +
           (assignType === ASSIGN_TYPE.SHIPPER ? "bưu tá" : "kho/bưu cục") +
           ".",
-      );
+      });
       return;
     }
 
@@ -185,7 +221,7 @@ export default function AssignShipperScreen({ navigation }) {
       payload.hub_id = selectedAssignee.hub_id;
     }
 
-    setLoading(true);
+    setAssigning(true);
     try {
       await deliveryService.assignPickup(user.token, payload);
       setPendingPickups((prev) =>
@@ -194,24 +230,36 @@ export default function AssignShipperScreen({ navigation }) {
         ),
       );
       setSelectedPickupCodes([]);
-      Alert.alert(
-        "Thành công",
-        "Đã điều phối " + selectedPickupCodes.length + " đơn thành công.",
-      );
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2:
+          "Đã điều phối " + selectedPickupCodes.length + " đơn thành công.",
+      });
     } catch (error) {
-      Alert.alert("Lỗi", error.message || "Không thể điều phối nhận hàng.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi điều phối",
+        text2: error.message || "Không thể điều phối đơn.",
+      });
     } finally {
-      setLoading(false);
+      setAssigning(false);
     }
   };
 
   return (
-    <View style={AssignShipperStyles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <KeyboardAvoidingView
+      style={AssignShipperStyles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.neutralDark}
+      />
 
       <View style={AssignShipperStyles.scannerWrapper}>
         <UniversalScanner
-          title="Điều phối nhận hàng"
+          title="Điều phối đơn nhận hàng"
           instruction={
             selectedPickupCodes.length > 0
               ? "Đã chọn " +
@@ -238,7 +286,9 @@ export default function AssignShipperScreen({ navigation }) {
       </View>
 
       <View style={AssignShipperStyles.bottomSheet}>
-        <Text style={AssignShipperStyles.headerTitle}>Điều phối nhận hàng</Text>
+        <Text style={AssignShipperStyles.headerTitle}>
+          Điều phối đơn nhận hàng
+        </Text>
         <Text style={AssignShipperStyles.subTitle}>
           Chọn đơn đang chờ nhận, sau đó gán cho bưu tá hoặc kho/bưu cục.
         </Text>
@@ -266,7 +316,7 @@ export default function AssignShipperScreen({ navigation }) {
                 <Ionicons name="checkmark" size={14} color={COLORS.white} />
               )}
             </View>
-            <Text style={AssignShipperStyles.radioLabel}>Bưu Tá</Text>
+            <Text style={AssignShipperStyles.radioLabel}>Bưu tá</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -295,32 +345,93 @@ export default function AssignShipperScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={AssignShipperStyles.pickerWrap}>
-          <Picker
-            selectedValue={selectedAssigneeId}
-            onValueChange={handleSelectAssignee}
-          >
-            <Picker.Item
-              label={
-                assignType === ASSIGN_TYPE.SHIPPER
-                  ? "Chọn bưu tá..."
-                  : "Chọn kho/bưu cục..."
-              }
-              value=""
+        {assignType === ASSIGN_TYPE.SHIPPER ? (
+          <>
+            <CustomInput
+              label="Tìm kiếm bưu tá"
+              value={shipperSearch}
+              onChangeText={setShipperSearch}
+              placeholder="Nhập tên, username hoặc số điện thoại"
+              leftIcon={({ color }) => (
+                <Ionicons
+                  name="search"
+                  size={SPACING.md_sm}
+                  color={color || COLORS.textMuted}
+                />
+              )}
+              containerStyle={AssignShipperStyles.searchInputContainer}
             />
-            {assigneeList.map((item) => {
-              const itemId =
-                assignType === ASSIGN_TYPE.SHIPPER
-                  ? String(item.user_id)
-                  : String(item.hub_id);
-              const label =
-                assignType === ASSIGN_TYPE.SHIPPER
-                  ? item.full_name || item.username || "---"
-                  : item.hub_name || item.hub_code || "---";
-              return <Picker.Item key={itemId} label={label} value={itemId} />;
-            })}
-          </Picker>
-        </View>
+
+            <FlatList
+              data={filteredShippers}
+              keyExtractor={(item, index) => String(item.user_id || index)}
+              contentContainerStyle={AssignShipperStyles.shipperListContent}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const isActive =
+                  String(selectedAssignee?.id || "") === String(item.user_id);
+                return (
+                  <TouchableOpacity
+                    style={[
+                      AssignShipperStyles.shipperItem,
+                      isActive && AssignShipperStyles.shipperItemActive,
+                    ]}
+                    activeOpacity={0.85}
+                    onPress={() => handleSelectShipper(item)}
+                  >
+                    <View style={AssignShipperStyles.shipperAvatar}>
+                      <Ionicons
+                        name="person"
+                        size={20}
+                        color={COLORS.secondary}
+                      />
+                    </View>
+                    <View style={AssignShipperStyles.shipperInfo}>
+                      <Text style={AssignShipperStyles.shipperName}>
+                        {item.full_name || item.username || "---"}
+                      </Text>
+                      <Text style={AssignShipperStyles.shipperPhone}>
+                        {item.phone ||
+                          item.username ||
+                          "Khong co so dien thoai"}
+                      </Text>
+                    </View>
+                    {isActive ? (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={SPACING.lg}
+                        color={COLORS.secondary}
+                      />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <EmptyState
+                  icon="clipboard-text-outline"
+                  title="Không tìm thấy shipper phù hợp"
+                  message="Thử tìm kiếm lại tên, username hoặc số điện thoại."
+                />
+              }
+            />
+          </>
+        ) : (
+          <View style={AssignShipperStyles.pickerWrap}>
+            <Picker
+              selectedValue={selectedAssigneeId}
+              onValueChange={handleSelectHub}
+            >
+              <Picker.Item label="Chọn kho/bưu cục..." value="" />
+              {assigneeList.map((item) => {
+                const itemId = String(item.hub_id);
+                const label = item.hub_name || item.hub_code || "---";
+                return (
+                  <Picker.Item key={itemId} label={label} value={itemId} />
+                );
+              })}
+            </Picker>
+          </View>
+        )}
 
         <View style={AssignShipperStyles.listHeaderRow}>
           <Text style={AssignShipperStyles.listTitle}>
@@ -388,45 +499,32 @@ export default function AssignShipperScreen({ navigation }) {
             );
           }}
           ListEmptyComponent={
-            loading ? (
+            loadingData ? (
               <View style={AssignShipperStyles.emptyWrap}>
                 <ActivityIndicator size="large" color={COLORS.secondary} />
               </View>
             ) : (
               <View style={AssignShipperStyles.emptyWrap}>
-                <View style={AssignShipperStyles.emptyIconCircle}>
-                  <Ionicons
-                    name="clipboard-outline"
-                    size={48}
-                    color={COLORS.textGray}
-                  />
-                </View>
                 <Text style={AssignShipperStyles.emptyText}>
-                  Không có đơn chờ nhận. Vui lòng làm mới hoặc kiểm tra lại kết
-                  nối.
+                  Không có đơn chờ nhận. Vui lòng kiểm tra lại kết nối.
                 </Text>
               </View>
             )
           }
         />
 
-        <View style={AssignShipperStyles.footer}>
-          <TouchableOpacity
-            style={AssignShipperStyles.confirmBtn}
-            onPress={handleAssignPickup}
-            disabled={loading || selectedPickupCodes.length === 0}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={AssignShipperStyles.btnText}>
-                Gán / Điều phối ({selectedPickupCodes.length})
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        <SafeAreaView edges={["bottom"]} style={AssignShipperStyles.footerSafe}>
+          <View style={AssignShipperStyles.footer}>
+            <CustomButton
+              title={`Gán / Điều phối (${selectedPickupCodes.length})`}
+              onPress={handleAssignPickup}
+              loading={assigning}
+              disabled={assigning || selectedPickupCodes.length === 0}
+              variant="secondary"
+            />
+          </View>
+        </SafeAreaView>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

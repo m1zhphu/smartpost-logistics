@@ -284,6 +284,11 @@ export default function HomeScreen({ navigation }) {
       gap: actionColumns === 1 ? 10 : 10,
     },
   ];
+  const actionCardItemStyle = { width: actionCardWidth };
+  const homeContentContainerStyle = [
+    HomeStyles.homeContent,
+    { paddingBottom: HomeStyles.homeContent.paddingBottom + bottomInset },
+  ];
 
   const activitySummaryLabel = (item) => {
     if (!item) return "Hoạt động";
@@ -446,10 +451,7 @@ export default function HomeScreen({ navigation }) {
 
       {/* ── SCROLL CONTENT ── */}
       <ScrollView
-        contentContainerStyle={[
-          HomeStyles.homeContent,
-          { paddingBottom: HomeStyles.homeContent.paddingBottom + bottomInset },
-        ]}
+        contentContainerStyle={homeContentContainerStyle}
         showsVerticalScrollIndicator={false}
       >
         {/* Chức năng chính */}
@@ -477,7 +479,7 @@ export default function HomeScreen({ navigation }) {
                       key={`${item.route}-pinned`}
                       item={item}
                       onPress={handleNavigate}
-                      style={{ width: actionCardWidth }}
+                      style={actionCardItemStyle}
                     />
                   ))}
                 </View>
@@ -490,7 +492,7 @@ export default function HomeScreen({ navigation }) {
                   key={item.route}
                   item={item}
                   onPress={handleNavigate}
-                  style={{ width: actionCardWidth }}
+                  style={actionCardItemStyle}
                 />
               ))}
             </View>
@@ -663,7 +665,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
               ) : (
                 availableCustomActions.map((item) => (
-                  <Pressable
+                  <Pressable hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     key={item.route}
                     style={HomeStyles.modalItem}
                     onPress={() => handleAddCustomAction(item.route)}
@@ -678,7 +680,7 @@ export default function HomeScreen({ navigation }) {
                 <View style={HomeStyles.modalSection}>
                   <Text style={HomeStyles.modalSectionTitle}>Đã ghim</Text>
                   {pinnedActionItems.map((item) => (
-                    <Pressable
+                    <Pressable hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       key={`remove-${item.route}`}
                       style={HomeStyles.modalItem}
                       onPress={() => handleRemoveCustomAction(item.route)}
@@ -692,7 +694,7 @@ export default function HomeScreen({ navigation }) {
             </ScrollView>
 
             <View style={HomeStyles.modalActions}>
-              <Pressable
+              <Pressable hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 style={HomeStyles.modalCancelButton}
                 onPress={() => setCustomModalVisible(false)}
               >

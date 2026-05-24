@@ -5,33 +5,33 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../context/UserContext";
 import { isRouteAllowed } from "../utils/roleUtils";
 import { COLORS } from "../constants/colors";
 import styles from "../styles/AccountantMenuStyles";
+import Toast from "react-native-toast-message";
 
 export default function AccountantMenuScreen({ navigation }) {
   const { user } = useUser();
 
   useEffect(() => {
     if (!isRouteAllowed(user, "AccountantMenu")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
-      return;
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
-  }, [user]);
+  }, [navigation, user]);
 
   const accFunctions = [
     {
       id: "CashConfirm",
       title: "Chốt ca - Thu COD",
-      sub: "Thu tiền COD từ shipper",
+      sub: "Thu tiền COD, xuat bang ke",
       icon: "wallet",
       color: COLORS.secondary,
       bg: COLORS.secondaryLight,
@@ -47,7 +47,7 @@ export default function AccountantMenuScreen({ navigation }) {
     {
       id: "WaybillList",
       title: "Tra cứu vận đơn",
-      sub: "Xem lịch sử đơn hàng",
+      sub: "Xem lịch sử đơn hàng, tình trạng COD",
       icon: "search",
       color: COLORS.secondary,
       bg: COLORS.secondaryLight,
@@ -71,7 +71,7 @@ export default function AccountantMenuScreen({ navigation }) {
         <View style={styles.headerTopRow}>
           <View>
             <Text style={styles.headerSubTitle}>PHÒNG KẾ TOÁN</Text>
-            <Text style={styles.headerTitle}>Kế Toán Viên</Text>
+            <Text style={styles.headerTitle}>Kế toán viên</Text>
           </View>
           <View style={styles.profileAvatar}>
             <Text style={styles.avatarText}>
@@ -98,9 +98,9 @@ export default function AccountantMenuScreen({ navigation }) {
             >
               <Ionicons name="cash" size={22} color={COLORS.secondary} />
             </View>
-            <Text style={styles.statLabel}>COD CHỜ THU</Text>
+            <Text style={styles.statLabel}>COD CHO THU</Text>
             <Text style={[styles.statValue, { color: COLORS.primary }]}>0</Text>
-            <Text style={styles.statUnit}>VNĐ</Text>
+            <Text style={styles.statUnit}>VND</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.statBox}>
@@ -112,7 +112,7 @@ export default function AccountantMenuScreen({ navigation }) {
             >
               <Ionicons name="documents" size={22} color={COLORS.primary} />
             </View>
-            <Text style={styles.statLabel}>BẢNG KÊ CHỜ</Text>
+            <Text style={styles.statLabel}>BẢNG KÊ CHO</Text>
             <Text style={[styles.statValue, { color: COLORS.primary }]}>0</Text>
             <Text style={styles.statUnit}>shop</Text>
           </View>
@@ -124,7 +124,7 @@ export default function AccountantMenuScreen({ navigation }) {
             <TouchableOpacity
               key={item.id}
               style={styles.mainCard}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
               onPress={() => navigation.navigate(item.id)}
             >
               <View

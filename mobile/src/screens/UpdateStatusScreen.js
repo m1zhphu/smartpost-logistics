@@ -1,17 +1,15 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import UpdateStatusStyles from "../styles/UpdateStatusStyles";
 import { deliveryService } from "../services/deliveryService";
@@ -19,6 +17,9 @@ import { uploadService } from "../services/uploadService";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
 import { isRouteAllowed } from "../utils/roleUtils";
+import CustomButton from "../components/CustomButton";
+import CustomInput from "../components/CustomInput";
+import Toast from "react-native-toast-message";
 
 export default function UpdateStatusScreen({ route, navigation }) {
   const { user } = useUser();
@@ -33,13 +34,14 @@ export default function UpdateStatusScreen({ route, navigation }) {
 
   useEffect(() => {
     if (!isRouteAllowed(user, "UpdateStatus")) {
-      Alert.alert(
-        "Truy cập bị từ chối",
-        "Bạn không có quyền truy cập trang này.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      Toast.show({
+        type: "error",
+        text1: "Truy cập bị từ chối",
+        text2: "Bạn không có quyền truy cập trang này.",
+      });
+      navigation.goBack();
     }
-  }, [user]);
+  }, [navigation, user]);
 
   useEffect(() => {
     if (codMode === "FULL") setActualCod(expectedCod.toString());
@@ -47,7 +49,7 @@ export default function UpdateStatusScreen({ route, navigation }) {
   }, [codMode, expectedCod]);
 
   if (!waybill) {
-    return <View style={{ flex: 1 }} />;
+    return <View style={UpdateStatusStyles.flex1} />;
   }
 
   const formatMoney = (value) => {
@@ -60,7 +62,11 @@ export default function UpdateStatusScreen({ route, navigation }) {
     try {
       if (statusType === "FAILED") {
         if (!failureNote.trim()) {
-          Alert.alert("Lỗi", "Vui lòng nhập lý do giao thất bại.");
+          Toast.show({
+            type: "error",
+            text1: "Lỗi",
+            text2: "Vui lòng nhập lý do giao thất bại.",
+          });
           return;
         }
 
@@ -70,10 +76,18 @@ export default function UpdateStatusScreen({ route, navigation }) {
           note: failureNote.trim(),
         });
 
-        Alert.alert("Ghi nhận", "Đã báo cáo giao thất bại.");
+        Toast.show({
+          type: "success",
+          text1: "Thành công",
+          text2: "Đã báo cáo giao thất bại.",
+        });
       } else {
         if (!podUri) {
-          Alert.alert("Thiếu ảnh", "Vui lòng chụp ảnh kiện hàng (POD).");
+          Toast.show({
+            type: "error",
+            text1: "Lỗi",
+            text2: "Vui lòng chụp ảnh kiện hàng (POD).",
+          });
           return;
         }
 
@@ -88,15 +102,20 @@ export default function UpdateStatusScreen({ route, navigation }) {
           note: successNote.trim(),
         });
 
-        Alert.alert(
-          "Thành công",
-          `Chốt đơn ${waybill.waybill_code} thành công.`,
-        );
+        Toast.show({
+          type: "success",
+          text1: "Thành công",
+          text2: `Chốt don ${waybill.waybill_code} thành công.`,
+        });
       }
 
       navigation.navigate("TaskList");
     } catch (error) {
-      Alert.alert("Lỗi", error.message || "Lỗi hệ thống.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: error.message || "Lỗi hệ thống.",
+      });
     } finally {
       setLoading(false);
     }
@@ -105,20 +124,19 @@ export default function UpdateStatusScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView
       style={UpdateStatusStyles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
 
       <View style={UpdateStatusStyles.headerArea}>
-        <View style={UpdateStatusStyles.headerCircleDecoration} />
         <View style={UpdateStatusStyles.headerTop}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={UpdateStatusStyles.backBtn}
           >
-            <Ionicons name="chevron-back" size={24} color="#fff" />
+            <Ionicons name="chevron-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
-          <View style={{ alignItems: "center" }}>
+          <View style={UpdateStatusStyles.headerCenter}>
             <Text style={UpdateStatusStyles.headerSubTitle}>
               CẬP NHẬT TRẠNG THÁI
             </Text>
@@ -126,7 +144,7 @@ export default function UpdateStatusScreen({ route, navigation }) {
               {waybill.waybill_code}
             </Text>
           </View>
-          <View style={{ width: 40 }} />
+          <View style={UpdateStatusStyles.headerRightPlaceholder} />
         </View>
       </View>
 
@@ -163,16 +181,15 @@ export default function UpdateStatusScreen({ route, navigation }) {
                 statusType === "SUCCESS" ? "checkmark" : "checkmark-outline"
               }
               size={20}
-              color={statusType === "SUCCESS" ? "#FFF" : "#7b867e"}
-              style={{ marginRight: 6 }}
+              color={statusType === "SUCCESS" ? COLORS.white : COLORS.textMuted}
             />
             <Text
               style={[
                 UpdateStatusStyles.toggleText,
-                statusType === "SUCCESS" && { color: "#FFF" },
+                statusType === "SUCCESS" && UpdateStatusStyles.toggleTextActive,
               ]}
             >
-              Giao thành công
+              Thành công
             </Text>
           </TouchableOpacity>
 
@@ -186,16 +203,15 @@ export default function UpdateStatusScreen({ route, navigation }) {
             <Ionicons
               name={statusType === "FAILED" ? "close" : "close-outline"}
               size={20}
-              color={statusType === "FAILED" ? "#FFF" : "#7b867e"}
-              style={{ marginRight: 6 }}
+              color={statusType === "FAILED" ? COLORS.white : COLORS.textMuted}
             />
             <Text
               style={[
                 UpdateStatusStyles.toggleText,
-                statusType === "FAILED" && { color: "#FFF" },
+                statusType === "FAILED" && UpdateStatusStyles.toggleTextActive,
               ]}
             >
-              Giao thất bại
+              Thất bại
             </Text>
           </TouchableOpacity>
         </View>
@@ -204,29 +220,22 @@ export default function UpdateStatusScreen({ route, navigation }) {
           <>
             <View style={UpdateStatusStyles.card}>
               <View style={UpdateStatusStyles.cardHeaderRow}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={UpdateStatusStyles.cardHeaderLeft}>
                   <View style={UpdateStatusStyles.dotWarning} />
                   <Text style={UpdateStatusStyles.cardTitleWarning}>
-                    TIỀN COD THU THỰC TẾ
+                    Tiền COD thực tế
                   </Text>
                 </View>
                 <Text style={UpdateStatusStyles.expectedText}>
-                  Dự kiến: {expectedCod.toLocaleString("vi-VN")} đ
+                  Dự kiến: {expectedCod.toLocaleString("vi-VN")} d
                 </Text>
               </View>
 
               <View style={UpdateStatusStyles.codInputWrapper}>
-                <TextInput
-                  style={UpdateStatusStyles.codInput}
-                  keyboardType="numeric"
-                  value={formatMoney(actualCod)}
-                  onChangeText={(text) => {
-                    setActualCod(text.replace(/[^0-9]/g, ""));
-                    setCodMode("MANUAL");
-                  }}
-                  editable={codMode === "MANUAL"}
-                />
-                <Text style={UpdateStatusStyles.codCurrency}>đ</Text>
+                <Text style={UpdateStatusStyles.codInput}>
+                  {formatMoney(actualCod)}
+                </Text>
+                <Text style={UpdateStatusStyles.codCurrency}>d</Text>
               </View>
 
               <View style={UpdateStatusStyles.quickActionRow}>
@@ -244,7 +253,7 @@ export default function UpdateStatusScreen({ route, navigation }) {
                         UpdateStatusStyles.quickBtnTextActive,
                     ]}
                   >
-                    Đủ tiền
+                    Đầy đủ
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -286,10 +295,10 @@ export default function UpdateStatusScreen({ route, navigation }) {
 
             <View style={UpdateStatusStyles.card}>
               <View style={UpdateStatusStyles.cardHeaderRow}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={UpdateStatusStyles.cardHeaderLeft}>
                   <View style={UpdateStatusStyles.dotPrimary} />
                   <Text style={UpdateStatusStyles.cardTitlePrimary}>
-                    ẢNH BẰNG CHỨNG POD
+                    Ảnh bằng chứng POD
                   </Text>
                 </View>
                 <View style={UpdateStatusStyles.requiredBadge}>
@@ -298,7 +307,7 @@ export default function UpdateStatusScreen({ route, navigation }) {
               </View>
 
               {podUri ? (
-                <View style={{ position: "relative", marginBottom: 15 }}>
+                <View>
                   <Image
                     source={{ uri: podUri }}
                     style={UpdateStatusStyles.podImage}
@@ -312,7 +321,11 @@ export default function UpdateStatusScreen({ route, navigation }) {
                       })
                     }
                   >
-                    <Ionicons name="camera-reverse" size={24} color="#FFF" />
+                    <Ionicons
+                      name="camera-reverse"
+                      size={24}
+                      color={COLORS.white}
+                    />
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -334,12 +347,14 @@ export default function UpdateStatusScreen({ route, navigation }) {
                     Chụp ảnh kiện hàng
                   </Text>
                   <Text style={UpdateStatusStyles.cameraBoxSub}>
-                    Ảnh phải thấy rõ mã vận đơn
+                    Ảnh phải thấy rõ kiện hàng và mã vận đơn trên gói hàng
                   </Text>
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity
+              <CustomButton
+                title="Mở lại camera POD"
+                variant="outline"
                 style={UpdateStatusStyles.galleryBtn}
                 onPress={() =>
                   navigation.navigate("CameraPOD", {
@@ -347,102 +362,83 @@ export default function UpdateStatusScreen({ route, navigation }) {
                     returnScreen: "UpdateStatus",
                   })
                 }
-              >
-                <Ionicons
-                  name="image-outline"
-                  size={20}
-                  color={COLORS.primary}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={UpdateStatusStyles.galleryBtnText}>
-                  Mở lại camera POD
-                </Text>
-              </TouchableOpacity>
+                leftIcon={
+                  <Ionicons
+                    name="image-outline"
+                    size={20}
+                    color={COLORS.primary}
+                  />
+                }
+              />
             </View>
 
             <View style={UpdateStatusStyles.card}>
-              <View style={UpdateStatusStyles.cardHeaderRow}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <View style={UpdateStatusStyles.dotGray} />
-                  <Text style={UpdateStatusStyles.cardTitleGray}>
-                    GHI CHÚ THÊM
-                  </Text>
-                </View>
+              <View style={UpdateStatusStyles.cardHeaderLeft}>
+                <View style={UpdateStatusStyles.dotGray} />
+                <Text style={UpdateStatusStyles.cardTitleGray}>
+                  Ghi chú thêm
+                </Text>
               </View>
-              <TextInput
-                style={UpdateStatusStyles.inputNotePlain}
-                multiline
-                placeholder="Nhập thêm thông tin nếu cần..."
+              <CustomInput
                 value={successNote}
                 onChangeText={setSuccessNote}
+                placeholder="Nhập thêm thông tin nếu cần..."
+                multiline
+                inputStyle={UpdateStatusStyles.inputNotePlain}
               />
             </View>
           </>
         ) : (
           <View style={UpdateStatusStyles.card}>
             <View style={UpdateStatusStyles.cardHeaderRow}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View style={UpdateStatusStyles.cardHeaderLeft}>
                 <View style={UpdateStatusStyles.dotDanger} />
                 <Text style={UpdateStatusStyles.cardTitleDanger}>
-                  LÝ DO THẤT BẠI
+                  Lý do thất bại
                 </Text>
               </View>
               <View style={UpdateStatusStyles.requiredBadge}>
                 <Text style={UpdateStatusStyles.requiredText}>Bắt buộc</Text>
               </View>
             </View>
-            <TextInput
-              style={UpdateStatusStyles.inputNoteArea}
-              multiline
-              placeholder="Khách không nghe máy, boom hàng, sai địa chỉ..."
+            <CustomInput
               value={failureNote}
               onChangeText={setFailureNote}
+              multiline
+              placeholder="Khách không nghe máy, boom hàng, sai địa chỉ..."
+              inputStyle={UpdateStatusStyles.inputNoteArea}
             />
           </View>
         )}
       </ScrollView>
 
-      <View style={UpdateStatusStyles.footer}>
+      <SafeAreaView edges={["bottom"]} style={UpdateStatusStyles.footer}>
         {statusType === "SUCCESS" ? (
           <View style={UpdateStatusStyles.summaryBanner}>
             <Text style={UpdateStatusStyles.summaryBannerText}>
-              Tổng thu: {formatMoney(actualCod)} đ
+              Tổng thu: {formatMoney(actualCod)} d
             </Text>
             <Ionicons name="checkmark" size={18} color={COLORS.secondary} />
           </View>
         ) : null}
-        <TouchableOpacity
-          style={[
-            UpdateStatusStyles.submitBtn,
-            {
-              backgroundColor:
-                statusType === "FAILED" ? COLORS.error : COLORS.secondary,
-            },
-          ]}
+        <CustomButton
+          title="Lưu cập nhật"
           onPress={handleConfirm}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons
-                name={
-                  statusType === "SUCCESS"
-                    ? "checkbox-outline"
-                    : "close-circle-outline"
-                }
-                size={22}
-                color="#FFF"
-                style={{ marginRight: 8 }}
-              />
-              <Text style={UpdateStatusStyles.submitText}>
-                Xác nhận chốt đơn
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+          loading={loading}
+          style={UpdateStatusStyles.submitBtn}
+          leftIcon={
+            <Ionicons
+              name={
+                statusType === "SUCCESS"
+                  ? "checkbox-outline"
+                  : "close-circle-outline"
+              }
+              size={22}
+              color={COLORS.white}
+            />
+          }
+        />
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }
