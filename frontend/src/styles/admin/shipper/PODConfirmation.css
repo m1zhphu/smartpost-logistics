@@ -1,0 +1,97 @@
+/* Tổng quan */
+.pod-page-wrapper {
+  background-color: #f4f6f8;
+  min-height: calc(100vh - 64px);
+  padding: 24px;
+}
+.pod-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Các lớp tiện ích */
+.m-0 { margin: 0; }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-4 { margin-top: 16px; }
+.mt-5 { margin-top: 20px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-5 { margin-bottom: 20px; }
+.mb-6 { margin-bottom: 24px; }
+.my-4 { margin: 16px 0; }
+.mr-2 { margin-right: 8px; }
+.w-full { width: 100%; }
+.font-bold { font-weight: 700; }
+.font-black { font-weight: 900; }
+.text-primary { color: var(--sp-primary); }
+.text-danger { color: var(--sp-danger); }
+.text-muted { color: var(--sp-text-muted); }
+.tracking-wide { letter-spacing: 0.5px; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.gap-1 { gap: 4px; }
+
+/* Header */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.back-btn { font-size: 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.misa-title { font-size: 22px; color: var(--sp-text-main); letter-spacing: -0.5px; }
+
+/* Thẻ thông tin (Cột Trái) */
+.info-card { border-radius: 12px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.card-title { font-weight: 800; font-size: 15px; color: #374151; display: flex; align-items: center; gap: 8px; }
+.info-block label { font-size: 12px; font-weight: 800; color: var(--sp-text-muted); text-transform: uppercase; margin-bottom: 4px; display: block; }
+.info-value { font-size: 16px; }
+.info-sub-value { font-size: 14px; }
+
+/* Tiền Thu Hộ */
+.cod-box {
+  background: #fff5f5; border: 2px dashed #fca5a5;
+  border-radius: 12px; padding: 16px; text-align: center;
+}
+.cod-label { font-size: 12px; font-weight: 900; color: #c81e1e; margin-bottom: 4px; }
+.cod-amount { font-size: 32px; font-weight: 900; color: #e53935; line-height: 1; }
+
+/* Khu vực thao tác (Cột Phải) */
+.action-card { border-radius: 12px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.section-label { font-size: 14px; font-weight: 700; color: #374151; margin-bottom: 8px; display: block; }
+
+/* Vùng Upload Ảnh */
+.upload-area {
+  position: relative;
+  background-color: #f9fafb;
+  border: 2px dashed var(--sp-border);
+  border-radius: 12px;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.upload-area:hover { border-color: var(--sp-text-muted); background-color: #f3f4f6; }
+.upload-area:active { transform: scale(0.98); }
+.upload-area.has-image { border-style: solid; border-color: #e5e7eb; }
+.file-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
+.upload-placeholder { text-align: center; color: var(--sp-text-muted); pointer-events: none; }
+.camera-icon { font-size: 48px; margin-bottom: 8px; color: var(--sp-border); }
+.upload-text { font-size: 15px; font-weight: 700; color: var(--sp-text-muted); margin: 0 0 4px 0; }
+.upload-hint { font-size: 12px; margin: 0; }
+.preview-img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Nút bấm */
+.btn-success { height: 54px; font-size: 16px; font-weight: 800; border-radius: 10px; letter-spacing: 0.5px; }
+.btn-fail { height: 48px; font-size: 15px; font-weight: 700; border-radius: 10px; }
+
+/* Responsive Mobile Mode */
+@media (max-width: 768px) {
+  .pod-page-wrapper { padding: 12px; background: var(--sp-surface); backdrop-filter: blur(12px); }
+  .responsive-row { display: flex; flex-direction: column; }
+  .info-card, .action-card { box-shadow: none; border: 1px solid #ebeef5; margin-bottom: 16px; }
+}

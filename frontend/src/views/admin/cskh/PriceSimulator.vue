@@ -170,12 +170,4 @@ const resetForm = () => {
 };
 </script>
 
-<style scoped>
-.text-primary { color: #4318FF; }
-.text-success { color: #05CD99; }
-.w-full { width: 100%; }
-.result-card.has-result {
-  border-color: #05CD99;
-  box-shadow: 0 4px 20px rgba(5, 205, 153, 0.1);
-}
-</style>
+<style scoped src="@/styles/admin/cskh/PriceSimulator.css"></style>

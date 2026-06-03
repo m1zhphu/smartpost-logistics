@@ -1,0 +1,56 @@
+/* Global print styles to cleanly isolate the invoice card */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+
+  /* Hide sidebar, panel, headers, breadcrumbs, forms and buttons */
+  .primary-sidebar,
+  .secondary-panel,
+  .modern-header,
+  .page-header,
+  .form-column,
+  .invoice-actions,
+  .card-header-custom,
+  .custom-divider {
+    display: none !important;
+  }
+
+  /* Reset layout constraints and display full-width content */
+  .modern-layout-container,
+  .main-wrapper,
+  .el-main,
+  .price-simulator-page,
+  .simulator-layout,
+  .result-column {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  /* Center the invoice card on the page */
+  .invoice-wrapper {
+    position: relative !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 650px !important;
+    margin: 0 auto !important;
+    padding: 10px !important;
+    box-shadow: none !important;
+  }
+
+  .invoice-card {
+    border: 1px solid var(--sp-border) !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    width: 100% !important;
+    border-radius: 16px !important;
+  }
+}

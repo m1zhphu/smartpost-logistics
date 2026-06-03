@@ -1,47 +1,49 @@
 <template>
   <div class="login-wrapper">
     <div class="login-card">
-      <div class="login-header">
-        <h1>SmartPost</h1>
-        <p>Hệ thống Quản trị Logistics Thông minh</p>
+      <div class="login-logo-top">
+        <img src="@/assets/CompanyLogo4.png" alt="SpeedLight Group" />
       </div>
       
-      <el-form :model="loginForm" :rules="rules" ref="formRef" label-position="top">
-        <el-form-item label="Tên đăng nhập" prop="username">
+      <div class="login-header">
+        <h1>ĐĂNG NHẬP</h1>
+      </div>
+      
+      <el-form :model="loginForm" :rules="rules" ref="formRef" class="login-form">
+        <el-form-item prop="username">
           <el-input 
             v-model="loginForm.username" 
-            placeholder="Nhập tên đăng nhập" 
+            placeholder="Tài khoản" 
             prefix-icon="User"
             clearable
+            class="custom-input"
           ></el-input>
         </el-form-item>
         
-        <el-form-item label="Mật khẩu" prop="password">
+        <el-form-item prop="password">
           <el-input 
             v-model="loginForm.password" 
             type="password" 
-            placeholder="Nhập mật khẩu" 
+            placeholder="Mật khẩu" 
             prefix-icon="Lock" 
             show-password
             @keyup.enter="handleLogin"
+            class="custom-input"
           ></el-input>
         </el-form-item>
-        
-        <div class="form-footer">
-          <el-checkbox v-model="rememberMe">Ghi nhớ</el-checkbox>
-          <el-link type="primary" underline="never">Quên mật khẩu?</el-link>
-        </div>
         
         <el-button 
           type="primary" 
           class="login-btn" 
           :loading="loading" 
           @click="handleLogin"
-        >Đăng nhập</el-button>
+        >ĐĂNG NHẬP</el-button>
       </el-form>
       
-      <div class="login-footer">
-        <span>Chưa có tài khoản? <el-link type="primary" underline="never" @click="$router.push('/setup-admin')">Thiết lập hệ thống</el-link></span>
+      <div class="login-logo-bottom">
+        <img src="@/assets/CompanyLogo2.png" alt="Speed Up Logistics" />
+        <div class="logo-divider"></div>
+        <img src="@/assets/CompanyLogo3.png" alt="Speed Up Invest" />
       </div>
     </div>
   </div>
@@ -109,66 +111,4 @@ const handleLogin = async () => {
 };
 </script>
 
-<style scoped>
-.login-wrapper {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-  color: white;
-}
-
-.login-card {
-  width: 400px;
-  background: white;
-  padding: 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  color: #333; /* Fallback an toàn nếu chưa cấu hình biến CSS */
-  animation: slideUp 0.5s ease-out;
-}
-
-.login-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.login-header h1 {
-  color: #409EFF; /* Màu primary của Element Plus */
-  font-size: 2.25rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
-}
-
-.login-header p {
-  color: #6b7280;
-  font-size: 0.95rem;
-}
-
-.form-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.login-btn {
-  width: 100%;
-  height: 44px;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.login-footer {
-  margin-top: 1.5rem;
-  text-align: center;
-  font-size: 0.9rem;
-  color: #6b7280;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
+<style scoped src="@/styles/auth/LoginView.css"></style>

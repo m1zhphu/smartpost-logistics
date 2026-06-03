@@ -8,6 +8,4 @@
 import vi from 'element-plus/es/locale/lang/vi';
 </script>
 
-<style>
-/* CSS Reset / Global Styles handled in style.css */
-</style>
+<style src="@/styles/App.css"></style>

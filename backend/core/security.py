@@ -1,12 +1,9 @@
 # File: core/security.py
 import jwt
+import bcrypt
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
-# Cấu hình băm mật khẩu bằng thuật toán bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Khóa bí mật để ký JWT Token (Thực tế sau này sẽ giấu vào file .env)
 SECRET_KEY = "smartpost_super_secret_key_mvp_2026"
@@ -15,11 +12,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # Token sống trong 24 giờ (1 ngày)
 
 def get_password_hash(password: str) -> str:
     """Băm mật khẩu trước khi lưu vào DB"""
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Kiểm tra mật khẩu người dùng nhập có khớp với DB không"""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     """Tạo vé thông hành (JWT Token) cho User"""

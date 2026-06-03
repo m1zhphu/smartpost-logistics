@@ -71,22 +71,4 @@ const formatTime = (t) => moment(t).format('DD/MM/YYYY HH:mm:ss');
 onMounted(fetchLogs);
 </script>
 
-<style scoped>
-.audit-logs-page { padding: 0; }
-.misa-title { font-size: 1.5rem; font-weight: 700; color: #1e3a8a; }
-.text-muted { color: #6b7280; font-size: 0.9rem; }
-.flex-between { display: flex; justify-content: space-between; align-items: center; }
-.mb-4 { margin-bottom: 1rem; }
-.py-10 { padding: 2.5rem 0; }
-
-.change-flow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-}
-.old { color: #9ca3af; text-decoration: line-through; }
-.new { color: #10b981; font-weight: 700; }
-.border-radius-8 { border-radius: 8px; }
-.shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-</style>
+<style scoped src="@/styles/admin/dashboard/AuditLogs.css"></style>

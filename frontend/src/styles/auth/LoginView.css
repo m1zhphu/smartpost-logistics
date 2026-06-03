@@ -1,0 +1,122 @@
+.login-wrapper {
+  position: relative;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.login-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: url('@/assets/DongSon2.png') no-repeat center center;
+  background-size: cover;
+  opacity: 0.15;
+  z-index: 0;
+}
+
+.login-card {
+  width: 540px;
+  padding: 2rem 4rem;
+  animation: slideUp 0.5s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+}
+
+.login-logo-top {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.login-logo-top img {
+  height: 110px;
+  object-fit: contain;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-header h1 {
+  color: #388E3C;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.login-form {
+  width: 100%;
+}
+
+.login-form .el-form-item {
+  margin-bottom: 1.5rem;
+}
+
+/* Custom input styling */
+.custom-input :deep(.el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+  padding: 4px 18px;
+}
+.custom-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #388E3C inset !important;
+}
+
+.custom-input :deep(.el-input__inner) {
+  height: 48px;
+  font-size: 1.05rem;
+}
+
+.custom-input :deep(.el-input__prefix-inner) {
+  font-size: 1.3rem;
+  color: #388E3C;
+}
+
+.login-btn {
+  width: 100%;
+  height: 54px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  background-color: #388E3C;
+  border-color: #388E3C;
+  border-radius: 12px;
+  margin-top: 1.5rem;
+  letter-spacing: 1px;
+}
+
+.login-btn:hover, .login-btn:focus {
+  background-color: #2F7C31;
+  border-color: #2F7C31;
+}
+
+.login-logo-bottom {
+  margin-top: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.login-logo-bottom img {
+  height: 50px;
+  object-fit: contain;
+}
+
+.logo-divider {
+  width: 1px;
+  height: 45px;
+  background-color: #cbd5e1;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

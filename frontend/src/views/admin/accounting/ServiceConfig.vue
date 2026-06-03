@@ -228,25 +228,4 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.service-config-page { padding: 0; }
-.header-icon { font-size: 28px; color: var(--el-color-primary); }
-.flex-between { display: flex; justify-content: space-between; align-items: center; }
-.flex-center { display: flex; align-items: center; }
-.gap-2 { gap: 12px; }
-.mb-4 { margin-bottom: 20px; }
-.misa-title { margin: 0; font-size: 1.5rem; font-weight: bold; }
-.text-muted { color: #6b7280; font-size: 0.9rem; margin: 4px 0 0; }
-.font-mono { font-family: monospace; font-size: 0.9rem; }
-.font-bold { font-weight: bold; }
-.uppercase :deep(input) { text-transform: uppercase; }
-
-.price-cell { display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; }
-.price-value { font-size: 1.1rem; font-weight: 700; color: #16a34a; }
-.price-unit { font-size: 0.8rem; color: #6b7280; }
-
-.w-full { width: 100%; }
-.flex { display: flex; }
-.flex-1 { flex: 1; }
-:deep(.price-input .el-input__inner) { font-size: 1.2rem; font-weight: bold; color: #16a34a; text-align: right; }
-</style>    
+<style scoped src="@/styles/admin/accounting/ServiceConfig.css"></style>    

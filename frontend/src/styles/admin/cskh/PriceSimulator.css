@@ -1,0 +1,7 @@
+.text-primary { color: var(--sp-primary); }
+.text-success { color: var(--sp-success); }
+.w-full { width: 100%; }
+.result-card.has-result {
+  border-color: var(--sp-success);
+  box-shadow: 0 4px 20px rgba(5, 205, 153, 0.1);
+}
