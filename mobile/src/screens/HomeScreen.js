@@ -1,709 +1,559 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  View,
-  Text,
-  TouchableOpacity,
-  StatusBar,
-  ScrollView,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+    View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet, Alert, Dimensions, Modal, Linking, Animated, Easing
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import { CommonActions } from '@react-navigation/native';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { ENDPOINTS } from '../constants/data';
+import styles from '../styles/HomeStyles';
+import { useQueue } from '../context/QueueContext';
+import { COLORS } from '../constants/colors';
+import { checkNetworkConnection } from '../utils/networkUtils';
 
-import { useUser } from "../context/UserContext";
-import {
-  getHomeMenuItems,
-  getRoleKey,
-  getRoleLabel,
-  getBottomTabItems,
-  isRouteAllowed,
-} from "../utils/roleUtils";
-import { deliveryService } from "../services/deliveryService";
-import { waybillService } from "../services/waybillService";
-import HomeStyles from "../styles/HomeStyles";
-import { COLORS } from "../constants/colors";
+import ProcessedListScreen from './ProcessedListScreen';
+import { useUser } from '../context/UserContext';
+import Constants from 'expo-constants';
 
-// ─── Route → icon / màu sắc ───────────────────────────────────────────────────
-const ROUTE_META = {
-  CreateWaybill: {
-    icon: "cube-outline",
-    bg: COLORS.blueAccentBg,
-    color: COLORS.blueAccent,
-    accent: COLORS.blueAccent,
-    sub: "Nhập hàng mới",
-  },
-  ScanTask: {
-    icon: "scan-outline",
-    bg: COLORS.amberAccentBg,
-    color: COLORS.amberAccent,
-    accent: COLORS.amberAccent,
-    sub: "Scan barcode",
-  },
-  TaskList: {
-    icon: "list-outline",
-    bg: COLORS.amberAccentBg,
-    color: COLORS.amberAccent,
-    accent: COLORS.amberAccent,
-    sub: "Nhiệm vụ",
-  },
-  ShopStatement: {
-    icon: "receipt-outline",
-    bg: COLORS.purpleAccentBg,
-    color: COLORS.purpleAccent,
-    accent: COLORS.purpleAccent,
-    sub: "Sao kê cửa hàng",
-  },
-  AccountingDashboard: {
-    icon: "bar-chart-outline",
-    bg: COLORS.purpleAccentBg,
-    color: COLORS.purpleAccent,
-    accent: COLORS.purpleAccent,
-    sub: "Tổng quan",
-  },
-  CashConfirm: {
-    icon: "cash-outline",
-    bg: COLORS.purpleAccentBg,
-    color: COLORS.purpleAccent,
-    accent: COLORS.purpleAccent,
-    sub: "Xác nhận tiền mặt",
-  },
-  WarehouseDashboard: {
-    icon: "grid-outline",
-    bg: COLORS.successBg,
-    color: COLORS.successAccent,
-    accent: COLORS.successAccent,
-    sub: "Tổng quan kho",
-  },
-  WarehouseMenu: {
-    icon: "layers-outline",
-    bg: COLORS.successBg,
-    color: COLORS.successAccent,
-    accent: COLORS.successAccent,
-    sub: "Menu kho",
-  },
-  ScanInHub: {
-    icon: "log-in-outline",
-    bg: COLORS.successBg,
-    color: COLORS.successAccent,
-    accent: COLORS.successAccent,
-    sub: "Nhập kho",
-  },
-  ScanBagging: {
-    icon: "bag-outline",
-    bg: COLORS.successBg,
-    color: COLORS.successAccent,
-    accent: COLORS.successAccent,
-    sub: "Đóng túi",
-  },
-  ScanManifestLoad: {
-    icon: "arrow-up-circle-outline",
-    bg: COLORS.successBg,
-    color: COLORS.successAccent,
-    accent: COLORS.successAccent,
-    sub: "Load hàng",
-  },
-  ScanManifestUnload: {
-    icon: "arrow-down-circle-outline",
-    bg: COLORS.successBg,
-    color: COLORS.successAccent,
-    accent: COLORS.successAccent,
-    sub: "Dỡ hàng",
-  },
-  HubManagement: {
-    icon: "business-outline",
-    bg: COLORS.dangerAccentBg,
-    color: COLORS.dangerAccent,
-    accent: COLORS.dangerAccent,
-    sub: "Quản lý hub",
-  },
-  StaffManagement: {
-    icon: "people-outline",
-    bg: COLORS.dangerAccentBg,
-    color: COLORS.dangerAccent,
-    accent: COLORS.dangerAccent,
-    sub: "Nhân sự",
-  },
-  AdminOperations: {
-    icon: "settings-outline",
-    bg: COLORS.dangerAccentBg,
-    color: COLORS.dangerAccent,
-    accent: COLORS.dangerAccent,
-    sub: "Vận hành",
-  },
-};
+export default function HomeScreen({ route, navigation }) {
+    const [permission, requestPermission] = useCameraPermissions();
+    const cameraRef = useRef(null);
+    const [isCameraReady, setIsCameraReady] = useState(false);
+    const { user } = useUser();
 
-const getMeta = (route) =>
-  ROUTE_META[route] ?? {
-    icon: "apps-outline",
-    bg: COLORS.inputBg,
-    color: COLORS.neutralMid,
-    accent: COLORS.neutralMid,
-    sub: "",
-  };
+    const { queue, addToQueue, updateQueueItem, removeQueueItem, clearQueue } = useQueue();
 
-const ACTION_LIMIT = 6;
-const CUSTOM_ACTIONS_KEY = "@HomeScreen:customActions";
+    const [isCapturing, setIsCapturing] = useState(false);
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ value, label, valueColor, loading }) {
-  return (
-    <View style={HomeStyles.statCard}>
-      {loading ? (
-        <ActivityIndicator size="small" color={COLORS.primary} />
-      ) : (
-        <Text style={[HomeStyles.statValue, { color: valueColor }]}>
-          {value}
-        </Text>
-      )}
-      <Text style={HomeStyles.statLabel}>{label}</Text>
-    </View>
-  );
-}
+    const [showList, setShowList] = useState(false);
 
-// ─── Action Card ──────────────────────────────────────────────────────────────
-function ActionCard({ item, onPress, style }) {
-  const meta = getMeta(item.route);
-  return (
-    <TouchableOpacity
-      style={[HomeStyles.actionCard, style]}
-      activeOpacity={0.82}
-      onPress={() => onPress(item.route)}
-    >
-      {/* Accent bar trên đầu card */}
-      <View
-        style={[HomeStyles.cardTopAccent, { backgroundColor: meta.accent }]}
-      />
+    const [showMenu, setShowMenu] = useState(false);
+    const [showAccountInfo, setShowAccountInfo] = useState(false);
 
-      <View style={[HomeStyles.actionIcon, { backgroundColor: meta.bg }]}>
-        <Ionicons name={meta.icon} size={20} color={meta.color} />
-      </View>
+    const isProcessing = useRef(false);
 
-      <Text style={HomeStyles.actionLabel} numberOfLines={2}>
-        {item.label}
-      </Text>
-      {meta.sub ? (
-        <Text style={HomeStyles.actionSub} numberOfLines={1}>
-          {meta.sub}
-        </Text>
-      ) : null}
-    </TouchableOpacity>
-  );
-}
+    const isUploadingRef = useRef(false);
 
-// ─── Activity Row ─────────────────────────────────────────────────────────────
-function ActivityRow({ dotColor, title, badgeText, badgeStyle }) {
-  return (
-    <View style={HomeStyles.activityRow}>
-      <View style={[HomeStyles.actDot, { backgroundColor: dotColor }]} />
-      <Text style={HomeStyles.actTitle} numberOfLines={1}>
-        {title}
-      </Text>
-      <View style={[HomeStyles.actBadge, badgeStyle]}>
-        <Text
-          style={[HomeStyles.actBadgeText, { color: badgeStyle?.textColor }]}
-        >
-          {badgeText}
-        </Text>
-      </View>
-    </View>
-  );
-}
+    const appVersion = Constants.expoConfig?.version || Constants.manifest?.version || '1.0.2';
+    const [focusPoint, setFocusPoint] = useState(null);
+    const focusAnim = useRef(new Animated.Value(0)).current;
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-export default function HomeScreen({ navigation }) {
-  const { user } = useUser();
-  const menuItems = getHomeMenuItems(user);
-  const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
-  const { width, height } = useWindowDimensions();
-  const [showAllActions, setShowAllActions] = useState(false);
-  const [customActions, setCustomActions] = useState([]);
-  const [customModalVisible, setCustomModalVisible] = useState(false);
-  const [dashboardSummary, setDashboardSummary] = useState({
-    total: 0,
-    on_time: 0,
-    warning: 0,
-    overdue: 0,
-  });
-  const [activities, setActivities] = useState([]);
-  const [loadingSummary, setLoadingSummary] = useState(false);
-  const [loadingActivities, setLoadingActivities] = useState(false);
-  const [savingCustomActions, setSavingCustomActions] = useState(false);
-
-  const displayName =
-    user?.full_name ||
-    user?.fullName ||
-    user?.name ||
-    user?.username ||
-    "Người dùng";
-  const roleText = getRoleLabel(user);
-  const bottomTabs = getBottomTabItems(user);
-  const isShipper = getRoleKey(user) === "shipper";
-  const scanTaskAvailable = isRouteAllowed(user, "ScanTask");
-  const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, Platform.OS === "ios" ? 18 : 14);
-
-  useEffect(() => {
-    if (
-      isShipper &&
-      user?.isAuthenticated &&
-      isRouteAllowed(user, "TaskList")
-    ) {
-      navigation.replace("TaskList");
-    }
-  }, [isShipper, user?.isAuthenticated, navigation]);
-  const isCompactScreen = width < 380 || height < 660;
-  const actionColumns = isCompactScreen ? 1 : 2;
-  const actionCardWidth = actionColumns === 1 ? "100%" : "48.5%";
-
-  const pinnedActionItems = safeMenuItems.filter((item) =>
-    customActions.includes(item.route),
-  );
-  const availableCustomActions = safeMenuItems.filter(
-    (item) => !customActions.includes(item.route),
-  );
-  const filteredMenuItems = safeMenuItems.filter(
-    (item) => !customActions.includes(item.route),
-  );
-
-  const displayedActions = showAllActions
-    ? filteredMenuItems
-    : filteredMenuItems.slice(0, ACTION_LIMIT);
-
-  const actionGridStyle = [
-    HomeStyles.actionGrid,
-    {
-      justifyContent: actionColumns === 1 ? "center" : "space-between",
-      gap: actionColumns === 1 ? 10 : 10,
-    },
-  ];
-  const actionCardItemStyle = { width: actionCardWidth };
-  const homeContentContainerStyle = [
-    HomeStyles.homeContent,
-    { paddingBottom: HomeStyles.homeContent.paddingBottom + bottomInset },
-  ];
-
-  const activitySummaryLabel = (item) => {
-    if (!item) return "Hoạt động";
-    return item.waybill_code
-      ? `${item.waybill_code} · ${item.receiver_name || item.receiver_phone || ""}`
-      : item.title || "Hoạt động";
-  };
-
-  const loadCustomActions = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(CUSTOM_ACTIONS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setCustomActions(parsed);
+    useEffect(() => {
+        async function lockOrientation() {
+            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
         }
-      }
-    } catch (error) {
-      console.warn("Lỗi load custom actions", error);
-    }
-  };
+        lockOrientation();
+    }, []);
 
-  const saveCustomActions = async (routes) => {
-    try {
-      setSavingCustomActions(true);
-      await AsyncStorage.setItem(CUSTOM_ACTIONS_KEY, JSON.stringify(routes));
-      setCustomActions(routes);
-    } catch (error) {
-      console.warn("Lỗi lưu custom actions", error);
-    } finally {
-      setSavingCustomActions(false);
-    }
-  };
+    // HÀM XỬ LÝ KHI NGƯỜI DÙNG CHẠM MÀN HÌNH (CÓ ANIMATION)
+    const handleTapToFocus = (event) => {
+        const { pageX, pageY } = event.nativeEvent;
+        // ... (Giữ nguyên đoạn code tính toán giới hạn vùng bấm trong scanFrame mà tôi hướng dẫn ở turn trước) ...
+        const { width: screenW, height: screenH } = Dimensions.get('window');
+        const frameW = screenW * 0.8;
+        const frameH = screenW * 1.2;
+        const minX = (screenW - frameW) / 2;
+        const maxX = minX + frameW;
+        const minY = (screenH - frameH) / 2 - 50;
+        const maxY = minY + frameH;
 
-  const fetchDashboardSummary = async () => {
-    if (!user?.token) {
-      return;
-    }
-    setLoadingSummary(true);
-    try {
-      const summary = await waybillService.getDashboardSummary(user.token);
-      setDashboardSummary({
-        total: summary?.total || 0,
-        on_time: summary?.on_time || 0,
-        warning: summary?.warning || 0,
-        overdue: summary?.overdue || 0,
-      });
-    } catch (error) {
-      console.warn("Lỗi tải summary", error);
-    } finally {
-      setLoadingSummary(false);
-    }
-  };
+        // KIỂM TRA: Ngón tay có nằm trong khung không?
+        if (pageX >= minX && pageX <= maxX && pageY >= minY && pageY <= maxY) {
 
-  const fetchActivities = async () => {
-    if (!user?.token) {
-      return;
-    }
-    setLoadingActivities(true);
-    try {
-      const items = await deliveryService.getMyTasks(user.token);
-      setActivities(Array.isArray(items) ? items.slice(0, 5) : []);
-    } catch (error) {
-      console.warn("Lỗi tải hoạt động", error);
-      setActivities([]);
-    } finally {
-      setLoadingActivities(false);
-    }
-  };
+            // 1. DỪNG TẤT CẢ ANIMATION ĐANG CHẠY (Nếu người dùng bấm liên tiếp)
+            focusAnim.stopAnimation();
+            focusAnim.setValue(0); // Reset về trạng thái ban đầu
 
-  useEffect(() => {
-    loadCustomActions();
-    fetchDashboardSummary();
-    fetchActivities();
-  }, [user?.token]);
+            // 2. Lưu tọa độ ngón tay để vẽ
+            setFocusPoint({ x: pageX, y: pageY });
 
-  const handleAddCustomAction = (route) => {
-    if (!route || customActions.includes(route)) {
-      return;
-    }
-    saveCustomActions([...customActions, route]);
-    setCustomModalVisible(false);
-  };
+            // 3. KÍCH HOẠT CHUỖI ANIMATION MƯỢT MÀ
+            Animated.sequence([
+                // Pha 1: Hiện lên và Thu nhỏ nhẹ (Tạo cảm giác "bắt điểm")
+                Animated.timing(focusAnim, {
+                    toValue: 1, // Đi đến trạng thái 1 (hiện rõ)
+                    duration: 200, // Chạy trong 0.2 giây
+                    easing: Easing.out(Easing.cubic),
+                    useNativeDriver: true, // Dùng phần cứng để mượt nhất
+                }),
+                // Pha 2: Chờ 0.8 giây cho người dùng nhìn rõ
+                Animated.delay(800),
+                // Pha 3: Thu nhỏ dần và Mờ dần (Fade out)
+                Animated.timing(focusAnim, {
+                    toValue: 0, // Về lại 0 (ẩn đi)
+                    duration: 400, // Chạy trong 0.4 giây
+                    easing: Easing.inOut(Easing.ease),
+                    useNativeDriver: true,
+                }),
+            ]).start(({ finished }) => {
+                // Khi toàn bộ chuỗi animation xong, mới xóa tọa độ để ẩn hẳn View
+                if (finished) setFocusPoint(null);
+            });
 
-  const handleRemoveCustomAction = (route) => {
-    saveCustomActions(customActions.filter((item) => item !== route));
-  };
+        } else {
+            // NẾU KHÔNG (Bấm ra ngoài vùng viền mờ): Không làm gì cả
+            return;
+        }
+    };
+    const handleLogout = () => {
+        setShowMenu(false);
+        Alert.alert("Đăng xuất", "Bạn có muốn thoát không?", [
+            { text: "Hủy", style: "cancel" },
+            {
+                text: "Đồng ý",
+                onPress: () => {
+                    clearQueue();
+                    navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
+                },
+                style: 'destructive'
+            }
+        ]);
+    };
 
-  // Avatar initials tự động
-  const initials = displayName
-    .split(" ")
-    .filter(Boolean)
-    .map((w) => w[0].toUpperCase())
-    .slice(-2)
-    .join("");
+    useEffect(() => {
+        const processNextItem = async () => {
+            if (isUploadingRef.current) return;
 
-  const handleNavigate = (route) => {
-    if (!route) return;
-    navigation.navigate(route);
-  };
+            const nextItem = [...queue].reverse().find(item => item.status === 'loading');
 
-  return (
-    <SafeAreaView style={HomeStyles.homeContainer}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+            if (nextItem) {
+                isUploadingRef.current = true;
 
-      {/* ── HEADER BANNER (xanh lá primary) ── */}
-      <View style={HomeStyles.headerBanner}>
-        <View style={HomeStyles.headerTop}>
-          <View style={HomeStyles.homeTextGroup}>
-            <Text style={HomeStyles.homeGreeting}>Xin chào,</Text>
-            <Text style={HomeStyles.homeName} numberOfLines={1}>
-              {displayName}
-            </Text>
-            <View style={HomeStyles.rolePill}>
-              <View style={HomeStyles.roleDot} />
-              <Text style={HomeStyles.roleText}>{roleText}</Text>
+                await processQueueItem(nextItem);
+
+                isUploadingRef.current = false;
+            }
+        };
+
+        processNextItem();
+    }, [queue]);
+
+    // const handleDeleteAccount = () => {
+    //     const email = "nmhien3007@gmail.com";
+    //     const subject = "Yêu cầu xóa tài khoản Speed Light";
+    //     const body = `Xin chào Admin,\n\nTôi là user: ${user.username || '...'}.\nTôi muốn yêu cầu xóa tài khoản và dữ liệu cá nhân của mình khỏi hệ thống.\n\nLý do (nếu có): ...`;
+
+    //     const mailUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    //     Linking.openURL(mailUrl).catch(() => {
+    //         Alert.alert("Lỗi", "Không thể mở ứng dụng Mail. Vui lòng gửi thủ công tới: " + email);
+    //     });
+    // };
+
+    const takePicture = async () => {
+        if (!cameraRef.current || isProcessing.current || !isCameraReady) return;
+
+        const isConnected = await checkNetworkConnection();
+        if (!isConnected) {
+            return;
+        }
+
+        try {
+            isProcessing.current = true;
+            setIsCapturing(true);
+
+            if (Platform.OS === 'ios') {
+                const photo = await cameraRef.current.takePictureAsync({
+                    quality: 1, exif: true
+                });
+
+                let currentUri = photo.uri;
+                let currentW = photo.width;
+                let currentH = photo.height;
+
+                if (currentW < currentH) {
+                    const rotated = await manipulateAsync(
+                        currentUri,
+                        [{ rotate: 270 }],
+                        { format: SaveFormat.JPEG }
+                    );
+                    currentUri = rotated.uri;
+                    currentW = rotated.width;
+                    currentH = rotated.height;
+                }
+
+                const { width: screenWidth } = Dimensions.get('window');
+                const scale = currentH / screenWidth;
+
+                const cropRealW = (screenWidth * 1.2) * scale;
+                const cropRealH = (screenWidth * 0.8) * scale;
+
+                let originX = (currentW - cropRealW) / 2;
+                let originY = (currentH - cropRealH) / 2;
+                const shiftReal = 50 * scale;
+                originX = originX - shiftReal;
+
+                const safeX = Math.max(0, Math.floor(originX));
+                const safeY = Math.max(0, Math.floor(originY));
+                const safeW = Math.min(Math.floor(cropRealW), currentW - safeX);
+                const safeH = Math.min(Math.floor(cropRealH), currentH - safeY);
+
+                const manipResult = await manipulateAsync(
+                    currentUri,
+                    [
+                        { crop: { originX: safeX, originY: safeY, width: safeW, height: safeH } },
+                        { resize: { width: 1800 } }
+                    ],
+                    { compress: 0.7, format: SaveFormat.JPEG }
+                );
+
+                addToQueue(manipResult.uri);
+            }
+            else {
+
+                const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
+                const fixedPhoto = await manipulateAsync(photo.uri, [{ rotate: 0 }], { format: SaveFormat.JPEG });
+                let realW = fixedPhoto.width; let realH = fixedPhoto.height;
+
+                let currentUri = fixedPhoto.uri;
+
+                if (realW < realH) {
+                    const rotated = await manipulateAsync(
+                        currentUri,
+                        [{ rotate: 270 }],
+                        { format: SaveFormat.JPEG }
+                    );
+
+                    currentUri = rotated.uri;
+                    realW = rotated.width;
+                    realH = rotated.height;
+                }
+
+                const { width: screenW, height: screenH } = Dimensions.get('window');
+                const scale = realW / screenH;
+                const cropTargetW = (screenW * 1.2) * scale;
+                const cropTargetH = (screenW * 0.8) * scale;
+                const visibleImgW = screenH * scale; const visibleImgH = screenW * scale;
+                const visibleOriginY = (realH - visibleImgH) / 2;
+                let cropY_in_Visible = (visibleImgH - cropTargetH) / 2;
+                let originX = (realW - cropTargetW) / 2;
+                let originY = visibleOriginY + cropY_in_Visible;
+                const SHIFT_PIXEL_UI = 50; originX = originX - (SHIFT_PIXEL_UI * scale);
+                let finalX = Math.floor(Math.max(0, originX)); let finalY = Math.floor(Math.max(0, originY));
+                let finalW = Math.floor(cropTargetW); let finalH = Math.floor(cropTargetH);
+                if (finalX + finalW > realW) finalW = realW - finalX;
+                if (finalY + finalH > realH) finalH = realH - finalY;
+                finalW = Math.max(1, finalW - 2); finalH = Math.max(1, finalH - 2);
+
+                const actions = [{ crop: { originX: finalX, originY: finalY, width: finalW, height: finalH } }];
+                actions.push({ resize: { width: 1800 } });
+
+                const manipResult = await manipulateAsync(currentUri, actions, { compress: 0.7, format: SaveFormat.JPEG });
+
+                const newItem = addToQueue(manipResult.uri);
+                // processQueueItem(newItem);
+            }
+            Toast.show({ type: 'success', text1: 'Đã thêm vào hàng chờ xử lý', visibilityTime: 1400 });
+
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Lỗi chụp ảnh' });
+        } finally {
+            isProcessing.current = false;
+            setIsCapturing(false);
+        }
+    };
+
+    const processQueueItem = async (item) => {
+        try {
+
+            const formData = new FormData();
+            const cleanUri = Platform.OS === 'android' ? item.uri : item.uri.replace('file://', '');
+            const filename = cleanUri.split('/').pop();
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+            formData.append('file', { uri: cleanUri, name: filename, type });
+
+            const response = await fetch(ENDPOINTS.EXTRACT, {
+                method: 'POST', body: formData, headers: { 'Accept': 'application/json' },
+            });
+
+            const textResponse = await response.text();
+
+            if (!response.ok) {
+                // console.error(`!!! Server Error ${response.status}:`, textResponse);
+                throw new Error(`SERVER_${response.status}_${textResponse}`);
+            }
+
+            let data;
+            try {
+                data = JSON.parse(textResponse);
+            } catch (e) {
+                throw new Error("JSON_PARSE_ERROR");
+            }
+
+            let success = (data.sender || data.receiver || data.tracking_number);
+
+            if (success) {
+                updateQueueItem(item.id, { status: 'success', data: data });
+            } else {
+                updateQueueItem(item.id, { status: 'error', errorType: 'FORMAT' });
+            }
+        } catch (error) {
+            updateQueueItem(item.id, { status: 'error', errorType: 'SERVER' });
+        }
+    };
+
+    if (!permission) return <View style={{ flex: 1, backgroundColor: '#000' }} />;
+    if (!permission.granted) {
+        return (
+            <View style={styles.permissionContainer}>
+                <Ionicons name="videocam-off" size={50} color="#666" />
+                <Text style={styles.permissionText}>Cần cấp quyền Camera</Text>
+                <TouchableOpacity onPress={requestPermission} style={styles.btnPermission}>
+                    <Text style={styles.btnPermissionText}>CẤP QUYỀN</Text>
+                </TouchableOpacity>
             </View>
-          </View>
+        );
+    }
 
-          <TouchableOpacity
-            style={HomeStyles.profileButton}
-            onPress={() => handleNavigate("Profile")}
-            activeOpacity={0.82}
-          >
-            <View style={HomeStyles.avatarCircle}>
-              <Text style={HomeStyles.avatarText}>{initials}</Text>
-            </View>
-            <Text style={HomeStyles.profileButtonText}>Hồ sơ</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* ── STAT CARDS nổi lên từ banner ── */}
-      <View style={HomeStyles.statRow}>
-        <StatCard
-          value={dashboardSummary.total.toString()}
-          label="Tổng đơn"
-          valueColor={COLORS.successAccent}
-          loading={loadingSummary}
-        />
-        <StatCard
-          value={dashboardSummary.on_time.toString()}
-          label="Đúng hẹn"
-          valueColor={COLORS.secondary}
-          loading={loadingSummary}
-        />
-        <StatCard
-          value={dashboardSummary.warning.toString()}
-          label="Cảnh báo"
-          valueColor={COLORS.amberAccent}
-          loading={loadingSummary}
-        />
-        <StatCard
-          value={dashboardSummary.overdue.toString()}
-          label="Quá hạn"
-          valueColor={COLORS.dangerAccent}
-          loading={loadingSummary}
-        />
-      </View>
-
-      {/* ── SCROLL CONTENT ── */}
-      <ScrollView
-        contentContainerStyle={homeContentContainerStyle}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Chức năng chính */}
-        <View style={HomeStyles.sectionHeader}>
-          <Text style={HomeStyles.sectionTitle}>Chức năng chính</Text>
-          <TouchableOpacity
-            onPress={() => setCustomModalVisible(true)}
-            activeOpacity={0.75}
-          >
-            <Text style={HomeStyles.customizeActionText}>Tùy chỉnh</Text>
-          </TouchableOpacity>
-        </View>
-
-        {safeMenuItems.length > 0 ? (
-          <>
-            {pinnedActionItems.length > 0 && (
-              <>
-                <View style={HomeStyles.sectionHeader}>
-                  <Text style={HomeStyles.sectionTitle}>Chức năng ghim</Text>
-                  <Text style={HomeStyles.sectionSub}>Dùng nhanh</Text>
-                </View>
-                <View style={actionGridStyle}>
-                  {pinnedActionItems.map((item) => (
-                    <ActionCard
-                      key={`${item.route}-pinned`}
-                      item={item}
-                      onPress={handleNavigate}
-                      style={actionCardItemStyle}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
-
-            <View style={actionGridStyle}>
-              {displayedActions.map((item) => (
-                <ActionCard
-                  key={item.route}
-                  item={item}
-                  onPress={handleNavigate}
-                  style={actionCardItemStyle}
-                />
-              ))}
-            </View>
-
-            {filteredMenuItems.length > ACTION_LIMIT && (
-              <TouchableOpacity
-                style={HomeStyles.viewMoreButton}
-                onPress={() => setShowAllActions(!showAllActions)}
-                activeOpacity={0.8}
-              >
-                <Text style={HomeStyles.viewMoreText}>
-                  {showAllActions
-                    ? "Thu gọn"
-                    : `Xem thêm (${filteredMenuItems.length - ACTION_LIMIT})`}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </>
-        ) : (
-          <View style={HomeStyles.emptyState}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={28}
-              color={COLORS.textGray}
-            />
-            <Text style={HomeStyles.emptyTitle}>Không có chức năng nào</Text>
-            <Text style={HomeStyles.emptyText}>
-              Tài khoản chưa được cấp quyền. Liên hệ quản trị viên để được hỗ
-              trợ.
-            </Text>
-          </View>
-        )}
-
-        {/* Hoạt động gần đây */}
-        <View style={HomeStyles.sectionHeader}>
-          <Text style={HomeStyles.sectionTitle}>Hoạt động gần đây</Text>
-          <Text style={HomeStyles.sectionSub}>Hôm nay</Text>
-        </View>
-
-        <View style={HomeStyles.activityCard}>
-          {loadingActivities ? (
-            <View style={HomeStyles.loadingActivity}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            </View>
-          ) : activities.length > 0 ? (
-            activities.map((item, index) => {
-              const status = (item.status || item.state || "")
-                .toString()
-                .toLowerCase();
-              const title = activitySummaryLabel(item);
-              const badgeText = item.status || item.state || "Mới";
-              const badgeStyle =
-                status.includes("delivered") || status.includes("success")
-                  ? HomeStyles.badgeGreen
-                  : status.includes("warning") ||
-                      status.includes("hold") ||
-                      status.includes("issue")
-                    ? HomeStyles.badgeAmber
-                    : HomeStyles.badgeBlue;
-
-              return (
-                <ActivityRow
-                  key={`${item.id || item.waybill_code || index}-${index}`}
-                  dotColor={
-                    badgeStyle === HomeStyles.badgeGreen
-                      ? COLORS.successAccent
-                      : badgeStyle === HomeStyles.badgeAmber
-                        ? COLORS.amberAccent
-                        : COLORS.blueAccent
-                  }
-                  title={title}
-                  badgeText={badgeText}
-                  badgeStyle={badgeStyle}
-                />
-              );
-            })
-          ) : (
-            <View style={HomeStyles.emptyState}>
-              <Text style={HomeStyles.emptyTitle}>
-                Không có hoạt động gần đây
-              </Text>
-              <Text style={HomeStyles.emptyText}>
-                Dữ liệu đang được cập nhật hoặc bạn chưa có hoạt động phù hợp.
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* ── SCAN TASK FAB cho Shipper ── */}
-      {isShipper && scanTaskAvailable && (
-        <TouchableOpacity
-          style={[
-            HomeStyles.floatingAction,
-            { bottom: HomeStyles.floatingAction.bottom + bottomInset },
-          ]}
-          activeOpacity={0.88}
-          onPress={() => handleNavigate("ScanTask")}
-        >
-          <Ionicons name="qr-code-outline" size={20} color={COLORS.white} />
-          <Text style={HomeStyles.floatingText}>Quét nhiệm vụ</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* ── BOTTOM TABS ── */}
-      <View
-        style={[
-          HomeStyles.bottomTabsContainer,
-          {
-            paddingBottom:
-              HomeStyles.bottomTabsContainer.paddingBottom + bottomInset,
-          },
-        ]}
-      >
-        {bottomTabs.map((tab) => {
-          const isActive = tab.route === "Home";
-          return (
+    return (
+        <View style={styles.container}>
+            <StatusBar style="light" />
             <TouchableOpacity
-              key={tab.route}
-              style={HomeStyles.bottomTabItem}
-              activeOpacity={0.8}
-              onPress={() => handleNavigate(tab.route)}
+                activeOpacity={1}
+                style={StyleSheet.absoluteFill}
+                onPress={handleTapToFocus}
             >
-              <View
-                style={[
-                  HomeStyles.bottomTabIcon,
-                  isActive && HomeStyles.bottomTabIconActive,
-                ]}
-              >
-                <Ionicons
-                  name={tab.icon}
-                  size={22}
-                  color={isActive ? COLORS.secondary : COLORS.textGray}
+                {/* <View style={StyleSheet.absoluteFill}> */}
+                <CameraView
+                    style={{ flex: 1 }}
+                    facing="back"
+                    ref={cameraRef}
+                    onCameraReady={() => setIsCameraReady(true)}
+                    autoFocus="on"
+                    flash="auto"
                 />
-              </View>
-              <Text
-                style={[
-                  HomeStyles.bottomTabLabel,
-                  isActive && HomeStyles.bottomTabActive,
-                ]}
-              >
-                {tab.label}
-              </Text>
+
+                {focusPoint && (
+                    <Animated.View
+                        style={{
+                            position: 'absolute',
+                            top: focusPoint.y - 25,
+                            left: focusPoint.x - 25,
+                            width: 50,
+                            height: 50,
+                            // ----------------------------------------------------
+                            borderWidth: 2,
+                            borderColor: '#FFD700',
+                            backgroundColor: 'transparent',
+                            zIndex: 10,
+
+                            opacity: focusAnim,
+                            transform: [{
+                                scale: focusAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [1.3, 1],
+                                })
+                            }]
+                        }}
+                    />
+                )}
+
+                <SafeAreaView style={styles.cameraOverlay} pointerEvents="box-none">
+                    <View style={styles.headerRow}>
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(255, 255, 255, 0.09)',
+                            borderRadius: 25,
+                            paddingHorizontal: 4,
+                            paddingVertical: 4,
+                            zIndex: 20
+                        }}>
+
+                            <TouchableOpacity
+                                onPress={() => setShowMenu(true)}
+                                style={{ padding: 8, paddingHorizontal: 12 }}
+                                activeOpacity={0.6}
+                            >
+                                <Ionicons name="grid-outline" size={24} color="#FFF" />
+                            </TouchableOpacity>
+
+                            {/* Vạch ngăn cách dọc mờ ở giữa */}
+                            <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255, 255, 255, 0.4)' }} />
+
+                            <TouchableOpacity
+                                onPress={() => navigation.replace('WarehouseHome')}
+                                style={{ padding: 8, paddingHorizontal: 12 }}
+                                activeOpacity={0.6}
+                            >
+                                <Ionicons name="swap-horizontal-outline" size={24} color="#FFF" />
+                            </TouchableOpacity>
+
+
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={() => setShowList(true)}
+                            style={[styles.listButton, { zIndex: 20 }]}
+                        >
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Hàng chờ</Text>
+                            {queue.length > 0 && (
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>{queue.length}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.scanFrameContainer} pointerEvents="none">
+                        <View style={styles.maskOverlay} />
+                        <View style={styles.scanFrame}>
+                            {/* --- THÊM 4 CÁI GÓC VUÔNG VÀO ĐÂY --- */}
+                            <View style={[styles.corner, styles.topLeft]} />
+                            <View style={[styles.corner, styles.topRight]} />
+                            <View style={[styles.corner, styles.bottomLeft]} />
+                            <View style={[styles.corner, styles.bottomRight]} />
+                            {/* ------------------------------------- */}
+                            <View style={[styles.maskBase, styles.maskTop]} />
+                            <View style={[styles.maskBase, styles.maskBottom]} />
+                            <View style={[styles.maskBase, styles.maskLeft]} />
+                            <View style={[styles.maskBase, styles.maskRight]} />
+                        </View>
+                        <Text style={styles.scanHintText}>Căn mã vận đơn vào khung ảnh</Text>
+                    </View>
+
+                    <View style={styles.captureFloatingContainer}>
+                        <TouchableOpacity
+                            style={[styles.shutterBtnOuter, isCapturing && { opacity: 0.5 }]}
+                            onPress={takePicture}
+                            disabled={isCapturing}
+                        >
+                            {isCapturing ? <ActivityIndicator color={COLORS.primary} /> : <View style={styles.shutterBtnInner} />}
+                        </TouchableOpacity>
+                    </View>
+                </SafeAreaView>
+                {/* </View > */}
+
             </TouchableOpacity>
-          );
-        })}
-      </View>
 
-      <Modal visible={customModalVisible} transparent animationType="fade">
-        <View style={HomeStyles.modalOverlay}>
-          <View style={HomeStyles.modalContent}>
-            <Text style={HomeStyles.modalTitle}>Ghim chức năng</Text>
-            <Text style={HomeStyles.modalSubtitle}>
-              Chọn các chức năng bạn muốn xuất hiện nhanh trên Home.
-            </Text>
-
-            <ScrollView
-              style={HomeStyles.modalList}
-              contentContainerStyle={HomeStyles.modalListContent}
-              showsVerticalScrollIndicator={false}
+            <Modal
+                visible={showMenu}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowMenu(false)}
             >
-              {availableCustomActions.length === 0 ? (
-                <View style={HomeStyles.emptyState}>
-                  <Text style={HomeStyles.emptyTitle}>
-                    Không còn chức năng để ghim
-                  </Text>
-                  <Text style={HomeStyles.emptyText}>
-                    Bạn có thể bỏ ghim các chức năng đã ghim để thêm mới.
-                  </Text>
-                </View>
-              ) : (
-                availableCustomActions.map((item) => (
-                  <Pressable hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    key={item.route}
-                    style={HomeStyles.modalItem}
-                    onPress={() => handleAddCustomAction(item.route)}
-                  >
-                    <Text style={HomeStyles.modalItemText}>{item.label}</Text>
-                    <Text style={HomeStyles.modalItemAction}>Ghim</Text>
-                  </Pressable>
-                ))
-              )}
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowMenu(false)}
+                >
+                    <View style={styles.menuContainer}>
+                        <View style={styles.menuHeader}>
+                            <Text style={styles.menuTitle}>Tiện ích</Text>
+                            <TouchableOpacity onPress={() => setShowMenu(false)}>
+                                <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                        </View>
 
-              {pinnedActionItems.length > 0 && (
-                <View style={HomeStyles.modalSection}>
-                  <Text style={HomeStyles.modalSectionTitle}>Đã ghim</Text>
-                  {pinnedActionItems.map((item) => (
-                    <Pressable hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                      key={`remove-${item.route}`}
-                      style={HomeStyles.modalItem}
-                      onPress={() => handleRemoveCustomAction(item.route)}
-                    >
-                      <Text style={HomeStyles.modalItemText}>{item.label}</Text>
-                      <Text style={HomeStyles.modalRemoveText}>Bỏ ghim</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </ScrollView>
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => {
+                                setShowMenu(false);
+                                setShowAccountInfo(true);
+                            }}
+                        >
+                            <View style={styles.iconBox}>
+                                <Ionicons name="person" size={20} color={COLORS.secondary} />
+                            </View>
+                            <Text style={styles.menuText}>Thông tin tài khoản</Text>
+                            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                        </TouchableOpacity>
 
-            <View style={HomeStyles.modalActions}>
-              <Pressable hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                style={HomeStyles.modalCancelButton}
-                onPress={() => setCustomModalVisible(false)}
-              >
-                <Text style={HomeStyles.modalCancelText}>Đóng</Text>
-              </Pressable>
+                        <View style={styles.divider} />
+
+                        <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+                            <View style={[styles.iconBox, { backgroundColor: '#ffebee' }]}>
+                                <Ionicons name="log-out" size={20} color={COLORS.logOut} />
+                            </View>
+                            <Text style={[styles.menuText, { color: COLORS.logOut }]}>Đăng xuất</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+
+            <Modal
+                visible={showAccountInfo}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowAccountInfo(false)}
+            >
+                <View style={styles.accountModalContainer}>
+                    <View style={styles.accountHeader}>
+                        <Text style={styles.accountHeaderTitle}>Tài khoản</Text>
+                        <TouchableOpacity onPress={() => setShowAccountInfo(false)} style={styles.closeBtnCircle}>
+                            <Ionicons name="close" size={20} color="#333" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.accountBody}>
+                        <View style={{ alignItems: 'center', marginBottom: 30 }}>
+                            <View style={styles.avatarCircle}>
+                                {/* Nhớ dùng user?.username để tránh lỗi văng app khi đăng xuất */}
+                                <Text style={{ fontSize: 30, color: 'white', fontWeight: 'bold' }}>
+                                    {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                                </Text>
+                            </View>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', marginTop: 10 }}>{user?.username}</Text>
+                            <Text style={{ color: '#666' }}>Thành viên Speed Light</Text>
+                        </View>
+
+                        <View style={styles.sectionBox}>
+                            <TouchableOpacity style={styles.rowItem}>
+                                <Text style={styles.rowLabel}>Tên đăng nhập</Text>
+                                <Text style={styles.rowValue}>{user?.username}</Text>
+                            </TouchableOpacity>
+                            <View style={styles.divider} />
+
+                            <TouchableOpacity style={styles.rowItem}>
+                                <Text style={styles.rowLabel}>Phiên bản App</Text>
+                                <Text style={styles.rowValue}>{appVersion}</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal Modal
+                visible={showList}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowList(false)
+                }
+            >
+                <ProcessedListScreen
+                    queue={queue}
+                    navigation={navigation}
+                    onClose={() => setShowList(false)}
+                    onClear={clearQueue}
+                    onDelete={(id) => removeQueueItem(id)}
+                    onRetry={(item) => {
+                        updateQueueItem(item.id, { status: 'loading' });
+                        // processQueueItem(item);
+                    }}
+                />
+            </Modal >
+
+            <View style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                zIndex: 9999,
+                elevation: 9999,
+                pointerEvents: 'box-none'
+            }}>
+                <Toast
+                    position='top'
+                    topOffset={Platform.OS === 'android' ? 40 : 60}
+                />
             </View>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
-  );
+        </View >
+    );
 }

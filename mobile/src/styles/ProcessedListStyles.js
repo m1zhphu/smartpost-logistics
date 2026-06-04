@@ -1,256 +1,136 @@
-import { StyleSheet } from "react-native";
-import { COLORS } from "../constants/colors";
-import { BORDER_RADIUS, SHADOWS, SPACING, TOUCH_TARGET, TYPOGRAPHY } from "../constants/theme";
+import { StyleSheet, Dimensions, Platform } from 'react-native';
+import { COLORS } from '../constants/colors';
+
+const { width, height } = Dimensions.get('window');
 
 const ProcessedListStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.backgroundSoft,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.white,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-    gap: SPACING.sm,
-  },
-  headerBtn: {
-    width: TOUCH_TARGET.androidMin,
-    height: TOUCH_TARGET.androidMin,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.inputBg,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTextWrap: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: TYPOGRAPHY.fontSize.subtitle,
-    lineHeight: TYPOGRAPHY.lineHeight.subtitle,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.primary,
-  },
-  headerSub: {
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    color: COLORS.textMuted,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-  },
-  clearBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: TOUCH_TARGET.androidMin,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.errorBg,
-    paddingHorizontal: SPACING.sm,
-    gap: SPACING.xs,
-  },
-  clearBtnText: {
-    color: COLORS.error,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  clearBtnPlaceholder: {
-    width: TOUCH_TARGET.androidMin,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  chip: {
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.secondaryLight,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-  },
-  chipText: {
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    color: COLORS.secondary,
-  },
-  listContent: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    gap: SPACING.sm,
-    flexGrow: 1,
-  },
-  card: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: BORDER_RADIUS.lg,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    ...SHADOWS.sm,
-  },
-  cardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: SPACING.sm,
-  },
-  cardTopLeft: {
-    flex: 1,
-    flexDirection: "row",
-    gap: SPACING.sm,
-  },
-  thumbWrap: {
-    borderRadius: BORDER_RADIUS.md,
-    overflow: "hidden",
-    backgroundColor: COLORS.inputBg,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  thumb: {
-    width: SPACING.xxl * 2,
-    height: SPACING.xxl * 2,
-  },
-  cardInfo: {
-    flex: 1,
-    gap: SPACING.xs,
-  },
-  seqRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  seqText: {
-    color: COLORS.textMuted,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    textTransform: "uppercase",
-  },
-  timeText: {
-    color: COLORS.textMuted,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-  },
-  trackingNum: {
-    color: COLORS.primary,
-    fontSize: TYPOGRAPHY.fontSize.subtitle,
-    lineHeight: TYPOGRAPHY.lineHeight.subtitle,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  infoText: {
-    color: COLORS.textMuted,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-  },
-  errorMsg: {
-    color: COLORS.error,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-  },
-  loadingMsg: {
-    color: COLORS.warningText,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-  },
-  cardTopRight: {
-    alignItems: "flex-end",
-    gap: SPACING.sm,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.xs,
-    borderRadius: BORDER_RADIUS.round,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-  },
-  statusText: {
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  deleteBtn: {
-    minWidth: TOUCH_TARGET.androidMin,
-    minHeight: TOUCH_TARGET.androidMin,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.inputBg,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardFooter: {
-    marginTop: SPACING.sm,
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  actionBtn: {
-    minHeight: TOUCH_TARGET.androidMin,
-  },
-  skeletonWrap: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    gap: SPACING.sm,
-  },
-  skeletonGap: {
-    marginTop: SPACING.sm,
-  },
-  imgModal: {
-    flex: 1,
-    backgroundColor: COLORS.neutralDark,
-    justifyContent: "center",
-  },
-  imgModalClose: {
-    position: "absolute",
-    top: SPACING.xl,
-    right: SPACING.md,
-    zIndex: 10,
-    width: TOUCH_TARGET.androidMin,
-    height: TOUCH_TARGET.androidMin,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.inputWrapperBg,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fullImg: {
-    width: "100%",
-    height: "70%",
-  },
-  imgModalFooter: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
-    backgroundColor: COLORS.inputWrapperBg,
-    gap: SPACING.sm,
-  },
-  imgModalHint: {
-    color: COLORS.greenSubtleText,
-    textAlign: "center",
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-  },
-  imgModalBtn: {
-    minHeight: TOUCH_TARGET.androidMin,
-    backgroundColor: COLORS.logOut,
-    borderColor: COLORS.logOut,
-  },
+    container: { flex: 1, backgroundColor: '#f5f5f5' },
+
+    header: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 15, paddingVertical: 10,
+        backgroundColor: COLORS.primary,
+        paddingTop: Platform.OS === 'android' ? 20 : 15
+    },
+    headerTitle: { fontSize: 18, fontWeight: 'bold', color: 'white' },
+    backButton: { padding: 5 },
+
+    card: {
+        backgroundColor: 'white', borderRadius: 12, marginBottom: 15,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+        borderLeftWidth: 4, borderLeftColor: COLORS.secondary
+    },
+    cardHeader: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 15, paddingVertical: 10,
+        borderBottomWidth: 1, borderBottomColor: '#f0f0f0'
+    },
+    cardTitle: { marginLeft: 8, fontWeight: 'bold', fontSize: 14 },
+    closeBtn: { padding: 5 },
+
+    cardBody: { padding: 15 },
+
+    thumbnail: { width: 70, height: 70, borderRadius: 8, backgroundColor: '#eee', borderWidth: 1, borderColor: '#ddd' },
+    zoomIcon: { position: 'absolute', bottom: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', padding: 2, borderRadius: 4 },
+
+    trackingText: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 4 },
+    subText: { fontSize: 13, color: '#666' },
+    errorText: { fontSize: 13, color: COLORS.error, fontStyle: 'italic' },
+
+    cardFooter: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 15 },
+
+    primaryBtn: {
+        backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 10,
+        borderRadius: 20, flexDirection: 'row', alignItems: 'center'
+    },
+    primaryBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
+
+    retryBtn: {
+        backgroundColor: COLORS.processScanOrange, paddingHorizontal: 20, paddingVertical: 10,
+        borderRadius: 20, flexDirection: 'row', alignItems: 'center'
+    },
+    retryBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
+
+    emptyState: { alignItems: 'center', marginTop: 100 },
+
+    modalContainer: { flex: 1, backgroundColor: 'black', justifyContent: 'center' },
+    fullImage: { width: width, height: height * 0.7 },
+    modalCloseBtn: {
+        position: 'absolute', top: 50, right: 20, zIndex: 10,
+        backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: 5
+    },
+    modalFooter: {
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        padding: 30, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.8)'
+    },
+    modalRetakeBtn: {
+        flexDirection: 'row', backgroundColor: COLORS.error,
+        paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25,
+        alignItems: 'center'
+    },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingTop: 10,
+        paddingBottom: 5,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f5f5f5'
+    },
+    badgeIndex: {
+        backgroundColor: '#e0e0e0',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginRight: 8
+    },
+    badgeIndexText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: '#555'
+    },
+    timestampText: {
+        fontSize: 12,
+        color: '#888',
+        flex: 1
+    },
+
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: height * 0.15,
+        paddingHorizontal: 40
+    },
+    illustrationCircle: {
+        width: 140, height: 140,
+        borderRadius: 70,
+        backgroundColor: '#e8f5e9',
+        justifyContent: 'center', alignItems: 'center',
+        marginBottom: 25,
+        shadowColor: COLORS.secondary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20
+    },
+    miniIconBadge: {
+        position: 'absolute', bottom: 10, right: 10,
+        backgroundColor: COLORS.secondary,
+        width: 40, height: 40, borderRadius: 20,
+        justifyContent: 'center', alignItems: 'center',
+        borderWidth: 3, borderColor: 'white'
+    },
+    emptyTitle: {
+        fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 10, textAlign: 'center'
+    },
+    emptySubtitle: {
+        fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 30
+    },
+    actionBtn: {
+        flexDirection: 'row', backgroundColor: COLORS.secondary,
+        paddingVertical: 12, paddingHorizontal: 25, borderRadius: 25,
+        alignItems: 'center', elevation: 3,
+        shadowColor: COLORS.secondary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3
+    },
+    actionBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
 });
 
 export default ProcessedListStyles;

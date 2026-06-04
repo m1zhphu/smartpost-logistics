@@ -1,106 +1,86 @@
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8000";
-export const API_PREFIX = `${API_BASE_URL}/api`;
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://speedlight.minhhien.click';
+export const WAREHOUSE_API_URL = process.env.EXPO_PUBLIC_WAREHOUSE_API_URL || 'https://warehouse.speedlight.com.vn';
 
 export const ENDPOINTS = {
-  LOGIN: `${API_PREFIX}/auth/login`,
+  // Authentication Login endpoints
+  EMPLOYEE_LOGIN: `${WAREHOUSE_API_URL}/api/auth/login`,
+  CUSTOMER_LOGIN: `${API_BASE_URL}/api/auth/login`,
 
-  GET_MY_TASKS: `${API_PREFIX}/delivery/my-tasks`,
-  CONFIRM_SUCCESS: `${API_PREFIX}/delivery/confirm-success`,
-  REPORT_FAILURE: `${API_PREFIX}/delivery/report-failure`,
-  GET_SHIPPERS: `${API_PREFIX}/users/shippers`,
-  ASSIGN_SHIPPER: `${API_PREFIX}/delivery/assign-shipper`,
-  GET_PENDING_PICKUPS: `${API_PREFIX}/delivery/pending-pickups`,
-  ASSIGN_PICKUP: `${API_PREFIX}/delivery/assign-pickup`,
-  GET_PENDING_COD: `${API_PREFIX}/delivery/my-pending-cod`,
-  POST_DELIVERY_LOCATIONS: `${API_PREFIX}/delivery/locations`,
+  // Authentication Register endpoints
+  REGISTER_OTP: `${API_BASE_URL}/api/auth/register/request-otp`,
+  REGISTER_VERIFY: `${API_BASE_URL}/api/auth/register/verify`,
+  REGISTER: `${API_BASE_URL}/register`,
 
-  SCAN_IN_HUB: `${API_PREFIX}/scans/in-hub`,
-  UPDATE_SCAN_WEIGHT: (waybillCode) =>
-    `${API_PREFIX}/scans/${waybillCode}/weigh`,
-  SCAN_BAGGING: `${API_PREFIX}/scans/bagging`,
-  MANIFEST_LOAD: `${API_PREFIX}/scans/manifest-load`,
-  MANIFEST_UNLOAD: `${API_PREFIX}/scans/manifest-unload`,
-  GET_INCOMING_MANIFESTS: `${API_PREFIX}/scans/manifests/incoming`,
-  GET_MANIFEST_BAGS: (manifestCode) =>
-    `${API_PREFIX}/scans/manifests/${manifestCode}/bags`,
+  // Để tạm GET_PROFILE cũ để không lỗi các chỗ gọi mặc định,
+  // nhưng tốt nhất là gọi theo Base URL tương ứng của User
+  // Profile endpoints
+  GET_PROFILE: `${WAREHOUSE_API_URL}/api/users/me`,
+  GET_PROFILE_EMPLOYEE: `${WAREHOUSE_API_URL}/api/users/me`,
+  GET_PROFILE_CUSTOMER: `${API_BASE_URL}/api/users/me`,
 
-  GET_TRACKING: (code) => `${API_PREFIX}/waybills/${code}/tracking`,
-  CREATE_WAYBILL: `${API_PREFIX}/waybills`,
-  SEARCH_WAYBILLS: `${API_PREFIX}/waybills/search`,
-  EXPORT_WAYBILLS: `${API_PREFIX}/waybills/export`,
-  UPDATE_WAYBILL_WEIGHT: (code) => `${API_PREFIX}/waybills/${code}/weight`,
-  UPDATE_WAYBILL_INFO: (code) => `${API_PREFIX}/waybills/${code}`,
-  DELETE_WAYBILL: (code) => `${API_PREFIX}/waybills/${code}`,
-  DASHBOARD_SUMMARY: `${API_PREFIX}/waybills/sla/dashboard`,
+  // Legacy
+  EXTRACT: `${API_BASE_URL}/extract`,
+  SUBMIT: `${API_BASE_URL}/submit`,
+  GET_SHIPMENT: (tracking_number) =>
+    `${API_BASE_URL}/shipment/${tracking_number}`,
 
-  GET_HUBS: `${API_PREFIX}/hubs`,
-  CREATE_HUB: `${API_PREFIX}/hubs`,
-  UPDATE_HUB_STATUS: (hubId) => `${API_PREFIX}/hubs/${hubId}/status`,
+  VIP_IMPORT_NEW: `${WAREHOUSE_API_URL}/api/warehouse/vip/import-new`,
+  VIP_EXPORT_NEW: `${WAREHOUSE_API_URL}/api/warehouse/vip/export-new`,
+  VIP_IMPORT_OLD: `${WAREHOUSE_API_URL}/api/warehouse/vip/import-old`,
+  VIP_EXPORT_OLD: `${WAREHOUSE_API_URL}/api/warehouse/vip/export-old`,
+  GET_VIP_AVAILABLE_EXPORT_NEW: (maKho) =>
+    `${WAREHOUSE_API_URL}/api/warehouse/vip/available-export-new?ma_kho_spl=${maKho}`,
+  GET_VIP_AVAILABLE_IMPORT_OLD: () =>
+    `${WAREHOUSE_API_URL}/api/warehouse/vip/available-import-old`,
+  GET_VIP_AVAILABLE_EXPORT_OLD: (maKho) =>
+    `${WAREHOUSE_API_URL}/api/warehouse/vip/available-export-old?ma_kho_spl=${maKho}`,
 
-  GET_CUSTOMERS: `${API_PREFIX}/customers`,
-  CREATE_CUSTOMER: `${API_PREFIX}/customers`,
+  THUONG_IMPORT: `${WAREHOUSE_API_URL}/api/warehouse/thuong/import`,
+  THUONG_EXPORT: `${WAREHOUSE_API_URL}/api/warehouse/thuong/export`,
+  GET_THUONG_AVAILABLE: (customerId, maKho) =>
+    `${WAREHOUSE_API_URL}/api/warehouse/thuong/available?customer_id=${customerId}&ma_kho_spl=${maKho || ""}`,
 
-  GET_RECIPIENT_HISTORY: (phone) =>
-    `${API_PREFIX}/waybills/recipient-history?phone=${encodeURIComponent(phone)}`,
+  LE_IMPORT: `${WAREHOUSE_API_URL}/api/warehouse/le/import`,
+  LE_EXPORT: `${WAREHOUSE_API_URL}/api/warehouse/le/export`,
+  GET_LE_AVAILABLE: (customerId, maKho) =>
+    `${WAREHOUSE_API_URL}/api/warehouse/le/available?customer_id=${customerId}&ma_kho_spl=${maKho || ""}`,
 
-  GET_PRICING_RULES: `${API_PREFIX}/pricing/rules`,
-  CREATE_PRICING_RULE: `${API_PREFIX}/pricing/rules`,
-  UPDATE_PRICING_RULE: (ruleId) => `${API_PREFIX}/pricing/rules/${ruleId}`,
-  DELETE_PRICING_RULE: (ruleId) => `${API_PREFIX}/pricing/rules/${ruleId}`,
-  CALCULATE_PRICING: `${API_PREFIX}/pricing/calculate`,
-  GET_EXTRA_SERVICES: `${API_PREFIX}/pricing/extra-services`,
-  CREATE_EXTRA_SERVICE: `${API_PREFIX}/pricing/extra-services`,
-  UPDATE_EXTRA_SERVICE: (serviceId) =>
-    `${API_PREFIX}/pricing/extra-services/${serviceId}`,
+  GET_CUSTOMERS: (skip = 0, limit = 100, search = "") =>
+    `${WAREHOUSE_API_URL}/api/customers?skip=${skip}&limit=${limit}&search=${encodeURIComponent(search)}`,
+  GET_SHIPPERS: `${WAREHOUSE_API_URL}/api/shippers`,
+  GET_LOCATIONS: `${WAREHOUSE_API_URL}/api/vi-tri-kho`,
 
-  PRINT_WAYBILL: (waybillCode) => `${API_PREFIX}/print/${waybillCode}`,
-  UPLOAD_POD: `${API_PREFIX}/upload/pod`,
-  UPLOAD_BILL_IMAGE: `${API_PREFIX}/upload/bill`,
-  UPDATE_BILL_IMAGES: (code) => `${API_PREFIX}/waybills/${code}/bill-images`,
-  REASSIGN_WAYBILL: `${API_PREFIX}/delivery/reassign`,
-  GET_WAYBILL_TIMELINE: (waybillRef) =>
-    `${API_PREFIX}/waybills/${waybillRef}/timeline`,
+  GET_MA_MAY: (maSanPham) =>
+    `${WAREHOUSE_API_URL}/api/products/by-code/${maSanPham}`,
 
-  CREATE_BAG: `${API_PREFIX}/bags/create`,
-  ADD_BILLS_TO_BAG: (bagCode) => `${API_PREFIX}/bags/${bagCode}/add-bills`,
-  VERIFY_BAG: (bagCode) => `${API_PREFIX}/bags/${bagCode}/verify`,
-  SUBMIT_VERIFICATION: (bagCode) =>
-    `${API_PREFIX}/bags/${bagCode}/verify-submit`,
+  GET_VEHICLES: `${WAREHOUSE_API_URL}/api/vehicles`,
+  FLEET_ASSIGN: `${WAREHOUSE_API_URL}/api/fleet/assign`,
+  // --- ENDPOINTS CỦA KHO (KHÔNG SỬA ĐỔI) ---
+  UPDATE_PUSH_TOKEN: (token) =>
+    apiClient.put(`${WAREHOUSE_API_URL}/api/users/update-push-token`, {
+      token,
+    }),
+  GET_UNREAD_NOTIFICATIONS: `${WAREHOUSE_API_URL}/api/notifications/unread`,
 
-  TRANSFER_WAYBILL: (code, targetType, targetId, reason, note) =>
-    `${API_PREFIX}/waybills/${code}/transfer?target_type=${encodeURIComponent(
-      targetType,
-    )}&target_id=${Number(targetId)}&reason=${encodeURIComponent(reason)}${
-      note ? `&note=${encodeURIComponent(note)}` : ""
-    }`,
+  // --- ENDPOINTS BỔ SUNG CỦA FASTAPI BACKEND (KHÁCH HÀNG) ---
+  CUSTOMER_REGISTER_PUSH_TOKEN: (token) =>
+    apiClient.post(`${API_BASE_URL}/api/users/register-push-token`, {
+      push_token: token,
+    }),
 
-  GET_CASH_CONFIRMATION_LIST: `${API_PREFIX}/accounting/cash-confirmation`,
-  CONFIRM_SHIPPER_CASH: `${API_PREFIX}/accounting/confirm-shipper-cash`,
-  CREATE_SHOP_STATEMENT: (customerId) =>
-    `${API_PREFIX}/accounting/create-shop-statement?customer_id=${customerId}`,
-  CREATE_DEBT_STATEMENT: `${API_PREFIX}/accounting/statements`,
-  CREATE_COD_STATEMENT: `${API_PREFIX}/accounting/statements/cod`,
-  EXPORT_COD_STATEMENT: (statementId, token) =>
-    `${API_PREFIX}/accounting/cod/${statementId}/export?token=${token}`,
-  EXPORT_DEBT_STATEMENT: (statementId, token) =>
-    `${API_PREFIX}/accounting/statements/${statementId}/export?token=${token}`,
-  EXPORT_STATEMENT_CSV: (statementId, token) =>
-    `${API_PREFIX}/accounting/statements/${statementId}/export-csv?token=${token}`,
+  CREATE_NOI_BO_EXPORT: async (payload) =>
+    apiClient.post(`${WAREHOUSE_API_URL}/api/warehouse/noi-bo/export`, payload),
 
-  GET_USERS: `${API_PREFIX}/users`,
-  CREATE_USER: `${API_PREFIX}/users`,
-  TOGGLE_USER_STATUS: (userId) => `${API_PREFIX}/users/${userId}/status`,
-  REGISTER_PUSH_TOKEN: `${API_PREFIX}/users/register-push-token`,
+  SCAN_VIP_SERIAL: (serial) =>
+    apiClient.get(
+      `${WAREHOUSE_API_URL}/api/warehouse/vip/scan?serial=${serial}`,
+    ),
 
-  ADMIN_AUDIT_LOGS: `${API_PREFIX}/admin/audit-logs`,
-  ADMIN_OVERRIDE_WAYBILL_STATUS: `${API_PREFIX}/admin/override-waybill-status`,
-  ADMIN_SCAN_OVERDUE: `${API_PREFIX}/admin/scan-overdue`,
-
-  // Temporary aliases for existing Source 1 callers. These will be removed
-  // after services/screens are migrated to the new FastAPI flow.
-  REGISTER: `${API_PREFIX}/auth/register`,
-  EXTRACT: process.env.EXPO_PUBLIC_OCR_URL || `${API_PREFIX}/upload/pod`,
-  SUBMIT: `${API_PREFIX}/waybills`,
-  GET_SHIPMENT: (code) => `${API_PREFIX}/waybills/${code}/tracking`,
+  GET_PENDING_NOI_BO: () =>
+    apiClient.get(`${WAREHOUSE_API_URL}/api/warehouse/noi-bo/pending`),
+  ACTION_NOI_BO: (id, payload) =>
+    apiClient.post(
+      `${WAREHOUSE_API_URL}/api/warehouse/noi-bo/${id}/action`,
+      payload,
+    ),
 };

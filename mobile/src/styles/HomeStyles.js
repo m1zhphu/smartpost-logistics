@@ -1,850 +1,285 @@
-﻿import { Platform, StyleSheet } from "react-native";
-import { COLORS } from "../constants/colors";
-import {
-  BORDER_RADIUS,
-  SHADOWS,
-  SPACING,
-  TOUCH_TARGET,
-  TYPOGRAPHY,
-} from "../constants/theme";
+import { StyleSheet, Dimensions, Platform } from 'react-native';
+import { COLORS } from '../constants/colors';
 
-export const FRAME_W = "90%";
-export const FRAME_H = "65%";
+const { width, height } = Dimensions.get('window');
 
-export const getBottomTabsContainerStyle = (insets = { bottom: 0 }) => ({
-  paddingBottom: Math.max(insets.bottom + SPACING.sm, SPACING.md),
-});
 
 const HomeStyles = StyleSheet.create({
-  homeContainer: {
-    flex: 1,
-    backgroundColor: COLORS.backgroundSoft,
-  },
+    container: { flex: 1, backgroundColor: 'black' },
 
-  headerBanner: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: Platform.OS === "ios" ? SPACING.sm : SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
-  headerTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-  },
-  homeTextGroup: {
-    flex: 1,
-    paddingRight: SPACING.sm,
-  },
-  homeGreeting: {
-    color: COLORS.appTaglineColor,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    marginBottom: SPACING.xs,
-  },
-  homeName: {
-    color: COLORS.white,
-    fontSize: TYPOGRAPHY.fontSize.headingSm,
-    lineHeight: TYPOGRAPHY.lineHeight.headingSm,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    letterSpacing: -0.3,
-  },
-  rolePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: SPACING.xs,
-    marginTop: SPACING.sm,
-    backgroundColor: COLORS.overlayWhite12,
-    borderWidth: 1,
-    borderColor: COLORS.overlayWhite18,
-    borderRadius: BORDER_RADIUS.round,
-    paddingHorizontal: SPACING.md_sm,
-    paddingVertical: SPACING.xs,
-  },
-  roleDot: {
-    width: SPACING.xs ,
-    height: SPACING.xs ,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.secondary,
-  },
-  roleText: {
-    color: COLORS.secondaryLight,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    letterSpacing: 0.2,
-  },
-  profileButton: {
-    alignItems: "center",
-    gap: SPACING.xs,
-    justifyContent: "center",
-  },
-  avatarCircle: {
-    width: SPACING.xxxl,
-    height: SPACING.xxxl,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.secondaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    color: COLORS.primary,
-    fontSize: TYPOGRAPHY.fontSize.body,
-    lineHeight: TYPOGRAPHY.lineHeight.body,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  profileButtonText: {
-    color: COLORS.appTaglineColor,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    letterSpacing: 0.3,
-  },
+    permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+    permissionText: { marginTop: 10, color: '#666', marginBottom: 20 },
+    btnPermission: { backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+    btnPermissionText: { color: 'white', fontWeight: 'bold' },
 
-  statRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.md_sm,
-    paddingHorizontal: SPACING.md,
-    marginTop: -SPACING.lg,
-    marginBottom: SPACING.sm,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: BORDER_RADIUS.lg,
-    paddingVertical: SPACING.md_sm,
-    paddingHorizontal: SPACING.md_sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    ...SHADOWS.md,
-  },
-  statValue: {
-    fontSize: TYPOGRAPHY.fontSize.subtitle,
-    lineHeight: TYPOGRAPHY.lineHeight.subtitle,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    color: COLORS.textGray,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-    marginTop: SPACING.xxs,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
+    cameraOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'space-between',
+        zIndex: 10
+    },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 10 },
+    iconBtnBlur: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center', zIndex: 20 },
+    headerTitleBlur: { color: 'white', fontSize: 18, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5, zIndex: 20 },
+    scanHintText: { color: 'white', marginTop: 15, padding: 8, borderRadius: 8, overflow: 'hidden', fontSize: 13, zIndex: 10 },
 
-  homeContent: {
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.xxl + SPACING.xl + SPACING.md,
-  },
+    captureFloatingContainer: { position: 'absolute', bottom: 40, alignSelf: 'center', zIndex: 20 },
+    shutterBtnOuter: { width: 72, height: 72, borderRadius: 36, borderWidth: 4, borderColor: 'white', justifyContent: 'center', alignItems: 'center' },
+    shutterBtnInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: 'white' },
 
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.md_sm,
-  },
-  sectionTitle: {
-    color: COLORS.neutralDark,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    letterSpacing: 0.1,
-  },
-  sectionSub: {
-    color: COLORS.textGray,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.regular,
-  },
+    closePreviewBtn: { position: 'absolute', top: 50, left: 20, padding: 10, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 25, zIndex: 20 },
 
-  actionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: SPACING.md_sm,
-  },
-  actionCard: {
-    width: "48.5%",
-    backgroundColor: COLORS.cardBg,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    overflow: "hidden",
-    ...SHADOWS.sm,
-  },
-  cardTopAccent: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: SPACING.xs ,
-    borderTopLeftRadius: BORDER_RADIUS.xl,
-    borderTopRightRadius: BORDER_RADIUS.xl,
-  },
-  actionIcon: {
-    width: TOUCH_TARGET.androidMin - SPACING.xs ,
-    height: TOUCH_TARGET.androidMin - SPACING.xs ,
-    borderRadius: BORDER_RADIUS.lg,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: SPACING.md_sm,
-    marginTop: SPACING.sm ,
-  },
-  actionLabel: {
-    color: COLORS.neutralDark,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  actionSub: {
-    color: COLORS.textGray,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.regular,
-    marginTop: SPACING.xs ,
-  },
+    bottomSheetWrapper: {
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        justifyContent: 'flex-end',
+        maxHeight: '85%'
+    },
+    bottomSheetContent: {
+        backgroundColor: 'white',
+        borderTopLeftRadius: 25, borderTopRightRadius: 25,
+        paddingHorizontal: 20, paddingTop: 12,
+        flexShrink: 1,
+        minHeight: 250
+    },
+    dragHandle: { width: 40, height: 4, backgroundColor: '#e0e0e0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
 
-  activityCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: BORDER_RADIUS.xl,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    overflow: "hidden",
-    ...SHADOWS.sm,
-  },
-  activityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.md_sm,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md_sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  actDot: {
-    width: SPACING.sm,
-    height: SPACING.sm,
-    borderRadius: BORDER_RADIUS.round,
-    flexShrink: 0,
-  },
-  actTitle: {
-    flex: 1,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    color: COLORS.neutralDark,
-  },
-  actBadge: {
-    paddingHorizontal: SPACING.sm ,
-    paddingVertical: SPACING.xs ,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  actBadgeText: {
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  badgeGreen: {
-    backgroundColor: COLORS.successBg,
-    textColor: COLORS.successAccent,
-  },
-  badgeAmber: {
-    backgroundColor: COLORS.amberAccentBg,
-    textColor: COLORS.amberAccentText,
-  },
-  badgeBlue: {
-    backgroundColor: COLORS.blueAccentBg,
-    textColor: COLORS.blueAccent,
-  },
+    centerContent: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30 },
+    statusText: { marginTop: 15, color: COLORS.primary, fontWeight: '500' },
 
-  emptyState: {
-    paddingVertical: SPACING.xl + SPACING.xs,
-    paddingHorizontal: SPACING.lg,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: BORDER_RADIUS.xl,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    alignItems: "center",
-    gap: SPACING.md_sm,
-  },
-  emptyTitle: {
-    color: COLORS.neutralDark,
-    fontSize: TYPOGRAPHY.fontSize.body,
-    lineHeight: TYPOGRAPHY.lineHeight.body,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  emptyText: {
-    color: COLORS.textMuted,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    textAlign: "center",
-  },
+    successHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+    successTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.secondary, marginLeft: 8 },
+    sectionLabel: { fontSize: 11, fontWeight: 'bold', color: '#888', marginBottom: 8, marginTop: 5 },
 
-  customizeActionText: {
-    color: COLORS.secondary,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  viewMoreButton: {
-    alignSelf: "flex-start",
-    marginTop: SPACING.md_sm,
-    minHeight: TOUCH_TARGET.androidMin,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md_sm,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.secondaryLight,
-    justifyContent: "center",
-  },
-  viewMoreText: {
-    color: COLORS.secondary,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  loadingActivity: {
-    paddingVertical: SPACING.lg,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: COLORS.overlayDark45,
-    justifyContent: "center",
-    paddingHorizontal: SPACING.lg - SPACING.xs,
-    paddingVertical: SPACING.xl,
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg - SPACING.xs,
-    maxHeight: "86%",
-  },
-  modalTitle: {
-    color: COLORS.neutralDark,
-    fontSize: TYPOGRAPHY.fontSize.body,
-    lineHeight: TYPOGRAPHY.lineHeight.body,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    marginBottom: SPACING.xs ,
-  },
-  modalSubtitle: {
-    color: COLORS.textGray,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    marginBottom: SPACING.md_sm ,
-  },
-  modalList: {
-    marginBottom: SPACING.md_sm,
-  },
-  modalListContent: {
-    paddingBottom: SPACING.md_sm,
-  },
-  modalItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: SPACING.md_sm,
-    paddingHorizontal: SPACING.md_sm,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.backgroundSoft,
-    marginBottom: SPACING.md_sm,
-  },
-  modalItemText: {
-    color: COLORS.neutralDark,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    flex: 1,
-    marginRight: SPACING.md_sm,
-  },
-  modalItemAction: {
-    color: COLORS.secondary,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  modalRemoveText: {
-    color: COLORS.dangerAccent,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  modalSection: {
-    marginTop: SPACING.md,
-  },
-  modalSectionTitle: {
-    color: COLORS.neutralDark,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    marginBottom: SPACING.md_sm,
-  },
-  modalActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: SPACING.sm,
-  },
-  modalCancelButton: {
-    minHeight: TOUCH_TARGET.androidMin,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md_sm,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.borderLight,
-    justifyContent: "center",
-  },
-  modalCancelText: {
-    color: COLORS.neutralDark,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
+    inputRow: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: '#f5f5f5', borderRadius: 12, paddingHorizontal: 12,
+        marginBottom: 10, borderWidth: 1, borderColor: '#eee',
+        minHeight: 48
+    },
+    input: { flex: 1, fontSize: 15, color: '#333', paddingVertical: 10 },
 
-  floatingAction: {
-    position: "absolute",
-    right: SPACING.lg - SPACING.xs,
-    bottom: Platform.OS === "ios" ? SPACING.xxl + SPACING.xl + SPACING.sm : SPACING.xxl + SPACING.xl,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.round,
-    minHeight: TOUCH_TARGET.androidMin,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md_sm,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: SPACING.hairline - SPACING.hairline, height: SPACING.xs },
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  floatingText: {
-    color: COLORS.white,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
+    btnRow: { flexDirection: 'row', marginTop: 15, justifyContent: 'space-between' },
+    btnSecondary: {
+        flex: 0.3, justifyContent: 'center', alignItems: 'center', height: 48,
+        borderRadius: 24, borderWidth: 1, borderColor: '#ccc', backgroundColor: 'white'
+    },
+    btnSecondaryText: { color: '#666', fontWeight: 'bold' },
+    btnPrimary: {
+        flex: 0.65, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', height: 48,
+        borderRadius: 24, backgroundColor: '#0f3d26', elevation: 2
+    },
+    btnPrimaryText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
 
-  bottomTabsContainer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: SPACING.sm,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.md,
-    backgroundColor: COLORS.white,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-    ...SHADOWS.md,
-  },
-  bottomTabItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: SPACING.xs ,
-  },
-  bottomTabIcon: {
-    width: TOUCH_TARGET.androidMin - SPACING.xs ,
-    height: TOUCH_TARGET.androidMin - SPACING.xs ,
-    borderRadius: BORDER_RADIUS.lg,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: SPACING.xs ,
-  },
-  bottomTabIconActive: {
-    backgroundColor: COLORS.greenSubtle,
-  },
-  bottomTabLabel: {
-    color: COLORS.textGray,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    textAlign: "center",
-  },
-  bottomTabActive: {
-    color: COLORS.secondary,
-  },
+    errorIconBg: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFEBEE', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    errorTitle: { fontSize: 17, fontWeight: 'bold', color: '#d32f2f', marginBottom: 5 },
+    errorDesc: { color: '#666', marginBottom: 20 },
+    btnRetry: {
+        flexDirection: 'row', backgroundColor: '#d32f2f', paddingHorizontal: 25, paddingVertical: 12,
+        borderRadius: 25, alignItems: 'center'
+    },
+    btnRetryText: { color: 'white', fontWeight: 'bold' },
 
-  container: { flex: 1, backgroundColor: COLORS.neutralDark },
+    // scanFrameContainer: {
+    //     alignItems: 'center',
+    //     justifyContent: 'center',
+    //     flex: 1,
+    //     paddingBottom: 100,
+    //     position: 'relative',
+    // },
 
-  permissionContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: COLORS.formSectionBg,
-    paddingHorizontal: SPACING.xl,
-  },
-  permissionIconWrap: {
-    width: SPACING.xxl + SPACING.xl + SPACING.sm ,
-    height: SPACING.xxl + SPACING.xl + SPACING.sm ,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.secondary,
-  },
-  permissionTitle: {
-    fontSize: TYPOGRAPHY.fontSize.headingSm ,
-    lineHeight: TYPOGRAPHY.lineHeight.headingSm ,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.white,
-    marginBottom: SPACING.md_sm,
-  },
-  permissionDesc: {
-    fontSize: TYPOGRAPHY.fontSize.body,
-    lineHeight: TYPOGRAPHY.lineHeight.body ,
-    color: COLORS.textGray,
-    textAlign: "center",
-    marginBottom: SPACING.xl,
-  },
-  btnPermission: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: TOUCH_TARGET.androidMin,
-    backgroundColor: COLORS.secondary,
-    paddingHorizontal: SPACING.xl - SPACING.xs,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.round,
-    shadowColor: COLORS.secondary,
-    shadowOffset: { width: SPACING.hairline - SPACING.hairline, height: SPACING.xs },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  btnPermissionText: {
-    color: COLORS.white,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    fontSize: TYPOGRAPHY.fontSize.body,
-    lineHeight: TYPOGRAPHY.lineHeight.body,
-  },
+    scanFrameContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+        paddingBottom: 100,
+        position: 'relative',
+    },
 
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "space-between",
-  },
-  maskContainer: { ...StyleSheet.absoluteFillObject },
-  maskTop: { flex: 1, width: "100%", backgroundColor: COLORS.overlayDark65 },
-  maskBottom: { flex: 1, width: "100%", backgroundColor: COLORS.overlayDark65 },
-  maskCenter: { flexDirection: "row", height: FRAME_H },
-  maskSide: { flex: 1, backgroundColor: COLORS.overlayDark65 },
+    // scanFrame: {
+    //     width: width * 0.8,
+    //     height: width * 1.2,
+    //     borderWidth: 2,
+    //     borderColor: '#fff',
+    //     borderStyle: 'dashed',
+    //     zIndex: 10,
+    //     position: 'relative',
+    // },
 
-  scanFrame: {
-    width: FRAME_W,
-    height: FRAME_H,
-    position: "relative",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  scanHint: {
-    color: COLORS.overlayWhite80,
-    fontSize: TYPOGRAPHY.fontSize.bodySm,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-    backgroundColor: COLORS.overlayDark50,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.round,
-    overflow: "hidden",
-  },
+    // --- CẬP NHẬT LẠI SCANFRAME: XÓA BỎ BORDER CŨ ---
+    scanFrame: {
+        width: width * 0.8,
+        height: width * 1.2,
+        // borderWidth: 2,     <- XÓA DÒNG NÀY
+        // borderColor: '#fff', <- XÓA DÒNG NÀY
+        // borderStyle: 'dashed', <- XÓA DÒNG NÀY
+        zIndex: 10,
+        position: 'relative',
+    },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: SPACING.lg,
-    paddingTop: Platform.OS === "ios" ? SPACING.xxl + SPACING.sm  : SPACING.xxl - 3,
-    paddingBottom: SPACING.md ,
-    zIndex: 100,
-  },
-  headerBtn: {
-    width: SPACING.xxxl,
-    height: SPACING.xxxl,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.overlayBlack40,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: COLORS.overlayWhite10,
-  },
-  headerCenter: { flexDirection: "column", alignItems: "center" },
-  headerTitle: {
-    color: COLORS.white,
-    fontSize: TYPOGRAPHY.fontSize.body,
-    lineHeight: TYPOGRAPHY.lineHeight.body,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    color: COLORS.secondary,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    marginTop: SPACING.xxs,
-  },
-  queueBtn: {
-    width: SPACING.xxxl,
-    height: SPACING.xxxl,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.overlayBlack40,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: COLORS.overlayWhite10,
-  },
-  badge: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    backgroundColor: COLORS.error,
-    borderRadius: BORDER_RADIUS.round,
-    minWidth: SPACING.md + SPACING.xs,
-    height: SPACING.md + SPACING.xs,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: SPACING.xs,
-    borderWidth: 1.5,
-    borderColor: COLORS.neutralDark,
-  },
-  badgeText: {
-    color: COLORS.white,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
+    // --- THÊM CÁC STYLE MỚI ĐỂ VẼ 4 GÓC VUÔNG ---
+    // Style chung cho 1 cạnh của góc vuông
+    corner: {
+        position: 'absolute',
+        width: 30, // Độ dài của cạnh góc vuông
+        height: 30, // Độ dài của cạnh góc vuông
+        borderColor: '#fff', // Màu trắng (hoặc dùng COLORS.secondary nếu muốn màu xanh)
+        borderWidth: 5, // Độ dày của góc vuông (làm đậm lên cho rõ)
+        zIndex: 11, // Nằm trên lớp mask
+    },
+    // Vị trí góc trên bên trái
+    topLeft: {
+        top: 0,
+        left: 0,
+        borderBottomWidth: 0, // Ẩn cạnh dưới
+        borderRightWidth: 0,  // Ẩn cạnh phải
+    },
+    // Vị trí góc trên bên phải
+    topRight: {
+        top: 0,
+        right: 0,
+        borderBottomWidth: 0, // Ẩn cạnh dưới
+        borderLeftWidth: 0,   // Ẩn cạnh trái
+    },
+    // Vị trí góc dưới bên trái
+    bottomLeft: {
+        bottom: 0,
+        left: 0,
+        borderTopWidth: 0,   // Ẩn cạnh trên
+        borderRightWidth: 0,  // Ẩn cạnh phải
+    },
+    // Vị trí góc dưới bên phải
+    bottomRight: {
+        bottom: 0,
+        right: 0,
+        borderTopWidth: 0,   // Ẩn cạnh trên
+        borderLeftWidth: 0,   // Ẩn cạnh trái
+    },
+    // ---------------------------------------------
 
-  corner: { position: "absolute", width: SPACING.xxl - SPACING.sm, height: SPACING.xxl - SPACING.sm, zIndex: 30 },
-  cornerHorizontal: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: SPACING.xxl - SPACING.sm,
-    height: SPACING.xs,
-    backgroundColor: COLORS.secondary,
-    borderRadius: BORDER_RADIUS.sm,
-  },
-  cornerVertical: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: SPACING.xs,
-    height: SPACING.xxl - SPACING.sm,
-    backgroundColor: COLORS.secondary,
-    borderRadius: BORDER_RADIUS.sm,
-  },
+    // maskBase: {
+    //     position: 'absolute',
+    //     backgroundColor: 'rgba(0, 0, 0, 0.80)',
+    //     zIndex: 1,
+    // },
 
-  bottomBar: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: Platform.OS === "ios" ? SPACING.xxl - SPACING.xs  : SPACING.xl - SPACING.xs,
-    paddingTop: SPACING.lg - SPACING.xs,
-    alignItems: "center",
-    backgroundColor: COLORS.neutralDark,
-    zIndex: 100,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.overlayWhite05,
-  },
-  statsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: SPACING.md_sm,
-    marginBottom: SPACING.lg - SPACING.xs,
-  },
-  statChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: BORDER_RADIUS.round,
-    paddingHorizontal: SPACING.md_sm,
-    paddingVertical: SPACING.xs ,
-  },
-  statText: {
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-  },
+    maskBase: {
+        position: 'absolute',
+        // Làm mờ vùng xung quanh đậm hơn một chút (0.85) để nổi bật khung ngắm
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        zIndex: 1,
+    },
 
-  shutterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    paddingHorizontal: SPACING.sm ,
-  },
-  sideBtn: {
-    minWidth: TOUCH_TARGET.androidMin,
-    minHeight: TOUCH_TARGET.androidMin,
-    width: SPACING.xxl + SPACING.md ,
-    height: SPACING.xxl + SPACING.md ,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.overlayWhite10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sideBtnLabel: {
-    color: COLORS.overlayWhite90,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    marginTop: SPACING.xs,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-  },
-  shutterOuter: {
-    width: SPACING.xxl + SPACING.xxl - SPACING.md,
-    height: SPACING.xxl + SPACING.xxl - SPACING.md,
-    borderRadius: BORDER_RADIUS.round,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "transparent",
-    borderWidth: SPACING.xs,
-    borderColor: COLORS.white,
-  },
-  shutterInner: {
-    width: SPACING.xxl + SPACING.md,
-    height: SPACING.xxl + SPACING.md,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.white,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  versionText: {
-    color: COLORS.overlayWhite20,
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    marginTop: SPACING.md ,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-  },
+    maskTop: {
+        bottom: '100%',
+        left: -1000,
+        right: -1000,
+        height: 1900,
+    },
 
-  toastLayer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9999,
-  },
-  menuSheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.headerBg,
-    borderTopLeftRadius: BORDER_RADIUS.xl + BORDER_RADIUS.lg,
-    borderTopRightRadius: BORDER_RADIUS.xl + BORDER_RADIUS.lg,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: Platform.OS === "ios" ? SPACING.xl + SPACING.sm : SPACING.lg,
-    paddingTop: SPACING.md_sm,
-    maxHeight: "85%",
-    shadowColor: COLORS.textMain,
-    shadowOffset: { width: SPACING.hairline - SPACING.hairline, height: -SPACING.md_sm },
-    shadowOpacity: 0.3,
-    elevation: 20,
-  },
-  sheetHandle: {
-    width: SPACING.xxl - SPACING.sm,
-    height: SPACING.xs ,
-    backgroundColor: COLORS.overlayWhite20,
-    borderRadius: BORDER_RADIUS.sm ,
-    alignSelf: "center",
-    marginBottom: SPACING.lg - SPACING.xs,
-  },
-  menuUserRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: SPACING.lg - SPACING.xs,
-    backgroundColor: COLORS.overlayWhite05,
-    padding: SPACING.md_sm,
-    borderRadius: BORDER_RADIUS.xl,
-  },
-  menuAvatar: {
-    width: SPACING.xl + SPACING.md ,
-    height: SPACING.xl + SPACING.md ,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.secondary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: SPACING.md_sm,
-  },
-  menuAvatarText: {
-    color: COLORS.white,
-    fontSize: TYPOGRAPHY.fontSize.subtitle ,
-    lineHeight: TYPOGRAPHY.lineHeight.subtitle ,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-  },
-  menuUserName: {
-    fontSize: TYPOGRAPHY.fontSize.body,
-    lineHeight: TYPOGRAPHY.lineHeight.body,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.white,
-  },
-  menuUserRole: {
-    fontSize: TYPOGRAPHY.fontSize.bodySm ,
-    lineHeight: TYPOGRAPHY.lineHeight.bodySm,
-    color: COLORS.textGray,
-    marginTop: SPACING.xs,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
-  },
-  closeSheetBtn: {
-    width: SPACING.xxxl,
-    height: SPACING.xxxl,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.overlayWhite10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sheetDivider: {
-    height: SPACING.hairline,
-    backgroundColor: COLORS.overlayWhite05,
-    marginVertical: SPACING.md_sm,
-  },
-  sheetSectionLabel: {
-    fontSize: TYPOGRAPHY.fontSize.caption,
-    lineHeight: TYPOGRAPHY.lineHeight.caption,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.textGray,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginTop: SPACING.md,
-    marginBottom: SPACING.sm,
-    marginLeft: SPACING.xs,
-  },
-  sheetItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: TOUCH_TARGET.androidMin,
-    paddingVertical: SPACING.md_sm ,
-    paddingHorizontal: SPACING.xs,
-  },
-  sheetIconBox: {
-    width: TOUCH_TARGET.androidMin - SPACING.sm,
-    height: TOUCH_TARGET.androidMin - SPACING.sm,
-    borderRadius: BORDER_RADIUS.lg,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: SPACING.md,
-  },
-  sheetItemText: {
-    fontSize: TYPOGRAPHY.fontSize.body,
-    lineHeight: TYPOGRAPHY.lineHeight.body,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    color: COLORS.white,
-    flex: 1,
-  },
+    maskBottom: {
+        top: '100%',
+        left: -1000,
+        right: -1000,
+        height: 2000,
+    },
+
+    maskLeft: {
+        right: '100%',
+        top: 0,
+        bottom: 0,
+        width: 1000,
+    },
+
+    maskRight: {
+        left: '100%',
+        top: 0,
+        bottom: 0,
+        width: 1000,
+    },
+
+
+    listButton: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        alignItems: 'center'
+    },
+    badge: {
+        backgroundColor: '#a5d6a7',
+        // backgroundColor: COLORS.primary,
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 8
+    },
+    badgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 20
+    },
+    menuContainer: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 20,
+        width: '80%',
+        alignSelf: 'center',
+        elevation: 5
+    },
+    menuHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20
+    },
+    menuTitle: { fontSize: 18, fontWeight: 'bold' },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 15
+    },
+    iconBox: {
+        width: 36, height: 36, borderRadius: 18,
+        backgroundColor: '#e8f5e9',
+        justifyContent: 'center', alignItems: 'center',
+        marginRight: 15
+    },
+    menuText: { fontSize: 16, flex: 1, fontWeight: '500' },
+    divider: { height: 1, backgroundColor: '#eee', marginVertical: 5 },
+
+    accountModalContainer: { flex: 1, backgroundColor: '#f5f5f5' },
+    accountHeader: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        padding: 20, paddingTop: Platform.OS === 'ios' ? 20 : 50,
+        backgroundColor: 'white'
+    },
+    accountHeaderTitle: { fontSize: 20, fontWeight: 'bold' },
+    closeBtnCircle: {
+        width: 32, height: 32, borderRadius: 16, backgroundColor: '#eee',
+        justifyContent: 'center', alignItems: 'center'
+    },
+    accountBody: { padding: 20 },
+    avatarCircle: {
+        width: 80, height: 80, borderRadius: 40, backgroundColor: '#4caf50',
+        justifyContent: 'center', alignItems: 'center',
+        shadowColor: "#000", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.2, elevation: 5
+    },
+    sectionBox: {
+        backgroundColor: 'white', borderRadius: 12, padding: 15, marginBottom: 20
+    },
+    rowItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12 },
+    rowLabel: { color: '#666', fontSize: 16 },
+    rowValue: { fontWeight: 'bold', fontSize: 16 },
+    deleteBtn: {
+        flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+        padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#ffcdd2',
+        backgroundColor: '#ffebee'
+    }
 });
 
 export default HomeStyles;
-
-

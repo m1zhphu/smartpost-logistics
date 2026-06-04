@@ -7,11 +7,14 @@ export const QueueProvider = ({ children }) => {
 
     const addToQueue = (uri) => {
         const newItem = {
-            id: Date.now(),
+            // SỬA ĐỔI: Cộng thêm chuỗi ngẫu nhiên vào sau Date.now() 
+            // để đảm bảo ID sinh ra trong vòng lặp forEach không bao giờ bị trùng nhau
+            id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
             uri: uri,
             status: 'loading',
             errorType: null,
             data: null
+            // Thuộc tính batchId sẽ được HomeScreen tự động cập nhật ngay sau khi gọi hàm này
         };
         setQueue(prev => [newItem, ...prev]);
         return newItem;
