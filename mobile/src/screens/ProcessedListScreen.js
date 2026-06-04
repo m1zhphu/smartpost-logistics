@@ -14,11 +14,12 @@ const { width } = Dimensions.get('window');
 export default function ProcessedListComponent({
     queue, onClose, onClear, onDelete, onRetry, navigation
 }) {
-    const safeQueue = Array.isArray(queue) ? queue : [];
     const [viewingItem, setViewingItem] = useState(null);
     const { user } = useUser();
 
-    const formatTime = (timestamp) => {
+    const formatTime = (idString) => {
+        // Cắt chuỗi theo dấu "_" và lấy phần số ở đầu để format ngày giờ
+        const timestamp = parseInt(idString.toString().split('_')[0], 10);
         const date = new Date(timestamp);
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -63,7 +64,7 @@ export default function ProcessedListComponent({
         }
     };
     const renderItem = ({ item, index }) => {
-        const sequenceNumber = safeQueue.length - index;
+        const sequenceNumber = queue.length - index;
         const timeStr = formatTime(item.id);
 
         return (
@@ -167,25 +168,35 @@ export default function ProcessedListComponent({
                     <TouchableOpacity onPress={onClose} style={styles.backButton}>
                         <Ionicons name="chevron-down" size={28} color="white" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Hàng chờ quét ({safeQueue.length})</Text>
+                    <Text style={styles.headerTitle}>Hàng chờ quét ({queue.length})</Text>
 
-                    {safeQueue.length > 0 && (
+                    {queue.length > 0 && (
                         <TouchableOpacity onPress={onClear}>
                             <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>XÓA TẤT CẢ</Text>
                         </TouchableOpacity>
                     )}
                 </View>
 
-                <FlatList
-                    data={safeQueue}
+                {/* <FlatList
+                    data={queue}
                     renderItem={renderItem}
                     keyExtractor={item => item.id.toString()}
                     contentContainerStyle={[
                         { padding: 15, paddingBottom: 50 },
-                        safeQueue.length === 0 && { flex: 1 }
+                        queue.length === 0 && { flex: 1 }
                     ]}
                     ListEmptyComponent={renderEmptyState}
-                />
+                /> */}
+                {queue.length === 0 ? (
+                    renderEmptyState()
+                ) : (
+                    <FlatList
+                        data={queue}
+                        renderItem={renderItem}
+                        keyExtractor={item => item.id.toString()}
+                        contentContainerStyle={{ padding: 15, paddingBottom: 50 }}
+                    />
+                )}
             </SafeAreaView>
 
             <Modal visible={viewingItem !== null} transparent={true} animationType="fade">

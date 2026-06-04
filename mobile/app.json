@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "Speed Light Dev",
-    "slug": "speed-light-dev",
-    "version": "1.0.0",
+    "name": "Speed Light",
+    "owner": "speed-light",
+    "slug": "speed-light",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,35 +15,26 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "vn.speedlight.app.dev",
+      "bundleIdentifier": "vn.speedlight.app",
+      "buildNumber": "2",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "Speedlight cần quyền vị trí để hỗ trợ theo dõi hành trình giao hàng trong ca làm việc.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Speedlight cần quyền vị trí \"Luôn luôn\" để ghi nhận hành trình kể cả khi bạn dùng ứng dụng khác.",
-        "NSLocationAlwaysUsageDescription": "Speedlight cần quyền vị trí ở chế độ nền để theo dõi hoạt động giao hàng.",
-        "UIBackgroundModes": [
-          "location",
-          "fetch"
-        ]
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "vn.speedlight.app.dev",
+      "package": "vn.speedlight.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "softwareKeyboardLayoutMode": "pan",
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.POST_NOTIFICATIONS"
+      "permissions": ["android.permission.CAMERA"],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -57,13 +49,10 @@
         }
       ],
       [
-        "expo-location",
+        "expo-notifications",
         {
-          "locationAlwaysAndWhenInUsePermission": "Speedlight cần quyền vị trí \"Luôn luôn\" để theo dõi hành trình giao hàng kể cả khi bạn dùng ứng dụng khác.",
-          "locationAlwaysPermission": "Speedlight cần quyền vị trí nền để ghi nhận hoạt động ca làm việc.",
-          "locationWhenInUsePermission": "Speedlight cần quyền vị trí để hỗ trợ quản lý và giao nhận hàng hóa.",
-          "isIosBackgroundLocationEnabled": true,
-          "isAndroidBackgroundLocationEnabled": true
+          "icon": "./assets/icon.png",
+          "color": "#0284C7"
         }
       ],
       [
@@ -75,14 +64,16 @@
         }
       ]
     ],
+    "extra": {
+      "eas": {
+        "projectId": "0c288d76-926e-4022-b908-9778d8cc31bb"
+      }
+    },
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "extra": {
-      "eas": {
-        "projectId": "428d10d4-7db3-42fc-966e-dcb70e80a545"
-      }
-    },
-    "owner": "cnguyen25"
+    "updates": {
+      "url": "https://u.expo.dev/0c288d76-926e-4022-b908-9778d8cc31bb"
+    }
   }
 }

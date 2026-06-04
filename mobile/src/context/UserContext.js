@@ -1,397 +1,501 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { jwtDecode } from "jwt-decode";
-import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
-import { userService } from "../services/userService";
+
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import { ENDPOINTS } from '../constants/data';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { jwtDecode } from 'jwt-decode';
+import axios from 'axios';
+import Toast from 'react-native-toast-message';
+import { API_BASE_URL, WAREHOUSE_API_URL } from '../constants/data';
+import { CommonActions, createNavigationContainerRef } from '@react-navigation/native';
+import { checkNetworkConnection } from '../utils/networkUtils';
+import NetInfo from '@react-native-community/netinfo';
+
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 const UserContext = createContext();
+export const navigationRef = createNavigationContainerRef();
 
-const decodeJWT = (token) => {
-  try {
-    if (!token) return {};
-    return jwtDecode(token);
-  } catch (e) {
-    console.warn("Lỗi decode JWT token:", e);
-    return {};
-  }
-};
-
-const normalizeUser = (payload = {}) => {
-  const token =
-    payload.token || payload.access_token || payload.accessToken || "";
-  const decoded = decodeJWT(token);
-
-  const userId =
-    payload.user_id ||
-    payload.userId ||
-    payload.id ||
-    decoded.user_id ||
-    decoded.id ||
-    null;
-  const username =
-    payload.username ||
-    payload.sub ||
-    payload.userName ||
-    payload.name ||
-    decoded.username ||
-    decoded.sub ||
-    "";
-  const fullName =
-    payload.full_name ||
-    payload.fullName ||
-    payload.name ||
-    decoded.full_name ||
-    decoded.name ||
-    "";
-  const roleId =
-    payload.role_id ||
-    payload.roleId ||
-    (typeof payload.role === "number" ? payload.role : null) ||
-    decoded.role_id ||
-    decoded.roleId ||
-    null;
-  const roleName =
-    payload.role_name ||
-    payload.roleName ||
-    (typeof payload.role === "string" ? payload.role : null) ||
-    decoded.role_name ||
-    decoded.roleName ||
-    null;
-  const hubId =
-    payload.hub_id ||
-    payload.hubId ||
-    payload.primary_hub_id ||
-    decoded.hub_id ||
-    decoded.hubId ||
-    decoded.primary_hub_id ||
-    null;
-  const primaryHubId =
-    payload.primary_hub_id ||
-    payload.primaryHubId ||
-    payload.hubId ||
-    decoded.primary_hub_id ||
-    decoded.primaryHubId ||
-    decoded.hub_id ||
-    null;
-
-  const permissionsRaw =
-    payload.permissions ||
-    payload.scopes ||
-    decoded.permissions ||
-    decoded.scopes ||
-    {};
-  const permissions = Array.isArray(permissionsRaw)
-    ? permissionsRaw.reduce((acc, perm) => ({ ...acc, [perm]: true }), {})
-    : typeof permissionsRaw === "object" && permissionsRaw !== null
-      ? permissionsRaw
-      : {};
-
-  const profile = payload.profile || payload.user || null;
-
-  return {
-    user_id: userId,
-    username,
-    full_name: fullName,
-    token,
-    role:
-      roleName ||
-      (typeof payload.role === "string" ? payload.role : null) ||
-      roleId,
-    role_id: roleId,
-    role_name: roleName,
-    hub_id: hubId,
-    primary_hub_id: primaryHubId,
-    permissions,
-    profile,
-    isAuthenticated: !!token,
-  };
-};
-
-const STORAGE_USER_KEY = "@SpeedlightAppFn:user";
-
-const initialUserState = {
-  user_id: null,
-  username: "",
-  full_name: "",
-  token: "",
-  role: null,
-  role_id: null,
-  role_name: null,
-  hub_id: null,
-  primary_hub_id: null,
-  permissions: {},
-  profile: null,
-  isAuthenticated: false,
-};
-
-const persistUser = async (normalizedUser) => {
-  try {
-    if (normalizedUser?.token) {
-      await AsyncStorage.setItem(
-        STORAGE_USER_KEY,
-        JSON.stringify(normalizedUser),
-      );
-    } else {
-      await AsyncStorage.removeItem(STORAGE_USER_KEY);
-    }
-  } catch (error) {
-    console.warn("Failed to persist user data", error);
-  }
-};
-
-const loadStoredUser = async () => {
-  try {
-    const stored = await AsyncStorage.getItem(STORAGE_USER_KEY);
-    if (!stored) return null;
-    return JSON.parse(stored);
-  } catch (error) {
-    console.warn("Failed to load stored user data", error);
-    return null;
-  }
-};
-
-// Cấu hình xin quyền Push Notification từ thiết bị
-const registerForPushNotificationsAsync = async () => {
-  try {
-    console.log("[PUSH] registerForPushNotificationsAsync started");
-
-    // Kiểm tra xem có phải thiết bị thật không (Simulator thường không nhận được push thực tế từ Expo)
-    if (!Device.isDevice) {
-      console.log(
-        "[PUSH] Running on simulator - generating dummy push token for testing flow",
-      );
-      return "ExponentPushToken[dummy_token_123_for_simulator]";
-    }
-
-    // Xin quyền thông báo
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
-    console.log(
-      "[PUSH] Existing notification permission status:",
-      existingStatus,
-    );
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      console.log("[PUSH] Requested notification permission status:", status);
-      finalStatus = status;
-    }
-
-    if (finalStatus !== "granted") {
-      console.warn("[PUSH] Permission not granted for push notifications");
-      return null;
-    }
-
-    // Lấy mã Expo Push Token. projectId phải là Expo project ID, không phải Firebase ID.
-    const expoProjectId =
-      Constants?.expoConfig?.projectId ||
-      Constants?.manifest2?.projectId ||
-      Constants?.manifest?.projectId ||
-      Constants?.expoConfig?.extra?.eas?.projectId ||
-      Constants?.manifest2?.extra?.eas?.projectId ||
-      Constants?.manifest?.extra?.eas?.projectId;
-
-    const requestOptions = expoProjectId ? { projectId: expoProjectId } : {};
-    if (expoProjectId) {
-      console.log("[PUSH] Using Expo projectId for push token:", expoProjectId);
-    } else {
-      console.warn(
-        "[PUSH] No Expo projectId found. Skipping push token registration.",
-      );
-      return null;
-    }
-
-    let token;
-    try {
-      token = await Notifications.getExpoPushTokenAsync(requestOptions);
-    } catch (errorWithProjectId) {
-      if (requestOptions.projectId) {
-        console.warn(
-          "[PUSH] getExpoPushTokenAsync failed with projectId, retrying without projectId:",
-          errorWithProjectId.message || errorWithProjectId,
-        );
-        try {
-          token = await Notifications.getExpoPushTokenAsync();
-        } catch (fallbackError) {
-          console.warn(
-            "[PUSH] Fallback without projectId also failed:",
-            fallbackError.message || fallbackError,
-          );
-          return null;
-        }
-      } else {
-        console.warn(
-          "[PUSH] getExpoPushTokenAsync failed:",
-          errorWithProjectId.message || errorWithProjectId,
-        );
-        return null;
-      }
-    }
-
-    if (!token) return null;
-
-    console.log("[PUSH] Push token obtained:", token.data);
-
-    return token.data;
-  } catch (error) {
-    console.warn("[PUSH] Registration warning:", error.message || error);
-    return null;
-  }
-};
+export const apiClient = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 10000,
+});
 
 export const UserProvider = ({ children }) => {
-  const [user, setUserState] = useState(initialUserState);
+    const [user, setUser] = useState(null);
+    const [token, setToken] = useState(null);
+    const [roles, setRoles] = useState([]);
+    const [permissions, setPermissions] = useState([]);
+    const logoutTimer = useRef(null);
 
-  // Tự động tải thông tin user đã lưu khi mở app
-  useEffect(() => {
-    (async () => {
-      const storedUser = await loadStoredUser();
-      if (storedUser?.token) {
-        setUserState({ ...initialUserState, ...normalizeUser(storedUser) });
-      }
-    })();
-  }, []);
+    const [notifications, setNotifications] = useState([]);
+    const unreadCount = notifications.length;
 
-  const pushTokenRegisteredRef = React.useRef(false);
+    const wsRef = useRef(null);
+    const isConnectingRef = useRef(false);       // Tránh kết nối song song
+    const reconnectTimeoutRef = useRef(null);    // Lưu ID của bộ đếm giờ để clear
+    const retryCountRef = useRef(0);             // Đếm số lần đã thử kết nối lại
 
-  useEffect(() => {
-    if (user.token && !pushTokenRegisteredRef.current) {
-      pushTokenRegisteredRef.current = true;
-      setupPushNotifications();
-    }
-  }, [user.token]);
+    // Cấu hình Axios Interceptors
+    useEffect(() => {
+        let isSessionExpired = false;
 
-  // Khởi tạo các bộ lắng nghe (Listeners) cho thông báo đẩy khi ứng dụng đang chạy nền/foreground
-  useEffect(() => {
-    let notificationSubscription;
-    let notificationResponseSubscription;
-
-    notificationSubscription = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log(
-          "[PUSH] Notification received:",
-          notification.request.content,
-        );
-      },
-    );
-
-    notificationResponseSubscription =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("[PUSH] Notification response received:", response);
-        console.log(
-          "[PUSH] Notification response content:",
-          response.notification.request.content,
-        );
-      });
-
-    return () => {
-      notificationSubscription?.remove();
-      notificationResponseSubscription?.remove();
-    };
-  }, []);
-
-  const login = async (payload) => {
-    if (typeof payload === "string") {
-      const normalized = {
-        ...initialUserState,
-        username: payload,
-        isAuthenticated: true,
-      };
-      setUserState(normalized);
-      persistUser(normalized);
-
-      await setupPushNotifications();
-      return;
-    }
-
-    const normalized = {
-      ...initialUserState,
-      ...normalizeUser(payload),
-    };
-    setUserState(normalized);
-    persistUser(normalized);
-
-    await setupPushNotifications();
-  };
-
-  // Đăng ký nhận token và chuẩn bị luồng đồng bộ với Backend
-  const setupPushNotifications = async () => {
-    try {
-      const pushToken = await registerForPushNotificationsAsync();
-      if (pushToken) {
-        console.log("[PUSH] Push notifications registered successfully");
-        console.log(
-          "[PUSH-TOKEN-API] Token ready to be sent to backend:",
-          pushToken,
+        const requestInterceptor = apiClient.interceptors.request.use(
+            async (config) => {
+                const currentToken = await AsyncStorage.getItem('access_token');
+                if (currentToken) {
+                    config.headers.Authorization = `Bearer ${currentToken}`;
+                }
+                return config;
+            },
+            (error) => Promise.reject(error)
         );
 
-        if (user.token) {
-          try {
-            await userService.registerPushToken(user.token, pushToken);
-            console.log("[PUSH] Push token synced to backend successfully");
-          } catch (syncError) {
-            console.error(
-              "[PUSH] Failed to sync push token to backend:",
-              syncError,
-            );
-          }
+        const responseInterceptor = apiClient.interceptors.response.use(
+            (response) => response,
+            async (error) => {
+                if (error.response && error.response.status === 401 && !isSessionExpired) {
+                    isSessionExpired = true;
+                    logout(true);
+
+                    setTimeout(() => {
+                        isSessionExpired = false;
+                    }, 3000);
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => {
+            apiClient.interceptors.request.eject(requestInterceptor);
+            apiClient.interceptors.response.eject(responseInterceptor);
+        };
+    }, []);
+
+    useEffect(() => {
+        let unsubscribeNetInfo = null;
+
+        const connectAndFetchNotifications = async () => {
+            const currentToken = await AsyncStorage.getItem('access_token');
+
+            // Cổng chốt chặn: Đang kết nối hoặc đã kết nối thì không làm gì cả
+            if (isConnectingRef.current || (wsRef.current && wsRef.current.readyState === WebSocket.OPEN)) return;
+
+            isConnectingRef.current = true;
+
+            if (!currentToken) {
+                isConnectingRef.current = false;
+                return;
+            }
+
+            try {
+                const uType = await AsyncStorage.getItem('user_type') || 'employee';
+
+                // Tạm thời nếu là Khách hàng thì chưa có tính năng thông báo ở FastAPI, bỏ qua gọi API để không bị lỗi 401 từ kho cũ
+                if (uType === 'customer') {
+                    isConnectingRef.current = false;
+                    return;
+                }
+
+                const res = await apiClient.get(ENDPOINTS.GET_UNREAD_NOTIFICATIONS, {
+                    headers: { Authorization: `Bearer ${currentToken}` }
+                });
+                const data = res.data.data || res.data;
+                setNotifications(data);
+            } catch (err) {
+                // console.log("Lỗi kéo thông báo tồn đọng:", err);
+                // Toast.show({ type: 'error', text1: 'Không thể tải thông báo!' });
+            }
+
+            // Đóng sạch kết nối cũ nếu bị kẹt (phải gỡ onclose để tránh vòng lặp)
+            if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+                wsRef.current.onclose = null;
+                wsRef.current.close();
+            }
+
+            const wsBaseUrl = WAREHOUSE_API_URL.replace(/^http/, 'ws');
+            const wsUrl = `${wsBaseUrl}/api/ws/notifications?token=${currentToken}`;
+            wsRef.current = new WebSocket(wsUrl);
+
+            wsRef.current.onopen = () => {
+                isConnectingRef.current = false;
+                retryCountRef.current = 0; // Reset lại số lần thử khi kết nối thành công
+                if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+            };
+
+            wsRef.current.onmessage = (event) => {
+                try {
+                    const newNotif = JSON.parse(event.data);
+                    setNotifications(prev => {
+                        if (prev.some(n => n.id === newNotif.id)) return prev;
+                        return [newNotif, ...prev];
+                    });
+                } catch (err) {
+                    // console.log('Lỗi parse WS', err); 
+                    Toast.show({ type: 'error', text1: 'Lỗi parse thông báo!' });
+                }
+            };
+
+            wsRef.current.onerror = (error) => {
+                isConnectingRef.current = false;
+            };
+
+            wsRef.current.onclose = () => {
+                isConnectingRef.current = false;
+                wsRef.current = null;
+
+                // THUẬT TOÁN EXPONENTIAL BACKOFF KÈM JITTER
+                const baseDelay = 2000; // Khởi điểm 2 giây
+                const maxDelay = 30000; // Tối đa không quá 30 giây
+
+                // Tính toán: 2s -> 4s -> 8s -> 16s -> 30s...
+                const exponentialDelay = Math.min(baseDelay * Math.pow(2, retryCountRef.current), maxDelay);
+
+                // Jitter: Thêm độ trễ ngẫu nhiên từ 0 - 1000 mili-giây
+                const jitter = Math.floor(Math.random() * 1000);
+                const finalDelay = exponentialDelay + jitter;
+
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    retryCountRef.current += 1;
+                    connectAndFetchNotifications();
+                }, finalDelay);
+            };
+        };
+
+        if (user) {
+            // Chỉ kiểm tra ngầm (shouldAsk = false). Nếu đã có quyền từ trước thì cập nhật token.
+            registerForPushNotificationsAsync(false).then(async pushToken => {
+                if (pushToken) {
+                    const uType = await AsyncStorage.getItem('user_type') || 'employee';
+                    if (uType === 'customer') {
+                        ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN(pushToken)
+                            .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
+                    } else {
+                        ENDPOINTS.UPDATE_PUSH_TOKEN(pushToken)
+                            .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
+                    }
+                }
+            });
+
+            connectAndFetchNotifications();
+
+            unsubscribeNetInfo = NetInfo.addEventListener(state => {
+                if (state.isConnected && state.isInternetReachable) {
+                    if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED || wsRef.current.readyState === WebSocket.CLOSING) {
+                        // Reset retry khi có mạng trở lại để nó thử kết nối ngay
+                        retryCountRef.current = 0;
+                        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+                        connectAndFetchNotifications();
+                    }
+                }
+            });
+
         } else {
-          console.warn(
-            "[PUSH] No authenticated user token available, skipping backend sync.",
-          );
+            // DỌN DẸP SẠCH SẼ KHI LOGOUT
+            setNotifications([]);
+            if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+            if (wsRef.current) {
+                wsRef.current.onclose = null; // Gỡ onclose trước để không kích hoạt reconnect
+                wsRef.current.close();
+                wsRef.current = null;
+            }
+            if (unsubscribeNetInfo) unsubscribeNetInfo();
         }
-      } else {
-        console.warn("[PUSH] No push token was obtained from Expo");
-      }
-    } catch (error) {
-      console.error("[PUSH] Failed to setup push notifications:", error);
+
+        return () => {
+            // DỌN DẸP KHI COMPONENT UNMOUNT
+            if (unsubscribeNetInfo) unsubscribeNetInfo();
+            if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+            if (wsRef.current) {
+                wsRef.current.onclose = null;
+                wsRef.current.close();
+            }
+        };
+    }, [user]);
+
+    const promptForPushPermission = async () => {
+        const pushToken = await registerForPushNotificationsAsync(true); // true = Cho phép bật popup
+        if (pushToken) {
+            const uType = await AsyncStorage.getItem('user_type') || 'employee';
+            if (uType === 'customer') {
+                ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN(pushToken)
+                    .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
+            } else {
+                ENDPOINTS.UPDATE_PUSH_TOKEN(pushToken)
+                    .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
+            }
+        }
+    };
+
+    async function registerForPushNotificationsAsync(shouldAsk = false) {
+        let pushToken;
+
+        // Push Notification chỉ hoạt động trên máy thật
+        if (Device.isDevice) {
+            // Android cần thiết lập Channel riêng
+            if (Platform.OS === 'android') {
+                await Notifications.setNotificationChannelAsync('default', {
+                    name: 'default',
+                    importance: Notifications.AndroidImportance.MAX,
+                    vibrationPattern: [0, 250, 250, 250],
+                    lightColor: '#0284C7', // Màu xanh thương hiệu
+                });
+            }
+
+            // Kiểm tra và xin quyền
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+
+            if (existingStatus !== 'granted') {
+                // NẾU KHÔNG CHO PHÉP HỎI (NẰM Ở CONTEXT) -> DỪNG LẠI NGAY
+                if (!shouldAsk) {
+                    return null;
+                }
+
+                // NẾU CHO PHÉP HỎI (TỪ TUTORIAL SCREEN) -> BẬT POPUP
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+
+            // Nếu người dùng bấm "Từ chối" thì bỏ qua
+            if (finalStatus !== 'granted') {
+                return null;
+            }
+
+            // Lấy mã Token. Lấy cả cấu hình projectId từ app.json (nếu có dùng EAS Build)
+            try {
+                const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+                pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+            } catch (e) {
+                // console.log("Lỗi khi xin Expo Push Token:", e);
+                Toast.show({ type: 'error', text1: 'Không thể lấy Push Token!' });
+            }
+        }
+        return pushToken;
     }
-  };
+    // =========================================================================
 
-  const updateUser = (updates) => {
-    setUserState((prevUser) => {
-      const mergedUser = { ...prevUser, ...(updates || {}) };
-      const normalized = {
-        ...initialUserState,
-        ...normalizeUser(mergedUser),
-        permissions: mergedUser.permissions || prevUser.permissions || [],
-        profile: mergedUser.profile || prevUser.profile || null,
-      };
-      persistUser(normalized);
-      return normalized;
-    });
-  };
+    const setupAutoLogout = (jwtToken) => {
+        if (logoutTimer.current) {
+            clearTimeout(logoutTimer.current);
+            logoutTimer.current = null;
+        }
+        if (!jwtToken) return;
 
-  const logout = () => {
-    setUserState(initialUserState);
-    AsyncStorage.removeItem(STORAGE_USER_KEY).catch(() => null);
-  };
+        try {
+            const decodedToken = jwtDecode(jwtToken);
+            if (!decodedToken.exp) return;
 
-  const hasRole = (roleToCheck) => {
-    if (!roleToCheck) return false;
-    const normalizedCheck = String(roleToCheck).toLowerCase();
-    return [user.role, user.role_name, user.role_id]
-      .filter((value) => value !== undefined && value !== null)
-      .some((value) => String(value).toLowerCase() === normalizedCheck);
-  };
+            const expirationTimeMs = decodedToken.exp * 1000;
+            const currentTimeMs = Date.now();
+            const timeUntilExpiry = expirationTimeMs - currentTimeMs;
 
-  return (
-    <UserContext.Provider
-      value={{
-        user,
-        login,
-        logout,
-        updateUser,
-        hasRole,
-        isAuthenticated: user.isAuthenticated,
-      }}
-    >
-      {children}
-    </UserContext.Provider>
-  );
+            if (timeUntilExpiry <= 0) {
+                logout(true);
+            } else {
+                logoutTimer.current = setTimeout(() => {
+                    Toast.show({ type: 'info', text1: 'Phiên đăng nhập đã kết thúc!' });
+                    logout(true);
+                }, timeUntilExpiry);
+            }
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const fetchMyProfile = async (directToken = null, providedUserType = null) => {
+        if (!(await checkNetworkConnection())) return;
+        try {
+            const currentToken = directToken || await AsyncStorage.getItem('access_token');
+            const userType = providedUserType || await AsyncStorage.getItem('user_type') || 'employee';
+            
+            // NẾU LÀ KHÁCH HÀNG: Parse thẳng từ JWT thay vì gọi API (vì Backend FastAPI ko có /api/users/me)
+            if (userType === 'customer') {
+                const decoded = jwtDecode(currentToken);
+                
+                const mockProfileData = {
+                    id: decoded.user_id,
+                    username: decoded.sub,
+                    customer_id: decoded.customer_id,
+                    // full_name sẽ lấy fallback lúc login hoặc ở view, vì JWT có thể ko có
+                    full_name: 'Khách hàng', 
+                };
+
+                setUser(mockProfileData);
+
+                // JWT chứa map { "pickup_create": True, ... }
+                const perms = [];
+                if (decoded.permissions) {
+                    Object.keys(decoded.permissions).forEach(key => {
+                        if (decoded.permissions[key]) perms.push(key);
+                    });
+                }
+                setPermissions(perms);
+                setRoles([{ role_id: decoded.role_id }]);
+
+                return mockProfileData;
+            }
+
+            // NẾU LÀ NHÂN VIÊN: Cứ gọi API như cũ (để không phá vỡ logic cũ)
+            const profileUrl = ENDPOINTS.GET_PROFILE_EMPLOYEE;
+            const response = await apiClient.get(profileUrl, {
+                headers: { Authorization: `Bearer ${currentToken}` }
+            });
+
+            const data = response.data;
+
+            setUser({
+                id: data.id,
+                username: data.username,
+                full_name: data.full_name,
+                ma_kho_spl: data.ma_kho_spl,
+                bien_so_xe: data.bien_so_xe,
+                is_shipper: data.is_shipper,
+                is_chat_banned: data.is_chat_banned
+            });
+            setRoles(data.roles || []);
+
+            const perms = [];
+            (data.roles || []).forEach(role => {
+                (role.permissions || []).forEach(p => {
+                    if (!perms.includes(p.code)) perms.push(p.code);
+                });
+            });
+            setPermissions(perms);
+
+            return data;
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const loginUserAndFetchProfile = async (username, password, userType = 'employee') => {
+        try {
+            const loginUrl = userType === 'customer' ? ENDPOINTS.CUSTOMER_LOGIN : ENDPOINTS.EMPLOYEE_LOGIN;
+
+            let response;
+            if (userType === 'customer') {
+                // Khách hàng: Backend FastAPI mong đợi JSON
+                response = await axios.post(loginUrl, {
+                    username: username,
+                    password: password
+                }, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } else {
+                // Nhân viên: Backend kho cũ mong đợi Form URL Encoded
+                const params = new URLSearchParams();
+                params.append('grant_type', 'password');
+                params.append('username', username);
+                params.append('password', password);
+
+                response = await axios.post(loginUrl, params.toString(), {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                });
+            }
+
+            const accessToken = response.data.access_token;
+            setToken(accessToken);
+            await AsyncStorage.setItem('access_token', accessToken);
+            
+            // Lưu loại user để dùng sau (tùy chọn, ví dụ lưu trữ local)
+            await AsyncStorage.setItem('user_type', userType);
+
+            setupAutoLogout(accessToken);
+
+            // ---> QUAN TRỌNG: Hứng lấy data từ fetchMyProfile và trả về <---
+            const profileData = await fetchMyProfile(accessToken, userType);
+
+            return { success: true, profileData: profileData };
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const logout = async (isAutoLogout = false) => {
+
+        if (logoutTimer.current) clearTimeout(logoutTimer.current);
+
+        // try {
+        //     const currentToken = await AsyncStorage.getItem('access_token');
+        //     const uType = await AsyncStorage.getItem('user_type') || 'employee';
+        //     if (currentToken) {
+        //         if (uType === 'customer') {
+        //             await apiClient.post(
+        //                 `${API_BASE_URL}/api/users/register-push-token`,
+        //                 { push_token: null },
+        //                 { headers: { Authorization: `Bearer ${currentToken}` } }
+        //             );
+        //         } else {
+        //             await apiClient.put(
+        //                 `${WAREHOUSE_API_URL}/api/users/update-push-token`,
+        //                 { token: null },
+        //                 { headers: { Authorization: `Bearer ${currentToken}` } }
+        //             );
+        //         }
+        //     }
+        // } catch (err) { ... }
+
+        setToken(null);
+        setUser(null);
+        setRoles([]);
+        setPermissions([]);
+        await AsyncStorage.removeItem('access_token');
+
+        if (navigationRef.isReady()) {
+            navigationRef.dispatch(
+                CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] })
+            );
+        } else {
+            Toast.show({ type: 'error', text1: 'Không thể chuyển hướng sau khi đăng xuất!' });
+        }
+    };
+
+    // Kiểm tra xem User có quyền vào kho hay không (Dựa trên mảng truyền vào, không phụ thuộc state)
+    const isWarehouseStaff = (userPermissions) => {
+        // Dùng mảng truyền vào (nếu có) để check ngay lập tức, nếu không có thì dùng state (cho các màn hình khác gọi sau này)
+        const permsToCheck = userPermissions || permissions;
+
+        if (!permsToCheck || permsToCheck.length === 0) return false;
+        if (permsToCheck.includes('FUNC_ADMIN_ALL')) return true;
+
+        return permsToCheck.some(perm =>
+            perm.startsWith('FUNC_VIP_') ||
+            perm.startsWith('FUNC_THUONG_') ||
+            perm.startsWith('FUNC_LE_')
+        );
+    };
+
+    const updateUserVehicle = (bienSoXeMoi) => {
+        setUser(prev => ({ ...prev, bien_so_xe: bienSoXeMoi }));
+    };
+
+    const clearUserVehicle = () => {
+        setUser(prev => {
+            if (!prev) return prev;
+            return { ...prev, bien_so_xe: null };
+        });
+    };
+
+    const refreshProfile = async () => {
+        try {
+            await fetchMyProfile();
+        } catch (error) {
+            // console.log("Lỗi khi refresh profile ngầm:", error);
+            Toast.show({ type: 'error', text1: 'Không thể làm mới thông tin người dùng!' });
+        }
+    };
+
+    return (
+        <UserContext.Provider value={{
+            user, roles, permissions,
+            loginUserAndFetchProfile, logout, isWarehouseStaff, updateUserVehicle, clearUserVehicle, refreshProfile, unreadCount, notifications, setNotifications, promptForPushPermission
+        }}>
+            {children}
+        </UserContext.Provider>
+    );
 };
 
 export const useUser = () => useContext(UserContext);
