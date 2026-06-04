@@ -113,8 +113,8 @@
                   <el-icon><Wallet /></el-icon>
                   <span class="bank-name">{{ row.bank_name }}</span>
                 </div>
-                <div class="bank-number">{{ row.bank_number }}</div>
-                <div class="bank-owner">{{ row.bank_owner }}</div>
+                <div class="bank-number">{{ row.account_number || row.bank_number }}</div>
+                <div class="bank-owner">{{ row.account_name || row.bank_owner }}</div>
               </div>
               <span v-else class="text-muted text-xs flex-center-start">
                 <el-icon class="mr-1"><Warning /></el-icon> Chưa cập nhật
@@ -360,7 +360,12 @@ const rules = {
 const fetchData = async () => {
   loading.value = true;
   try {
-    const res = await api.get('/api/customers', { params: { q: searchQuery.value } });
+    let res;
+    if (searchQuery.value.trim()) {
+      res = await api.get('/api/customers/search', { params: { q: searchQuery.value } });
+    } else {
+      res = await api.get('/api/customers');
+    }
     customers.value = res.data;
   } catch (err) {
     ElMessage.error('Không thể lấy danh sách khách hàng');
@@ -384,8 +389,8 @@ const openDialog = (row) => {
       email: row.email || '',
       address: row.address || row.address_detail || '',
       bank_name: row.bank_name || '',
-      bank_number: row.bank_number || '',
-      bank_owner: row.bank_owner || ''
+      bank_number: row.account_number || row.bank_number || '',
+      bank_owner: row.account_name || row.bank_owner || ''
     });
   } else {
     Object.assign(customerForm, {

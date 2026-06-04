@@ -12,6 +12,11 @@ const publicRoutes = [
     component: () => import('../views/auth/LoginView.vue'),
   },
   {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/auth/RegisterView.vue'),
+  },
+  {
     path: '/setup-admin',
     name: 'SetupAdmin',
     component: () => import('../views/auth/SetupAdmin.vue'),
@@ -20,6 +25,12 @@ const publicRoutes = [
     path: '/tracking/:code?',
     name: 'CustomerTracking',
     component: () => import('../views/customer/tracking/PublicTracking.vue'),
+  },
+  {
+    path: '/customer/portal',
+    name: 'CustomerPortal',
+    component: () => import('../views/customer/CustomerPortal.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/',
@@ -106,7 +117,7 @@ const adminRoutes = [
         component: () => import('../views/admin/warehouse/PickupBagList.vue'),
         meta: { requiresAuth: true }
       },
-          // Delivery
+      // Delivery
       {
         path: 'delivery/assign',
         name: 'AssignShipper',
@@ -173,13 +184,29 @@ const router = createRouter({
 // 4. Navigation Guard
 router.beforeEach((to, from) => {
   const auth = useAuthStore();
-  
+
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return '/login';
   }
+
+  // Nếu đã đăng nhập và đang cố vào trang login/setup-admin
   if ((to.path === '/login' || to.path === '/setup-admin') && auth.isAuthenticated) {
+    if (auth.isCustomer) {
+      return '/customer/portal';
+    }
     return '/admin/dashboard';
   }
+
+  // Chặn khách hàng vào các trang /admin/*
+  if (to.path.startsWith('/admin') && auth.isAuthenticated && auth.isCustomer) {
+    return '/customer/portal';
+  }
+
+  // Chặn nhân viên/admin vào trang /customer/portal
+  if (to.path.startsWith('/customer/portal') && auth.isAuthenticated && !auth.isCustomer) {
+    return '/admin/dashboard';
+  }
+
   return true;
 });
 

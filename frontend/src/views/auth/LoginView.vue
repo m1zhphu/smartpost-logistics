@@ -40,6 +40,11 @@
         >ĐĂNG NHẬP</el-button>
       </el-form>
       
+      <div class="login-actions">
+        <span>Chưa có tài khoản?</span>
+        <router-link to="/register" class="register-link">Đăng ký ngay</router-link>
+      </div>
+      
       <div class="login-logo-bottom">
         <img src="@/assets/CompanyLogo2.png" alt="Speed Up Logistics" />
         <div class="logo-divider"></div>
@@ -97,8 +102,11 @@ const handleLogin = async () => {
         duration: 1500
       });
       
-      // SỬA LỖI: Chuyển thẳng đến Dashboard thay vì '/' để tránh kẹt Router
-      await router.push('/admin/dashboard');
+      if (authStore.isCustomer) {
+        await router.push('/customer/portal');
+      } else {
+        await router.push('/admin/dashboard');
+      }
       
     } catch (error) {
       const msg = error.response?.data?.detail || 'Sai tài khoản hoặc mật khẩu';

@@ -14,6 +14,7 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => !!state.token,
     // ĐÃ SỬA: Cập nhật logic check Admin theo hệ thống 5 Role (Role 1 là Super Admin)
     isAdmin: (state) => state.user?.role_id === 1,
+    isCustomer: (state) => state.user?.role_id === 6,
   },
   actions: {
     setUser(user, token) {
