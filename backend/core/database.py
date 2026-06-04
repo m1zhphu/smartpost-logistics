@@ -1,6 +1,13 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv():
+        return False
+
+load_dotenv()
 
 # Ưu tiên lấy chuỗi kết nối từ biến môi trường của Render
 SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL")

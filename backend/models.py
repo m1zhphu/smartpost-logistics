@@ -165,6 +165,7 @@ class TrackingLogsCurrent(Base):
 class Users(Base):
     __tablename__ = 'users'
     __table_args__ = (
+        ForeignKeyConstraint(['customer_id'], ['customers.customer_id'], name='users_customer_id_fkey'),
         ForeignKeyConstraint(['department_id'], ['departments.department_id'], name='users_department_id_fkey'),
         ForeignKeyConstraint(['primary_hub_id'], ['hubs.hub_id'], name='users_primary_hub_id_fkey'),
         ForeignKeyConstraint(['role_id'], ['roles.role_id'], name='users_role_id_fkey'),
@@ -179,6 +180,7 @@ class Users(Base):
     phone_number: Mapped[Optional[str]] = mapped_column(String(20))
     email: Mapped[Optional[str]] = mapped_column(String(150), unique=True, index=True)
     role_id: Mapped[Optional[int]] = mapped_column(Integer)
+    customer_id: Mapped[Optional[int]] = mapped_column(Integer)
     department_id: Mapped[Optional[int]] = mapped_column(Integer)
     primary_hub_id: Mapped[Optional[int]] = mapped_column(Integer)
     vehicle_plate: Mapped[Optional[str]] = mapped_column(String(50))
@@ -189,8 +191,9 @@ class Users(Base):
     department: Mapped[Optional['Departments']] = relationship('Departments', back_populates='users')
     primary_hub: Mapped[Optional['Hubs']] = relationship('Hubs', foreign_keys=[primary_hub_id], back_populates='users_primary_hub')
     role: Mapped[Optional['Roles']] = relationship('Roles', back_populates='users')
+    customer_account: Mapped[Optional['Customers']] = relationship('Customers', foreign_keys=[customer_id], back_populates='user_accounts')
     bags: Mapped[list['Bags']] = relationship('Bags', back_populates='users')
-    customers: Mapped[list['Customers']] = relationship('Customers', back_populates='staff_in_charge')
+    customers: Mapped[list['Customers']] = relationship('Customers', foreign_keys='[Customers.staff_in_charge_id]', back_populates='staff_in_charge')
     incidents: Mapped[list['Incidents']] = relationship('Incidents', back_populates='users')
     manifests: Mapped[list['Manifests']] = relationship('Manifests', back_populates='shipper')
     pods_created_by: Mapped[list['Pods']] = relationship('Pods', foreign_keys='[Pods.created_by]', back_populates='users')
@@ -295,7 +298,8 @@ class Customers(Base):
 
     parent_customer: Mapped[Optional['Customers']] = relationship('Customers', remote_side=[customer_id], back_populates='parent_customer_reverse')
     parent_customer_reverse: Mapped[list['Customers']] = relationship('Customers', remote_side=[parent_customer_id], back_populates='parent_customer')
-    staff_in_charge: Mapped[Optional['Users']] = relationship('Users', back_populates='customers')
+    staff_in_charge: Mapped[Optional['Users']] = relationship('Users', foreign_keys=[staff_in_charge_id], back_populates='customers')
+    user_accounts: Mapped[list['Users']] = relationship('Users', foreign_keys='[Users.customer_id]', back_populates='customer_account')
     bank_accounts: Mapped[Optional['BankAccounts']] = relationship('BankAccounts', uselist=False, back_populates='customer')
     booking_requests: Mapped[list['BookingRequests']] = relationship('BookingRequests', back_populates='customer')
     customer_price_mapping: Mapped[list['CustomerPriceMapping']] = relationship('CustomerPriceMapping', back_populates='customer')
@@ -820,6 +824,22 @@ class ActivityLogs(Base):
 
     waybill: Mapped[Optional['Waybills']] = relationship('Waybills')
     user: Mapped[Optional['Users']] = relationship('Users')
+
+
+class AuthOtpCodes(Base):
+    __tablename__ = 'auth_otp_codes'
+    __table_args__ = (
+        PrimaryKeyConstraint('id', name='auth_otp_codes_pkey'),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
+    purpose: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    otp_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, server_default=text('0'), default=0)
+    consumed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class StatementCOD(Base):

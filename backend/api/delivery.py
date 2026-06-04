@@ -282,9 +282,12 @@ def create_pickup_request(
     current_user: dict = Depends(get_current_user)
 ):
     """CSKH hoặc Khách hàng tạo yêu cầu lấy hàng"""
-    if current_user.get("role_id") not in [1, 2, 3]:
+    if current_user.get("role_id") not in [1, 2, 3, 6, 7]:
         raise HTTPException(status_code=403, detail="Bạn không có quyền tạo yêu cầu lấy hàng.")
         
+    if current_user.get("role_id") == 6:
+        data.customer_id = current_user.get("customer_id")
+
     db_req = crud_delivery.create_booking_request(db, data, current_user["user_id"])
     db.commit()
     db.refresh(db_req)
@@ -299,7 +302,7 @@ def list_pickup_requests(
     current_user: dict = Depends(get_current_user)
 ):
     """Lấy danh sách yêu cầu lấy hàng"""
-    if current_user.get("role_id") not in [1, 2, 3, 4]:
+    if current_user.get("role_id") not in [1, 2, 3, 4, 6, 7]:
         raise HTTPException(status_code=403, detail="Không có quyền truy cập.")
         
     if current_user.get("role_id") == 2 and not hub_id:
@@ -307,6 +310,11 @@ def list_pickup_requests(
     if current_user.get("role_id") == 4:
         assigned_shipper_id = current_user["user_id"]
         
+    if current_user.get("role_id") == 6:
+        customer_id = current_user.get("customer_id")
+        requests = crud_delivery.get_booking_requests(db, status, assigned_shipper_id, hub_id)
+        return [req for req in requests if req.customer_id == customer_id]
+
     return crud_delivery.get_booking_requests(db, status, assigned_shipper_id, hub_id)
 
 @router.get("/pickup-requests/{code}", response_model=schema_delivery.BookingRequestResponse)
@@ -323,6 +331,9 @@ def get_pickup_request_detail(
     if current_user.get("role_id") == 4 and db_req.assigned_shipper_id != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Không có quyền xem yêu cầu này.")
         
+    if current_user.get("role_id") == 6 and db_req.customer_id != current_user.get("customer_id"):
+        raise HTTPException(status_code=403, detail="KhÃ´ng cÃ³ quyá»n xem yÃªu cáº§u nÃ y.")
+
     return db_req
 
 @router.post("/pickup-requests/{code}/assign")
@@ -334,7 +345,7 @@ async def assign_shipper_pickup(
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
     """Điều phối phân công bưu tá đi lấy hàng"""
-    if current_user.get("role_id") not in [1, 2, 3]:
+    if current_user.get("role_id") not in [1, 2, 3, 7]:
         raise HTTPException(status_code=403, detail="Chỉ điều phối/CSKH mới được phân công lấy hàng.")
         
     db_req = crud_delivery.get_booking_request_by_code(db, code)

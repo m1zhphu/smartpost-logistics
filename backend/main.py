@@ -14,7 +14,8 @@ from core.database import engine, SessionLocal
 from sqlalchemy import text
 
 # Tạo các bảng mới nếu chưa tồn tại
-models.Base.metadata.create_all(bind=engine)
+if os.getenv("AUTO_CREATE_TABLES", "false").lower() == "true":
+    models.Base.metadata.create_all(bind=engine)
 
 # Khởi tạo ứng dụng
 

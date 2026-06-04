@@ -2,14 +2,24 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from core.database import get_db
+from core.security import get_current_user
 import crud.customers as crud_customers
 from schemas.customers import CustomerCreate
 
 router = APIRouter(prefix="/api/customers", tags=["Customers"])
 
+def _require_customer_view_role(current_user: dict):
+    if current_user.get("role_id") not in [1, 2, 5, 7]:
+        raise HTTPException(status_code=403, detail="Không có quyền xem khách hàng")
+
+def _require_customer_manage_role(current_user: dict):
+    if current_user.get("role_id") not in [1, 2, 7]:
+        raise HTTPException(status_code=403, detail="Không có quyền quản lý khách hàng")
+
 @router.post("")
-def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
+def create_customer(data: CustomerCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """API tạo khách hàng mới phục vụ Master Data"""
+    _require_customer_manage_role(current_user)
     try:
         data_dict = data.dict() 
         
@@ -31,8 +41,9 @@ def create_customer(data: CustomerCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/code/{customer_code}")
-def get_customer_by_code(customer_code: str, db: Session = Depends(get_db)):
+def get_customer_by_code(customer_code: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """API tra cứu nhanh chi tiết thông tin khách hàng theo Mã Khách Hàng (autofill)"""
+    _require_customer_view_role(current_user)
     customer = crud_customers.get_customer_by_code(db, customer_code)
     if not customer:
         raise HTTPException(status_code=404, detail="Không tìm thấy khách hàng với mã này")
@@ -63,10 +74,11 @@ def get_customer_by_code(customer_code: str, db: Session = Depends(get_db)):
     }
 
 @router.get("", response_model=List[dict])
-def list_customers(skip: int = 0, limit: int = 200, db: Session = Depends(get_db)):
+def list_customers(skip: int = 0, limit: int = 200, include_deleted: bool = False, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """API lấy danh sách khách hàng (Shop) với đầy đủ thông tin để hiển thị FE"""
+    _require_customer_view_role(current_user)
     # 1. Lấy dữ liệu thô từ CRUD
-    customers = crud_customers.get_all_customers_with_bank(db, skip=skip, limit=limit)
+    customers = crud_customers.get_all_customers_with_bank(db, skip=skip, limit=limit, include_deleted=include_deleted)
     
     # 2. Format lại dữ liệu cho Frontend (Mapping)
     result = []
@@ -130,8 +142,9 @@ def search_customers(q: str = "", limit: int = 50, db: Session = Depends(get_db)
     return result
 
 @router.put("/{customer_id}")
-def update_customer(customer_id: int, data: CustomerCreate, db: Session = Depends(get_db)):
+def update_customer(customer_id: int, data: CustomerCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """API cập nhật thông tin khách hàng"""
+    _require_customer_manage_role(current_user)
     # 1. Tìm khách hàng qua CRUD
     customer = crud_customers.get_customer_by_id(db, customer_id)
     if not customer:
@@ -144,8 +157,9 @@ def update_customer(customer_id: int, data: CustomerCreate, db: Session = Depend
     return {"message": "Cập nhật thành công"}
 
 @router.delete("/{customer_id}")
-def delete_customer(customer_id: int, db: Session = Depends(get_db)):
+def delete_customer(customer_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Xóa mềm khách hàng"""
+    _require_customer_manage_role(current_user)
     # 1. Tìm khách hàng qua CRUD
     customer = crud_customers.get_customer_by_id(db, customer_id)
     if not customer:
@@ -153,4 +167,4 @@ def delete_customer(customer_id: int, db: Session = Depends(get_db)):
     
     # 2. Nhờ CRUD xóa khỏi Database
     crud_customers.delete_customer_record(db, customer)
-    return {"message": "Đã xóa khách hàng"}
+    return {"message": "Đã xóa mềm khách hàng", "id": customer.customer_id, "status": customer.status}

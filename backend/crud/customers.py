@@ -25,19 +25,28 @@ def search_customers(db: Session, query: str, limit: int = 50):
     )
 
 
-def get_all_customers_with_bank(db: Session, skip: int = 0, limit: int = 200):
+def get_all_customers_with_bank(db: Session, skip: int = 0, limit: int = 200, include_deleted: bool = False):
     """Lấy danh sách khách hàng kèm thông tin ngân hàng (Eager Loading)"""
-    return db.query(models.Customers).options(
+    query = db.query(models.Customers).options(
         joinedload(models.Customers.bank_accounts)
-    ).offset(skip).limit(limit).all()
+    )
+    if not include_deleted:
+        query = query.filter(models.Customers.status != "DELETED")
+    return query.offset(skip).limit(limit).all()
 
-def get_customer_by_code(db: Session, code: str):
+def get_customer_by_code(db: Session, code: str, include_deleted: bool = False):
     """Tìm khách hàng theo mã Code"""
-    return db.query(models.Customers).filter(models.Customers.customer_code == code).first()
+    query = db.query(models.Customers).filter(models.Customers.customer_code == code)
+    if not include_deleted:
+        query = query.filter(models.Customers.status != "DELETED")
+    return query.first()
 
-def get_customer_by_id(db: Session, customer_id: int):
+def get_customer_by_id(db: Session, customer_id: int, include_deleted: bool = False):
     """Tìm khách hàng theo ID"""
-    return db.query(models.Customers).filter(models.Customers.customer_id == customer_id).first()
+    query = db.query(models.Customers).filter(models.Customers.customer_id == customer_id)
+    if not include_deleted:
+        query = query.filter(models.Customers.status != "DELETED")
+    return query.first()
 
 def create_customer_record(db: Session, data_dict: dict):
     """Tạo mới khách hàng và tài khoản ngân hàng liên đới"""
@@ -112,5 +121,6 @@ def update_customer_record(db: Session, customer: models.Customers, data_dict: d
 
 def delete_customer_record(db: Session, customer: models.Customers):
     """Xóa khách hàng"""
-    db.delete(customer)
+    customer.status = "DELETED"
     db.commit()
+    return customer

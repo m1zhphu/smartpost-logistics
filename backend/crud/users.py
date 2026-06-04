@@ -15,7 +15,10 @@ def get_all_users(db: Session, skip: int = 0, limit: int = 100):
         joinedload(models.Users.role),
         joinedload(models.Users.primary_hub),
         joinedload(models.Users.department)
-    ).filter(models.Users.is_deleted == False).offset(skip).limit(limit).all()
+    ).filter(
+        models.Users.is_deleted == False,
+        models.Users.role.has(models.Roles.role_name != "CUSTOMER")
+    ).offset(skip).limit(limit).all()
 
 def create_user_record(db: Session, user_data: dict):
     """Tạo nhân viên mới và băm mật khẩu"""
@@ -79,7 +82,8 @@ def get_users_by_hub(db: Session, hub_id: int):
     """Lấy danh sách nhân viên thuộc một bưu cục cụ thể"""
     return db.query(models.Users).filter(
         models.Users.primary_hub_id == hub_id,
-        models.Users.is_deleted == False
+        models.Users.is_deleted == False,
+        models.Users.role.has(models.Roles.role_name != "CUSTOMER")
     ).all()
 
 def toggle_user_status_record(db: Session, user: models.Users, is_active: bool):
