@@ -71,6 +71,73 @@
   padding: 20px 24px;
 }
 
+.customer-tabs {
+  margin-bottom: 20px;
+}
+
+:deep(.customer-tabs .el-tabs__header) {
+  margin: 0;
+}
+
+:deep(.customer-tabs .el-tabs__nav-wrap::after) {
+  height: 1px;
+  background: var(--sp-border);
+}
+
+:deep(.customer-tabs .el-tabs__item) {
+  font-weight: 800;
+  color: var(--sp-text-muted);
+  padding: 0 20px;
+}
+
+:deep(.customer-tabs .el-tabs__item.is-active) {
+  color: var(--sp-primary);
+}
+
+:deep(.customer-tabs .el-tabs__active-bar) {
+  background: var(--sp-primary);
+}
+
+.assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.section-title {
+  margin: 0 0 4px;
+  color: var(--sp-text-main);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.section-description {
+  margin: 0;
+  color: var(--sp-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.assign-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.assign-select {
+  flex: 1;
+  min-width: 170px;
+}
+
+.btn-assign {
+  min-width: 86px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  justify-content: center;
+}
+
 /* Search Input Customization */
 .search-wrapper {
   max-width: 500px;
@@ -146,6 +213,18 @@
   display: inline-block;
 }
 
+.username-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  background: #F8FAFC;
+  color: var(--sp-text-main);
+  border: 1px solid var(--sp-border);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: inline-block;
+}
+
 .customer-profile {
   display: flex;
   align-items: center;
@@ -165,6 +244,7 @@
 }
 .bg-primary { background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-light)); box-shadow: 0 4px 10px rgba(67, 24, 255, 0.2); }
 .bg-success { background: linear-gradient(135deg, var(--sp-success), #4ADE80); box-shadow: 0 4px 10px rgba(5, 205, 153, 0.2); }
+.inactive-avatar { background: linear-gradient(135deg, #64748B, #94A3B8); box-shadow: 0 4px 10px rgba(100, 116, 139, 0.18); }
 
 .customer-details {
   display: flex;

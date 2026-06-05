@@ -80,8 +80,8 @@
                 <h3>Sản lượng vận đơn</h3>
               </div>
               <el-radio-group v-model="chartTime" size="default" class="custom-radio">
-                <el-radio-button label="7d">7 Ngày</el-radio-button>
-                <el-radio-button label="30d">30 Ngày</el-radio-button>
+                <el-radio-button value="7d">7 Ngày</el-radio-button>
+                <el-radio-button value="30d">30 Ngày</el-radio-button>
               </el-radio-group>
             </div>
             

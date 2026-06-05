@@ -29,6 +29,8 @@ class UserBase(BaseModel):
     phone_number: Optional[str] = None
     role_id: int
     primary_hub_id: Optional[int] = None
+    accessible_hub_ids: List[int] = []
+    managed_by_cskh_id: Optional[int] = None
     department_id: Optional[int] = None
     vehicle_plate: Optional[str] = None
 
@@ -41,9 +43,19 @@ class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
     role_id: Optional[int] = None
     primary_hub_id: Optional[int] = None
+    accessible_hub_ids: Optional[List[int]] = None
+    managed_by_cskh_id: Optional[int] = None
     department_id: Optional[int] = None
     vehicle_plate: Optional[str] = None
     is_active: Optional[bool] = None
+
+class UserSummary(BaseModel):
+    user_id: int
+    username: str
+    full_name: str
+
+    class Config:
+        from_attributes = True
 
 class UserResponse(UserBase):
     user_id: int
@@ -53,6 +65,8 @@ class UserResponse(UserBase):
     # Nested objects for display
     role: Optional[RoleSchema] = None
     primary_hub: Optional[HubSchemaSmall] = None
+    accessible_hubs: List[HubSchemaSmall] = []
+    managed_by_cskh: Optional[UserSummary] = None
     department: Optional[DepartmentSchema] = None
 
     class Config:

@@ -65,6 +65,54 @@
       <!-- Main Tabs -->
       <el-tabs v-model="activeTab" class="modern-tabs animate-fade-in-up">
         
+        <el-tab-pane label="Danh sách Bảng giá" name="policies">
+          <div class="content-card table-wrapper">
+            <div class="card-header-inner mb-4 flex-between">
+              <h3 class="inner-title">Danh sách Bảng giá / Chính sách giá</h3>
+              <button v-if="canEditPricing" class="btn-primary" @click="openPolicyDialog(null)">
+                <el-icon><Plus /></el-icon> Thêm Bảng giá
+              </button>
+            </div>
+
+            <el-table
+              :data="policies"
+              v-loading="policyLoading"
+              class="modern-table"
+              row-class-name="modern-row"
+              style="width: 100%"
+            >
+              <el-table-column prop="policy_code" label="Mã bảng giá" min-width="150">
+                <template #default="{ row }">
+                  <span class="code-badge uppercase">{{ row.policy_code }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="policy_name" label="Tên bảng giá" min-width="260" />
+              <el-table-column prop="policy_type" label="Loại bảng giá" min-width="150" align="center" />
+              <el-table-column label="Duyệt" min-width="120" align="center">
+                <template #default="{ row }">
+                  <div class="status-pill" :class="row.is_approved ? 'active' : 'locked'">
+                    {{ row.is_approved ? 'Đã duyệt' : 'Chưa duyệt' }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="Trạng thái" min-width="140" align="center">
+                <template #default="{ row }">
+                  <div class="status-pill" :class="row.is_active ? 'active' : 'locked'">
+                    {{ row.is_active ? 'Đang áp dụng' : 'Tạm dừng' }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canEditPricing" label="Thao tác" width="100" fixed="right" align="center">
+                <template #default="{ row }">
+                  <button class="icon-btn edit mx-auto" @click="openPolicyDialog(row)" title="Chỉnh sửa">
+                    <el-icon><Edit /></el-icon>
+                  </button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-tab-pane>
+
         <!-- TAB 1: MAIN ROUTES -->
         <el-tab-pane label="Bảng Giá Cước Tuyến" name="main_routes">
           
@@ -131,6 +179,12 @@
               </el-table-column>
 
               <!-- Dịch vụ -->
+              <el-table-column label="Bảng giá" min-width="180" align="center">
+                <template #default="{ row }">
+                  <span class="code-badge">{{ getPolicyName(row.policy_id) }}</span>
+                </template>
+              </el-table-column>
+
               <el-table-column label="Loại Dịch vụ" min-width="160" align="center">
                 <template #default="{ row }">
                   <div class="modern-tag" :class="getServiceTagClass(row.service_type)">
@@ -388,6 +442,60 @@
         </template>
       </el-dialog>
 
+      <!-- Dialog: Pricing Policy -->
+      <el-dialog
+        v-model="policyDialogVisible"
+        :title="policyForm.policy_id ? 'Cập nhật Bảng giá' : 'Thêm Bảng giá mới'"
+        width="620px"
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <el-form :model="policyForm" :rules="policyRules" ref="policyFormRef" label-position="top" class="modern-form">
+          <el-row :gutter="24">
+            <el-col :span="10">
+              <el-form-item label="Mã bảng giá" prop="policy_code">
+                <el-input v-model="policyForm.policy_code" placeholder="VD: STD_2026" class="uppercase" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="14">
+              <el-form-item label="Tên bảng giá" prop="policy_name">
+                <el-input v-model="policyForm.policy_name" placeholder="VD: Bảng giá Tiêu chuẩn 2026" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-form-item label="Loại bảng giá" prop="policy_type">
+            <el-radio-group v-model="policyForm.policy_type" class="custom-radio-group w-full">
+              <el-radio-button value="GENERAL">Bảng giá chung</el-radio-button>
+              <el-radio-button value="CUSTOMER">Bảng giá riêng khách hàng</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+
+          <el-row :gutter="24">
+            <el-col :span="12">
+              <el-form-item label="Trạng thái duyệt">
+                <el-switch v-model="policyForm.is_approved" active-text="Đã duyệt" inactive-text="Chưa duyệt" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="Trạng thái áp dụng">
+                <el-switch v-model="policyForm.is_active" active-text="Đang áp dụng" inactive-text="Tạm dừng" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+
+        <template #footer>
+          <div class="dialog-footer-actions">
+            <button class="btn-secondary" @click="policyDialogVisible = false">Hủy bỏ</button>
+            <button class="btn-primary" @click="handleSavePolicy" :disabled="policySaveLoading">
+              <el-icon class="is-loading mr-2" v-if="policySaveLoading"><Loading /></el-icon>
+              <span>Xác nhận lưu</span>
+            </button>
+          </div>
+        </template>
+      </el-dialog>
+
       <!-- Dialog: Extra Service -->
       <el-dialog 
         v-model="serviceDialogVisible" 
@@ -415,8 +523,8 @@
 
           <el-form-item label="Cách tính phí áp dụng" prop="fee_type">
             <el-radio-group v-model="serviceForm.fee_type" class="custom-radio-group w-full">
-              <el-radio-button label="FIXED">Giá Cố định (VNĐ)</el-radio-button>
-              <el-radio-button label="PERCENT">Phần trăm (% COD)</el-radio-button>
+              <el-radio-button value="FIXED">Giá Cố định (VNĐ)</el-radio-button>
+              <el-radio-button value="PERCENT">Phần trăm (% COD)</el-radio-button>
             </el-radio-group>
           </el-form-item>
 
@@ -479,9 +587,27 @@ const user = computed(() => authStore.user);
 const canEditPricing = computed(() => user.value?.role_id === 1 || user.value?.role_id === 5);
 
 // STATE CHUNG
-const activeTab = ref('main_routes');
+const activeTab = ref('policies');
 const policies = ref([]);
 const hubs = ref([]);
+const policyLoading = ref(false);
+const policySaveLoading = ref(false);
+const policyDialogVisible = ref(false);
+const policyFormRef = ref(null);
+
+const policyForm = reactive({
+  policy_id: null,
+  policy_code: '',
+  policy_name: '',
+  policy_type: 'CUSTOMER',
+  is_approved: true,
+  is_active: true
+});
+
+const policyRules = {
+  policy_code: [{ required: true, message: 'Nhập mã bảng giá', trigger: 'blur' }],
+  policy_name: [{ required: true, message: 'Nhập tên bảng giá', trigger: 'blur' }]
+};
 
 const getServiceLabel = (type) => {
   const map = {
@@ -557,8 +683,14 @@ const formatMoney = (val) => {
   return Number(val).toLocaleString('vi-VN');
 };
 
+const getPolicyName = (policyId) => {
+  const policy = policies.value.find(p => p.policy_id === policyId);
+  return policy ? policy.policy_code : `#${policyId}`;
+};
+
 const refreshAll = () => {
   fetchData();
+  fetchPolicies();
   fetchServices();
 };
 
@@ -684,7 +816,77 @@ const toggleServiceStatus = async (row) => {
 };
 
 // ================= INIT =================
-const fetchPolicies = async () => { policies.value = [{ policy_id: 1, policy_name: 'Bảng giá Tiêu chuẩn 2026' }]; };
+const fetchPolicies = async () => {
+  policyLoading.value = true;
+  try {
+    const res = await api.get('/api/pricing/policies', { params: { active_only: false } });
+    policies.value = Array.isArray(res.data) ? res.data : (res.data.items || res.data.data || []);
+    if (!policies.value.length) {
+      policies.value = [{ policy_id: 1, policy_code: 'DEFAULT', policy_name: 'Bảng giá Tiêu chuẩn 2026' }];
+    }
+  } catch (err) {
+    policies.value = [{ policy_id: 1, policy_code: 'DEFAULT', policy_name: 'Bảng giá Tiêu chuẩn 2026' }];
+  } finally {
+    policyLoading.value = false;
+  }
+};
+
+const openPolicyDialog = (row) => {
+  if (row) {
+    Object.assign(policyForm, {
+      policy_id: row.policy_id,
+      policy_code: row.policy_code,
+      policy_name: row.policy_name,
+      policy_type: row.policy_type || 'CUSTOMER',
+      is_approved: !!row.is_approved,
+      is_active: row.is_active !== false
+    });
+  } else {
+    Object.assign(policyForm, {
+      policy_id: null,
+      policy_code: '',
+      policy_name: '',
+      policy_type: 'CUSTOMER',
+      is_approved: true,
+      is_active: true
+    });
+  }
+  policyDialogVisible.value = true;
+};
+
+const handleSavePolicy = async () => {
+  if (!policyFormRef.value) return;
+  await policyFormRef.value.validate(async (valid) => {
+    if (!valid) return;
+
+    policySaveLoading.value = true;
+    try {
+      const payload = {
+        policy_code: policyForm.policy_code,
+        policy_name: policyForm.policy_name,
+        policy_type: policyForm.policy_type,
+        is_approved: policyForm.is_approved,
+        is_active: policyForm.is_active
+      };
+
+      if (policyForm.policy_id) {
+        await api.put(`/api/pricing/policies/${policyForm.policy_id}`, payload);
+        ElMessage.success('Cập nhật bảng giá thành công!');
+      } else {
+        await api.post('/api/pricing/policies', payload);
+        ElMessage.success('Thêm bảng giá thành công!');
+      }
+
+      policyDialogVisible.value = false;
+      fetchPolicies();
+    } catch (err) {
+      ElMessage.error(err.response?.data?.detail || 'Lỗi khi lưu bảng giá.');
+    } finally {
+      policySaveLoading.value = false;
+    }
+  });
+};
+
 const fetchHubs = async () => {
   try {
     const res = await api.get('/api/hubs');

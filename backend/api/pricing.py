@@ -47,6 +47,38 @@ def list_pricing_rules(db: Session = Depends(get_db)):
     """Xem danh sách toàn bộ bảng giá hiện có (Mở cho mọi người cùng xem)"""
     return crud_pricing.get_all_rules(db)
 
+@router.get("/policies", response_model=List[schema_pricing.PricingPolicyResponse])
+def list_pricing_policies(active_only: bool = True, db: Session = Depends(get_db)):
+    """Láº¥y danh sÃ¡ch chÃ­nh sÃ¡ch/báº£ng giÃ¡ Ä‘á»ƒ gÃ¡n cho khÃ¡ch hÃ ng."""
+    return crud_pricing.get_all_policies(db, active_only=active_only)
+
+@router.post("/policies", response_model=schema_pricing.PricingPolicyResponse)
+def add_pricing_policy(
+    data: schema_pricing.PricingPolicyCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    verify_pricing_edit_access(current_user)
+    policy = crud_pricing.create_policy(db, data.model_dump())
+    if not policy:
+        raise HTTPException(status_code=400, detail="Mã bảng giá đã tồn tại")
+    db.commit()
+    return policy
+
+@router.put("/policies/{policy_id}", response_model=schema_pricing.PricingPolicyResponse)
+def update_pricing_policy(
+    policy_id: int,
+    data: schema_pricing.PricingPolicyCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    verify_pricing_edit_access(current_user)
+    policy = crud_pricing.update_policy(db, policy_id, data.model_dump())
+    if not policy:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bảng giá hoặc mã bảng giá đã tồn tại")
+    db.commit()
+    return policy
+
 @router.put("/rules/{rule_id}", response_model=schema_pricing.PricingRuleResponse)
 def update_pricing_rule(
     rule_id: int, 

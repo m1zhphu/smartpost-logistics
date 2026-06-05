@@ -167,6 +167,7 @@ class Users(Base):
     __table_args__ = (
         ForeignKeyConstraint(['customer_id'], ['customers.customer_id'], name='users_customer_id_fkey'),
         ForeignKeyConstraint(['department_id'], ['departments.department_id'], name='users_department_id_fkey'),
+        ForeignKeyConstraint(['managed_by_cskh_id'], ['users.user_id'], name='users_managed_by_cskh_id_fkey'),
         ForeignKeyConstraint(['primary_hub_id'], ['hubs.hub_id'], name='users_primary_hub_id_fkey'),
         ForeignKeyConstraint(['role_id'], ['roles.role_id'], name='users_role_id_fkey'),
         PrimaryKeyConstraint('user_id', name='users_pkey'),
@@ -183,6 +184,7 @@ class Users(Base):
     customer_id: Mapped[Optional[int]] = mapped_column(Integer)
     department_id: Mapped[Optional[int]] = mapped_column(Integer)
     primary_hub_id: Mapped[Optional[int]] = mapped_column(Integer)
+    managed_by_cskh_id: Mapped[Optional[int]] = mapped_column(Integer)
     vehicle_plate: Mapped[Optional[str]] = mapped_column(String(50))
     status: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('true'))
     push_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -203,9 +205,18 @@ class Users(Base):
     booking_requests: Mapped[list['BookingRequests']] = relationship('BookingRequests', back_populates='assigned_shipper')
     incident_logs: Mapped[list['IncidentLogs']] = relationship('IncidentLogs', back_populates='users')
     delivery_results: Mapped[list['DeliveryResults']] = relationship('DeliveryResults', back_populates='shipper')
+    managed_by_cskh: Mapped[Optional['Users']] = relationship('Users', remote_side=[user_id], foreign_keys=[managed_by_cskh_id])
 
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text('true'), default=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, server_default=text('false'), default=False)
+
+    @property
+    def accessible_hub_ids(self):
+        return [access.accessible_hub_id for access in self.user_data_access if access.accessible_hub_id]
+
+    @property
+    def accessible_hubs(self):
+        return [access.accessible_hub for access in self.user_data_access if access.accessible_hub]
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text('now()'), default=datetime.utcnow)
     
 class Vendors(Base):
@@ -291,6 +302,10 @@ class Customers(Base):
     province_id: Mapped[Optional[int]] = mapped_column(Integer)
     district_id: Mapped[Optional[int]] = mapped_column(Integer)
     ward_id: Mapped[Optional[int]] = mapped_column(Integer)
+    country: Mapped[Optional[str]] = mapped_column(String(100))
+    province_name: Mapped[Optional[str]] = mapped_column(String(150))
+    ward_name: Mapped[Optional[str]] = mapped_column(String(150))
+    street_address: Mapped[Optional[str]] = mapped_column(String(255))
     address_detail: Mapped[Optional[str]] = mapped_column(String(255))
     parent_customer_id: Mapped[Optional[int]] = mapped_column(Integer)
     staff_in_charge_id: Mapped[Optional[int]] = mapped_column(Integer)

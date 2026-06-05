@@ -138,7 +138,7 @@ const menuData = computed(() => {
   const role = user.value?.role_id;
   
   const allMenus = [
-    { id: 'dashboard', icon: Monitor, label: 'Dashboard', path: '/admin/dashboard', roles: [1, 2, 5] },
+    { id: 'dashboard', icon: Monitor, label: 'Dashboard', path: '/admin/dashboard', roles: [1, 2, 5, 7] },
     { 
       id: 'system', icon: Management, label: 'Hệ thống', roles: [1, 2], // Chỉ Admin
       children: [
@@ -149,7 +149,7 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'customer', icon: User, label: 'Khách hàng', roles: [1, 2, 5], // Admin, Manager, Kế toán
+      id: 'customer', icon: User, label: 'Khách hàng', roles: [1, 2, 5, 7], // Admin, Manager, Kế toán, CSKH
       children: [
         { title: 'KHÁCH HÀNG', items: [
           { label: 'Danh sách khách hàng', path: '/admin/customers' },
@@ -160,7 +160,7 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'waybill', icon: Document, label: 'Vận đơn', roles: [1, 2, 3], // Admin, Manager, Kho
+      id: 'waybill', icon: Document, label: 'Vận đơn', roles: [1, 2, 3, 7], // Admin, Manager, Kho, CSKH
       children: [
         { title: 'VẬN ĐƠN', items: [
           { label: 'Tạo mới Vận đơn', path: '/admin/waybills/create' },
@@ -200,9 +200,11 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'cskh', icon: Service, label: 'CSKH', roles: [1, 2, 3, 5], // Thêm Role 3 (Nhân viên kho/CSKH)
+      id: 'cskh', icon: Service, label: 'CSKH', roles: [1, 2, 3, 5, 7], // Thêm Role 7 (CSKH)
       children: [
         { title: 'TRUNG TÂM CSKH', items: [
+          { label: 'Khách hàng tôi quản lý', path: '/admin/customers?mine=1' },
+          { label: 'Bưu tá tôi quản lý', path: '/admin/users?my_shippers=1' },
           { label: 'Duyệt Bill & Báo giá', path: '/admin/cskh/verification' },
           { label: 'Mô phỏng giá cước', path: '/admin/pricing/simulator' }
         ]}

@@ -17,10 +17,15 @@ class PermissionChecker:
         # 2. ĐẶC QUYỀN QUẢN LÝ (Role 2): Nếu là Manager, họ tự động có toàn quyền trong kho (warehouse_*)
         if role_id == 2 and self.required_permission.startswith("warehouse_"):
             return True
+
+        if role_id in [2, 7] and self.required_permission == "report_view":
+            return True
             
         # 3. KIỂM TRA BÌNH THƯỜNG: Với nhân viên thường (Role 3), phải có đúng chữ "warehouse_scan" mới được cho qua
         # Hoặc dùng quyền bao trùm "warehouse_ops" thay thế
         has_specific_permission = user_permissions.get(self.required_permission)
+        if self.required_permission == "report_view":
+            has_specific_permission = has_specific_permission or user_permissions.get("view_report")
         has_broad_permission = user_permissions.get("warehouse_ops")
 
         if not (has_specific_permission or has_broad_permission):

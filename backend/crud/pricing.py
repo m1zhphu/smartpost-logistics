@@ -43,6 +43,52 @@ def get_all_rules(db: Session):
     rules = db.query(models.PricingRules).all()
     return [format_rule_with_hub(db, r) for r in rules]
 
+def get_all_policies(db: Session, active_only: bool = True):
+    query = db.query(models.PricingPolicies)
+    if active_only:
+        query = query.filter(models.PricingPolicies.is_active == True)
+    return query.order_by(models.PricingPolicies.policy_id.asc()).all()
+
+def get_policy_by_id(db: Session, policy_id: int):
+    return db.query(models.PricingPolicies).filter(
+        models.PricingPolicies.policy_id == policy_id
+    ).first()
+
+def get_policy_by_code(db: Session, policy_code: str):
+    return db.query(models.PricingPolicies).filter(
+        models.PricingPolicies.policy_code == policy_code
+    ).first()
+
+def create_policy(db: Session, data: dict):
+    existing = get_policy_by_code(db, data["policy_code"])
+    if existing:
+        return None
+
+    policy = models.PricingPolicies(**data)
+    db.add(policy)
+    db.flush()
+    db.refresh(policy)
+    return policy
+
+def update_policy(db: Session, policy_id: int, data: dict):
+    policy = get_policy_by_id(db, policy_id)
+    if not policy:
+        return None
+
+    duplicate = db.query(models.PricingPolicies).filter(
+        models.PricingPolicies.policy_code == data["policy_code"],
+        models.PricingPolicies.policy_id != policy_id
+    ).first()
+    if duplicate:
+        return None
+
+    for key, value in data.items():
+        setattr(policy, key, value)
+
+    db.flush()
+    db.refresh(policy)
+    return policy
+
 def format_rule_with_hub(db: Session, rule: models.PricingRules):
     # Tìm bưu cục đại diện (hoặc bưu cục đầu tiên trong tỉnh) để hiển thị
     origin_hub = db.query(models.Hubs).filter(models.Hubs.province_id == rule.from_province_id).first()
@@ -130,6 +176,24 @@ def get_customer_policy_id(db: Session, customer_id: int) -> int:
         models.CustomerPriceMapping.customer_id == customer_id
     ).first()
     return mapping.policy_id if mapping else 1
+
+def set_customer_policy(db: Session, customer_id: int, policy_id: int):
+    mapping = db.query(models.CustomerPriceMapping).filter(
+        models.CustomerPriceMapping.customer_id == customer_id
+    ).first()
+    if mapping:
+        mapping.policy_id = policy_id
+    else:
+        mapping = models.CustomerPriceMapping(customer_id=customer_id, policy_id=policy_id)
+        db.add(mapping)
+    db.flush()
+    return mapping
+
+def clear_customer_policy(db: Session, customer_id: int):
+    db.query(models.CustomerPriceMapping).filter(
+        models.CustomerPriceMapping.customer_id == customer_id
+    ).delete()
+    db.flush()
 
 def get_province_zone(db: Session, origin_prov_id: int, dest_prov_id: int) -> str:
     """Lấy Zone mapping cho cặp Tỉnh đi - Tỉnh đến (Mục 6 Đặc tả)"""

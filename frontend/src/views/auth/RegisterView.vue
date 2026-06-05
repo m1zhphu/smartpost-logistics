@@ -271,7 +271,7 @@ const goToStep2 = async () => {
       
       ElMessage.success('Mã xác thực đã được gửi tới email đăng ký!');
       step.value = 2;
-      startCooldown(60);
+      startCooldown(180);
     } catch (error) {
       const msg = error.response?.data?.detail || 'Lỗi gửi yêu cầu OTP. Vui lòng kiểm tra lại thông tin.';
       ElMessage.error(msg);
@@ -288,7 +288,7 @@ const handleResendOtp = async () => {
       email: registerForm.email
     });
     ElMessage.success('Đã gửi lại mã OTP thành công!');
-    startCooldown(60);
+    startCooldown(180);
   } catch (error) {
     const msg = error.response?.data?.detail || 'Lỗi gửi lại OTP.';
     ElMessage.error(msg);

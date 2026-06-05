@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
+import { ElMessage } from 'element-plus';
+
+let authInvalidHandled = false;
 
 const api = axios.create({
   // Tự động lấy URL từ file .env, nếu không có thì để trống (cho proxy)
@@ -31,9 +34,19 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const isAuthInvalid = error.response?.headers?.['x-auth-invalid'] === '1';
+    const requestUrl = error.config?.url || '';
+    const isLoginRequest = requestUrl.includes('/api/auth/login');
+    if (!isLoginRequest && (status === 401 || isAuthInvalid) && !authInvalidHandled) {
+      authInvalidHandled = true;
       const authStore = useAuthStore();
+      const message = error.response?.data?.detail || 'Phiên đăng nhập đã hết hạn hoặc tài khoản không còn được phép truy cập';
+      ElMessage.error(message);
       authStore.logout();
+      setTimeout(() => {
+        authInvalidHandled = false;
+      }, 1000);
     }
     return Promise.reject(error);
   }

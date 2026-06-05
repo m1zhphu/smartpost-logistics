@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from datetime import datetime
 from typing import Optional, List
 
 class FeeCalculateRequest(BaseModel):
@@ -53,6 +54,28 @@ class PricingRuleResponse(PricingRuleCreate):
 
     class Config:
         from_attributes = True
+
+class PricingPolicyResponse(BaseModel):
+    policy_id: int
+    policy_code: str
+    policy_name: str
+    policy_type: str
+    valid_from: Optional[datetime] = None
+    valid_to: Optional[datetime] = None
+    is_approved: Optional[bool] = False
+    is_active: Optional[bool] = True
+
+    class Config:
+        from_attributes = True
+
+class PricingPolicyCreate(BaseModel):
+    policy_code: str = Field(min_length=2, max_length=50)
+    policy_name: str = Field(min_length=2, max_length=255)
+    policy_type: str = "CUSTOMER"
+    valid_from: Optional[datetime] = None
+    valid_to: Optional[datetime] = None
+    is_approved: bool = True
+    is_active: bool = True
 
 class ServiceConfigBase(BaseModel):
     service_code: str

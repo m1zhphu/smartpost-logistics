@@ -11,7 +11,7 @@
             </div>
             <div>
               <h2 class="page-title">Quản lý Nhân sự (Staff)</h2>
-              <p class="page-subtitle">Hệ thống phân quyền 5 cấp: Admin, Quản lý, Kho, Shipper, Kế toán</p>
+              <p class="page-subtitle">Hệ thống phân quyền: Admin, Quản lý, Kho, Shipper, Kế toán, CSKH</p>
             </div>
           </div>
         </div>
@@ -25,6 +25,13 @@
 
       <!-- Advanced Filter Section (Frontend Reactive) -->
       <div class="content-card filter-card animate-fade-in mb-24">
+        <el-alert
+          v-if="isMyShippersView"
+          title="Đang hiển thị danh sách bưu tá do bạn phụ trách"
+          type="success"
+          :closable="false"
+          class="mb-12"
+        />
         <el-row :gutter="20" class="filter-row">
           <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Tìm kiếm trực tiếp</div>
@@ -46,6 +53,7 @@
               <el-option label="Nhân viên kho" :value="3" />
               <el-option label="Tài xế (Shipper)" :value="4" />
               <el-option label="Kế toán" :value="5" />
+              <el-option label="CSKH" :value="7" />
             </el-select>
           </el-col>
           
@@ -128,6 +136,9 @@
                     <el-icon class="mr-1"><OfficeBuilding /></el-icon>
                     {{ row.primary_hub?.hub_name || 'Hệ thống Trung tâm' }}
                   </span>
+                  <span v-if="row.accessible_hubs?.length" class="text-xs text-muted">
+                    Quyền xem: {{ formatAccessibleHubs(row) }}
+                  </span>
                   <div v-if="row.role_id === 4 && row.vehicle_plate" class="vehicle-plate">
                      <el-icon class="mr-1"><Van /></el-icon> {{ row.vehicle_plate }}
                   </div>
@@ -136,6 +147,16 @@
           </el-table-column>
 
           <!-- Trạng thái -->
+          <el-table-column label="CSKH quản lý" min-width="180">
+            <template #default="{ row }">
+              <span v-if="row.role_id === 4" class="text-dark fw-500">
+                <el-icon class="mr-1 text-muted"><UserFilled /></el-icon>
+                {{ row.managed_by_cskh?.full_name || 'Chưa gán' }}
+              </span>
+              <span v-else class="text-muted">---</span>
+            </template>
+          </el-table-column>
+
           <el-table-column label="Trạng thái" min-width="120" align="center">
              <template #default="{ row }">
                 <div class="status-pill" :class="row.is_active ? 'active' : 'locked'">
@@ -236,23 +257,50 @@
                   <el-option label="Nhân viên kho" :value="3" />
                   <el-option label="Tài xế (Shipper)" :value="4" />
                   <el-option label="Kế toán bưu cục" :value="5" />
+                  <el-option label="CSKH" :value="7" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="Bưu cục trực thuộc" prop="primary_hub_id">
-                <el-select v-model="userForm.primary_hub_id" class="w-full" placeholder="Chọn kho làm việc">
+                <el-select v-model="userForm.primary_hub_id" class="w-full" placeholder="Chọn kho làm việc" @change="syncPrimaryHubAccess">
                   <el-option v-for="hub in hubs" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
                 </el-select>
               </el-form-item>
             </el-col>
           </el-row>
           
+          <el-form-item label="Bưu cục được phép truy cập" prop="accessible_hub_ids">
+            <el-select
+              v-model="userForm.accessible_hub_ids"
+              multiple
+              filterable
+              collapse-tags
+              collapse-tags-tooltip
+              class="w-full"
+              placeholder="Chọn một hoặc nhiều bưu cục"
+            >
+              <el-option v-for="hub in hubs" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
+            </el-select>
+          </el-form-item>
+
           <el-collapse-transition>
             <el-form-item v-if="userForm.role_id === 4" label="Biển số xe công tác" prop="vehicle_plate">
                <el-input v-model="userForm.vehicle_plate" placeholder="VD: 29A-888.88">
                  <template #prefix><el-icon><Van /></el-icon></template>
                </el-input>
+            </el-form-item>
+          </el-collapse-transition>
+          <el-collapse-transition>
+            <el-form-item v-if="userForm.role_id === 4" label="CSKH quản lý bưu tá" prop="managed_by_cskh_id">
+              <el-select v-model="userForm.managed_by_cskh_id" filterable clearable class="w-full" placeholder="Chọn CSKH phụ trách">
+                <el-option
+                  v-for="cskh in cskhOptions"
+                  :key="cskh.user_id"
+                  :label="cskh.full_name ? `${cskh.full_name} (${cskh.username})` : cskh.username"
+                  :value="cskh.user_id"
+                />
+              </el-select>
             </el-form-item>
           </el-collapse-transition>
         </el-form>
@@ -272,13 +320,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { 
   Plus, Edit, Delete, Search, Unlock, Lock, Van, 
   UserFilled, RefreshRight, Refresh, Message, Phone, OfficeBuilding, User, Key, Loading 
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+
+const route = useRoute();
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.user || {});
+const isMyShippersView = computed(() => currentUser.value?.role_id === 7 && (route.query.my_shippers === '1' || route.query.my_shippers === 'true'));
+const isProtectedUser = (row) => row?.role_id === 1 || row?.user_id === currentUser.value?.user_id;
 
 const loading = ref(false);
 const saveLoading = ref(false);
@@ -288,6 +344,8 @@ const formRef = ref(null);
 // CHÚ Ý: Biến allUsers lưu toàn bộ dữ liệu gốc kéo từ server
 const allUsers = ref([]);
 const hubs = ref([]);
+
+const cskhOptions = computed(() => allUsers.value.filter(user => user.role_id === 7 && user.is_active !== false));
 
 const filter = reactive({
   query: '',
@@ -320,7 +378,8 @@ const filteredUsers = computed(() => {
     if (filter.hub_id) {
       // Đề phòng API trả về primary_hub_id trực tiếp hoặc lồng trong object
       const userHubId = user.primary_hub_id || user.primary_hub?.hub_id;
-      matchHub = userHubId === filter.hub_id;
+      const accessibleHubIds = user.accessible_hub_ids || user.accessible_hubs?.map(hub => hub.hub_id) || [];
+      matchHub = userHubId === filter.hub_id || accessibleHubIds.includes(filter.hub_id);
     }
     
     return matchQuery && matchRole && matchHub;
@@ -336,6 +395,8 @@ const userForm = reactive({
   phone_number: '',
   role_id: 3, 
   primary_hub_id: null,
+  accessible_hub_ids: [],
+  managed_by_cskh_id: null,
   vehicle_plate: '',
   is_active: true
 });
@@ -345,7 +406,8 @@ const rules = {
   full_name: [{ required: true, message: 'Nhập họ tên nhân viên', trigger: 'blur' }],
   password: [{ required: true, message: 'Nhập mật khẩu', trigger: 'blur', min: 6 }], 
   role_id: [{ required: true, message: 'Chọn chức vụ', trigger: 'change' }],
-  primary_hub_id: [{ required: true, message: 'Chọn bưu cục làm việc', trigger: 'change' }]
+  primary_hub_id: [{ required: true, message: 'Chọn bưu cục làm việc', trigger: 'change' }],
+  accessible_hub_ids: [{ required: true, type: 'array', min: 1, message: 'Chọn ít nhất một bưu cục truy cập', trigger: 'change' }]
 };
 
 // Khởi tạo Avatar Chữ cái đầu
@@ -355,13 +417,26 @@ const getInitials = (name) => {
   return parts[parts.length - 1].charAt(0).toUpperCase();
 };
 
+const syncPrimaryHubAccess = () => {
+  if (userForm.primary_hub_id && !userForm.accessible_hub_ids.includes(userForm.primary_hub_id)) {
+    userForm.accessible_hub_ids.unshift(userForm.primary_hub_id);
+  }
+};
+
+const formatAccessibleHubs = (row) => {
+  const hubsList = row.accessible_hubs || [];
+  if (!hubsList.length) return row.primary_hub?.hub_name || '---';
+  return hubsList.map(hub => hub.hub_name).join(', ');
+};
+
 const getRoleTypeClass = (type) => {
   const map = {
     'danger': 'bg-danger',
     'primary': 'bg-primary',
     'info': 'bg-info',
     'warning': 'bg-warning',
-    'success': 'bg-success'
+    'success': 'bg-success',
+    'cskh': 'bg-primary'
   };
   return map[type] || 'bg-info';
 };
@@ -369,9 +444,12 @@ const getRoleTypeClass = (type) => {
 const fetchData = async () => {
   loading.value = true;
   try {
+    const usersRequest = isMyShippersView.value
+      ? api.get('/api/users/my-shippers')
+      : api.get('/api/users');
     const [usersRes, hubsRes] = await Promise.all([
       // LOẠI BỎ params: filter ở đây để kéo toàn bộ dữ liệu về một lần
-      api.get('/api/users'),
+      usersRequest,
       api.get('/api/hubs')
     ]);
     
@@ -402,6 +480,10 @@ const openDialog = (row) => {
       phone_number: row.phone_number,
       role_id: row.role_id,
       primary_hub_id: row.primary_hub_id || row.primary_hub?.hub_id, // Lấy cẩn thận ID
+      accessible_hub_ids: row.accessible_hub_ids?.length
+        ? [...row.accessible_hub_ids]
+        : [row.primary_hub_id || row.primary_hub?.hub_id].filter(Boolean),
+      managed_by_cskh_id: row.managed_by_cskh_id || row.managed_by_cskh?.user_id || null,
       vehicle_plate: row.vehicle_plate || '',
       is_active: row.is_active
     });
@@ -416,6 +498,8 @@ const openDialog = (row) => {
       phone_number: '',
       role_id: 3,
       primary_hub_id: null,
+      accessible_hub_ids: [],
+      managed_by_cskh_id: null,
       vehicle_plate: '',
       is_active: true
     });
@@ -431,6 +515,23 @@ const handleSave = async () => {
       saveLoading.value = true;
       try {
         const payload = { ...userForm };
+        if (payload.primary_hub_id && !payload.accessible_hub_ids.includes(payload.primary_hub_id)) {
+          payload.accessible_hub_ids = [payload.primary_hub_id, ...payload.accessible_hub_ids];
+        }
+        if (payload.role_id !== 4) {
+          payload.managed_by_cskh_id = null;
+        }
+        if (!userForm.user_id && payload.role_id === 1) {
+          ElMessage.warning('Hệ thống chỉ được có 1 tài khoản Super Admin');
+          saveLoading.value = false;
+          return;
+        }
+        const originalUser = allUsers.value.find(u => u.user_id === userForm.user_id);
+        if (originalUser?.role_id === 1 && payload.role_id !== 1) {
+          ElMessage.warning('Không được hạ quyền tài khoản Super Admin cao nhất');
+          saveLoading.value = false;
+          return;
+        }
         
         if (payload.user_id && !payload.password) delete payload.password;
         delete payload.user_id; 
@@ -467,6 +568,10 @@ const handleSave = async () => {
 };
 
 const toggleStatus = async (row, status) => {
+  if (!status && isProtectedUser(row)) {
+     ElMessage.warning('Không được khóa tài khoản Super Admin hoặc tài khoản đang đăng nhập');
+     return;
+  }
   try {
      await api.patch(`/api/users/${row.user_id}/status`, { is_active: status });
      row.is_active = status;
@@ -482,6 +587,10 @@ const toggleStatus = async (row, status) => {
 };
 
 const handleDelete = (row) => {
+  if (isProtectedUser(row)) {
+    ElMessage.warning('Không được xóa tài khoản Super Admin hoặc tài khoản đang đăng nhập');
+    return;
+  }
   ElMessageBox.confirm(
     `Vô hiệu hóa hoàn toàn nhân sự <strong>${row.full_name}</strong> khỏi hệ thống?`, 
     'Xác nhận vô hiệu hóa', 
@@ -509,7 +618,8 @@ const getRoleType = (id) => {
     2: 'primary', // Manager
     3: 'info',    // Warehouse
     4: 'warning', // Shipper
-    5: 'success'  // Accountant
+    5: 'success', // Accountant
+    7: 'cskh'     // CSKH
   };
   return map[id] || 'info';
 };
@@ -520,12 +630,24 @@ const getRoleName = (id) => {
     2: 'HUB_MANAGER',
     3: 'WAREHOUSE_STAFF',
     4: 'SHIPPER',
-    5: 'ACCOUNTANT'
+    5: 'ACCOUNTANT',
+    7: 'CSKH'
   };
   return map[id] || 'N/A';
 };
 
 onMounted(fetchData);
+
+watch(() => route.query.my_shippers, () => {
+  fetchData();
+});
+
+watch(() => userForm.role_id, (roleId) => {
+  if (!userForm.user_id && roleId === 1) {
+    userForm.role_id = 3;
+    ElMessage.warning('Không được tạo nhân sự với quyền Quản trị hệ thống');
+  }
+});
 </script>
 
 <style scoped src="@/styles/admin/users/UserList.css"></style>

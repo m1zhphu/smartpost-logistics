@@ -5,17 +5,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import crud.auth as crud_auth
+import crud.customers as crud_customers
 import models
 import schemas.auth as schema_auth
 from core.database import get_db
-from core.security import create_access_token, get_password_hash, verify_password
+from core.security import create_access_token, get_current_user, get_password_hash, verify_password
 from services.email_service import send_otp_email
 
 
 router = APIRouter(prefix="/api", tags=["Authentication"])
 
 REGISTER_OTP_EXPIRE_MINUTES = 10
-REGISTER_OTP_RESEND_COOLDOWN_SECONDS = 60
+REGISTER_OTP_RESEND_COOLDOWN_SECONDS = 180
 REGISTER_OTP_MAX_ATTEMPTS = 5
 
 
@@ -40,19 +41,37 @@ def _ensure_customer_role(db: Session):
 
 
 def _generate_registered_customer_code(db: Session) -> str:
-    for _ in range(5):
-        code = f"REG{datetime.utcnow().strftime('%Y%m%d')}{secrets.randbelow(10000):04d}"
-        existing = db.query(models.Customers).filter(models.Customers.customer_code == code).first()
-        if not existing:
-            return code
-    return f"REG{int(datetime.utcnow().timestamp())}"
+    return crud_customers.generate_customer_code(db)
 
+
+def _ensure_login_allowed(user: models.Users):
+    if user.is_deleted:
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị xóa mềm, vui lòng liên hệ quản trị viên")
+    if user.is_active is False or user.status is False:
+        raise HTTPException(status_code=403, detail="Tài khoản đang bị khóa, vui lòng liên hệ quản trị viên")
+
+    if user.role_id == 6 and user.customer_id:
+        customer = user.customer_account or None
+        if not customer:
+            raise HTTPException(status_code=403, detail="H\u1ed3 s\u01a1 kh\u00e1ch h\u00e0ng kh\u00f4ng t\u1ed3n t\u1ea1i, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean")
+        if customer.status == "DELETED":
+            raise HTTPException(status_code=403, detail="H\u1ed3 s\u01a1 kh\u00e1ch h\u00e0ng \u0111\u00e3 b\u1ecb x\u00f3a, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean")
+        if customer.status != "ACTIVE":
+            raise HTTPException(status_code=403, detail="H\u1ed3 s\u01a1 kh\u00e1ch h\u00e0ng \u0111\u00e3 ng\u1eebng h\u1ee3p t\u00e1c, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean")
 
 @router.post("/setup-admin")
 def setup_first_admin(db: Session = Depends(get_db)):
-    admin_role = crud_auth.get_role_by_name(db, "ADMIN")
+    existing_super_admin = db.query(models.Users).filter(
+        models.Users.role_id == 1,
+        models.Users.is_deleted == False,
+    ).first()
+    if existing_super_admin:
+        return {"message": "Super Admin đã tồn tại"}
+
+    admin_role = crud_auth.get_role_by_id(db, 1)
     if not admin_role:
-        admin_role = crud_auth.create_role(db, "ADMIN", {"all": True})
+        admin_role = models.Roles(role_id=1, role_name="SUPER_ADMIN", permissions={"all": True})
+        db.add(admin_role)
         db.commit()
 
     existing_user = crud_auth.get_user_by_username(db, "admin")
@@ -63,8 +82,10 @@ def setup_first_admin(db: Session = Depends(get_db)):
         "username": "admin",
         "password_hash": get_password_hash("123456"),
         "full_name": "Quản trị viên Hệ thống",
-        "role_id": admin_role.role_id,
+        "role_id": 1,
         "status": True,
+        "is_active": True,
+        "is_deleted": False,
     }
     crud_auth.create_user(db, user_data)
     db.commit()
@@ -78,6 +99,7 @@ def login(data: schema_auth.LoginSchema, db: Session = Depends(get_db)):
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Tài khoản hoặc mật khẩu không chính xác")
 
+    _ensure_login_allowed(user)
     role = crud_auth.get_role_by_id(db, user.role_id)
     permissions = role.permissions if role else {}
 
@@ -97,6 +119,11 @@ def login(data: schema_auth.LoginSchema, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "full_name": user.full_name,
     }
+
+
+@router.get("/auth/me")
+def get_auth_me(current_user: dict = Depends(get_current_user)):
+    return current_user
 
 
 @router.post("/auth/register/request-otp", response_model=schema_auth.RegisterOtpResponse)
@@ -126,7 +153,7 @@ def request_register_otp(data: schema_auth.RegisterOtpRequest, db: Session = Dep
         models.AuthOtpCodes.created_at >= cooldown_from,
     ).order_by(models.AuthOtpCodes.id.desc()).first()
     if recent_otp:
-        raise HTTPException(status_code=429, detail="Vui lòng đợi trước khi yêu cầu gửi lại OTP")
+        raise HTTPException(status_code=429, detail="Vui l\u00f2ng \u0111\u1ee3i 3 ph\u00fat tr\u01b0\u1edbc khi y\u00eau c\u1ea7u g\u1eedi l\u1ea1i OTP")
 
     db.query(models.AuthOtpCodes).filter(
         models.AuthOtpCodes.email == email,
@@ -274,12 +301,17 @@ def verify_register_otp(data: schema_auth.CustomerRegisterVerifyRequest, db: Ses
 
 
 @router.post("/setup-roles-v2")
-def setup_roles_v2(db: Session = Depends(get_db)):
+def setup_roles_v2(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role_id") != 1:
+        raise HTTPException(status_code=403, detail="Chỉ Super Admin mới được cấu hình lại vai trò hệ thống")
     try:
         roles_data = [
             {"role_id": 1, "role_name": "SUPER_ADMIN", "permissions": {"all": True}},
             {"role_id": 2, "role_name": "HUB_MANAGER", "permissions": {
-                "hub_manage": True, "assign_shipper": True, "warehouse_ops": True, "view_report": True,
+                "hub_manage": True, "assign_shipper": True, "warehouse_ops": True, "view_report": True, "report_view": True,
             }},
             {"role_id": 3, "role_name": "WAREHOUSE_STAFF", "permissions": {
                 "warehouse_ops": True, "scan_in": True, "bagging": True, "manifest_ops": True,
@@ -306,6 +338,7 @@ def setup_roles_v2(db: Session = Depends(get_db)):
                 "customer_delete": True,
                 "pricing_quote": True,
                 "notification_view": True,
+                "report_view": True,
             }},
         ]
 

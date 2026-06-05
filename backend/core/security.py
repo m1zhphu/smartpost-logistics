@@ -1,53 +1,85 @@
-# File: core/security.py
-import jwt
-import bcrypt
+﻿# File: core/security.py
 from datetime import datetime, timedelta
-from fastapi import Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# Khóa bí mật để ký JWT Token (Thực tế sau này sẽ giấu vào file .env)
+import bcrypt
+import jwt
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+
+import models
+from core.database import get_db
+
 SECRET_KEY = "smartpost_super_secret_key_mvp_2026"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # Token sống trong 24 giờ (1 ngày)
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
+
 
 def get_password_hash(password: str) -> str:
-    """Băm mật khẩu trước khi lưu vào DB"""
     salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Kiểm tra mật khẩu người dùng nhập có khớp với DB không"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
-    """Tạo vé thông hành (JWT Token) cho User"""
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# --- THÊM ĐOẠN NÀY XUỐNG DƯỚI CÙNG FILE ---
+
 security = HTTPBearer()
+AUTH_INVALID_HEADERS = {"X-Auth-Invalid": "1"}
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+
+def _get_permissions_from_role(user):
+    return user.role.permissions if user.role and user.role.permissions else {}
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        
-        # Tạo một object "Hồ sơ" để dễ dùng ở các API sau
-        user_info = {
-            "user_id": payload.get("user_id"),
-            "username": payload.get("sub"),
-            "role_id": payload.get("role_id"),
-            "primary_hub_id": payload.get("primary_hub_id"),
-            "permissions": payload.get("permissions", {}),
-            # Xác định cấp độ truy cập ngay từ đầu
-            "is_super_admin": payload.get("permissions", {}).get("all") is True,
-            "is_hub_admin": payload.get("role_id") == 2, # Giả định 2 là Admin Bưu Cục
-            "is_shipper": payload.get("role_id") == 3    # Giả định 3 là Shipper
-        }
-        return user_info
+        user_id = payload.get("user_id")
+        username = payload.get("sub")
     except Exception:
-        raise HTTPException(status_code=401, detail="Phiên bản hết hạn hoặc không hợp lệ")
+        raise HTTPException(status_code=401, detail="Phi\u00ean \u0111\u0103ng nh\u1eadp \u0111\u00e3 h\u1ebft h\u1ea1n ho\u1eb7c kh\u00f4ng h\u1ee3p l\u1ec7", headers=AUTH_INVALID_HEADERS)
+
+    user = db.query(models.Users).filter(
+        models.Users.user_id == user_id,
+        models.Users.username == username,
+    ).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="T\u00e0i kho\u1ea3n kh\u00f4ng t\u1ed3n t\u1ea1i", headers=AUTH_INVALID_HEADERS)
+    if user.is_deleted:
+        raise HTTPException(status_code=403, detail="T\u00e0i kho\u1ea3n \u0111\u00e3 b\u1ecb x\u00f3a m\u1ec1m, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean", headers=AUTH_INVALID_HEADERS)
+    if user.is_active is False or user.status is False:
+        raise HTTPException(status_code=403, detail="T\u00e0i kho\u1ea3n \u0111ang b\u1ecb kh\u00f3a, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean", headers=AUTH_INVALID_HEADERS)
+    if user.role_id == 6 and user.customer_id:
+        customer = db.query(models.Customers).filter(
+            models.Customers.customer_id == user.customer_id
+        ).first()
+        if not customer or customer.status == "DELETED":
+            raise HTTPException(status_code=403, detail="H\u1ed3 s\u01a1 kh\u00e1ch h\u00e0ng \u0111\u00e3 b\u1ecb x\u00f3a, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean", headers=AUTH_INVALID_HEADERS)
+        if customer.status != "ACTIVE":
+            raise HTTPException(status_code=403, detail="H\u1ed3 s\u01a1 kh\u00e1ch h\u00e0ng \u0111\u00e3 ng\u1eebng h\u1ee3p t\u00e1c, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean", headers=AUTH_INVALID_HEADERS)
+
+    permissions = _get_permissions_from_role(user) or payload.get("permissions", {})
+    return {
+        "user_id": user.user_id,
+        "username": user.username,
+        "role_id": user.role_id,
+        "customer_id": user.customer_id,
+        "primary_hub_id": user.primary_hub_id,
+        "permissions": permissions,
+        "is_super_admin": permissions.get("all") is True,
+        "is_hub_admin": user.role_id == 2,
+        "is_shipper": user.role_id == 4,
+    }
