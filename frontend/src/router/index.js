@@ -12,6 +12,11 @@ const publicRoutes = [
     component: () => import('../views/auth/LoginView.vue'),
   },
   {
+    path: '/admin/login',
+    name: 'AdminLogin',
+    component: () => import('../views/auth/AdminLoginView.vue'),
+  },
+  {
     path: '/register',
     name: 'Register',
     component: () => import('../views/auth/RegisterView.vue'),
@@ -186,11 +191,14 @@ router.beforeEach((to, from) => {
   const auth = useAuthStore();
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    if (to.path.startsWith('/admin')) {
+      return '/admin/login';
+    }
     return '/login';
   }
 
-  // Nếu đã đăng nhập và đang cố vào trang login/setup-admin
-  if ((to.path === '/login' || to.path === '/setup-admin') && auth.isAuthenticated) {
+  // Nếu đã đăng nhập và đang cố vào trang login/admin-login/setup-admin
+  if ((to.path === '/login' || to.path === '/admin/login' || to.path === '/setup-admin') && auth.isAuthenticated) {
     if (auth.isCustomer) {
       return '/customer/portal';
     }

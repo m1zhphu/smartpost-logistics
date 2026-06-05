@@ -35,12 +35,13 @@ export const useAuthStore = defineStore('auth', {
             ...user,
             user_id: tokenData.user_id,
             role_id: tokenData.role_id,
+            customer_id: tokenData.customer_id,
             primary_hub_id: tokenData.primary_hub_id,
             username: tokenData.sub,
             permissions: tokenData.permissions
           };
         } catch (e) {
-          console.error("Không thể giải mã Token để lấy bưu cục", e);
+          console.error("Không thể giải mã Token để lấy thông tin khách hàng/bưu cục", e);
         }
       }
       // ------------------------------------------------------------------

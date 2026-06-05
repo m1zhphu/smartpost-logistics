@@ -2,7 +2,7 @@
   <el-container class="modern-layout-container" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
     <!-- Sidebar -->
     <div class="primary-sidebar">
-      <div class="logo-mini">
+      <div class="logo-mini" @click="$router.push('/admin/dashboard')" style="cursor: pointer;">
         <img src="@/assets/CompanyLogo4.png" alt="SpeedLight" class="logo-icon-img" />
       </div>
       
@@ -64,14 +64,6 @@
         </div>
         
         <div class="header-right">
-          <div class="search-box mr-4 hidden-sm-and-down">
-             <el-input 
-                placeholder="Tìm kiếm nhanh..." 
-                class="modern-search-input"
-             >
-                <template #prefix><el-icon><Search /></el-icon></template>
-             </el-input>
-          </div>
           
           <div class="user-profile-wrapper">
              <el-dropdown trigger="click" placement="bottom-end">

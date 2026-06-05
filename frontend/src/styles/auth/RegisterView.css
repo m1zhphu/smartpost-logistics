@@ -181,3 +181,149 @@
 .mb-20 {
   margin-bottom: 20px;
 }
+
+.otp-back-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.back-btn {
+  font-size: 0.95rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  transition: color 0.2s;
+  padding: 0;
+}
+
+.back-btn:hover {
+  color: #388E3C !important;
+}
+
+.mr-6 {
+  margin-right: 6px;
+}
+
+.otp-instructions {
+  margin-bottom: 25px;
+}
+
+.otp-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.otp-subtitle {
+  font-size: 0.95rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.otp-inputs-container {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 30px 0;
+}
+
+.otp-digit-input {
+  width: 52px;
+  height: 56px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-align: center;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #f8fafc;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.otp-digit-input:focus {
+  border-color: #388E3C;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.cooldown-text {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.cooldown-text strong {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.resend-btn {
+  font-weight: 600 !important;
+}
+
+.hidden-otp-item {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+@media (max-width: 768px) {
+  .register-card {
+    width: 100%;
+    max-width: 600px;
+    padding: 2rem 1.5rem;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .register-logo-top img {
+    height: 70px;
+  }
+
+  .register-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .otp-inputs-container {
+    gap: 8px;
+    margin: 20px 0;
+  }
+
+  .otp-digit-input {
+    width: 42px;
+    height: 48px;
+    font-size: 1.3rem;
+    border-radius: 8px;
+  }
+
+  .register-btn {
+    height: 46px;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+  }
+  
+  .otp-title {
+    font-size: 1.25rem;
+  }
+  
+  .otp-subtitle {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .otp-inputs-container {
+    gap: 6px;
+  }
+
+  .otp-digit-input {
+    width: 36px;
+    height: 42px;
+    font-size: 1.1rem;
+  }
+}

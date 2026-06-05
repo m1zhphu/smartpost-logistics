@@ -7,9 +7,7 @@
       
       <div class="register-header">
         <h1>ĐĂNG KÝ KHÁCH HÀNG MỚI</h1>
-        <p class="step-indicator">
-          {{ step === 1 ? 'Bước 1: Thiết lập thông tin tài khoản' : 'Bước 2: Xác thực mã OTP kích hoạt' }}
-        </p>
+      
       </div>
 
       <!-- BƯỚC 1: NHẬP THÔNG TIN ĐĂNG KÝ -->
@@ -123,23 +121,35 @@
         class="register-form" 
         label-position="top"
       >
-        <el-alert
-          title="Đăng ký thành công - Mã kích hoạt đã được gửi tới email của bạn!"
-          type="success"
-          description="Vui lòng kiểm tra hộp thư đến hoặc thư rác để nhận mã OTP."
-          show-icon
-          :closable="false"
-          class="mb-20"
-        />
+        <div class="otp-back-header mb-20">
+          <el-button link class="back-btn" @click="goBackToStep1">
+            <el-icon class="mr-6"><ArrowLeft /></el-icon> Quay lại thiết lập tài khoản
+          </el-button>
+        </div>
 
-        <el-form-item prop="otp" label="Mã xác thực (OTP)">
-          <el-input 
-            v-model="registerForm.otp" 
-            placeholder="Nhập 6 số OTP gửi qua Email" 
-            prefix-icon="Key"
-            maxlength="6"
-            class="custom-input"
-          ></el-input>
+        <div class="otp-instructions text-center mb-20">
+          <h2 class="otp-title">Xác thực tài khoản</h2>
+          <p class="otp-subtitle">Mã xác thực kích hoạt (OTP) đã được gửi tới email <strong>{{ registerForm.email }}</strong>.</p>
+        </div>
+
+        <div class="otp-inputs-container">
+          <input
+            v-for="(digit, index) in 6"
+            :key="index"
+            :ref="el => { if (el) otpInputRefs[index] = el }"
+            v-model="otpDigits[index]"
+            type="text"
+            maxlength="1"
+            class="otp-digit-input"
+            @input="handleOtpInput($event, index)"
+            @keydown="handleOtpKeydown($event, index)"
+            @paste="handleOtpPaste($event)"
+            autocomplete="off"
+          />
+        </div>
+
+        <el-form-item prop="otp" class="hidden-otp-item">
+          <el-input v-model="registerForm.otp" style="display: none;"></el-input>
         </el-form-item>
 
         <el-button 
@@ -147,20 +157,23 @@
           class="register-btn" 
           :loading="loading" 
           @click="handleRegister"
+          :disabled="registerForm.otp.length < 6"
         >TIẾP TỤC</el-button>
 
         <div class="register-actions flex-col gap-10 mt-20">
+          <span class="cooldown-text" v-if="otpCooldown > 0">
+            Gửi lại mã xác nhận sau <strong>{{ formattedCooldown }}</strong>
+          </span>
           <el-button 
+            v-else
             link 
             type="primary" 
-            :disabled="otpCooldown > 0 || otpLoading"
+            :disabled="otpLoading"
             :loading="otpLoading"
             @click="handleResendOtp"
           >
-            {{ otpCooldown > 0 ? `Gửi lại mail xác nhận (${otpCooldown}s)` : 'Gửi lại mail xác nhận' }}
+            Gửi lại mail xác nhận
           </el-button>
-          
-          <el-button link type="info" @click="goBackToStep1">Thoát</el-button>
         </div>
       </el-form>
     </div>
@@ -168,12 +181,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onBeforeUnmount } from 'vue';
+import { ref, reactive, onBeforeUnmount, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { ElMessage } from 'element-plus';
 import api from '../../api/axios';
-import { User, Lock, Message, Key, Phone } from '@element-plus/icons-vue';
+import { User, Lock, Message, Key, Phone, ArrowLeft } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -187,6 +200,19 @@ let cooldownTimer = null;
 const formStep1Ref = ref(null);
 const formStep2Ref = ref(null);
 
+const otpDigits = ref(['', '', '', '', '', '']);
+const otpInputRefs = ref([]);
+
+watch(otpDigits, (newVal) => {
+  registerForm.otp = newVal.join('');
+}, { deep: true });
+
+const formattedCooldown = computed(() => {
+  const minutes = Math.floor(otpCooldown.value / 60);
+  const seconds = otpCooldown.value % 60;
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+});
+
 const registerForm = reactive({
   username: '',
   full_name: '',
@@ -196,10 +222,10 @@ const registerForm = reactive({
   confirmPassword: '',
   otp: '',
   // Các trường mặc định để khớp API
-  address: 'Hồ Chí Minh',
-  province_id: 59,
-  district_id: 9,
-  ward_id: 1
+  address: null,
+  province_id: null,
+  district_id: null,
+  ward_id: null
 });
 
 const validatePass2 = (rule, value, callback) => {
@@ -305,21 +331,9 @@ const handleRegister = async () => {
     
     loading.value = true;
     try {
-      const response = await api.post('/api/auth/register/verify', registerForm);
-      const { access_token, user_id, customer_id, role_id, full_name } = response.data;
-      
-      const user = {
-        user_id,
-        customer_id,
-        role_id,
-        full_name,
-        username: registerForm.username
-      };
-      
-      authStore.setUser(user, access_token);
-      
-      ElMessage.success('Đăng ký khách hàng thành công! Đang vào hệ thống...');
-      await router.push('/customer/portal');
+      await api.post('/api/auth/register/verify', registerForm);
+      ElMessage.success('Đăng ký khách hàng thành công! Vui lòng đăng nhập.');
+      await router.push('/login');
       
     } catch (error) {
       const msg = error.response?.data?.detail || 'Mã xác thực không hợp lệ hoặc đã hết hạn.';
@@ -330,7 +344,46 @@ const handleRegister = async () => {
   });
 };
 
+const handleOtpInput = (event, index) => {
+  const value = event.target.value;
+  if (!/^[0-9]$/.test(value)) {
+    otpDigits.value[index] = '';
+    return;
+  }
+  otpDigits.value[index] = value;
+  if (value && index < 5) {
+    otpInputRefs.value[index + 1]?.focus();
+  }
+};
+
+const handleOtpKeydown = (event, index) => {
+  if (event.key === 'Backspace') {
+    if (!otpDigits.value[index] && index > 0) {
+      otpDigits.value[index - 1] = '';
+      otpInputRefs.value[index - 1]?.focus();
+    } else {
+      otpDigits.value[index] = '';
+    }
+  } else if (event.key === 'ArrowLeft' && index > 0) {
+    otpInputRefs.value[index - 1]?.focus();
+  } else if (event.key === 'ArrowRight' && index < 5) {
+    otpInputRefs.value[index + 1]?.focus();
+  }
+};
+
+const handleOtpPaste = (event) => {
+  event.preventDefault();
+  const pasteData = event.clipboardData.getData('text').trim();
+  if (/^\d{6}$/.test(pasteData)) {
+    for (let i = 0; i < 6; i++) {
+      otpDigits.value[i] = pasteData[i];
+    }
+    otpInputRefs.value[5]?.focus();
+  }
+};
+
 const goBackToStep1 = () => {
+  otpDigits.value = ['', '', '', '', '', ''];
   step.value = 1;
 };
 

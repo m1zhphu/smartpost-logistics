@@ -102,11 +102,16 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column v-if="canEditPricing" label="Thao tác" width="100" fixed="right" align="center">
+              <el-table-column label="Thao tác" width="120" fixed="right" align="center">
                 <template #default="{ row }">
-                  <button class="icon-btn edit mx-auto" @click="openPolicyDialog(row)" title="Chỉnh sửa">
-                    <el-icon><Edit /></el-icon>
-                  </button>
+                  <div class="action-buttons" style="display: flex; gap: 8px; justify-content: center;">
+                    <button class="icon-btn edit" @click.stop="viewPolicyRules(row)" title="Xem cước tuyến">
+                      <el-icon><MapLocation /></el-icon>
+                    </button>
+                    <button v-if="canEditPricing" class="icon-btn edit" @click.stop="openPolicyDialog(row)" title="Chỉnh sửa bảng giá">
+                      <el-icon><Edit /></el-icon>
+                    </button>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -152,7 +157,7 @@
             </div>
 
             <el-table 
-              :data="filteredRules" 
+              :data="paginatedRules" 
               v-loading="loading" 
               class="modern-table"
               row-class-name="modern-row"
@@ -246,6 +251,15 @@
                 </div>
               </template>
             </el-table>
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+              <el-pagination
+                v-model:current-page="currentRulesPage"
+                v-model:page-size="rulesPageSize"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="filteredRules.length"
+              />
+            </div>
           </div>
         </el-tab-pane>
 
@@ -564,12 +578,128 @@
         </template>
       </el-dialog>
 
+      <!-- Drawer: Policy Rules Details & Classification -->
+      <el-drawer
+        v-model="rulesDrawerVisible"
+        :title="`Cấu hình Cước Tuyến - ${selectedPolicy?.policy_name || ''}`"
+        size="75%"
+        destroy-on-close
+      >
+        <template #header>
+          <div class="drawer-header-custom">
+            <span class="drawer-title" style="font-size: 18px; font-weight: 700; color: var(--sp-text-main);">Cấu hình Cước Tuyến</span>
+            <el-tag size="small" type="info" class="uppercase ml-2" style="margin-left: 8px;">{{ selectedPolicy?.policy_code }}</el-tag>
+            <div class="drawer-subtitle mt-1 text-muted" style="font-size: 13px; margin-top: 4px;">
+              Phân loại phí vận chuyển theo từng loại dịch vụ của bảng giá
+            </div>
+          </div>
+        </template>
+
+        <div v-if="selectedPolicy" class="drawer-body-content">
+          <!-- Policy Overview Mini-Card -->
+          <div class="policy-mini-card" style="margin-bottom: 20px;">
+            <el-descriptions :column="3" border size="small">
+              <el-descriptions-item label="Loại bảng giá">
+                <el-tag size="small" type="primary">{{ selectedPolicy.policy_type === 'GENERAL' ? 'Bảng giá chung' : 'Bảng giá riêng' }}</el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="Phê duyệt">
+                <el-tag size="small" :type="selectedPolicy.is_approved ? 'success' : 'warning'">
+                  {{ selectedPolicy.is_approved ? 'Đã duyệt' : 'Chưa duyệt' }}
+                </el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="Trạng thái">
+                <el-tag size="small" :type="selectedPolicy.is_active ? 'success' : 'danger'">
+                  {{ selectedPolicy.is_active ? 'Đang áp dụng' : 'Tạm dừng' }}
+                </el-tag>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+
+          <!-- Add Rule Trigger -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--sp-text-main);">Quy tắc cước tuyến theo dịch vụ</h4>
+            <button v-if="canEditPricing" class="btn-primary" @click="openDialogForPolicy(selectedPolicy)">
+              <el-icon><Plus /></el-icon> Thêm Tuyến Giá mới
+            </button>
+          </div>
+
+          <!-- Tabs of Service Types -->
+          <el-tabs v-if="selectedPolicyRules.length > 0" v-model="activeDrawerServiceTab" class="drawer-tabs">
+            <el-tab-pane
+              v-for="serviceType in availableServiceTypesInPolicy"
+              :key="serviceType"
+              :label="getServiceLabel(serviceType)"
+              :name="serviceType"
+            >
+              <el-table
+                :data="getRulesByServiceType(serviceType)"
+                class="modern-table"
+                style="width: 100%"
+                row-class-name="modern-row"
+              >
+                <el-table-column label="Tuyến đường" min-width="260">
+                  <template #default="{ row }">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-weight: 600;">{{ row.origin_hub?.hub_name || `Hub #${row.origin_hub_id}` }}</span>
+                      <el-icon><Right /></el-icon>
+                      <span style="font-weight: 600;">{{ row.dest_hub?.hub_name || `Hub #${row.dest_hub_id}` }}</span>
+                    </div>
+                  </template>
+                </el-table-column>
+                
+                <el-table-column label="Khối lượng" width="150" align="center">
+                  <template #default="{ row }">
+                    <span>{{ row.min_weight }} - {{ row.max_weight }} kg</span>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="Đơn giá" width="150" align="right">
+                  <template #default="{ row }">
+                    <span class="fw-bold text-dark">{{ formatMoney(row.price) }} đ</span>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="Trạng thái" width="120" align="center">
+                  <template #default="{ row }">
+                    <el-switch
+                      v-model="row.is_active"
+                      :disabled="!canEditPricing"
+                      @change="toggleRuleStatus(row)"
+                      style="--el-switch-on-color: #05CD99"
+                    />
+                  </template>
+                </el-table-column>
+
+                <el-table-column v-if="canEditPricing" label="Thao tác" width="120" align="center">
+                  <template #default="{ row }">
+                    <div class="action-buttons">
+                      <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa">
+                        <el-icon><Edit /></el-icon>
+                      </button>
+                      <button class="icon-btn delete" @click="handleDelete(row)" title="Xóa">
+                        <el-icon><Delete /></el-icon>
+                      </button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-tab-pane>
+          </el-tabs>
+
+          <el-empty v-else description="Bảng giá này chưa cấu hình cước tuyến nào" :image-size="120">
+            <button v-if="canEditPricing" class="btn-primary mt-4 mx-auto" @click="openDialogForPolicy(selectedPolicy)">
+              <el-icon><Plus /></el-icon> Cấu hình quy tắc đầu tiên
+            </button>
+          </el-empty>
+        </div>
+      </el-drawer>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { 
   Plus, Edit, Delete, List, Right, Refresh, RefreshRight, LocationFilled, 
   CircleCheck, ScaleToOriginal, Ticket, Setting, Lightning, Van, 
@@ -677,6 +807,75 @@ const filteredRules = computed(() => {
     return matchService && matchHub;
   });
 });
+
+// Pagination for main rules list
+const currentRulesPage = ref(1);
+const rulesPageSize = ref(10);
+
+const paginatedRules = computed(() => {
+  const start = (currentRulesPage.value - 1) * rulesPageSize.value;
+  const end = start + rulesPageSize.value;
+  return filteredRules.value.slice(start, end);
+});
+
+watch([filter, () => filterHubId.value], () => {
+  currentRulesPage.value = 1;
+}, { deep: true });
+
+// Rules Drawer details and service classification
+const rulesDrawerVisible = ref(false);
+const selectedPolicy = ref(null);
+const activeDrawerServiceTab = ref('');
+
+const selectedPolicyRules = computed(() => {
+  if (!selectedPolicy.value) return [];
+  return rules.value.filter(r => r.policy_id === selectedPolicy.value.policy_id);
+});
+
+const availableServiceTypesInPolicy = computed(() => {
+  const types = new Set(selectedPolicyRules.value.map(r => r.service_type));
+  return Array.from(types);
+});
+
+const getRulesByServiceType = (serviceType) => {
+  return selectedPolicyRules.value.filter(r => r.service_type === serviceType);
+};
+
+const viewPolicyRules = (policy) => {
+  selectedPolicy.value = policy;
+  rulesDrawerVisible.value = true;
+  const types = availableServiceTypesInPolicy.value;
+  if (types.length > 0) {
+    activeDrawerServiceTab.value = types[0];
+  } else {
+    activeDrawerServiceTab.value = '';
+  }
+};
+
+const toggleRuleStatus = async (row) => {
+  try {
+    await api.put(`/api/pricing/rules/${row.rule_id}`, row);
+    ElMessage.success('Cập nhật trạng thái quy tắc thành công');
+  } catch (err) {
+    row.is_active = !row.is_active;
+    ElMessage.error('Không thể cập nhật trạng thái');
+  }
+};
+
+const openDialogForPolicy = (policy) => {
+  Object.assign(ruleForm, { 
+    rule_id: null, 
+    policy_id: policy.policy_id, 
+    origin_hub_id: null, 
+    dest_hub_id: null, 
+    service_type: 'STANDARD', 
+    min_weight: 0, 
+    max_weight: 0.5, 
+    price: 30000, 
+    is_active: true 
+  });
+  dialogVisible.value = true;
+};
 
 const formatMoney = (val) => {
   if (!val && val !== 0) return '0';

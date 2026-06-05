@@ -77,9 +77,8 @@
 
       <!-- Main Table Card -->
       <div class="content-card table-wrapper animate-fade-in-up">
-        <!-- ĐỔI :data="users" THÀNH :data="filteredUsers" -->
         <el-table 
-          :data="filteredUsers" 
+          :data="paginatedUsers" 
           v-loading="loading" 
           class="modern-table"
           row-class-name="modern-row"
@@ -102,13 +101,6 @@
             </template>
           </el-table-column>
 
-          <!-- Tên đăng nhập -->
-          <el-table-column prop="username" label="Tên đăng nhập" min-width="140">
-            <template #default="{ row }">
-              <span class="username-badge">@{{ row.username }}</span>
-            </template>
-          </el-table-column>
-
           <!-- Chức vụ -->
           <el-table-column label="Chức vụ" min-width="160">
             <template #default="{ row }">
@@ -128,35 +120,19 @@
             </template>
           </el-table-column>
           
-          <!-- Nơi làm việc / Phương tiện -->
-          <el-table-column label="Nơi làm việc / Xe" min-width="200">
+          <!-- Nơi làm việc -->
+          <el-table-column label="Nơi làm việc" min-width="180">
              <template #default="{ row }">
                 <div class="work-info">
                   <span class="hub-name">
                     <el-icon class="mr-1"><OfficeBuilding /></el-icon>
                     {{ row.primary_hub?.hub_name || 'Hệ thống Trung tâm' }}
                   </span>
-                  <span v-if="row.accessible_hubs?.length" class="text-xs text-muted">
-                    Quyền xem: {{ formatAccessibleHubs(row) }}
-                  </span>
-                  <div v-if="row.role_id === 4 && row.vehicle_plate" class="vehicle-plate">
-                     <el-icon class="mr-1"><Van /></el-icon> {{ row.vehicle_plate }}
-                  </div>
                 </div>
              </template>
           </el-table-column>
 
           <!-- Trạng thái -->
-          <el-table-column label="CSKH quản lý" min-width="180">
-            <template #default="{ row }">
-              <span v-if="row.role_id === 4" class="text-dark fw-500">
-                <el-icon class="mr-1 text-muted"><UserFilled /></el-icon>
-                {{ row.managed_by_cskh?.full_name || 'Chưa gán' }}
-              </span>
-              <span v-else class="text-muted">---</span>
-            </template>
-          </el-table-column>
-
           <el-table-column label="Trạng thái" min-width="120" align="center">
              <template #default="{ row }">
                 <div class="status-pill" :class="row.is_active ? 'active' : 'locked'">
@@ -166,9 +142,12 @@
           </el-table-column>
 
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="140" fixed="right" align="center">
+          <el-table-column label="Thao tác" width="160" fixed="right" align="center">
             <template #default="{ row }">
               <div class="action-buttons">
+                <button class="icon-btn edit" @click="viewStaffDetails(row)" title="Xem chi tiết">
+                  <el-icon><InfoFilled /></el-icon>
+                </button>
                 <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa">
                   <el-icon><Edit /></el-icon>
                 </button>
@@ -179,10 +158,6 @@
                 <button v-else class="icon-btn warning" @click="toggleStatus(row, false)" title="Khóa tài khoản">
                   <el-icon><Lock /></el-icon>
                 </button>
-
-                <button class="icon-btn delete" @click="handleDelete(row)" title="Xóa nhân viên">
-                  <el-icon><Delete /></el-icon>
-                </button>
               </div>
             </template>
           </el-table-column>
@@ -191,6 +166,15 @@
             <el-empty description="Không tìm thấy nhân viên nào phù hợp" :image-size="100" />
           </template>
         </el-table>
+        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="filteredUsers.length"
+          />
+        </div>
       </div>
 
       <!-- Modern Dialog Form (Giữ nguyên) -->
@@ -241,7 +225,7 @@
             </el-col>
           </el-row>
 
-          <el-form-item label="Email công việc (Dùng để nhận thông báo)" prop="email">
+          <el-form-item label="Email công việc" prop="email">
              <el-input v-model="userForm.email" placeholder="nv.a@smartpost.vn">
                 <template #prefix><el-icon><Message /></el-icon></template>
              </el-input>
@@ -252,7 +236,7 @@
             <el-col :span="12">
               <el-form-item label="Vai trò / Chức vụ" prop="role_id">
                 <el-select v-model="userForm.role_id" class="w-full" placeholder="Chọn vị trí công tác">
-                  <el-option label="Quản trị hệ thống" :value="1" />
+                  <el-option v-if="userForm.role_id === 1" label="Quản trị hệ thống" :value="1" />
                   <el-option label="Quản lý bưu cục" :value="2" />
                   <el-option label="Nhân viên kho" :value="3" />
                   <el-option label="Tài xế (Shipper)" :value="4" />
@@ -293,7 +277,15 @@
           </el-collapse-transition>
           <el-collapse-transition>
             <el-form-item v-if="userForm.role_id === 4" label="CSKH quản lý bưu tá" prop="managed_by_cskh_id">
-              <el-select v-model="userForm.managed_by_cskh_id" filterable clearable class="w-full" placeholder="Chọn CSKH phụ trách">
+              <el-select 
+                v-model="userForm.managed_by_cskh_id" 
+                filterable 
+                clearable 
+                class="w-full" 
+                placeholder="Chọn CSKH phụ trách"
+                :popper-append-to-body="true"
+                no-data-text="Chưa có nhân viên CSKH nào"
+              >
                 <el-option
                   v-for="cskh in cskhOptions"
                   :key="cskh.user_id"
@@ -315,6 +307,110 @@
           </div>
         </template>
       </el-dialog>
+
+      <!-- Drawer Xem chi tiết Nhân viên -->
+      <el-drawer
+        v-model="detailDrawerVisible"
+        title="Chi tiết Nhân viên"
+        size="550px"
+        class="modern-detail-drawer"
+        destroy-on-close
+      >
+        <template #header>
+          <div class="drawer-header-content">
+            <div class="drawer-title-wrapper">
+              <div class="avatar-circle large" :class="getRoleTypeClass(getRoleType(selectedUser?.role_id))">
+                {{ selectedUser ? getInitials(selectedUser.full_name) : '' }}
+              </div>
+              <div>
+                <h3 class="drawer-main-title">{{ selectedUser?.full_name }}</h3>
+                <span class="username-badge">@{{ selectedUser?.username }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div v-if="selectedUser" class="drawer-body-details">
+          <!-- Section: Thông tin chung -->
+          <div class="detail-section">
+            <h4 class="section-subtitle">Thông tin Chung</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Họ và tên</span>
+                <span class="detail-value">{{ selectedUser.full_name }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Trạng thái tài khoản</span>
+                <span class="detail-value">
+                  <el-tag :type="selectedUser.is_active ? 'success' : 'danger'" size="small">
+                    {{ selectedUser.is_active ? 'Đang hoạt động' : 'Tạm khóa' }}
+                  </el-tag>
+                </span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Số điện thoại</span>
+                <span class="detail-value">{{ selectedUser.phone_number || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Email công việc</span>
+                <span class="detail-value">{{ selectedUser.email || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Chức vụ & Tài khoản -->
+          <div class="detail-section">
+            <h4 class="section-subtitle">Tài khoản & Vai trò</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Tên đăng nhập</span>
+                <span class="detail-value fw-bold">@{{ selectedUser.username }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Chức vụ / Vai trò</span>
+                <span class="detail-value">
+                  <el-tag :type="getRoleType(selectedUser.role_id) === 'primary' ? 'primary' : 'warning'" size="small" effect="plain">
+                    {{ getRoleName(selectedUser.role_id) }}
+                  </el-tag>
+                </span>
+              </div>
+              <div class="detail-item" v-if="selectedUser.role_id === 4">
+                <span class="detail-label">CSKH Quản lý bưu tá</span>
+                <span class="detail-value fw-bold text-primary">{{ selectedUser.managed_by_cskh?.full_name || 'Chưa gán' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Nơi làm việc & Phân quyền -->
+          <div class="detail-section">
+            <h4 class="section-subtitle">Nơi làm việc & Phân quyền bưu cục</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Bưu cục làm việc chính</span>
+                <span class="detail-value">{{ selectedUser.primary_hub?.hub_name || 'Hệ thống Trung tâm' }}</span>
+              </div>
+              <div class="detail-item" v-if="selectedUser.role_id === 4 && selectedUser.vehicle_plate">
+                <span class="detail-label">Biển số xe công tác</span>
+                <span class="detail-value fw-bold text-warning">{{ selectedUser.vehicle_plate }}</span>
+              </div>
+              <div class="detail-item full-width" v-if="selectedUser.accessible_hubs?.length">
+                <span class="detail-label">Các bưu cục được phép truy cập dữ liệu</span>
+                <span class="detail-value">{{ formatAccessibleHubs(selectedUser) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <div class="drawer-footer-actions">
+            <button class="btn-secondary" @click="detailDrawerVisible = false">Đóng</button>
+            <button class="btn-primary" @click="detailDrawerVisible = false; openDialog(selectedUser)">
+              <el-icon><Edit /></el-icon>
+              <span>Chỉnh sửa nhân sự</span>
+            </button>
+          </div>
+        </template>
+      </el-drawer>
     </div>
   </div>
 </template>
@@ -322,8 +418,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { 
-  Plus, Edit, Delete, Search, Unlock, Lock, Van, 
-  UserFilled, RefreshRight, Refresh, Message, Phone, OfficeBuilding, User, Key, Loading 
+  Plus, Edit, Search, Unlock, Lock, Van, 
+  UserFilled, RefreshRight, Refresh, Message, Phone, OfficeBuilding, User, Key, Loading, InfoFilled
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -339,6 +435,13 @@ const isProtectedUser = (row) => row?.role_id === 1 || row?.user_id === currentU
 const loading = ref(false);
 const saveLoading = ref(false);
 const dialogVisible = ref(false);
+const detailDrawerVisible = ref(false);
+const selectedUser = ref(null);
+
+const viewStaffDetails = (row) => {
+  selectedUser.value = row;
+  detailDrawerVisible.value = true;
+};
 const formRef = ref(null);
 
 // CHÚ Ý: Biến allUsers lưu toàn bộ dữ liệu gốc kéo từ server
@@ -352,6 +455,18 @@ const filter = reactive({
   role_id: null,
   hub_id: null
 });
+
+const currentPage = ref(1);
+const pageSize = ref(10);
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return filteredUsers.value.slice(start, end);
+});
+
+watch(filter, () => {
+  currentPage.value = 1;
+}, { deep: true });
 
 // LOGIC MỚI: Xử lý lọc dữ liệu trực tiếp ở Frontend
 const filteredUsers = computed(() => {

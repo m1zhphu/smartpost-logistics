@@ -75,7 +75,7 @@
       <!-- Main Table Card -->
       <div v-show="activeTab === 'all'" class="content-card table-wrapper animate-fade-in-up">
         <el-table 
-          :data="customers" 
+          :data="paginatedCustomers" 
           v-loading="loading" 
           class="modern-table"
           row-class-name="modern-row"
@@ -111,34 +111,12 @@
             </template>
           </el-table-column>
 
-          <!-- Người đại diện -->
-          <el-table-column label="Người đại diện" min-width="160">
-            <template #default="{ row }">
-              <span class="text-dark fw-500">
-                <el-icon class="mr-1 text-muted"><User /></el-icon>
-                {{ row.representative_name || '—' }}
-              </span>
-            </template>
-          </el-table-column>
-
+          <!-- Nhân viên quản lý -->
           <el-table-column label="Nhân viên quản lý" min-width="180">
             <template #default="{ row }">
               <span class="text-dark fw-500">
                 <el-icon class="mr-1 text-muted"><UserFilled /></el-icon>
                 {{ row.staff_in_charge_name || '—' }}
-              </span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="Tên đăng nhập" min-width="170">
-            <template #default="{ row }">
-              <span class="username-badge">@{{ row.account_username || row.username || 'Chưa tạo' }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="Bảng giá áp dụng" min-width="190">
-            <template #default="{ row }">
-              <span class="text-dark fw-500">
-                {{ row.policy_name || (row.policy_id ? `Bảng giá #${row.policy_id}` : 'Chưa gán') }}
               </span>
             </template>
           </el-table-column>
@@ -157,23 +135,6 @@
             </template>
           </el-table-column>
 
-          <!-- Ngân hàng (COD) -->
-          <el-table-column label="Ngân hàng nhận COD" min-width="220">
-            <template #default="{ row }">
-              <div v-if="row.bank_name" class="bank-card-mini">
-                <div class="bank-header">
-                  <el-icon><Wallet /></el-icon>
-                  <span class="bank-name">{{ row.bank_name }}</span>
-                </div>
-                <div class="bank-number">{{ row.account_number || row.bank_number }}</div>
-                <div class="bank-owner">{{ row.account_name || row.bank_owner }}</div>
-              </div>
-              <span v-else class="text-muted text-xs flex-center-start">
-                <el-icon class="mr-1"><Warning /></el-icon> Chưa cập nhật
-              </span>
-            </template>
-          </el-table-column>
-
           <!-- Trạng thái -->
           <el-table-column label="Trạng thái" width="130" align="center">
             <template #default="{ row }">
@@ -187,11 +148,11 @@
           <el-table-column label="Thao tác" width="120" fixed="right" align="center">
             <template #default="{ row }">
               <div class="action-buttons">
+                <button class="icon-btn edit" @click="viewCustomerDetails(row)" title="Xem chi tiết">
+                  <el-icon><InfoFilled /></el-icon>
+                </button>
                 <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa">
                   <el-icon><Edit /></el-icon>
-                </button>
-                <button class="icon-btn delete" @click="handleDelete(row)" title="Xóa">
-                  <el-icon><Delete /></el-icon>
                 </button>
               </div>
             </template>
@@ -201,6 +162,15 @@
             <el-empty description="Không tìm thấy dữ liệu khách hàng" :image-size="100" />
           </template>
         </el-table>
+        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="customers.length"
+          />
+        </div>
       </div>
 
       <div v-if="canManageAssignment" v-show="activeTab === 'unassigned'" class="content-card table-wrapper animate-fade-in-up">
@@ -258,9 +228,11 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="Bảng giá áp dụng" min-width="180">
+          <el-table-column label="Bảng giá áp dụng" min-width="200">
             <template #default="{ row }">
-              <span class="text-dark fw-500">{{ row.policy_name || (row.policy_id ? `Bảng giá #${row.policy_id}` : 'Chưa gán') }}</span>
+              <span class="text-dark fw-500 truncate-text" :title="row.policy_name || (row.policy_id ? `Bảng giá #${row.policy_id}` : 'Chưa gán')">
+                {{ row.policy_name || (row.policy_id ? `Bảng giá #${row.policy_id}` : 'Chưa gán') }}
+              </span>
             </template>
           </el-table-column>
 
@@ -525,22 +497,72 @@
               </el-col>
             </el-row>
 
+            <!-- Địa chỉ cascade: Tỉnh → Quận/Huyện → Phường/Xã -->
             <el-row :gutter="24">
               <el-col :span="12">
-                <el-form-item label="Quốc gia" prop="country">
-                  <el-input v-model="customerForm.country" placeholder="VD: Việt Nam" />
+                <el-form-item label="Tỉnh / Thành phố" prop="province">
+                  <el-select
+                    v-model="selectedProvinceCode"
+                    filterable
+                    clearable
+                    class="w-full"
+                    placeholder="Chọn tỉnh / thành phố"
+                    :loading="loadingProvinces"
+                    @change="onProvinceChange"
+                  >
+                    <template #prefix><el-icon><Location /></el-icon></template>
+                    <el-option
+                      v-for="p in provinces"
+                      :key="p.code"
+                      :label="p.name"
+                      :value="p.code"
+                    />
+                  </el-select>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="Tỉnh / Thành phố" prop="province">
-                  <el-input v-model="customerForm.province" placeholder="VD: TP. Hồ Chí Minh" />
+                <el-form-item label="Quận / Huyện" prop="district">
+                  <el-select
+                    v-model="selectedDistrictCode"
+                    filterable
+                    clearable
+                    class="w-full"
+                    placeholder="Chọn quận / huyện"
+                    :loading="loadingDistricts"
+                    :disabled="!selectedProvinceCode"
+                    @change="onDistrictChange"
+                  >
+                    <template #prefix><el-icon><Location /></el-icon></template>
+                    <el-option
+                      v-for="d in districts"
+                      :key="d.code"
+                      :label="d.name"
+                      :value="d.code"
+                    />
+                  </el-select>
                 </el-form-item>
               </el-col>
             </el-row>
             <el-row :gutter="24">
               <el-col :span="12">
                 <el-form-item label="Phường / Xã" prop="ward">
-                  <el-input v-model="customerForm.ward" placeholder="VD: Phường Bến Nghé" />
+                  <el-select
+                    v-model="customerForm.ward"
+                    filterable
+                    clearable
+                    class="w-full"
+                    placeholder="Chọn phường / xã"
+                    :loading="loadingWards"
+                    :disabled="!selectedDistrictCode"
+                  >
+                    <template #prefix><el-icon><Location /></el-icon></template>
+                    <el-option
+                      v-for="w in wards"
+                      :key="w.code"
+                      :label="w.name"
+                      :value="w.name"
+                    />
+                  </el-select>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -596,6 +618,138 @@
           </div>
         </template>
       </el-dialog>
+
+      <!-- Drawer Xem chi tiết Khách hàng -->
+      <el-drawer
+        v-model="detailDrawerVisible"
+        title="Chi tiết Khách hàng"
+        size="550px"
+        class="modern-detail-drawer"
+        destroy-on-close
+      >
+        <template #header>
+          <div class="drawer-header-content">
+            <div class="drawer-title-wrapper">
+              <div class="avatar-icon large" :class="selectedCustomer?.customer_type === 'COMPANY' ? 'bg-primary' : 'bg-success'">
+                <el-icon v-if="selectedCustomer?.customer_type === 'COMPANY'"><OfficeBuilding /></el-icon>
+                <el-icon v-else><Shop /></el-icon>
+              </div>
+              <div>
+                <h3 class="drawer-main-title">{{ selectedCustomer?.transaction_name || selectedCustomer?.name || selectedCustomer?.customer_code }}</h3>
+                <span class="code-badge">{{ selectedCustomer?.customer_code }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div v-if="selectedCustomer" class="drawer-body-details">
+          <!-- Section: Thông tin chung -->
+          <div class="detail-section">
+            <h4 class="section-subtitle">Thông tin Chung</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Loại khách hàng</span>
+                <span class="detail-value">
+                  <el-tag :type="selectedCustomer.customer_type === 'COMPANY' ? 'primary' : 'success'" size="small" effect="plain">
+                    {{ selectedCustomer.customer_type === 'COMPANY' ? 'Doanh nghiệp' : 'Cá nhân' }}
+                  </el-tag>
+                </span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Trạng thái</span>
+                <span class="detail-value">
+                  <el-tag :type="selectedCustomer.status === 'ACTIVE' ? 'success' : 'danger'" size="small">
+                    {{ selectedCustomer.status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng hợp tác' }}
+                  </el-tag>
+                </span>
+              </div>
+              <div class="detail-item" v-if="selectedCustomer.company_name">
+                <span class="detail-label">Tên công ty</span>
+                <span class="detail-value">{{ selectedCustomer.company_name }}</span>
+              </div>
+              <div class="detail-item" v-if="selectedCustomer.representative_name">
+                <span class="detail-label">Người đại diện</span>
+                <span class="detail-value">{{ selectedCustomer.representative_name }}</span>
+              </div>
+              <div class="detail-item" v-if="selectedCustomer.tax_code">
+                <span class="detail-label">Mã số thuế</span>
+                <span class="detail-value">{{ selectedCustomer.tax_code }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Tài khoản -->
+          <div class="detail-section">
+            <h4 class="section-subtitle">Tài khoản & Phân quyền</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Tên đăng nhập</span>
+                <span class="detail-value fw-bold">@{{ selectedCustomer.account_username || selectedCustomer.username || 'Chưa tạo' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Bảng giá áp dụng</span>
+                <span class="detail-value">{{ selectedCustomer.policy_name || 'Chưa cấu hình (Áp dụng mặc định)' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Nhân viên CSKH quản lý</span>
+                <span class="detail-value fw-bold text-primary">{{ selectedCustomer.staff_in_charge_name || 'Chưa gán nhân viên' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Liên hệ & Địa chỉ -->
+          <div class="detail-section">
+            <h4 class="section-subtitle">Thông tin Liên hệ & Địa chỉ</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Số điện thoại</span>
+                <span class="detail-value">{{ selectedCustomer.phone || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Email</span>
+                <span class="detail-value">{{ selectedCustomer.email || '—' }}</span>
+              </div>
+              <div class="detail-item full-width">
+                <span class="detail-label">Địa chỉ đăng ký</span>
+                <span class="detail-value">{{ selectedCustomer.address || selectedCustomer.address_detail || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Nhận COD -->
+          <div class="detail-section">
+            <h4 class="section-subtitle">Tài khoản Ngân hàng (Nhận COD)</h4>
+            <div class="detail-grid" v-if="selectedCustomer.bank_name">
+              <div class="detail-item">
+                <span class="detail-label">Ngân hàng</span>
+                <span class="detail-value">{{ selectedCustomer.bank_name }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Số tài khoản</span>
+                <span class="detail-value">{{ selectedCustomer.account_number || selectedCustomer.bank_number || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Chủ tài khoản</span>
+                <span class="detail-value uppercase fw-bold">{{ selectedCustomer.account_name || selectedCustomer.bank_owner || '—' }}</span>
+              </div>
+            </div>
+            <div v-else class="no-bank-info">
+              <el-icon><Warning /></el-icon>
+              <span>Chưa cập nhật tài khoản ngân hàng nhận tiền thu hộ (COD)</span>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <div class="drawer-footer-actions">
+            <button class="btn-secondary" @click="detailDrawerVisible = false">Đóng</button>
+            <button class="btn-primary" @click="detailDrawerVisible = false; openDialog(selectedCustomer)">
+              <el-icon><Edit /></el-icon>
+              <span>Chỉnh sửa thông tin</span>
+            </button>
+          </div>
+        </template>
+      </el-drawer>
     </div>
   </div>
 </template>
@@ -603,9 +757,9 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { 
-  Plus, Edit, Delete, Search, Shop, OfficeBuilding, Phone, Message,
+  Plus, Edit, Search, Shop, OfficeBuilding, Phone, Message,
   Wallet, Briefcase, User, Warning, Key, Document, Avatar, InfoFilled, 
-  CreditCard, Menu, UserFilled, Loading
+  CreditCard, Menu, UserFilled, Loading, Location
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -630,6 +784,13 @@ const unassignedLoading = ref(false);
 const inactiveLoading = ref(false);
 const saveLoading = ref(false);
 const dialogVisible = ref(false);
+const detailDrawerVisible = ref(false);
+const selectedCustomer = ref(null);
+
+const viewCustomerDetails = (row) => {
+  selectedCustomer.value = row;
+  detailDrawerVisible.value = true;
+};
 const activeTab = ref('all');
 const searchQuery = ref('');
 const staffFilterId = ref(null);
@@ -641,6 +802,108 @@ const staffOptions = ref([]);
 const pricingPolicies = ref([]);
 const assignmentDrafts = reactive({});
 const assigningCustomerId = ref(null);
+
+// ---- Địa chỉ Cascade (provinces.open-api.vn) ----
+const ADDR_API = 'https://provinces.open-api.vn/api';
+const provinces = ref([]);
+const districts = ref([]);
+const wards = ref([]);
+const selectedProvinceCode = ref(null);
+const selectedDistrictCode = ref(null);
+const loadingProvinces = ref(false);
+const loadingDistricts = ref(false);
+const loadingWards = ref(false);
+
+const fetchProvinces = async () => {
+  if (provinces.value.length) return;
+  loadingProvinces.value = true;
+  try {
+    const res = await fetch(`${ADDR_API}/`);
+    provinces.value = await res.json();
+  } catch {
+    ElMessage.warning('Không thể tải danh sách tỉnh/thành phố');
+  } finally {
+    loadingProvinces.value = false;
+  }
+};
+
+const onProvinceChange = async (code) => {
+  // Cập nhật tên tỉnh vào form
+  const found = provinces.value.find(p => p.code === code);
+  customerForm.province = found ? found.name : '';
+  // Reset quận/huyện và phường/xã
+  selectedDistrictCode.value = null;
+  customerForm.ward = '';
+  districts.value = [];
+  wards.value = [];
+  if (!code) return;
+  loadingDistricts.value = true;
+  try {
+    const res = await fetch(`${ADDR_API}/p/${code}?depth=2`);
+    const data = await res.json();
+    districts.value = data.districts || [];
+  } catch {
+    ElMessage.warning('Không thể tải danh sách quận/huyện');
+  } finally {
+    loadingDistricts.value = false;
+  }
+};
+
+const onDistrictChange = async (code) => {
+  // Reset phường/xã
+  customerForm.ward = '';
+  wards.value = [];
+  if (!code) return;
+  loadingWards.value = true;
+  try {
+    const res = await fetch(`${ADDR_API}/d/${code}?depth=2`);
+    const data = await res.json();
+    wards.value = data.wards || [];
+  } catch {
+    ElMessage.warning('Không thể tải danh sách phường/xã');
+  } finally {
+    loadingWards.value = false;
+  }
+};
+
+// Khi dialog mở để sửa, pre-load districts/wards nếu đã có tỉnh/quận
+const preloadAddressDropdowns = async (row) => {
+  await fetchProvinces();
+  if (!row) { selectedProvinceCode.value = null; selectedDistrictCode.value = null; districts.value = []; wards.value = []; return; }
+  // Tìm province code theo tên
+  const prov = provinces.value.find(p => p.name === (row.province || row.province_name));
+  if (prov) {
+    selectedProvinceCode.value = prov.code;
+    loadingDistricts.value = true;
+    try {
+      const res = await fetch(`${ADDR_API}/p/${prov.code}?depth=2`);
+      const data = await res.json();
+      districts.value = data.districts || [];
+      // Tìm district code — lưu tên quận thì phải match tên
+      const dist = districts.value.find(d => d.name === row.district);
+      if (dist) {
+        selectedDistrictCode.value = dist.code;
+        loadingWards.value = true;
+        try {
+          const res2 = await fetch(`${ADDR_API}/d/${dist.code}?depth=2`);
+          const data2 = await res2.json();
+          wards.value = data2.wards || [];
+        } finally { loadingWards.value = false; }
+      } else { selectedDistrictCode.value = null; wards.value = []; }
+    } catch { ElMessage.warning('Không thể tải dữ liệu địa chỉ'); } 
+    finally { loadingDistricts.value = false; }
+  } else {
+    selectedProvinceCode.value = null; selectedDistrictCode.value = null; districts.value = []; wards.value = [];
+  }
+};
+
+const currentPage = ref(1);
+const pageSize = ref(10);
+const paginatedCustomers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return customers.value.slice(start, end);
+});
 
 const customerForm = reactive({
   id: null,
@@ -658,6 +921,7 @@ const customerForm = reactive({
   address: '',
   country: 'Việt Nam',
   province: '',
+  district: '',
   ward: '',
   street_address: '',
   bank_name: '',
@@ -690,7 +954,7 @@ const fetchStaffOptions = async () => {
   try {
     const res = await api.get('/api/users');
     const raw = Array.isArray(res.data) ? res.data : (res.data.items || res.data.data || []);
-    staffOptions.value = raw.filter(user => user.is_active !== false && user.role_id !== 6);
+    staffOptions.value = raw.filter(user => user.is_active !== false && user.role_id !== 6 && user.role_id !== 4);
   } catch (err) {
     staffOptions.value = [];
     ElMessage.warning('Không thể lấy danh sách nhân viên quản lý');
@@ -791,7 +1055,7 @@ const assignCustomer = async (row) => {
   }
 };
 
-const openDialog = (row) => {
+const openDialog = async (row) => {
   if (row) {
     Object.assign(customerForm, {
       id: row.customer_id || row.id,
@@ -810,6 +1074,7 @@ const openDialog = (row) => {
       ...parseAddressParts(row.address || row.address_detail || ''),
       country: row.country || parseAddressParts(row.address || row.address_detail || '').country,
       province: row.province || row.province_name || parseAddressParts(row.address || row.address_detail || '').province,
+      district: row.district || '',
       ward: row.ward || row.ward_name || parseAddressParts(row.address || row.address_detail || '').ward,
       street_address: row.street_address || parseAddressParts(row.address || row.address_detail || '').street_address,
       bank_name: row.bank_name || '',
@@ -818,6 +1083,7 @@ const openDialog = (row) => {
       username: row.account_username || row.username || '',
       password: ''
     });
+    await preloadAddressDropdowns(row);
   } else {
     Object.assign(customerForm, {
       id: null, customer_code: '', customer_type: 'PERSONAL', status: 'ACTIVE',
@@ -825,10 +1091,11 @@ const openDialog = (row) => {
       policy_id: null,
       name: '', company_name: '', representative_name: '', tax_code: '',
       phone: '', email: '', address: '',
-      country: 'Việt Nam', province: '', ward: '', street_address: '',
+      country: 'Việt Nam', province: '', district: '', ward: '', street_address: '',
       bank_name: '', bank_number: '', bank_owner: '',
       username: '', password: ''
     });
+    await preloadAddressDropdowns(null);
   }
   dialogVisible.value = true;
 };
@@ -844,6 +1111,7 @@ const handleSave = async () => {
           address: [
             customerForm.street_address,
             customerForm.ward,
+            customerForm.district,
             customerForm.province,
             customerForm.country
           ].filter(Boolean).join(', ')
@@ -903,6 +1171,7 @@ onMounted(() => {
   fetchData();
   fetchStaffOptions();
   fetchPricingPolicies();
+  fetchProvinces();
   if (canManageAssignment.value && activeTab.value === 'unassigned') {
     fetchUnassignedCustomers();
   }

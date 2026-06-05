@@ -58,7 +58,9 @@
         
         <div class="tracking-footer">
            <p>© 2026 SmartPost Logistics • Hotline 24/7: 1900 1234</p>
-           <el-button text type="primary" @click="$router.push('/login')">Đăng nhập hệ thống nhân viên</el-button>
+           <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+             <el-button type="info" size="small" plain @click="goBack">Quay lại</el-button>
+           </div>
         </div>
       </div>
     </div>
@@ -67,7 +69,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { Search, StarFilled } from '@element-plus/icons-vue';
 import QrcodeVue from 'qrcode.vue';
 import api from '@/api/axios';
@@ -75,11 +77,20 @@ import moment from 'moment';
 import { ElMessage } from 'element-plus';
 
 const route = useRoute();
+const router = useRouter();
 const waybillCode = ref('');
 const loading = ref(false);
 const searched = ref(false);
 const trackingData = ref(null);
 const trackingLogs = ref([]);
+
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push('/customer/portal');
+  }
+};
 
 const handleTrack = async () => {
   if (!waybillCode.value) return;

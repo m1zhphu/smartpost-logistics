@@ -149,3 +149,44 @@
 .register-link:hover {
   color: #2F7C31;
 }
+
+@media (max-width: 640px) {
+  .login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 2rem 1.5rem;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  
+  .login-logo-top img {
+    height: 90px;
+  }
+  
+  .login-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .custom-input :deep(.el-input__inner) {
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .login-btn {
+    height: 48px;
+    font-size: 1.05rem;
+  }
+
+  .login-logo-bottom {
+    margin-top: 2rem;
+    gap: 1rem;
+  }
+
+  .login-logo-bottom img {
+    height: 40px;
+  }
+
+  .logo-divider {
+    height: 35px;
+  }
+}
