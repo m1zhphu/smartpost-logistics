@@ -1,67 +1,82 @@
 import os
-import re
 
-views_dir = r"d:\smartpost-logistics\frontend\src\views"
-styles_dir = r"d:\smartpost-logistics\frontend\src\styles"
-
-def process_vue_file(file_path):
-    with open(file_path, 'r', encoding='utf-8') as f:
+def replace_in_file(filepath, replacements):
+    with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
-
-    pattern = re.compile(r'^(<style[^>]*>)(.*?)^</style>', re.MULTILINE | re.DOTALL)
-    matches = list(pattern.finditer(content))
-
-    if not matches:
-        return False
-
-    rel_path = os.path.relpath(file_path, views_dir)
-    base_name = os.path.splitext(rel_path)[0]
     
-    processed = False
-    new_content = content
-    
-    # Process from last to first
-    for idx, match in enumerate(reversed(matches)):
-        style_tag_open = match.group(1)
-        css_content = match.group(2).strip()
+    original_content = content
+    for old, new in replacements:
+        content = content.replace(old, new)
         
-        # skip if already just a src import or empty
-        if ('src=' in style_tag_open and not css_content) or not css_content:
-            continue
-            
-        suffix = f"-{len(matches) - idx}" if len(matches) > 1 else ""
-        css_rel_path = f"{base_name}{suffix}.css"
-        css_full_path = os.path.join(styles_dir, css_rel_path)
-        
-        os.makedirs(os.path.dirname(css_full_path), exist_ok=True)
-        
-        with open(css_full_path, 'w', encoding='utf-8') as f:
-            f.write(css_content + '\n')
-            
-        import_path = '@/styles/' + css_rel_path.replace('\\\\', '/').replace('\\', '/')
-        new_style_tag_open = re.sub(r'\s*src=(["\']).*?\1', '', style_tag_open)
-        # we removed the trailing > of open tag? Wait!
-        # style_tag_open contains the whole '<style scoped>'
-        # we can insert src="..." before the last '>'
-        
-        tag_inner = new_style_tag_open[:-1]
-        new_style_block = f'{tag_inner} src="{import_path}"></style>'
-        
-        start, end = match.span()
-        new_content = new_content[:start] + new_style_block + new_content[end:]
-        processed = True
+    if content != original_content:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"Updated {filepath}")
 
-    if processed:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-        print(f"Processed: {rel_path} -> {css_rel_path}")
-        return True
-    return False
+mobile_src = os.path.join("mobile", "src")
 
-count = 0
-for root, dirs, files in os.walk(views_dir):
-    for file in files:
-        if file.endswith('.vue'):
-            if process_vue_file(os.path.join(root, file)):
-                count += 1
-print(f"Done. Processed {count} files.")
+# 1. customer.js
+replace_in_file(os.path.join(mobile_src, "services", "customer.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';"),
+    ("ENDPOINTS.GET_CUSTOMERS", "WAREHOUSE_ENDPOINTS.GET_CUSTOMERS")
+])
+
+# 2. expoToken.js
+replace_in_file(os.path.join(mobile_src, "services", "expoToken.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';"),
+    ("ENDPOINTS.UPDATE_PUSH_TOKEN(token)", "WAREHOUSE_ENDPOINTS.UPDATE_PUSH_TOKEN_URL, { token }")
+])
+
+# 3. inventory.js
+replace_in_file(os.path.join(mobile_src, "services", "inventory.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';"),
+    ("ENDPOINTS.", "WAREHOUSE_ENDPOINTS.")
+])
+
+# 4. product.js
+replace_in_file(os.path.join(mobile_src, "services", "product.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';"),
+    ("ENDPOINTS.", "WAREHOUSE_ENDPOINTS.")
+])
+
+# 5. shipmentService.js
+replace_in_file(os.path.join(mobile_src, "services", "shipmentService.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';"),
+    ("ENDPOINTS.", "CUSTOMER_ENDPOINTS.")
+])
+
+# 6. shipper.js
+replace_in_file(os.path.join(mobile_src, "services", "shipper.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';"),
+    ("ENDPOINTS.", "WAREHOUSE_ENDPOINTS.")
+])
+
+# 7. vehicle.js
+replace_in_file(os.path.join(mobile_src, "services", "vehicle.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';"),
+    ("ENDPOINTS.", "WAREHOUSE_ENDPOINTS.")
+])
+
+# 8. vi_tri_kho.js
+replace_in_file(os.path.join(mobile_src, "services", "vi_tri_kho.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';"),
+    ("ENDPOINTS.", "WAREHOUSE_ENDPOINTS.")
+])
+
+# 9. GlobalChat.js
+replace_in_file(os.path.join(mobile_src, "components", "GlobalChat.js"), [
+    ("import { API_BASE_URL } from '../constants/data';", "import { API_BASE_URL } from '../constants/customerEndpoints';")
+])
+
+# 10. HomeScreen.js
+replace_in_file(os.path.join(mobile_src, "screens", "HomeScreen.js"), [
+    ("import { ENDPOINTS } from '../constants/data';", "import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';"),
+    ("ENDPOINTS.", "CUSTOMER_ENDPOINTS.")
+])
+
+# And let's remove the old data.js
+data_js_path = os.path.join(mobile_src, "constants", "data.js")
+if os.path.exists(data_js_path):
+    os.remove(data_js_path)
+    print(f"Removed {data_js_path}")
+

@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser, apiClient } from '../context/UserContext';
-import { API_BASE_URL } from '../constants/data';
+import { API_BASE_URL } from '../constants/customerEndpoints';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 

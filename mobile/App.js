@@ -14,6 +14,11 @@ import NotificationScreen from './src/screens/NotificationScreen';
 import WarehouseHomeScreen from './src/screens/WarehouseHomeScreen';
 import WarehouseActionScreen from './src/screens/WarehouseActionScreen';
 import CustomerHomeScreen from './src/screens/CustomerHomeScreen';
+import CustomerProfileScreen from './src/screens/CustomerProfileScreen';
+import CustomerUpdateProfileScreen from './src/screens/CustomerUpdateProfileScreen';
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 
 import { QueueProvider } from './src/context/QueueContext';
@@ -71,6 +76,8 @@ export default function App() {
           <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Tutorial" component={TutorialScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
 
             {/* Màn hình của Shipper */}
             <Stack.Screen name="Home" component={HomeScreen} />
@@ -81,6 +88,9 @@ export default function App() {
 
             {/* Màn hình của Khách hàng */}
             <Stack.Screen name="CustomerHome" component={CustomerHomeScreen} />
+            <Stack.Screen name="CustomerProfile" component={CustomerProfileScreen} />
+            <Stack.Screen name="CustomerUpdateProfile" component={CustomerUpdateProfileScreen} />
+            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
 
             <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
 

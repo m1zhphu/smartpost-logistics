@@ -1,9 +1,9 @@
 // src/services/product.js
-import { ENDPOINTS } from '../constants/data';
+import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';
 
 export const productService = async (maSanPham) => {
     try {
-        const url = ENDPOINTS.GET_MA_MAY(maSanPham);
+        const url = WAREHOUSE_WAREHOUSE_ENDPOINTS.GET_MA_MAY(maSanPham);
         const response = await fetch(url, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },

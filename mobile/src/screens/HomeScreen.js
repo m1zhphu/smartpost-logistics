@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { ENDPOINTS } from '../constants/data';
+import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
 import styles from '../styles/HomeStyles';
 import { useQueue } from '../context/QueueContext';
 import { COLORS } from '../constants/colors';
@@ -269,7 +269,7 @@ export default function HomeScreen({ route, navigation }) {
 
             formData.append('file', { uri: cleanUri, name: filename, type });
 
-            const response = await fetch(ENDPOINTS.EXTRACT, {
+            const response = await fetch(CUSTOMER_CUSTOMER_ENDPOINTS.EXTRACT, {
                 method: 'POST', body: formData, headers: { 'Accept': 'application/json' },
             });
 

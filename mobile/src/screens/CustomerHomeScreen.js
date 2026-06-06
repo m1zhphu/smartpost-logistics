@@ -40,6 +40,14 @@ export default function CustomerHomeScreen({ navigation }) {
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity
+                        onPress={() => navigation.navigate('CustomerProfile')}
+                        style={[styles.appleCircleBtn, { marginRight: 12 }]}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="person-outline" size={20} color="#FFF" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         onPress={() => {}}
                         style={styles.appleCircleBtn}
                         activeOpacity={0.7}

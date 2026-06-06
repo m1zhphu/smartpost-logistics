@@ -1,9 +1,9 @@
-import { ENDPOINTS } from '../constants/data';
+import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
 
 export const submitShipment = async (payload) => {
     try {
 
-        const response = await fetch(ENDPOINTS.SUBMIT, {
+        const response = await fetch(CUSTOMER_CUSTOMER_ENDPOINTS.SUBMIT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -42,7 +42,7 @@ export const submitShipment = async (payload) => {
 
 export const getShipment = async (trackingNumber) => {
     try {
-        const url = ENDPOINTS.GET_SHIPMENT(trackingNumber);
+        const url = CUSTOMER_CUSTOMER_ENDPOINTS.GET_SHIPMENT(trackingNumber);
         const response = await fetch(url, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },

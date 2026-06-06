@@ -41,6 +41,7 @@ export default function LoginScreen({ navigation }) {
   // States for registration
   const [regUsername, setRegUsername] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [regFullName, setRegFullName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
@@ -55,7 +56,55 @@ export default function LoginScreen({ navigation }) {
   const { login } = useUser();
   const { clearQueue } = useQueue();
 
-  const { loginUserAndFetchProfile, isWarehouseStaff } = useUser();
+  const { loginUserAndFetchProfile, isWarehouseStaff, autoLogin } = useUser();
+
+  React.useEffect(() => {
+    const attemptAutoLogin = async () => {
+      setLoading(true);
+      try {
+        const result = await autoLogin();
+        if (result && result.success) {
+          const tutorialDone = await AsyncStorage.getItem("tutorial_done");
+          const isTutorialCompleted = tutorialDone === "true";
+
+          let nextScreen = "Tutorial";
+
+          if (isTutorialCompleted) {
+            const userRoles = result.profileData.roles || [];
+            const latestPermissions = [];
+            userRoles.forEach((role) => {
+              (role.permissions || []).forEach((p) => {
+                if (!latestPermissions.includes(p.code))
+                  latestPermissions.push(p.code);
+              });
+            });
+
+            const hasWarehousePerms = isWarehouseStaff(latestPermissions);
+
+            if (result.userType === "customer") {
+              nextScreen = "CustomerHome";
+            } else if (hasWarehousePerms) {
+              nextScreen = "WarehouseHome";
+            } else {
+              nextScreen = "Home";
+            }
+          }
+
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: nextScreen }],
+            }),
+          );
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        setLoading(false);
+      }
+    };
+    attemptAutoLogin();
+  }, []);
 
   const handleLogin = async () => {
     const isConnected = await checkNetworkConnection();
@@ -132,6 +181,7 @@ export default function LoginScreen({ navigation }) {
       !regEmail ||
       !regUsername ||
       !regPassword ||
+      !regConfirmPassword ||
       !regFullName ||
       !regPhone
     ) {
@@ -139,6 +189,15 @@ export default function LoginScreen({ navigation }) {
         type: "error",
         text1: "Thiếu thông tin",
         text2: "Vui lòng điền đủ các trường!",
+      });
+      return;
+    }
+
+    if (regPassword !== regConfirmPassword) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi mật khẩu",
+        text2: "Mật khẩu nhập lại không khớp!",
       });
       return;
     }
@@ -267,6 +326,15 @@ export default function LoginScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {userType === 'customer' && (
+        <TouchableOpacity 
+          style={{ alignSelf: 'flex-end', marginTop: 10, marginBottom: 20 }}
+          onPress={() => navigation.navigate('ForgotPassword')}
+        >
+          <Text style={{ color: COLORS.primaryColorAuth, fontWeight: '600' }}>Quên mật khẩu?</Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity
         style={styles.loginBtn}
         onPress={handleLogin}
@@ -340,6 +408,33 @@ export default function LoginScreen({ navigation }) {
           placeholderTextColor="#999"
           value={regPassword}
           onChangeText={setRegPassword}
+          secureTextEntry={!showPassword}
+        />
+        <TouchableOpacity
+          onPress={() => setShowPassword(!showPassword)}
+          style={styles.eyeIcon}
+        >
+          <Ionicons
+            name={showPassword ? "eye-outline" : "eye-off-outline"}
+            size={20}
+            color={COLORS.primaryColorAuth}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.inputWrapper}>
+        <Ionicons
+          name="lock-closed-outline"
+          size={20}
+          color={COLORS.primaryColorAuth}
+          style={styles.icon}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Nhập lại mật khẩu"
+          placeholderTextColor="#999"
+          value={regConfirmPassword}
+          onChangeText={setRegConfirmPassword}
           secureTextEntry={!showPassword}
         />
         <TouchableOpacity

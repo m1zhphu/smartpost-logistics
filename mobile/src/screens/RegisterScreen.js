@@ -14,6 +14,7 @@ import { checkNetworkConnection } from '../utils/networkUtils';
 export default function RegisterScreen({ navigation }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
@@ -21,8 +22,13 @@ export default function RegisterScreen({ navigation }) {
         const isConnected = await checkNetworkConnection();
         if (!isConnected) return;
 
-        if (!username || !password) {
+        if (!username || !password || !confirmPassword) {
             Toast.show({ type: 'error', text1: 'Lỗi', text2: 'Vui lòng nhập đủ thông tin' });
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            Toast.show({ type: 'error', text1: 'Lỗi', text2: 'Mật khẩu nhập lại không khớp!' });
             return;
         }
         setLoading(true);
@@ -84,6 +90,21 @@ export default function RegisterScreen({ navigation }) {
                                 placeholderTextColor="#999"
                                 value={password}
                                 onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                            />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                                <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color={COLORS.primaryColorAuth} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.inputWrapper}>
+                            <Ionicons name="lock-closed-outline" size={20} color={COLORS.primaryColorAuth} style={styles.icon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Nhập lại mật khẩu"
+                                placeholderTextColor="#999"
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
                                 secureTextEntry={!showPassword}
                             />
                             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>

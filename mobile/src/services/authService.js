@@ -1,8 +1,9 @@
-import { ENDPOINTS } from '../constants/data';
+import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
+import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';
 
 export const loginUser = async (username, password, userType = 'employee') => {
     try {
-        const loginUrl = userType === 'customer' ? ENDPOINTS.CUSTOMER_LOGIN : ENDPOINTS.EMPLOYEE_LOGIN;
+        const loginUrl = userType === 'customer' ? CUSTOMER_ENDPOINTS.CUSTOMER_LOGIN : WAREHOUSE_ENDPOINTS.EMPLOYEE_LOGIN;
         const response = await fetch(loginUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -26,7 +27,7 @@ export const loginUser = async (username, password, userType = 'employee') => {
 
 export const requestRegisterOTP = async (email) => {
     try {
-        const response = await fetch(ENDPOINTS.REGISTER_OTP, {
+        const response = await fetch(CUSTOMER_ENDPOINTS.REGISTER_OTP, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
@@ -46,7 +47,7 @@ export const requestRegisterOTP = async (email) => {
 
 export const verifyRegisterOTP = async (payload) => {
     try {
-        const response = await fetch(ENDPOINTS.REGISTER_VERIFY, {
+        const response = await fetch(CUSTOMER_ENDPOINTS.REGISTER_VERIFY, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -65,7 +66,7 @@ export const verifyRegisterOTP = async (payload) => {
 };
 export const registerUser = async (username, password) => {
     try {
-        const response = await fetch(ENDPOINTS.REGISTER, {
+        const response = await fetch(CUSTOMER_ENDPOINTS.REGISTER, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password }),
@@ -91,5 +92,47 @@ export const registerUser = async (username, password) => {
         }
 
         throw new Error('Lỗi không xác định. Vui lòng thử lại.');
+    }
+};
+
+export const requestForgotPasswordOtp = async (email) => {
+    try {
+        const url = CUSTOMER_ENDPOINTS.FORGOT_PASSWORD_OTP;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Lỗi gửi yêu cầu OTP đặt lại mật khẩu');
+        }
+
+        return { success: true, data };
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const resetPasswordWithOtp = async (payload) => {
+    try {
+        const url = CUSTOMER_ENDPOINTS.FORGOT_PASSWORD_RESET;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Lỗi đặt lại mật khẩu');
+        }
+
+        return { success: true, data };
+    } catch (error) {
+        throw error;
     }
 };

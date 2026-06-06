@@ -1,11 +1,11 @@
 
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
-import { ENDPOINTS } from '../constants/data';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
-import { API_BASE_URL, WAREHOUSE_API_URL } from '../constants/data';
+import { API_BASE_URL, CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
+import { WAREHOUSE_API_URL, WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';
 import { CommonActions, createNavigationContainerRef } from '@react-navigation/native';
 import { checkNetworkConnection } from '../utils/networkUtils';
 import NetInfo from '@react-native-community/netinfo';
@@ -99,7 +99,7 @@ export const UserProvider = ({ children }) => {
                     return;
                 }
 
-                const res = await apiClient.get(ENDPOINTS.GET_UNREAD_NOTIFICATIONS, {
+                const res = await apiClient.get(WAREHOUSE_ENDPOINTS.GET_UNREAD_NOTIFICATIONS, {
                     headers: { Authorization: `Bearer ${currentToken}` }
                 });
                 const data = res.data.data || res.data;
@@ -170,10 +170,10 @@ export const UserProvider = ({ children }) => {
                 if (pushToken) {
                     const uType = await AsyncStorage.getItem('user_type') || 'employee';
                     if (uType === 'customer') {
-                        ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN(pushToken)
+                        apiClient.post(CUSTOMER_ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken })
                             .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
                     } else {
-                        ENDPOINTS.UPDATE_PUSH_TOKEN(pushToken)
+                        apiClient.put(WAREHOUSE_ENDPOINTS.UPDATE_PUSH_TOKEN_URL, { token: pushToken })
                             .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
                     }
                 }
@@ -220,10 +220,10 @@ export const UserProvider = ({ children }) => {
         if (pushToken) {
             const uType = await AsyncStorage.getItem('user_type') || 'employee';
             if (uType === 'customer') {
-                ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN(pushToken)
+                apiClient.post(CUSTOMER_ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken })
                     .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
             } else {
-                ENDPOINTS.UPDATE_PUSH_TOKEN(pushToken)
+                apiClient.put(WAREHOUSE_ENDPOINTS.UPDATE_PUSH_TOKEN_URL, { token: pushToken })
                     .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
             }
         }
@@ -311,35 +311,61 @@ export const UserProvider = ({ children }) => {
             const currentToken = directToken || await AsyncStorage.getItem('access_token');
             const userType = providedUserType || await AsyncStorage.getItem('user_type') || 'employee';
             
-            // NẾU LÀ KHÁCH HÀNG: Parse thẳng từ JWT thay vì gọi API (vì Backend FastAPI ko có /api/users/me)
+            // NẾU LÀ KHÁCH HÀNG: Gọi API /api/customers/me để lấy hồ sơ mới nhất
             if (userType === 'customer') {
-                const decoded = jwtDecode(currentToken);
-                
-                const mockProfileData = {
-                    id: decoded.user_id,
-                    username: decoded.sub,
-                    customer_id: decoded.customer_id,
-                    // full_name sẽ lấy fallback lúc login hoặc ở view, vì JWT có thể ko có
-                    full_name: 'Khách hàng', 
-                };
-
-                setUser(mockProfileData);
-
-                // JWT chứa map { "pickup_create": True, ... }
-                const perms = [];
-                if (decoded.permissions) {
-                    Object.keys(decoded.permissions).forEach(key => {
-                        if (decoded.permissions[key]) perms.push(key);
+                const profileUrl = CUSTOMER_ENDPOINTS.GET_PROFILE_CUSTOMER;
+                try {
+                    const response = await apiClient.get(profileUrl, {
+                        headers: { Authorization: `Bearer ${currentToken}` }
                     });
+                    
+                    const data = response.data;
+                    const profileData = {
+                        id: data.user_id || data.id,
+                        username: data.username,
+                        customer_id: data.customer_id,
+                        full_name: data.full_name || data.name || data.representative_name || 'Khách hàng',
+                        phone_number: data.phone || data.phone_number,
+                        email: data.email,
+                        address: data.address || data.address_detail,
+                        street_address: data.street_address,
+                        province: data.province || data.province_name,
+                        ward: data.ward || data.ward_name,
+                        province_id: data.province_id,
+                        ward_id: data.ward_id
+                    };
+                    
+                    setUser(profileData);
+                    
+                    // Giữ lại roles và permissions từ JWT
+                    const decoded = jwtDecode(currentToken);
+                    const perms = [];
+                    if (decoded.permissions) {
+                        Object.keys(decoded.permissions).forEach(key => {
+                            if (decoded.permissions[key]) perms.push(key);
+                        });
+                    }
+                    setPermissions(perms);
+                    setRoles([{ role_id: decoded.role_id }]);
+                    
+                    return profileData;
+                } catch (err) {
+                    console.error("Lỗi lấy hồ sơ khách hàng:", err);
+                    // Fallback to JWT if API fails
+                    const decoded = jwtDecode(currentToken);
+                    const mockProfileData = {
+                        id: decoded.user_id,
+                        username: decoded.sub,
+                        customer_id: decoded.customer_id,
+                        full_name: 'Khách hàng', 
+                    };
+                    setUser(mockProfileData);
+                    return mockProfileData;
                 }
-                setPermissions(perms);
-                setRoles([{ role_id: decoded.role_id }]);
-
-                return mockProfileData;
             }
 
             // NẾU LÀ NHÂN VIÊN: Cứ gọi API như cũ (để không phá vỡ logic cũ)
-            const profileUrl = ENDPOINTS.GET_PROFILE_EMPLOYEE;
+            const profileUrl = WAREHOUSE_ENDPOINTS.GET_PROFILE_EMPLOYEE;
             const response = await apiClient.get(profileUrl, {
                 headers: { Authorization: `Bearer ${currentToken}` }
             });
@@ -373,7 +399,7 @@ export const UserProvider = ({ children }) => {
 
     const loginUserAndFetchProfile = async (username, password, userType = 'employee') => {
         try {
-            const loginUrl = userType === 'customer' ? ENDPOINTS.CUSTOMER_LOGIN : ENDPOINTS.EMPLOYEE_LOGIN;
+            const loginUrl = userType === 'customer' ? CUSTOMER_ENDPOINTS.CUSTOMER_LOGIN : WAREHOUSE_ENDPOINTS.EMPLOYEE_LOGIN;
 
             let response;
             if (userType === 'customer') {
@@ -411,6 +437,26 @@ export const UserProvider = ({ children }) => {
             return { success: true, profileData: profileData };
         } catch (error) {
             throw error;
+        }
+    };
+
+    const autoLogin = async () => {
+        try {
+            const currentToken = await AsyncStorage.getItem('access_token');
+            const uType = await AsyncStorage.getItem('user_type') || 'employee';
+            if (!currentToken) return false;
+            
+            setToken(currentToken);
+            setupAutoLogout(currentToken);
+
+            const profileData = await fetchMyProfile(currentToken, uType);
+            return { success: true, profileData, userType: uType };
+        } catch (error) {
+            console.log("Auto login failed:", error);
+            await AsyncStorage.removeItem('access_token');
+            setToken(null);
+            setUser(null);
+            return false;
         }
     };
 
@@ -491,7 +537,7 @@ export const UserProvider = ({ children }) => {
     return (
         <UserContext.Provider value={{
             user, roles, permissions,
-            loginUserAndFetchProfile, logout, isWarehouseStaff, updateUserVehicle, clearUserVehicle, refreshProfile, unreadCount, notifications, setNotifications, promptForPushPermission
+            loginUserAndFetchProfile, autoLogin, logout, isWarehouseStaff, updateUserVehicle, clearUserVehicle, refreshProfile, unreadCount, notifications, setNotifications, promptForPushPermission
         }}>
             {children}
         </UserContext.Provider>
