@@ -136,13 +136,32 @@
 .login-actions {
   margin-top: 1.5rem;
   font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.forgot-link {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+.forgot-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
 }
 
 .register-link {
   color: #388E3C;
   text-decoration: none;
   font-weight: 600;
-  margin-left: 5px;
   transition: color 0.2s;
 }
 

@@ -55,6 +55,9 @@
                 <el-button type="primary" style="width: 100%;" @click="openEditDialog">
                   <el-icon class="mr-6"><Edit /></el-icon> Cập nhật thông tin
                 </el-button>
+                <el-button plain style="width: 100%; margin: 10px 0 0;" @click="openChangePasswordDialog">
+                  <el-icon class="mr-6"><Lock /></el-icon> Đổi mật khẩu
+                </el-button>
               </div>
             </div>
           </el-card>
@@ -183,6 +186,26 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="changePasswordVisible" title="Đổi mật khẩu" width="460px" destroy-on-close>
+      <el-form :model="changePasswordForm" label-position="top">
+        <el-form-item label="Mật khẩu hiện tại">
+          <el-input v-model="changePasswordForm.current_password" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="Mật khẩu mới">
+          <el-input v-model="changePasswordForm.new_password" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="Nhập lại mật khẩu mới">
+          <el-input v-model="changePasswordForm.confirm_password" type="password" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="changePasswordVisible = false">Hủy</el-button>
+          <el-button type="primary" :loading="changePasswordLoading" @click="changePassword">Lưu mật khẩu</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -194,7 +217,7 @@ import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
 import { 
   User, Service, Phone, Message, Close, 
-  Search, DocumentAdd, Location, List, Edit
+  Search, DocumentAdd, Location, List, Edit, Lock
 } from '@element-plus/icons-vue';
 import { provinces, districts, wards } from '@/utils/vietnam_divisions';
 
@@ -213,6 +236,8 @@ const customerInfo = ref({
 });
 
 const editDialogVisible = ref(false);
+const changePasswordVisible = ref(false);
+const changePasswordLoading = ref(false);
 const editForm = reactive({
   full_name: '',
   phone_number: '',
@@ -220,6 +245,12 @@ const editForm = reactive({
   district_id: null,
   ward_id: null,
   address_detail: ''
+});
+
+const changePasswordForm = reactive({
+  current_password: '',
+  new_password: '',
+  confirm_password: ''
 });
 
 const getProvinceName = (id) => provinces.find(p => p.id === Number(id))?.name || '';
@@ -260,6 +291,42 @@ const handleDistrictChange = () => {
   editForm.ward_id = null;
 };
 
+const openChangePasswordDialog = () => {
+  changePasswordForm.current_password = '';
+  changePasswordForm.new_password = '';
+  changePasswordForm.confirm_password = '';
+  changePasswordVisible.value = true;
+};
+
+const changePassword = async () => {
+  if (!changePasswordForm.current_password) {
+    ElMessage.warning('Vui lòng nhập mật khẩu hiện tại');
+    return;
+  }
+  if (!changePasswordForm.new_password || changePasswordForm.new_password.length < 6) {
+    ElMessage.warning('Mật khẩu mới ph?i c? ?t nh?t 6 k? t?');
+    return;
+  }
+  if (changePasswordForm.new_password !== changePasswordForm.confirm_password) {
+    ElMessage.warning('Mật khẩu nhập lại không khớp');
+    return;
+  }
+
+  changePasswordLoading.value = true;
+  try {
+    const res = await api.post('/api/auth/change-password', {
+      current_password: changePasswordForm.current_password,
+      new_password: changePasswordForm.new_password
+    });
+    ElMessage.success(res.data?.message || 'Đổi mật khẩu thành công');
+    changePasswordVisible.value = false;
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Không thể đổi mật khẩu');
+  } finally {
+    changePasswordLoading.value = false;
+  }
+};
+
 const handleLogout = () => {
   authStore.logout();
   ElMessage.success('Đã đăng xuất tài khoản!');
@@ -284,7 +351,7 @@ const openEditDialog = () => {
   editDialogVisible.value = true;
 };
 
-const handleSaveProfile = () => {
+const handleSaveProfile = async () => {
   if (!editForm.full_name.trim()) {
     ElMessage.warning('Vui lòng điền tên đại diện Shop');
     return;
@@ -294,54 +361,50 @@ const handleSaveProfile = () => {
     return;
   }
 
-  // Cập nhật thông tin client reactive
-  customerInfo.value.phone_number = editForm.phone_number;
-  customerInfo.value.province_id = editForm.province_id;
-  customerInfo.value.district_id = editForm.district_id;
-  customerInfo.value.ward_id = editForm.ward_id;
-  customerInfo.value.address_detail = editForm.address_detail;
-
   const pName = getProvinceName(editForm.province_id);
   const dName = getDistrictName(editForm.province_id, editForm.district_id);
   const wName = getWardName(editForm.district_id, editForm.ward_id);
-  const parts = [editForm.address_detail, wName, dName, pName].filter(Boolean);
-  customerInfo.value.address_detail_custom = parts.join(', ');
 
-  // Lưu vào localStorage
-  localStorage.setItem(`customer_profile_${authStore.user?.customer_id}`, JSON.stringify(customerInfo.value));
+  try {
+    const res = await api.patch('/api/customers/me', {
+      full_name: editForm.full_name,
+      phone_number: editForm.phone_number,
+      province_id: editForm.province_id,
+      district_id: editForm.district_id,
+      ward_id: editForm.ward_id,
+      province: pName,
+      ward: wName,
+      address_detail: editForm.address_detail
+    });
 
-  // Cập nhật lại tên hiển thị của authStore
-  if (authStore.user) {
-    authStore.user.full_name = editForm.full_name;
-    const rawAuth = localStorage.getItem('auth_user');
-    if (rawAuth) {
-      try {
-        const parsed = JSON.parse(rawAuth);
-        parsed.full_name = editForm.full_name;
-        localStorage.setItem('auth_user', JSON.stringify(parsed));
-      } catch (e) {}
+    const updated = res.data?.customer || {};
+    customerInfo.value = {
+      ...customerInfo.value,
+      ...updated,
+      phone_number: updated.phone_number || updated.phone || editForm.phone_number,
+      province_id: updated.province_id || editForm.province_id,
+      district_id: updated.district_id || editForm.district_id,
+      ward_id: updated.ward_id || editForm.ward_id,
+      address_detail: updated.address_detail || editForm.address_detail,
+      address_detail_custom: [editForm.address_detail, wName, dName, pName].filter(Boolean).join(', ')
+    };
+
+    if (authStore.user) {
+      authStore.user.full_name = editForm.full_name;
+      authStore.user.phone_number = editForm.phone_number;
+      localStorage.setItem('user', JSON.stringify(authStore.user));
     }
-  }
 
-  ElMessage.success('Cập nhật thông tin cá nhân thành công!');
-  editDialogVisible.value = false;
+    ElMessage.success(res.data?.message || 'Cập nhật thông tin cá nhân thành công!');
+    editDialogVisible.value = false;
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Không thể cập nhật hồ sơ khách hàng');
+  }
 };
 
 onMounted(async () => {
   if (!authStore.user) return;
 
-  // 1. Kiểm tra localStorage trước
-  const savedProfile = localStorage.getItem(`customer_profile_${authStore.user.customer_id}`);
-  if (savedProfile) {
-    try {
-      customerInfo.value = JSON.parse(savedProfile);
-      return;
-    } catch (e) {
-      console.error('Lỗi khi phân tích hồ sơ đã lưu:', e);
-    }
-  }
-
-  // 2. Lấy thông tin tài khoản chi tiết từ /api/auth/me để lấy phone_number & email thực tế từ backend
   let activeUser = authStore.user;
   try {
     const meRes = await api.get('/api/auth/me');
@@ -350,7 +413,6 @@ onMounted(async () => {
         ...authStore.user,
         ...meRes.data
       };
-      // Đồng bộ ngược lại authStore
       authStore.user = activeUser;
       localStorage.setItem('user', JSON.stringify(activeUser));
     }
@@ -358,49 +420,25 @@ onMounted(async () => {
     console.error('Không thể gọi API /api/auth/me', err);
   }
 
-  // 3. Gọi API để lấy thông tin khách hàng từ DB
   try {
-    const customerId = activeUser.customer_id;
-    if (customerId) {
-      const searchKeywords = [activeUser.phone_number, activeUser.full_name, activeUser.username].filter(Boolean);
-      let foundCustomer = null;
-
-      for (const keyword of searchKeywords) {
-        const res = await api.get(`/api/customers/search`, {
-          params: { q: keyword }
-        });
-        const items = res.data.items || res.data || [];
-        if (items.length > 0) {
-          const matched = items.find(c => c.customer_id === customerId);
-          if (matched) {
-            foundCustomer = matched;
-            break;
-          }
-        }
-      }
-
-      if (foundCustomer) {
-        customerInfo.value = {
-          ...customerInfo.value,
-          ...foundCustomer,
-          phone_number: foundCustomer.phone || foundCustomer.phone_number || activeUser.phone_number || '',
-          email: foundCustomer.email || activeUser.email || ''
-        };
-      } else {
-        // Fallback: nếu không tìm thấy Customer từ API, tự tạo hồ sơ tạm từ thông tin /api/auth/me
-        customerInfo.value = {
-          customer_code: 'REG-PENDING',
-          phone_number: activeUser.phone_number || 'Chưa cập nhật',
-          email: activeUser.email || '',
-          address_detail: 'Hồ Chí Minh',
-          province_id: null,
-          district_id: null,
-          ward_id: null
-        };
-      }
-    }
+    const res = await api.get('/api/customers/me');
+    customerInfo.value = {
+      ...customerInfo.value,
+      ...res.data,
+      phone_number: res.data.phone_number || res.data.phone || activeUser.phone_number || '',
+      email: res.data.email || activeUser.email || ''
+    };
   } catch (err) {
     console.error('Không thể tải thông tin hồ sơ khách hàng', err);
+    customerInfo.value = {
+      customer_code: 'REG-PENDING',
+      phone_number: activeUser.phone_number || 'Chưa cập nhật',
+      email: activeUser.email || '',
+      address_detail: '',
+      province_id: null,
+      district_id: null,
+      ward_id: null
+    };
   }
 });
 </script>

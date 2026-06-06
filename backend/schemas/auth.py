@@ -37,6 +37,24 @@ class RegisterVerifyResponse(BaseModel):
     role_id: int
     full_name: str
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=6, max_length=128)
+
+class ForgotPasswordOtpRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6)
+    new_password: str = Field(min_length=6, max_length=128)
+
+class PasswordOtpResponse(BaseModel):
+    message: str
+    email: EmailStr
+    expires_in_seconds: int
+    email_sent: bool
+
 class UserResponse(BaseModel):
     user_id: int
     username: str

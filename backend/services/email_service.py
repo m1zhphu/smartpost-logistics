@@ -16,27 +16,32 @@ LOGO_PATH = ROOT_DIR / "frontend" / "src" / "assets" / "CompanyLogo4.png"
 LOGO_CID = "smartpost-logo"
 
 
-def _build_otp_text(otp: str, expires_minutes: int) -> str:
+def _build_otp_text(otp: str, expires_minutes: int, action_text: str = "đăng ký tài khoản") -> str:
     return "\n".join([
         "Xin chào,",
         "",
-        f"Mã OTP đăng ký tài khoản SmartPost của bạn là: {otp}",
+        f"Mã OTP {action_text} SmartPost của bạn là: {otp}",
         f"Mã này có hiệu lực trong {expires_minutes} phút.",
         "",
-        "Nếu bạn không yêu cầu đăng ký tài khoản, vui lòng bỏ qua email này.",
+        f"Nếu bạn không yêu cầu {action_text}, vui lòng bỏ qua email này.",
         "",
         "SmartPost Logistics",
     ])
 
 
-def _build_otp_html(otp: str, expires_minutes: int) -> str:
+def _build_otp_html(
+    otp: str,
+    expires_minutes: int,
+    title: str = "Mã OTP đăng ký tài khoản SmartPost",
+    action_text: str = "đăng ký tài khoản",
+) -> str:
     return f"""\
 <!doctype html>
 <html lang="vi">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mã OTP đăng ký tài khoản SmartPost</title>
+    <title>{title}</title>
   </head>
   <body style="margin:0; padding:0; background:#eef2f7; font-family:Arial,Helvetica,sans-serif; color:#152238;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef2f7; padding:32px 12px;">
@@ -51,9 +56,9 @@ def _build_otp_html(otp: str, expires_minutes: int) -> str:
             <tr>
               <td style="padding:34px 36px 16px;">
                 <p style="margin:0 0 8px; color:#64748b; font-size:14px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">Xác thực tài khoản</p>
-                <h1 style="margin:0; color:#0f172a; font-size:26px; line-height:1.25;">Mã OTP đăng ký SmartPost</h1>
+                <h1 style="margin:0; color:#0f172a; font-size:26px; line-height:1.25;">{title}</h1>
                 <p style="margin:16px 0 0; color:#475569; font-size:15px; line-height:1.7;">
-                  Xin chào, vui lòng sử dụng mã OTP bên dưới để hoàn tất đăng ký tài khoản khách hàng.
+                  Xin chào, vui lòng sử dụng mã OTP bên dưới để hoàn tất {action_text}.
                 </p>
               </td>
             </tr>
@@ -71,7 +76,7 @@ def _build_otp_html(otp: str, expires_minutes: int) -> str:
             <tr>
               <td style="padding:18px 36px 34px;">
                 <div style="background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:12px; padding:14px 16px; font-size:14px; line-height:1.6;">
-                  Không chia sẻ mã này với bất kỳ ai. Nếu bạn không yêu cầu đăng ký tài khoản, vui lòng bỏ qua email này.
+                  Không chia sẻ mã này với bất kỳ ai. Nếu bạn không yêu cầu {action_text}, vui lòng bỏ qua email này.
                 </div>
               </td>
             </tr>
@@ -106,7 +111,7 @@ def _attach_logo(html_part):
         )
 
 
-def send_otp_email(to_email: str, otp: str, expires_minutes: int) -> bool:
+def send_otp_email(to_email: str, otp: str, expires_minutes: int, subject: str = "Mã OTP đăng ký tài khoản SmartPost", action_text: str = "đăng ký tài khoản") -> bool:
     smtp_host = os.getenv("SMTP_HOST") or os.getenv("MAIL_SERVER") or "smtp.gmail.com"
     smtp_port = int(os.getenv("SMTP_PORT") or os.getenv("MAIL_PORT") or "587")
     smtp_username = os.getenv("SMTP_USERNAME") or os.getenv("MAIL_USERNAME")
@@ -124,8 +129,8 @@ def send_otp_email(to_email: str, otp: str, expires_minutes: int) -> bool:
     msg["Subject"] = "Mã OTP đăng ký tài khoản SmartPost"
     msg["From"] = f"{smtp_from_name} <{smtp_from}>"
     msg["To"] = to_email
-    msg.set_content(_build_otp_text(otp, expires_minutes))
-    msg.add_alternative(_build_otp_html(otp, expires_minutes), subtype="html")
+    msg.set_content(_build_otp_text(otp, expires_minutes, action_text))
+    msg.add_alternative(_build_otp_html(otp, expires_minutes, subject, action_text), subtype="html")
     _attach_logo(msg.get_payload()[1])
 
     if use_ssl:

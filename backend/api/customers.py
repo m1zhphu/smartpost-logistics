@@ -5,7 +5,7 @@ from core.database import get_db
 from core.security import get_current_user
 import crud.customers as crud_customers
 import crud.pricing as crud_pricing
-from schemas.customers import CustomerAssignStaff, CustomerCreate
+from schemas.customers import CustomerAssignStaff, CustomerCreate, CustomerSelfUpdate
 import models
 
 router = APIRouter(prefix="/api/customers", tags=["Customers"])
@@ -54,6 +54,79 @@ def _customer_account_payload(customer):
         "account_is_active": account.is_active if account else None,
     }
 
+def _customer_response_payload(customer):
+    bank = None
+    if customer.bank_accounts:
+        bank = customer.bank_accounts[0] if isinstance(customer.bank_accounts, list) else customer.bank_accounts
+
+    return {
+        "id": customer.customer_id,
+        "customer_id": customer.customer_id,
+        "customer_code": customer.customer_code,
+        "name": customer.company_name or customer.transaction_name or customer.customer_code,
+        "company_name": customer.company_name,
+        "transaction_name": customer.transaction_name,
+        "email": customer.email,
+        "phone": customer.phone_number,
+        "phone_number": customer.phone_number,
+        "customer_type": customer.customer_type,
+        "status": customer.status,
+        "address": customer.address_detail,
+        "address_detail": customer.address_detail,
+        "country": customer.country,
+        "province": customer.province_name,
+        "province_name": customer.province_name,
+        "ward": customer.ward_name,
+        "ward_name": customer.ward_name,
+        "street_address": customer.street_address,
+        "representative_name": customer.representative_name,
+        "tax_code": customer.tax_code,
+        "staff_in_charge_id": customer.staff_in_charge_id,
+        "staff_in_charge_name": customer.staff_in_charge.full_name if customer.staff_in_charge else None,
+        "province_id": customer.province_id,
+        "district_id": customer.district_id,
+        "ward_id": customer.ward_id,
+        "bank_name": bank.bank_name if bank else None,
+        "bank_number": bank.account_number if bank else None,
+        "bank_owner": bank.account_name if bank else None,
+        "account_number": bank.account_number if bank else None,
+        "account_name": bank.account_name if bank else None,
+        **_customer_policy_payload(customer),
+        **_customer_account_payload(customer),
+    }
+
+def _require_customer_self(current_user: dict):
+    if current_user.get("role_id") != 6 or not current_user.get("customer_id"):
+        raise HTTPException(status_code=403, detail="Chỉ tài khoản khách hàng mới được cập nhật hồ sơ này")
+
+def _get_current_customer(db: Session, current_user: dict):
+    _require_customer_self(current_user)
+    customer = crud_customers.get_customer_by_id(db, current_user["customer_id"])
+    if not customer:
+        raise HTTPException(status_code=404, detail="Không tìm thấy hồ sơ khách hàng")
+    if customer.status != "ACTIVE":
+        raise HTTPException(status_code=403, detail="Hồ sơ khách hàng không còn hoạt động")
+    return customer
+
+def _ensure_customer_self_email_available(db: Session, email: str | None, customer_id: int, user_id: int):
+    if not email:
+        return
+    existing_customer = db.query(models.Customers).filter(
+        models.Customers.email == email,
+        models.Customers.customer_id != customer_id,
+        models.Customers.status != "DELETED",
+    ).first()
+    if existing_customer:
+        raise HTTPException(status_code=400, detail="Email đã tồn tại trong hồ sơ khách hàng khác")
+
+    existing_user = db.query(models.Users).filter(
+        models.Users.email == email,
+        models.Users.user_id != user_id,
+        models.Users.is_deleted == False,
+    ).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email đã tồn tại trong tài khoản khác")
+
 def _ensure_customer_scope(customer, current_user: dict):
     if current_user.get("role_id") == 7 and customer.staff_in_charge_id != current_user.get("user_id"):
         raise HTTPException(status_code=403, detail="Bạn không có quyền thao tác khách hàng này")
@@ -61,6 +134,41 @@ def _ensure_customer_scope(customer, current_user: dict):
 def _ensure_customer_assign_scope(current_user: dict, staff_id: int):
     if current_user.get("role_id") == 7 and staff_id != current_user.get("user_id"):
         raise HTTPException(status_code=403, detail="CSKH chi co the gan khach hang cho chinh minh")
+
+@router.get("/me")
+def get_my_customer_profile(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    customer = _get_current_customer(db, current_user)
+    return _customer_response_payload(customer)
+
+@router.patch("/me")
+def update_my_customer_profile(
+    data: CustomerSelfUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    customer = _get_current_customer(db, current_user)
+    data_dict = data.dict(exclude_unset=True)
+
+    email = data_dict.get("email")
+    if email is not None:
+        data_dict["email"] = email.strip().lower()
+    _ensure_customer_self_email_available(
+        db,
+        data_dict.get("email"),
+        customer.customer_id,
+        current_user["user_id"],
+    )
+
+    try:
+        customer = crud_customers.update_customer_self_profile(db, customer, data_dict)
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "message": "Cập nhật hồ sơ khách hàng thành công",
+        "customer": _customer_response_payload(customer),
+    }
 
 @router.post("")
 def create_customer(data: CustomerCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):

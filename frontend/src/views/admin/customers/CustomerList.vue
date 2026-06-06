@@ -354,7 +354,7 @@
             <el-row :gutter="24">
               <el-col :span="8">
                 <el-form-item v-if="customerForm.id" label="Mã khách hàng" prop="customer_code">
-                  <el-input v-model="customerForm.customer_code" placeholder="KH001" :disabled="!!customerForm.id">
+                  <el-input v-model="customerForm.customer_code" placeholder="Hệ thống tự tạo" :disabled="!!customerForm.id">
                     <template #prefix><el-icon><Key /></el-icon></template>
                   </el-input>
                 </el-form-item>

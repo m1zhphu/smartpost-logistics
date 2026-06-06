@@ -1,5 +1,7 @@
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
+from datetime import datetime
+import secrets
 import models
 from core.security import get_password_hash
 
@@ -13,25 +15,28 @@ def build_address_detail(data_dict: dict):
     structured_address = ", ".join(str(part).strip() for part in parts if part)
     return structured_address or data_dict.get("address") or data_dict.get("address_detail")
 
-def generate_customer_code(db: Session, prefix: str = "KH", width: int = 6):
-    existing_codes = db.query(models.Customers.customer_code).filter(
-        models.Customers.customer_code.ilike(f"{prefix}%")
-    ).all()
-    max_number = 0
-    for (code,) in existing_codes:
-        suffix = str(code or "")[len(prefix):]
-        if suffix.isdigit():
-            max_number = max(max_number, int(suffix))
+CUSTOMER_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 
-    next_number = max_number + 1
-    while True:
-        candidate = f"{prefix}{next_number:0{width}d}"
-        exists = db.query(models.Customers).filter(
+
+def _random_customer_code_suffix(length: int = 6) -> str:
+    return "".join(secrets.choice(CUSTOMER_CODE_ALPHABET) for _ in range(length))
+
+
+def generate_customer_code(db: Session, prefix: str = "KH", max_attempts: int = 20):
+    """
+    Sinh mã khách hàng không tuần tự để tránh bị đoán số lượng khách hàng.
+    Format: KH + YYMMDDHHMMSS + 6 ký tự ngẫu nhiên, ví dụ KH260606143012A7K9Q2.
+    """
+    timestamp = datetime.utcnow().strftime("%y%m%d%H%M%S")
+    for _ in range(max_attempts):
+        candidate = f"{prefix}{timestamp}{_random_customer_code_suffix()}"
+        exists = db.query(models.Customers.customer_id).filter(
             models.Customers.customer_code == candidate
         ).first()
         if not exists:
             return candidate
-        next_number += 1
+
+    raise ValueError("Không thể tự tạo mã khách hàng duy nhất, vui lòng thử lại")
 
 def get_primary_customer_user(customer):
     accounts = getattr(customer, "user_accounts", None) or []
@@ -218,7 +223,7 @@ def create_customer_record(db: Session, data_dict: dict):
         "status":              data_dict.get("status", "ACTIVE"),
     }
 
-    # Nếu không có mã khách hàng, tự sinh mã theo Timestamp
+    # Nếu không có mã khách hàng, tự sinh mã không tuần tự theo timestamp + random.
     if not mapped.get("customer_code"):
         mapped["customer_code"] = generate_customer_code(db)
     
@@ -283,6 +288,71 @@ def update_customer_record(db: Session, customer: models.Customers, data_dict: d
     upsert_customer_user_account(db, customer, data_dict)
     sync_customer_user_status(db, customer)
     db.commit()
+    return customer
+
+
+def update_customer_self_profile(db: Session, customer: models.Customers, data_dict: dict):
+    """Cập nhật hồ sơ do chính khách hàng thao tác, không cho sửa quyền/trạng thái/bảng giá."""
+    display_name = data_dict.get("full_name") or data_dict.get("name")
+
+    if display_name is not None:
+        customer.transaction_name = display_name
+        customer.representative_name = data_dict.get("representative_name") or display_name
+    elif data_dict.get("representative_name") is not None:
+        customer.representative_name = data_dict.get("representative_name")
+
+    for field in ("company_name", "tax_code", "email", "country", "street_address"):
+        if field in data_dict and data_dict.get(field) is not None:
+            setattr(customer, field, data_dict.get(field))
+
+    phone = data_dict.get("phone") or data_dict.get("phone_number")
+    if phone is not None:
+        customer.phone_number = phone
+
+    if "province_id" in data_dict:
+        customer.province_id = data_dict.get("province_id")
+    if "district_id" in data_dict:
+        customer.district_id = data_dict.get("district_id")
+    if "ward_id" in data_dict:
+        customer.ward_id = data_dict.get("ward_id")
+
+    province_name = data_dict.get("province") or data_dict.get("province_name")
+    ward_name = data_dict.get("ward") or data_dict.get("ward_name")
+    if province_name is not None:
+        customer.province_name = province_name
+    if ward_name is not None:
+        customer.ward_name = ward_name
+
+    address_detail = data_dict.get("address_detail") or data_dict.get("address")
+    customer.address_detail = build_address_detail({
+        **data_dict,
+        "address": address_detail,
+        "province": province_name if province_name is not None else customer.province_name,
+        "ward": ward_name if ward_name is not None else customer.ward_name,
+        "street_address": data_dict.get("street_address") if data_dict.get("street_address") is not None else customer.street_address,
+        "country": data_dict.get("country") if data_dict.get("country") is not None else customer.country,
+    }) or customer.address_detail
+
+    if data_dict.get("bank_name") or data_dict.get("bank_number") or data_dict.get("bank_owner"):
+        bank = db.query(models.BankAccounts).filter(models.BankAccounts.customer_id == customer.customer_id).first()
+        if not bank:
+            bank = models.BankAccounts(customer_id=customer.customer_id)
+            db.add(bank)
+        if data_dict.get("bank_name") is not None:
+            bank.bank_name = data_dict.get("bank_name")
+        if data_dict.get("bank_number") is not None:
+            bank.account_number = data_dict.get("bank_number")
+        if data_dict.get("bank_owner") is not None:
+            bank.account_name = data_dict.get("bank_owner")
+
+    user = get_primary_customer_user(customer)
+    if user:
+        user.full_name = customer.transaction_name or customer.company_name or user.full_name
+        user.phone_number = customer.phone_number
+        user.email = customer.email
+
+    db.commit()
+    db.refresh(customer)
     return customer
 
 def delete_customer_record(db: Session, customer: models.Customers):

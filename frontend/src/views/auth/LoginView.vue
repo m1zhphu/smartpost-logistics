@@ -41,6 +41,7 @@
       </el-form>
       
       <div class="login-actions">
+        <button class="forgot-link" type="button" @click="openForgotDialog">Quên mật khẩu?</button>
         <span>Chưa có tài khoản?</span>
         <router-link to="/register" class="register-link">Đăng ký ngay</router-link>
       </div>
@@ -51,6 +52,36 @@
         <img src="@/assets/CompanyLogo3.png" alt="Speed Up Invest" />
       </div>
     </div>
+
+    <el-dialog
+      v-model="forgotDialogVisible"
+      title="Đặt lại mật khẩu"
+      width="460px"
+      destroy-on-close
+    >
+      <el-form :model="forgotForm" label-position="top">
+        <el-form-item label="Email tài khoản">
+          <el-input v-model="forgotForm.email" placeholder="Nhập email đã đăng ký" clearable />
+        </el-form-item>
+
+        <template v-if="forgotStep === 2">
+          <el-form-item label="Mã OTP">
+            <el-input v-model="forgotForm.otp" maxlength="6" placeholder="Nhập mã OTP 6 số" />
+          </el-form-item>
+          <el-form-item label="Mật khẩu mới">
+            <el-input v-model="forgotForm.new_password" type="password" show-password placeholder="Tối thiểu 6 ký tự" />
+          </el-form-item>
+          <el-form-item label="Nhập lại mật khẩu mới">
+            <el-input v-model="forgotForm.confirm_password" type="password" show-password placeholder="Nhập lại mật khẩu mới" />
+          </el-form-item>
+        </template>
+      </el-form>
+      <template #footer>
+        <el-button @click="forgotDialogVisible = false">Hủy</el-button>
+        <el-button v-if="forgotStep === 1" type="primary" :loading="forgotLoading" @click="requestForgotOtp">Gửi OTP</el-button>
+        <el-button v-else type="primary" :loading="forgotLoading" @click="resetForgotPassword">Đặt lại mật khẩu</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -66,10 +97,20 @@ const authStore = useAuthStore();
 const formRef = ref(null);
 const loading = ref(false);
 const rememberMe = ref(false);
+const forgotDialogVisible = ref(false);
+const forgotLoading = ref(false);
+const forgotStep = ref(1);
 
 const loginForm = reactive({
   username: '',
   password: ''
+});
+
+const forgotForm = reactive({
+  email: '',
+  otp: '',
+  new_password: '',
+  confirm_password: ''
 });
 
 const rules = {
@@ -80,6 +121,66 @@ const rules = {
     { required: true, message: 'Vui lòng nhập mật khẩu', trigger: 'blur' },
     { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự', trigger: 'blur' }
   ]
+};
+
+const openForgotDialog = () => {
+  forgotStep.value = 1;
+  forgotForm.email = '';
+  forgotForm.otp = '';
+  forgotForm.new_password = '';
+  forgotForm.confirm_password = '';
+  forgotDialogVisible.value = true;
+};
+
+const requestForgotOtp = async () => {
+  if (!forgotForm.email.trim()) {
+    ElMessage.warning('Vui lòng nhập email tài khoản');
+    return;
+  }
+
+  forgotLoading.value = true;
+  try {
+    const res = await api.post('/api/auth/forgot-password/request-otp', {
+      email: forgotForm.email.trim()
+    });
+    ElMessage.success(res.data?.message || 'OTP đã được gửi tới email nếu tài khoản tồn tại');
+    forgotStep.value = 2;
+  } catch (error) {
+    ElMessage.error(error.response?.data?.detail || 'Không thể gửi OTP đặt lại mật khẩu');
+  } finally {
+    forgotLoading.value = false;
+  }
+};
+
+const resetForgotPassword = async () => {
+  if (!forgotForm.otp || forgotForm.otp.length !== 6) {
+    ElMessage.warning('Vui lòng nhập mã OTP 6 số');
+    return;
+  }
+  if (!forgotForm.new_password || forgotForm.new_password.length < 6) {
+    ElMessage.warning('Mật khẩu mới phải có ít nhất 6 ký tự');
+    return;
+  }
+  if (forgotForm.new_password !== forgotForm.confirm_password) {
+    ElMessage.warning('Mật khẩu nhập lại không khớp');
+    return;
+  }
+
+  forgotLoading.value = true;
+  try {
+    const res = await api.post('/api/auth/forgot-password/reset', {
+      email: forgotForm.email.trim(),
+      otp: forgotForm.otp,
+      new_password: forgotForm.new_password
+    });
+    ElMessage.success(res.data?.message || 'Đặt lại mật khẩu thành công');
+    loginForm.username = forgotForm.email.trim();
+    forgotDialogVisible.value = false;
+  } catch (error) {
+    ElMessage.error(error.response?.data?.detail || 'Không thể đặt lại mật khẩu');
+  } finally {
+    forgotLoading.value = false;
+  }
 };
 
 const handleLogin = async () => {

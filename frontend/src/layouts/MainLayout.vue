@@ -101,6 +101,7 @@
         </router-view>
       </el-main>
     </el-container>
+
   </el-container>
 </template>
 
@@ -215,6 +216,7 @@ const currentPageTitle = computed(() => {
 const handleLogout = () => {
   authStore.logout();
 };
+
 </script>
 
 <style scoped src="@/styles/layouts/MainLayout.css"></style>

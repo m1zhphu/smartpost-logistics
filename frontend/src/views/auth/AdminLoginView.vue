@@ -51,6 +51,7 @@
         <img src="@/assets/CompanyLogo3.png" alt="Speed Up Invest" />
       </div>
     </div>
+
   </div>
 </template>
 
@@ -81,6 +82,7 @@ const rules = {
     { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự', trigger: 'blur' }
   ]
 };
+
 
 const handleLogin = async () => {
   if (!formRef.value) return;

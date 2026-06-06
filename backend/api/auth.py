@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api", tags=["Authentication"])
 REGISTER_OTP_EXPIRE_MINUTES = 10
 REGISTER_OTP_RESEND_COOLDOWN_SECONDS = 180
 REGISTER_OTP_MAX_ATTEMPTS = 5
+PASSWORD_RESET_OTP_PURPOSE = "PASSWORD_RESET"
 
 
 def _normalize_email(email: str) -> str:
@@ -42,6 +43,67 @@ def _ensure_customer_role(db: Session):
 
 def _generate_registered_customer_code(db: Session) -> str:
     return crud_customers.generate_customer_code(db)
+
+def _get_active_user_by_email(db: Session, email: str):
+    return db.query(models.Users).filter(
+        models.Users.email == email,
+        models.Users.is_deleted == False,
+    ).first()
+
+def _create_email_otp(db: Session, email: str, purpose: str, expires_minutes: int):
+    cooldown_from = datetime.utcnow() - timedelta(seconds=REGISTER_OTP_RESEND_COOLDOWN_SECONDS)
+    recent_otp = db.query(models.AuthOtpCodes).filter(
+        models.AuthOtpCodes.email == email,
+        models.AuthOtpCodes.purpose == purpose,
+        models.AuthOtpCodes.consumed_at.is_(None),
+        models.AuthOtpCodes.created_at >= cooldown_from,
+    ).order_by(models.AuthOtpCodes.id.desc()).first()
+    if recent_otp:
+        raise HTTPException(status_code=429, detail="Vui lòng đợi 3 phút trước khi yêu cầu gửi lại OTP")
+
+    db.query(models.AuthOtpCodes).filter(
+        models.AuthOtpCodes.email == email,
+        models.AuthOtpCodes.purpose == purpose,
+        models.AuthOtpCodes.consumed_at.is_(None),
+    ).update({"consumed_at": datetime.utcnow()})
+
+    otp = f"{secrets.randbelow(1000000):06d}"
+    otp_record = models.AuthOtpCodes(
+        email=email,
+        purpose=purpose,
+        otp_hash=get_password_hash(otp),
+        expires_at=datetime.utcnow() + timedelta(minutes=expires_minutes),
+        attempts=0,
+    )
+    db.add(otp_record)
+    return otp
+
+def _get_valid_otp_record(db: Session, email: str, purpose: str, otp: str):
+    otp_record = db.query(models.AuthOtpCodes).filter(
+        models.AuthOtpCodes.email == email,
+        models.AuthOtpCodes.purpose == purpose,
+        models.AuthOtpCodes.consumed_at.is_(None),
+    ).order_by(models.AuthOtpCodes.id.desc()).first()
+
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="OTP không tồn tại hoặc đã được sử dụng")
+
+    if otp_record.expires_at < datetime.utcnow():
+        otp_record.consumed_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(status_code=400, detail="OTP đã hết hạn")
+
+    if otp_record.attempts >= REGISTER_OTP_MAX_ATTEMPTS:
+        otp_record.consumed_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(status_code=400, detail="OTP đã vượt quá số lần thử")
+
+    if not verify_password(otp, otp_record.otp_hash):
+        otp_record.attempts += 1
+        db.commit()
+        raise HTTPException(status_code=400, detail="OTP không chính xác")
+
+    return otp_record
 
 
 def _ensure_login_allowed(user: models.Users):
@@ -124,6 +186,70 @@ def login(data: schema_auth.LoginSchema, db: Session = Depends(get_db)):
 @router.get("/auth/me")
 def get_auth_me(current_user: dict = Depends(get_current_user)):
     return current_user
+
+@router.post("/auth/change-password")
+def change_password(
+    data: schema_auth.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    user = db.query(models.Users).filter(models.Users.user_id == current_user["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
+
+    _ensure_login_allowed(user)
+    if not verify_password(data.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Mật khẩu hiện tại không chính xác")
+
+    user.password_hash = get_password_hash(data.new_password)
+    db.commit()
+    return {"message": "Đổi mật khẩu thành công"}
+
+@router.post("/auth/forgot-password/request-otp", response_model=schema_auth.PasswordOtpResponse)
+def request_forgot_password_otp(data: schema_auth.ForgotPasswordOtpRequest, db: Session = Depends(get_db)):
+    email = _normalize_email(data.email)
+    user = _get_active_user_by_email(db, email)
+    if user:
+        _ensure_login_allowed(user)
+        otp = _create_email_otp(db, email, PASSWORD_RESET_OTP_PURPOSE, REGISTER_OTP_EXPIRE_MINUTES)
+        try:
+            email_sent = send_otp_email(
+                email,
+                otp,
+                REGISTER_OTP_EXPIRE_MINUTES,
+                subject="Mã OTP đặt lại mật khẩu SmartPost",
+                action_text="đặt lại mật khẩu",
+            )
+            db.commit()
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Không thể gửi OTP qua email: {str(e)}")
+    else:
+        email_sent = False
+
+    return {
+        "message": "Nếu email tồn tại trong hệ thống, OTP đặt lại mật khẩu đã được gửi tới email",
+        "email": email,
+        "expires_in_seconds": REGISTER_OTP_EXPIRE_MINUTES * 60,
+        "email_sent": email_sent,
+    }
+
+@router.post("/auth/forgot-password/reset")
+def reset_password_with_otp(data: schema_auth.ResetPasswordRequest, db: Session = Depends(get_db)):
+    email = _normalize_email(data.email)
+    user = _get_active_user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=400, detail="OTP không tồn tại hoặc đã được sử dụng")
+
+    _ensure_login_allowed(user)
+    otp_record = _get_valid_otp_record(db, email, PASSWORD_RESET_OTP_PURPOSE, data.otp)
+    user.password_hash = get_password_hash(data.new_password)
+    otp_record.consumed_at = datetime.utcnow()
+    db.commit()
+    return {"message": "Đặt lại mật khẩu thành công"}
 
 
 @router.post("/auth/register/request-otp", response_model=schema_auth.RegisterOtpResponse)

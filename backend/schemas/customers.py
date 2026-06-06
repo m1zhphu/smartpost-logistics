@@ -27,3 +27,28 @@ class CustomerCreate(BaseModel):
 
 class CustomerAssignStaff(BaseModel):
     staff_in_charge_id: int
+
+
+class CustomerSelfUpdate(BaseModel):
+    full_name: Optional[str] = None
+    name: Optional[str] = None
+    company_name: Optional[str] = None
+    representative_name: Optional[str] = None
+    tax_code: Optional[str] = None
+    phone: Optional[str] = None
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    country: Optional[str] = None
+    province: Optional[str] = None
+    province_name: Optional[str] = None
+    province_id: Optional[int] = None
+    district_id: Optional[int] = None
+    ward: Optional[str] = None
+    ward_name: Optional[str] = None
+    ward_id: Optional[int] = None
+    street_address: Optional[str] = None
+    address: Optional[str] = None
+    address_detail: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_number: Optional[str] = None
+    bank_owner: Optional[str] = None
