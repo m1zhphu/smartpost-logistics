@@ -475,6 +475,12 @@ class BookingRequests(Base):
     is_vehicle_required: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('false'))
     status: Mapped[Optional[str]] = mapped_column(String(50))
     assigned_shipper_id: Mapped[Optional[int]] = mapped_column(Integer)
+    requested_pickup_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    pickup_method: Mapped[Optional[str]] = mapped_column(String(50))
+    confirmed_by_user_id: Mapped[Optional[int]] = mapped_column(Integer)
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    pickup_assigned_by_user_id: Mapped[Optional[int]] = mapped_column(Integer)
+    pickup_assigned_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # NEW FIELDS FOR PICKUP REQUESTS
     est_quantity: Mapped[Optional[int]] = mapped_column(Integer)
@@ -637,6 +643,39 @@ class Waybills(Base):
     sender_name: Mapped[Optional[str]] = mapped_column(String(100))
     sender_phone: Mapped[Optional[str]] = mapped_column(String(20))
     sender_address: Mapped[Optional[str]] = mapped_column(String(255))
+    sender_province_id: Mapped[Optional[int]] = mapped_column(Integer)
+    sender_district_id: Mapped[Optional[int]] = mapped_column(Integer)
+    sender_ward_id: Mapped[Optional[int]] = mapped_column(Integer)
+    sender_province_name: Mapped[Optional[str]] = mapped_column(String(150))
+    sender_district_name: Mapped[Optional[str]] = mapped_column(String(150))
+    sender_ward_name: Mapped[Optional[str]] = mapped_column(String(150))
+    receiver_province_id: Mapped[Optional[int]] = mapped_column(Integer)
+    receiver_district_id: Mapped[Optional[int]] = mapped_column(Integer)
+    receiver_ward_id: Mapped[Optional[int]] = mapped_column(Integer)
+    receiver_province_name: Mapped[Optional[str]] = mapped_column(String(150))
+    receiver_district_name: Mapped[Optional[str]] = mapped_column(String(150))
+    receiver_ward_name: Mapped[Optional[str]] = mapped_column(String(150))
+    shop_order_code: Mapped[Optional[str]] = mapped_column(String(100))
+    order_type: Mapped[Optional[str]] = mapped_column(String(30))
+    delivery_note_option: Mapped[Optional[str]] = mapped_column(String(100))
+    cod_receiver_pays_fee: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('false'))
+    cod_fee_payment_method: Mapped[Optional[str]] = mapped_column(String(50))
+    pickup_method: Mapped[Optional[str]] = mapped_column(String(50))
+    delivery_method: Mapped[Optional[str]] = mapped_column(String(50))
+    requested_pickup_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    estimated_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    estimated_converted_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    estimated_shipping_fee: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
+    estimated_extra_services_fee: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
+    estimated_vat_amount: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
+    estimated_total_amount: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
+    final_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    final_converted_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    final_shipping_fee: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
+    final_extra_services_fee: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
+    final_vat_amount: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
+    final_total_amount: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
+    price_status: Mapped[Optional[str]] = mapped_column(String(30), server_default=text("'ESTIMATED'"))
     length: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
     width: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
     height: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
@@ -652,6 +691,7 @@ class Waybills(Base):
     delivery_results: Mapped[list['DeliveryResults']] = relationship('DeliveryResults', back_populates='waybill')
     manifest_details: Mapped[list['ManifestDetails']] = relationship('ManifestDetails', back_populates='waybill')
     statement_details: Mapped[list['StatementDetails']] = relationship('StatementDetails', back_populates='waybill')
+    waybill_documents: Mapped[list['WaybillDocuments']] = relationship('WaybillDocuments', back_populates='waybill')
     waybill_extra_services: Mapped[list['WaybillExtraServices']] = relationship('WaybillExtraServices', back_populates='waybill')
     waybill_items: Mapped[list['WaybillItems']] = relationship('WaybillItems', back_populates='waybill')
 
@@ -740,6 +780,9 @@ class WaybillItems(Base):
     parcel_code: Mapped[str] = mapped_column(String(50), nullable=False)
     waybill_id: Mapped[Optional[int]] = mapped_column(Integer)
     product_group: Mapped[Optional[str]] = mapped_column(String(100))
+    product_name: Mapped[Optional[str]] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(String(255))
+    declared_value: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
     actual_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
     converted_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
     length: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
@@ -748,6 +791,23 @@ class WaybillItems(Base):
     quantity: Mapped[Optional[int]] = mapped_column(Integer, server_default=text('1'))
 
     waybill: Mapped[Optional['Waybills']] = relationship('Waybills', back_populates='waybill_items')
+
+
+class WaybillDocuments(Base):
+    __tablename__ = 'waybill_documents'
+    __table_args__ = (
+        ForeignKeyConstraint(['waybill_id'], ['waybills.waybill_id'], name='waybill_documents_waybill_id_fkey'),
+        PrimaryKeyConstraint('document_id', name='waybill_documents_pkey')
+    )
+
+    document_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    waybill_id: Mapped[Optional[int]] = mapped_column(Integer)
+    document_code: Mapped[Optional[str]] = mapped_column(String(100))
+    document_name: Mapped[Optional[str]] = mapped_column(String(255))
+    quantity: Mapped[Optional[int]] = mapped_column(Integer, server_default=text('1'))
+    note: Mapped[Optional[str]] = mapped_column(String(255))
+
+    waybill: Mapped[Optional['Waybills']] = relationship('Waybills', back_populates='waybill_documents')
 
 class PricingRules(Base):
     __tablename__ = 'pricing_rules'

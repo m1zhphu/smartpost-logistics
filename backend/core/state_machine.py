@@ -21,7 +21,7 @@ class WaybillStatus:
 # Định nghĩa các bước đi hợp lệ (Mục 3.3 đặc tả)
 VALID_TRANSITIONS = {
     WaybillStatus.CREATED: [WaybillStatus.PICKED_PENDING_VERIFY, WaybillStatus.IN_HUB, WaybillStatus.CANCELLED],
-    WaybillStatus.PICKED_PENDING_VERIFY: [WaybillStatus.READY_WAREHOUSE, WaybillStatus.VERIFY_ERROR],
+    WaybillStatus.PICKED_PENDING_VERIFY: [WaybillStatus.READY_WAREHOUSE, WaybillStatus.IN_HUB, WaybillStatus.VERIFY_ERROR],
     WaybillStatus.VERIFY_ERROR: [WaybillStatus.PICKED_PENDING_VERIFY, WaybillStatus.CANCELLED],
     WaybillStatus.READY_WAREHOUSE: [WaybillStatus.IN_HUB],
     WaybillStatus.IN_HUB: [WaybillStatus.BAGGED, WaybillStatus.DELIVERING],

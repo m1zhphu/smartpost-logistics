@@ -37,6 +37,63 @@ class BookingRequestCreate(BaseModel):
 
 class BookingRequestAssignRequest(BaseModel):
     shipper_id: int
+    note: Optional[str] = None
+
+class OnlinePickupConfirmHubRequest(BaseModel):
+    request_ids: List[int] = Field(min_length=1)
+    hub_id: int
+    note: Optional[str] = None
+
+class PickupPickedRequest(BaseModel):
+    pickup_image_url: Optional[str] = None
+    note: Optional[str] = None
+
+class MobileShipperLocationRequest(BaseModel):
+    latitude: float = Field(..., description="Vĩ độ")
+    longitude: float = Field(..., description="Kinh độ")
+    timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    accuracy: Optional[float] = Field(None, description="Độ chính xác GPS theo mét")
+    note: Optional[str] = None
+
+class MobilePickupTaskResponse(BaseModel):
+    request_id: int
+    request_code: str
+    waybill_id: Optional[int] = None
+    waybill_code: Optional[str] = None
+    bill_code: Optional[str] = None
+    pickup_status: Optional[str] = None
+    waybill_status: Optional[str] = None
+    shop_order_code: Optional[str] = None
+    customer_id: Optional[int] = None
+    customer_code: Optional[str] = None
+    customer_name: Optional[str] = None
+    sender_name: Optional[str] = None
+    sender_phone: Optional[str] = None
+    pickup_address: Optional[str] = None
+    receiver_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
+    receiver_address: Optional[str] = None
+    target_hub_id: Optional[int] = None
+    target_hub_name: Optional[str] = None
+    assigned_shipper_id: Optional[int] = None
+    assigned_shipper_name: Optional[str] = None
+    product_type: Optional[str] = None
+    product_name: Optional[str] = None
+    est_weight: Optional[float] = None
+    est_quantity: Optional[int] = None
+    cod_amount: float = 0
+    payment_method: Optional[str] = None
+    service_type: Optional[str] = None
+    note: Optional[str] = None
+    pickup_image_url: Optional[str] = None
+    price_status: Optional[str] = None
+    estimated_shipping_fee: float = 0
+    estimated_total_amount: float = 0
+    final_shipping_fee: Optional[float] = None
+    final_total_amount: Optional[float] = None
+    requested_pickup_time: Optional[datetime] = None
+    pickup_assigned_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
 
 class BookingRequestLogResponse(BaseModel):
     log_id: int

@@ -265,6 +265,129 @@ def get_booking_requests(db: Session, status: str = None, assigned_shipper_id: i
         query = query.filter(models.BookingRequests.target_hub_id == hub_id)
     return query.all()
 
+
+def get_online_pickup_requests(db: Session, status: str = None, hub_id: int = None) -> list[models.BookingRequests]:
+    query = db.query(models.BookingRequests).filter(models.BookingRequests.source == "PORTAL")
+    if status:
+        query = query.filter(models.BookingRequests.status == status)
+    if hub_id:
+        query = query.filter(models.BookingRequests.target_hub_id == hub_id)
+    return query.order_by(models.BookingRequests.request_id.desc()).all()
+
+
+def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
+    waybill = db_req.waybills[0] if db_req.waybills else None
+    hub = db_req.target_hub
+    shipper = db_req.assigned_shipper
+    customer = db_req.customer
+    created_at = None
+    if db_req.logs:
+        created_at = min((log.created_at for log in db_req.logs if log.created_at), default=None)
+
+    return {
+        "request_id": db_req.request_id,
+        "request_code": db_req.request_code,
+        "waybill_id": waybill.waybill_id if waybill else None,
+        "waybill_code": waybill.waybill_code if waybill else None,
+        "bill_code": waybill.waybill_code if waybill else None,
+        "pickup_status": db_req.status,
+        "waybill_status": waybill.status if waybill else None,
+        "shop_order_code": db_req.shop_order_code,
+        "customer_id": db_req.customer_id,
+        "customer_code": customer.customer_code if customer else None,
+        "customer_name": (customer.company_name or customer.transaction_name) if customer else None,
+        "sender_name": waybill.sender_name if waybill else None,
+        "sender_phone": db_req.sender_phone or (waybill.sender_phone if waybill else None),
+        "pickup_address": db_req.pickup_address or (waybill.sender_address if waybill else None),
+        "receiver_name": waybill.receiver_name if waybill else None,
+        "receiver_phone": waybill.receiver_phone if waybill else None,
+        "receiver_address": waybill.receiver_address if waybill else None,
+        "target_hub_id": db_req.target_hub_id,
+        "target_hub_name": hub.hub_name if hub else None,
+        "assigned_shipper_id": db_req.assigned_shipper_id,
+        "assigned_shipper_name": shipper.full_name if shipper else None,
+        "product_type": db_req.product_type,
+        "product_name": waybill.product_name if waybill else db_req.product_type,
+        "est_weight": float(db_req.est_weight) if db_req.est_weight is not None else None,
+        "est_quantity": db_req.est_quantity,
+        "cod_amount": float(waybill.cod_amount or 0) if waybill else 0,
+        "payment_method": waybill.payment_method if waybill else None,
+        "service_type": waybill.service_type if waybill else None,
+        "note": db_req.notes or (waybill.note if waybill else None),
+        "pickup_image_url": waybill.pickup_image_url if waybill else None,
+        "price_status": waybill.price_status if waybill else None,
+        "estimated_shipping_fee": float((waybill.estimated_shipping_fee or waybill.shipping_fee or 0) if waybill else 0),
+        "estimated_total_amount": float((waybill.estimated_total_amount or 0) if waybill else 0),
+        "final_shipping_fee": float(waybill.final_shipping_fee) if waybill and waybill.final_shipping_fee is not None else None,
+        "final_total_amount": float(waybill.final_total_amount) if waybill and waybill.final_total_amount is not None else None,
+        "requested_pickup_time": db_req.requested_pickup_time,
+        "pickup_assigned_at": db_req.pickup_assigned_at,
+        "created_at": created_at,
+    }
+
+
+def get_mobile_pickup_tasks_for_shipper(db: Session, shipper_id: int, status: str = None) -> list[dict]:
+    query = db.query(models.BookingRequests).filter(
+        models.BookingRequests.source == "PORTAL",
+        models.BookingRequests.assigned_shipper_id == shipper_id,
+    )
+    if status:
+        query = query.filter(models.BookingRequests.status == status)
+    else:
+        query = query.filter(models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED"]))
+    rows = query.order_by(models.BookingRequests.pickup_assigned_at.desc().nullslast(), models.BookingRequests.request_id.desc()).all()
+    return [mobile_pickup_task_payload(row) for row in rows]
+
+
+def get_mobile_pickup_task_for_shipper(db: Session, shipper_id: int, code: str):
+    db_req = db.query(models.BookingRequests).filter(
+        models.BookingRequests.source == "PORTAL",
+        models.BookingRequests.request_code == code,
+        models.BookingRequests.assigned_shipper_id == shipper_id,
+    ).first()
+    if not db_req:
+        return None
+    return mobile_pickup_task_payload(db_req)
+
+
+def get_request_waybill(db: Session, request_id: int):
+    return db.query(models.Waybills).filter(
+        models.Waybills.request_id == request_id,
+        models.Waybills.is_deleted == False,
+    ).first()
+
+
+def confirm_online_pickup_hub(db: Session, db_req: models.BookingRequests, hub_id: int, user_id: int, note: str = None):
+    waybill = get_request_waybill(db, db_req.request_id)
+    now = datetime.utcnow()
+    db_req.status = "RECEIVED"
+    db_req.target_hub_id = hub_id
+    db_req.confirmed_by_user_id = user_id
+    db_req.confirmed_at = now
+
+    if waybill:
+        waybill.origin_hub_id = hub_id
+        waybill.holding_hub_id = hub_id
+        waybill.holding_shipper_id = None
+        waybill.status = WaybillStatus.CREATED
+        waybill.version = (waybill.version or 1) + 1
+        db.add(models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id=waybill.status,
+            hub_id=hub_id,
+            user_id=user_id,
+            system_time=now,
+            note=note or "Quan tri vien da xac nhan van phong nhan hang",
+        ))
+
+    db.add(models.BookingRequestLogs(
+        request_id=db_req.request_id,
+        user_id=user_id,
+        action="Xac nhan van phong nhan hang",
+        note=note or f"Van phong nhan ID: {hub_id}",
+    ))
+    return db_req, waybill
+
 def assign_shipper_to_pickup(db: Session, db_req: models.BookingRequests, shipper_id: int, user_id: int) -> models.BookingRequests:
     db_req.status = "ASSIGNED_PICKUP"
     db_req.assigned_shipper_id = shipper_id
@@ -276,6 +399,63 @@ def assign_shipper_to_pickup(db: Session, db_req: models.BookingRequests, shippe
         note=f"Giao cho Bưu tá ID: {shipper_id}"
     ))
     return db_req
+
+
+def assign_shipper_to_online_pickup(db: Session, db_req: models.BookingRequests, shipper_id: int, user_id: int, note: str = None):
+    now = datetime.utcnow()
+    waybill = get_request_waybill(db, db_req.request_id)
+    db_req.status = "ASSIGNED_PICKUP"
+    db_req.assigned_shipper_id = shipper_id
+    db_req.pickup_assigned_by_user_id = user_id
+    db_req.pickup_assigned_at = now
+
+    if waybill:
+        waybill.holding_shipper_id = shipper_id
+        waybill.status = WaybillStatus.CREATED
+        waybill.version = (waybill.version or 1) + 1
+        db.add(models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id=waybill.status,
+            hub_id=db_req.target_hub_id,
+            user_id=user_id,
+            system_time=now,
+            note=note or f"Da gan buu ta ID {shipper_id} di lay hang",
+        ))
+
+    db.add(models.BookingRequestLogs(
+        request_id=db_req.request_id,
+        user_id=user_id,
+        action="Gan buu ta di lay hang",
+        note=note or f"Buu ta ID: {shipper_id}",
+    ))
+    return db_req, waybill
+
+
+def mark_online_pickup_picked(db: Session, db_req: models.BookingRequests, user_id: int, pickup_image_url: str = None, note: str = None):
+    now = datetime.utcnow()
+    waybill = get_request_waybill(db, db_req.request_id)
+    db_req.status = "PICKED"
+
+    if waybill:
+        waybill.status = WaybillStatus.PICKED_PENDING_VERIFY
+        waybill.pickup_image_url = pickup_image_url or waybill.pickup_image_url
+        waybill.version = (waybill.version or 1) + 1
+        db.add(models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id=WaybillStatus.PICKED_PENDING_VERIFY,
+            hub_id=db_req.target_hub_id,
+            user_id=user_id,
+            system_time=now,
+            note=note or "Buu ta da lay hang, cho xac thuc tai buu cuc",
+        ))
+
+    db.add(models.BookingRequestLogs(
+        request_id=db_req.request_id,
+        user_id=user_id,
+        action="Da lay hang",
+        note=note or "Buu ta xac nhan da lay hang",
+    ))
+    return db_req, waybill
 
 
 # --- NEW: REASSIGN & LOCATION OPERATIONS ---

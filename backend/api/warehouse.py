@@ -4,6 +4,7 @@ from core.database import get_db
 from core.idempotency import validate_idempotency, commit_idempotency
 from core.security import get_current_user
 from core.state_machine import WaybillStatus, validate_state_transition
+from core.pricing import calculate_shipping_fee
 import crud.warehouse as crud_wh
 import schemas.warehouse as schema_wh
 from core.permissions import PermissionChecker
@@ -114,6 +115,33 @@ async def update_actual_weight(
         waybill.converted_weight = waybill.actual_weight
 
     waybill.actual_weight = data.actual_weight
+    final_converted_weight = float(waybill.converted_weight or data.actual_weight or 0)
+    charge_weight = max(float(data.actual_weight), final_converted_weight)
+    final_shipping_fee = calculate_shipping_fee(
+        db,
+        waybill.origin_hub_id,
+        waybill.dest_hub_id,
+        charge_weight,
+        waybill.service_type or "STANDARD",
+        customer_id=waybill.customer_id,
+    )
+    final_extra_fee = float(waybill.extra_services_fee or 0)
+    final_vat = round((float(final_shipping_fee or 0) + final_extra_fee) * 0.08, 0)
+    final_total = float(final_shipping_fee or 0) + final_extra_fee + final_vat
+    estimated_total = float(waybill.estimated_total_amount or 0)
+    waybill.final_weight = data.actual_weight
+    waybill.final_converted_weight = final_converted_weight
+    waybill.final_shipping_fee = final_shipping_fee
+    waybill.final_extra_services_fee = final_extra_fee
+    waybill.final_vat_amount = final_vat
+    waybill.final_total_amount = final_total
+    waybill.price_status = "ADJUSTED" if estimated_total and abs(final_total - estimated_total) >= 1 else "FINALIZED"
+    waybill.shipping_fee = final_shipping_fee
+    waybill.vat_amount = final_vat
+    if waybill.payment_method == "RECEIVER_PAY":
+        waybill.total_amount_to_collect = float(waybill.cod_amount or 0) + final_total
+    else:
+        waybill.total_amount_to_collect = float(waybill.cod_amount or 0)
     waybill.version += 1
 
     # Dùng CRUD thay vì models
@@ -123,7 +151,16 @@ async def update_actual_weight(
     )
 
     db.commit()
-    return {"waybill_code": waybill_code, "declared_weight": float(waybill.converted_weight), "actual_weight": data.actual_weight}
+    return {
+        "waybill_code": waybill_code,
+        "declared_weight": float(waybill.converted_weight),
+        "actual_weight": data.actual_weight,
+        "price_status": waybill.price_status,
+        "estimated_shipping_fee": float(waybill.estimated_shipping_fee or waybill.shipping_fee or 0),
+        "final_shipping_fee": float(waybill.final_shipping_fee or 0),
+        "estimated_total_amount": float(waybill.estimated_total_amount or 0),
+        "final_total_amount": float(waybill.final_total_amount or 0),
+    }
 
 @router.post("/bagging", dependencies=[Depends(PermissionChecker("warehouse_scan"))])
 async def scan_bagging(

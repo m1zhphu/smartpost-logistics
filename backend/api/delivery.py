@@ -23,6 +23,16 @@ def verify_shipper_access(user: dict):
         raise HTTPException(status_code=403, detail="Chỉ Shipper mới được báo cáo kết quả giao hàng.")
 # -------------------------------
 
+def _can_operate_hub(current_user: dict, hub_id: int | None) -> bool:
+    if current_user.get("role_id") == 1:
+        return True
+    return bool(hub_id and current_user.get("primary_hub_id") == hub_id)
+
+
+def _require_pickup_operator(current_user: dict):
+    if current_user.get("role_id") not in [1, 2, 3, 7]:
+        raise HTTPException(status_code=403, detail="Khong co quyen thao tac yeu cau pickup")
+
 @router.get("/pending-assign")
 def get_pending_assign_waybills(
     db: Session = Depends(get_db),
@@ -317,6 +327,130 @@ def list_pickup_requests(
 
     return crud_delivery.get_booking_requests(db, status, assigned_shipper_id, hub_id)
 
+
+@router.get("/online-pickup-requests", response_model=list[schema_delivery.BookingRequestResponse])
+def list_online_pickup_requests(
+    status: Optional[str] = "PENDING_CONFIRMATION",
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_pickup_operator(current_user)
+    return crud_delivery.get_online_pickup_requests(db, status=status)
+
+
+@router.post("/online-pickup-requests/confirm-hub")
+def confirm_online_pickup_hub(
+    data: schema_delivery.OnlinePickupConfirmHubRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_pickup_operator(current_user)
+    hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.hub_id, models.Hubs.status == True).first()
+    if not hub:
+        raise HTTPException(status_code=404, detail="Khong tim thay van phong nhan hop le")
+    if not _can_operate_hub(current_user, data.hub_id):
+        raise HTTPException(status_code=403, detail="Khong co quyen xac nhan van phong nay")
+
+    requests = db.query(models.BookingRequests).filter(
+        models.BookingRequests.request_id.in_(data.request_ids),
+        models.BookingRequests.source == "PORTAL",
+    ).all()
+    found_ids = {req.request_id for req in requests}
+    missing_ids = [req_id for req_id in data.request_ids if req_id not in found_ids]
+    if missing_ids:
+        raise HTTPException(status_code=404, detail=f"Khong tim thay yeu cau: {missing_ids}")
+
+    confirmed_ids = []
+    try:
+        for req in requests:
+            if req.status != "PENDING_CONFIRMATION":
+                raise HTTPException(status_code=400, detail=f"Yeu cau {req.request_id} khong o trang thai cho xac nhan")
+            crud_delivery.confirm_online_pickup_hub(db, req, data.hub_id, current_user["user_id"], data.note)
+            confirmed_ids.append(req.request_id)
+        db.commit()
+        return {
+            "status": "SUCCESS",
+            "confirmed_count": len(confirmed_ids),
+            "hub_id": data.hub_id,
+            "request_ids": confirmed_ids,
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/hub-pickup-requests", response_model=list[schema_delivery.BookingRequestResponse])
+def list_hub_pickup_requests(
+    status: Optional[str] = "RECEIVED",
+    hub_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_pickup_operator(current_user)
+    target_hub_id = hub_id if current_user.get("role_id") == 1 else current_user.get("primary_hub_id")
+    if not target_hub_id:
+        raise HTTPException(status_code=400, detail="Khong xac dinh duoc van phong")
+    return crud_delivery.get_online_pickup_requests(db, status=status, hub_id=target_hub_id)
+
+
+@router.get("/mobile/shipper/pickup-requests", response_model=list[schema_delivery.MobilePickupTaskResponse])
+def list_mobile_shipper_pickup_requests(
+    status: Optional[str] = "ASSIGNED_PICKUP",
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Mobile bưu tá: lấy danh sách yêu cầu pickup được gán cho chính bưu tá đang đăng nhập."""
+    if current_user.get("role_id") != 4:
+        raise HTTPException(status_code=403, detail="Chỉ bưu tá mới được xem danh sách pickup trên mobile")
+    return crud_delivery.get_mobile_pickup_tasks_for_shipper(db, current_user["user_id"], status=status)
+
+
+@router.get("/mobile/shipper/pickup-requests/{code}", response_model=schema_delivery.MobilePickupTaskResponse)
+def get_mobile_shipper_pickup_request_detail(
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Mobile bưu tá: xem chi tiết một yêu cầu pickup được gán."""
+    if current_user.get("role_id") != 4:
+        raise HTTPException(status_code=403, detail="Chỉ bưu tá mới được xem chi tiết pickup trên mobile")
+    task = crud_delivery.get_mobile_pickup_task_for_shipper(db, current_user["user_id"], code)
+    if not task:
+        raise HTTPException(status_code=404, detail="Không tìm thấy yêu cầu pickup được gán cho bạn")
+    return task
+
+
+@router.post("/mobile/shipper/location", response_model=schema_delivery.ShipperLocationResponse)
+def save_mobile_shipper_location(
+    data: schema_delivery.MobileShipperLocationRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Mobile bưu tá: gửi vị trí GPS của chính bưu tá đang đăng nhập."""
+    if current_user.get("role_id") != 4:
+        raise HTTPException(status_code=403, detail="Chỉ bưu tá mới được cập nhật vị trí trên mobile")
+    success, message = crud_delivery.save_shipper_location(
+        db,
+        shipper_id=current_user["user_id"],
+        latitude=data.latitude,
+        longitude=data.longitude,
+        accuracy=data.accuracy,
+        note=data.note,
+    )
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    db.commit()
+    return {
+        "status": "SUCCESS",
+        "shipper_id": current_user["user_id"],
+        "message": message,
+        "timestamp": data.timestamp or datetime.utcnow(),
+    }
+
+
 @router.get("/pickup-requests/{code}", response_model=schema_delivery.BookingRequestResponse)
 def get_pickup_request_detail(
     code: str,
@@ -366,6 +500,85 @@ async def assign_shipper_pickup(
         background_tasks.add_task(send_expo_push_notification, shipper.push_token, title, body, {"request_code": code})
         
     return {"status": "ASSIGNED_PICKUP", "request_code": code, "assigned_shipper_id": data.shipper_id}
+
+
+@router.post("/pickup-requests/{code}/assign-shipper")
+async def assign_shipper_online_pickup(
+    code: str,
+    data: schema_delivery.BookingRequestAssignRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    _require_pickup_operator(current_user)
+    db_req = crud_delivery.get_booking_request_by_code(db, code)
+    if not db_req or db_req.source != "PORTAL":
+        raise HTTPException(status_code=404, detail="Khong tim thay yeu cau pickup online")
+    if db_req.status != "RECEIVED":
+        raise HTTPException(status_code=400, detail="Yeu cau pickup chua o trang thai vua tiep nhan")
+    if not db_req.target_hub_id:
+        raise HTTPException(status_code=400, detail="Yeu cau pickup chua duoc xac nhan van phong")
+    if not _can_operate_hub(current_user, db_req.target_hub_id):
+        raise HTTPException(status_code=403, detail="Khong co quyen gan buu ta cho van phong nay")
+
+    shipper = crud_delivery.get_active_shipper(db, data.shipper_id)
+    if not shipper or not shipper.is_active:
+        raise HTTPException(status_code=404, detail="Khong tim thay buu ta hoat dong")
+    if shipper.primary_hub_id != db_req.target_hub_id:
+        raise HTTPException(status_code=400, detail="Buu ta khong thuoc van phong nhan hang")
+
+    try:
+        crud_delivery.assign_shipper_to_online_pickup(db, db_req, data.shipper_id, current_user["user_id"], data.note)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if shipper.push_token:
+        title = "Yeu cau lay hang moi"
+        body = f"Ban vua duoc gan yeu cau lay hang {code} tai {db_req.pickup_address}."
+        background_tasks.add_task(send_expo_push_notification, shipper.push_token, title, body, {"request_code": code})
+
+    return {"status": "ASSIGNED_PICKUP", "request_code": code, "assigned_shipper_id": data.shipper_id}
+
+
+@router.post("/pickup-requests/{code}/picked")
+def mark_pickup_request_picked(
+    code: str,
+    data: schema_delivery.PickupPickedRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    db_req = crud_delivery.get_booking_request_by_code(db, code)
+    if not db_req or db_req.source != "PORTAL":
+        raise HTTPException(status_code=404, detail="Khong tim thay yeu cau pickup online")
+    if db_req.status != "ASSIGNED_PICKUP":
+        raise HTTPException(status_code=400, detail="Yeu cau pickup chua duoc gan buu ta")
+
+    user_role = current_user.get("role_id")
+    is_assigned_shipper = user_role == 4 and db_req.assigned_shipper_id == current_user.get("user_id")
+    is_operator = user_role in [1, 2, 3, 7] and _can_operate_hub(current_user, db_req.target_hub_id)
+    if not (is_assigned_shipper or is_operator):
+        raise HTTPException(status_code=403, detail="Khong co quyen xac nhan da lay hang")
+
+    try:
+        _, waybill = crud_delivery.mark_online_pickup_picked(
+            db,
+            db_req,
+            current_user["user_id"],
+            pickup_image_url=data.pickup_image_url,
+            note=data.note,
+        )
+        db.commit()
+        return {
+            "status": "PICKED",
+            "request_code": code,
+            "waybill_code": waybill.waybill_code if waybill else None,
+            "waybill_status": waybill.status if waybill else None,
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # --- NEW: REASSIGN & LOCATION ENDPOINTS ---

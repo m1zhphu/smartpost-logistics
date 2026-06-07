@@ -1,10 +1,25 @@
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date
+import secrets
+import string
 import models
 from core.state_machine import WaybillStatus
 from typing import Optional, List
 from schemas.waybills import WaybillFilter
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+
+def generate_waybill_code(db: Session) -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    for _ in range(20):
+        time_part = datetime.utcnow().strftime("%y%m%d%H%M%S%f")[:-3]
+        random_part = "".join(secrets.choice(alphabet) for _ in range(5))
+        code = f"SP{time_part}{random_part}"
+        exists = db.query(models.Waybills).filter(models.Waybills.waybill_code == code).first()
+        if not exists:
+            return code
+    raise ValueError("Khong the tao ma van don duy nhat")
 
 def get_waybill_by_code(db: Session, code: str):
     return db.query(models.Waybills).filter(
@@ -61,7 +76,7 @@ def create_waybill_record(db: Session, data: dict, fee: float):
     conv_w = (float(l) * float(w) * float(h)) / 5000 if l and w and h else 0.0
 
     new_waybill = models.Waybills(
-        waybill_code=f"SP{int(datetime.utcnow().timestamp())}",
+        waybill_code=generate_waybill_code(db),
         **filtered,
         shipping_fee=fee,
         total_amount_to_collect=total_collect, 
@@ -85,6 +100,219 @@ def create_waybill_record(db: Session, data: dict, fee: float):
             db.add(extra_srv)
             
     return new_waybill
+
+
+def create_customer_pickup_waybill(
+    db: Session,
+    customer: models.Customers,
+    data,
+    origin_hub_id: int | None,
+    dest_hub_id: int | None,
+    creator_id: int,
+    shipping_fee: float,
+    extra_services_fee: float,
+    vat_amount: float,
+) -> tuple[models.BookingRequests, models.Waybills]:
+    sender = data.sender
+    receiver = data.receiver
+    items = data.items or []
+    documents = data.documents or []
+    service_type = (data.service_type or "STANDARD").upper()
+    total_weight = sum(float(item.weight) * int(item.quantity or 1) for item in items)
+    first_item = items[0]
+    total_to_collect = float(data.cod_amount or 0)
+    if data.payment_method == "RECEIVER_PAY":
+        total_to_collect += float(shipping_fee or 0) + float(extra_services_fee or 0) + float(vat_amount or 0)
+    estimated_total = float(shipping_fee or 0) + float(extra_services_fee or 0) + float(vat_amount or 0)
+
+    request_code = generate_waybill_code(db)
+    booking = models.BookingRequests(
+        request_code=request_code,
+        source="PORTAL",
+        shop_order_code=data.shop_order_code,
+        customer_id=customer.customer_id,
+        sender_phone=sender.phone or customer.phone_number,
+        pickup_address=sender.address or customer.address_detail,
+        target_hub_id=None,
+        product_type=first_item.product_group,
+        est_weight=total_weight,
+        est_quantity=sum(int(item.quantity or 1) for item in items),
+        is_vehicle_required=False,
+        status="DRAFT" if data.save_as_draft else "PENDING_CONFIRMATION",
+        requested_pickup_time=data.pickup_time,
+        pickup_method=data.pickup_method,
+        priority="NORMAL",
+        sla_deadline=None,
+        notes=data.note,
+    )
+    db.add(booking)
+    db.flush()
+
+    waybill_code = generate_waybill_code(db)
+    waybill = models.Waybills(
+        waybill_code=waybill_code,
+        request_id=booking.request_id,
+        customer_id=customer.customer_id,
+        receiver_name=receiver.name,
+        receiver_phone=receiver.phone,
+        receiver_address=receiver.address,
+        origin_hub_id=None,
+        dest_hub_id=dest_hub_id or origin_hub_id,
+        service_type=service_type,
+        delivery_type=data.order_type,
+        actual_weight=total_weight,
+        converted_weight=0,
+        payment_method=data.payment_method,
+        cod_amount=data.cod_amount,
+        shipping_fee=shipping_fee,
+        extra_services_fee=extra_services_fee,
+        vat_amount=vat_amount,
+        total_amount_to_collect=total_to_collect,
+        estimated_weight=total_weight,
+        estimated_converted_weight=0,
+        estimated_shipping_fee=shipping_fee,
+        estimated_extra_services_fee=extra_services_fee,
+        estimated_vat_amount=vat_amount,
+        estimated_total_amount=estimated_total,
+        price_status="ESTIMATED",
+        status="DRAFT" if data.save_as_draft else WaybillStatus.CREATED,
+        product_name=first_item.product_name or first_item.product_group,
+        note=data.note,
+        version=1,
+        sender_name=sender.name or customer.representative_name or customer.company_name,
+        sender_phone=sender.phone or customer.phone_number,
+        sender_address=sender.address or customer.address_detail,
+        sender_province_id=sender.province_id or customer.province_id,
+        sender_district_id=sender.district_id or customer.district_id,
+        sender_ward_id=sender.ward_id or customer.ward_id,
+        sender_province_name=sender.province_name or customer.province_name,
+        sender_district_name=sender.district_name,
+        sender_ward_name=sender.ward_name or customer.ward_name,
+        receiver_province_id=receiver.province_id,
+        receiver_district_id=receiver.district_id,
+        receiver_ward_id=receiver.ward_id,
+        receiver_province_name=receiver.province_name,
+        receiver_district_name=receiver.district_name,
+        receiver_ward_name=receiver.ward_name,
+        shop_order_code=data.shop_order_code,
+        order_type=data.order_type,
+        delivery_note_option=data.delivery_note_option,
+        cod_receiver_pays_fee=data.cod_receiver_pays_fee,
+        cod_fee_payment_method=data.cod_fee_payment_method,
+        pickup_method=data.pickup_method,
+        delivery_method=data.delivery_method,
+        requested_pickup_time=data.pickup_time,
+        length=first_item.length,
+        width=first_item.width,
+        height=first_item.height,
+        holding_hub_id=None,
+    )
+    db.add(waybill)
+    db.flush()
+
+    for index, item in enumerate(items, start=1):
+        converted_weight = 0
+        if item.length and item.width and item.height:
+            converted_weight = (float(item.length) * float(item.width) * float(item.height)) / 5000
+        db.add(models.WaybillItems(
+            parcel_code=f"{waybill_code}-{index:03d}",
+            waybill_id=waybill.waybill_id,
+            product_group=item.product_group,
+            product_name=item.product_name,
+            description=item.description,
+            declared_value=item.declared_value or 0,
+            actual_weight=item.weight,
+            converted_weight=converted_weight,
+            length=item.length,
+            width=item.width,
+            height=item.height,
+            quantity=item.quantity,
+        ))
+
+    for service in data.extra_services or []:
+        db.add(models.WaybillExtraServices(
+            waybill_id=waybill.waybill_id,
+            service_name=service.service_name or service.service_code,
+            service_fee=service.service_fee or 0,
+        ))
+
+    for document in documents:
+        db.add(models.WaybillDocuments(
+            waybill_id=waybill.waybill_id,
+            document_code=document.document_code,
+            document_name=document.document_name,
+            quantity=document.quantity,
+            note=document.note,
+        ))
+
+    db.add(models.BookingRequestLogs(
+        request_id=booking.request_id,
+        user_id=creator_id,
+        action="Tao yeu cau lay hang tu portal",
+        note=f"Van don {waybill_code}",
+    ))
+    create_initial_log(db, waybill.waybill_id, origin_hub_id, creator_id)
+    return booking, waybill
+
+
+def customer_pickup_payload(request: models.BookingRequests, waybill: models.Waybills) -> dict:
+    hub = request.target_hub
+    shipper = request.assigned_shipper
+    created_at = None
+    if request.logs:
+        created_at = min((log.created_at for log in request.logs if log.created_at), default=None)
+    return {
+        "request_id": request.request_id,
+        "request_code": request.request_code,
+        "waybill_id": waybill.waybill_id,
+        "waybill_code": waybill.waybill_code,
+        "bill_code": waybill.waybill_code,
+        "pickup_status": request.status,
+        "waybill_status": waybill.status,
+        "office_status": hub.hub_name if hub else "Chưa xác nhận văn phòng",
+        "hub_id": request.target_hub_id,
+        "hub_name": hub.hub_name if hub else None,
+        "assigned_shipper_id": request.assigned_shipper_id,
+        "assigned_shipper_name": shipper.full_name if shipper else None,
+        "price_status": waybill.price_status or "ESTIMATED",
+        "estimated_shipping_fee": float(waybill.estimated_shipping_fee or waybill.shipping_fee or 0),
+        "estimated_total_amount": float(waybill.estimated_total_amount or 0),
+        "final_shipping_fee": float(waybill.final_shipping_fee) if waybill.final_shipping_fee is not None else None,
+        "final_total_amount": float(waybill.final_total_amount) if waybill.final_total_amount is not None else None,
+        "created_at": created_at,
+    }
+
+
+def get_customer_pickup_waybills(db: Session, customer_id: int):
+    rows = (
+        db.query(models.BookingRequests, models.Waybills)
+        .join(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)
+        .filter(
+            models.BookingRequests.customer_id == customer_id,
+            models.BookingRequests.source == "PORTAL",
+            models.Waybills.is_deleted == False,
+        )
+        .order_by(models.BookingRequests.request_id.desc())
+        .all()
+    )
+    return [customer_pickup_payload(req, wb) for req, wb in rows]
+
+
+def get_customer_pickup_waybill_by_code(db: Session, customer_id: int, waybill_code: str):
+    row = (
+        db.query(models.BookingRequests, models.Waybills)
+        .join(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)
+        .filter(
+            models.BookingRequests.customer_id == customer_id,
+            models.BookingRequests.source == "PORTAL",
+            models.Waybills.waybill_code == waybill_code,
+            models.Waybills.is_deleted == False,
+        )
+        .first()
+    )
+    if not row:
+        return None
+    return customer_pickup_payload(row[0], row[1])
 
 
 def create_initial_log(db: Session, waybill_id: int, hub_id: int, user_id: int):

@@ -66,6 +66,10 @@ async def generate_bill_html(waybill_code: str, db: Session = Depends(get_db)):
             sender_p = "Chưa có SĐT"
 
     origin_n = wb.origin_hub.hub_name if wb.origin_hub else "Bưu cục gửi"
+    company = (cust.company_name or cust.transaction_name or cust.customer_code) if cust else "KHACH LE"
+    sender_n = wb.sender_name or (cust.representative_name if (cust and hasattr(cust, 'representative_name')) else None) or sender_n
+    sender_p = wb.sender_phone or sender_p
+    origin_n = wb.sender_address or (cust.address_detail if cust else None) or origin_n
     
     # Xử lý tên nhân viên (Creator)
     try:
