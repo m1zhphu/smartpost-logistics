@@ -18,17 +18,17 @@
     <!-- Table Danh sách Chờ Duyệt -->
     <el-card shadow="sm">
       <el-table :data="tableData" v-loading="loading" stripe border style="width: 100%">
-        <el-table-column prop="waybill_code" label="Mã Vận Đơn" width="150" font-weight="bold" />
-        <el-table-column prop="origin_hub.hub_name" label="Bưu cục tạo" />
-        <el-table-column label="Thông tin gửi/nhận">
+        <el-table-column prop="waybill_code" label="Mã Vận Đơn" min-width="150" font-weight="bold" />
+        <el-table-column prop="origin_hub.hub_name" label="Bưu cục tạo" min-width="150" />
+        <el-table-column label="Thông tin gửi/nhận" min-width="280">
           <template #default="scope">
-            <div class="text-xs">
-              <div><strong>Gửi:</strong> {{ scope.row.origin_hub?.hub_name }}</div>
+            <div class="text-xs" style="line-height: 1.6;">
+              <div><strong>Gửi:</strong> {{ scope.row.origin_hub?.hub_name || 'N/A' }}</div>
               <div><strong>Nhận:</strong> {{ scope.row.receiver_name }} ({{ scope.row.receiver_phone }})</div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Tem Bill (Gốc)" width="130" align="center">
+        <el-table-column label="Tem Bill (Gốc)" min-width="130" align="center">
           <template #default="scope">
             <el-button
               size="small"
@@ -41,7 +41,7 @@
             </el-button>
           </template>
         </el-table-column>
-        <el-table-column label="Ảnh Tem Bill" width="120" align="center">
+        <el-table-column label="Ảnh Tem Bill" min-width="120" align="center">
           <template #default="scope">
             <el-image
               v-if="scope.row.bill_image_url"
@@ -54,7 +54,7 @@
             <el-tag v-else type="info" size="small">Không có ảnh</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Hành động" width="280" align="center">
+        <el-table-column label="Hành động" min-width="280" align="center">
           <template #default="scope">
             <el-button size="small" type="primary" plain @click="openCompareDialog(scope.row)">
               <el-icon class="mr-1"><Memo /></el-icon> Đối chiếu AI

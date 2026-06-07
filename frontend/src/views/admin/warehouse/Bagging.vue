@@ -137,7 +137,7 @@
                  </template>
               </el-table-column>
               
-              <el-table-column label="Thêm" width="70" align="center" fixed="right">
+              <el-table-column label="Thêm" width="70" align="center">
                  <template #default="{ row }">
                     <button class="icon-btn primary small" @click="handleAddWaybill(row, true)" :disabled="!isBagLocked" title="Thêm vào túi">
                       <el-icon><Plus /></el-icon>
@@ -208,7 +208,7 @@
                    </template>
                 </el-table-column>
                 
-                <el-table-column label="Bỏ" width="70" align="center" fixed="right">
+                <el-table-column label="Bỏ" width="70" align="center">
                    <template #default="{ row, $index }">
                       <button class="icon-btn delete small mx-auto" @click="removeItem($index, row)" title="Lấy ra khỏi túi">
                         <el-icon><Delete /></el-icon>

@@ -60,7 +60,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="Thao tác" width="100" align="center" fixed="right">
+        <el-table-column label="Thao tác" width="100" align="center">
           <template #default="{ row }">
             <el-button link type="primary" :icon="Edit" @click="openDialog(row)" />
           </template>

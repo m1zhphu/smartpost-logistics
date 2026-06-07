@@ -73,7 +73,7 @@
       </div>
 
       <!-- Main Table Card -->
-      <div v-show="activeTab === 'all'" class="content-card table-wrapper animate-fade-in-up">
+      <div v-show="activeTab === 'all'" class="content-card table-wrapper animate-fade-in-up desktop-only">
         <el-table 
           :data="paginatedCustomers" 
           v-loading="loading" 
@@ -82,7 +82,7 @@
           style="width: 100%"
         >
           <!-- Mã KH -->
-          <el-table-column prop="customer_code" label="Mã KH" width="120" fixed="left">
+          <el-table-column prop="customer_code" label="Mã KH" width="120">
             <template #default="{ row }">
               <span class="code-badge">{{ row.customer_code }}</span>
             </template>
@@ -145,7 +145,7 @@
           </el-table-column>
 
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="120" fixed="right" align="center">
+          <el-table-column label="Thao tác" width="120" align="center">
             <template #default="{ row }">
               <div class="action-buttons">
                 <button class="icon-btn edit" @click="viewCustomerDetails(row)" title="Xem chi tiết">
@@ -173,7 +173,57 @@
         </div>
       </div>
 
-      <div v-if="canManageAssignment" v-show="activeTab === 'unassigned'" class="content-card table-wrapper animate-fade-in-up">
+      <!-- Mobile Cards: All Customers -->
+      <div v-show="activeTab === 'all'" class="mobile-only" v-loading="loading">
+        <el-empty v-if="paginatedCustomers.length === 0 && !loading" description="Không tìm thấy dữ liệu khách hàng" :image-size="80" />
+        <div
+          v-for="customer in paginatedCustomers"
+          :key="customer.id"
+          class="mobile-customer-card animate-fade-in-up"
+        >
+          <div class="mcc-header">
+            <div class="avatar-icon" :class="customer.customer_type === 'COMPANY' ? 'bg-primary' : 'bg-success'">
+              <el-icon v-if="customer.customer_type === 'COMPANY'"><OfficeBuilding /></el-icon>
+              <el-icon v-else><Shop /></el-icon>
+            </div>
+            <div class="mcc-identity">
+              <span class="fw-bold text-dark mcc-name">{{ customer.transaction_name || customer.company_name || customer.customer_code }}</span>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <span class="code-badge" style="padding:2px 6px;font-size:11px;">{{ customer.customer_code }}</span>
+                <el-tag :type="customer.customer_type === 'COMPANY' ? 'primary' : 'success'" size="small" class="type-tag" effect="plain">
+                  {{ customer.customer_type === 'COMPANY' ? 'Doanh nghiệp' : 'Cá nhân' }}
+                </el-tag>
+              </div>
+            </div>
+            <div class="status-pill" :class="customer.status === 'ACTIVE' ? 'active' : 'locked'" style="flex-shrink:0;">
+              {{ customer.status === 'ACTIVE' ? 'HĐ' : 'Ngừng' }}
+            </div>
+          </div>
+          <div class="mcc-info-list">
+            <div class="mcc-info-row">
+              <span class="mcc-label">Quản lý</span>
+              <span class="mcc-value"><el-icon style="margin-right:4px;"><UserFilled /></el-icon>{{ customer.staff_in_charge_name || '—' }}</span>
+            </div>
+            <div class="mcc-info-row">
+              <span class="mcc-label">SĐT</span>
+              <span class="mcc-value"><el-icon style="margin-right:4px;"><Phone /></el-icon>{{ customer.phone || '—' }}</span>
+            </div>
+          </div>
+          <div class="mcc-footer">
+            <button class="icon-btn edit" @click="viewCustomerDetails(customer)" title="Xem chi tiết">
+              <el-icon><InfoFilled /></el-icon>
+            </button>
+            <button class="icon-btn edit" @click="openDialog(customer)" title="Chỉnh sửa">
+              <el-icon><Edit /></el-icon>
+            </button>
+          </div>
+        </div>
+        <div v-if="customers.length > pageSize" class="mcc-pagination">
+          <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" layout="prev, pager, next" :total="customers.length" small />
+        </div>
+      </div>
+
+      <div v-if="canManageAssignment" v-show="activeTab === 'unassigned'" class="content-card table-wrapper animate-fade-in-up desktop-only">
         <div class="assignment-header">
           <div>
             <h3 class="section-title">Khách hàng chưa có nhân viên quản lý</h3>
@@ -191,7 +241,7 @@
           row-class-name="modern-row"
           style="width: 100%"
         >
-          <el-table-column prop="customer_code" label="Mã KH" width="120" fixed="left">
+          <el-table-column prop="customer_code" label="Mã KH" width="120">
             <template #default="{ row }">
               <span class="code-badge">{{ row.customer_code }}</span>
             </template>
@@ -236,7 +286,7 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="Gán CSKH" min-width="300" fixed="right">
+          <el-table-column label="Gán CSKH" min-width="300">
             <template #default="{ row }">
               <div class="assign-row">
                 <el-select
@@ -271,7 +321,62 @@
         </el-table>
       </div>
 
-      <div v-show="activeTab === 'inactive'" class="content-card table-wrapper animate-fade-in-up">
+      <!-- Mobile Cards: Unassigned -->
+      <div v-if="canManageAssignment" v-show="activeTab === 'unassigned'" class="mobile-only" v-loading="unassignedLoading">
+        <div class="assignment-header" style="background:var(--sp-surface);padding:16px;border-radius:14px;margin-bottom:16px;">
+          <div>
+            <h3 class="section-title">Chưa có nhân viên quản lý</h3>
+            <p class="section-description">Chọn CSKH phụ trách rồi xác nhận.</p>
+          </div>
+          <el-button @click="fetchUnassignedCustomers">Làm mới</el-button>
+        </div>
+        <el-empty v-if="unassignedCustomers.length === 0 && !unassignedLoading" description="Không có khách hàng chờ gán" :image-size="80" />
+        <div v-for="customer in unassignedCustomers" :key="customer.id" class="mobile-customer-card animate-fade-in-up">
+          <div class="mcc-header">
+            <div class="avatar-icon" :class="customer.customer_type === 'COMPANY' ? 'bg-primary' : 'bg-success'">
+              <el-icon v-if="customer.customer_type === 'COMPANY'"><OfficeBuilding /></el-icon>
+              <el-icon v-else><Shop /></el-icon>
+            </div>
+            <div class="mcc-identity">
+              <span class="fw-bold text-dark mcc-name">{{ customer.transaction_name || customer.company_name || customer.customer_code }}</span>
+              <span class="code-badge" style="padding:2px 6px;font-size:11px;">{{ customer.customer_code }}</span>
+            </div>
+            <el-tag type="warning" size="small" effect="plain" style="flex-shrink:0;">Chưa gán</el-tag>
+          </div>
+          <div class="mcc-info-list" style="margin-bottom:16px;">
+            <div class="mcc-info-row" v-if="customer.phone">
+              <span class="mcc-label">SĐT</span>
+              <span class="mcc-value"><el-icon style="margin-right:4px;"><Phone /></el-icon>{{ customer.phone }}</span>
+            </div>
+          </div>
+          <div class="assign-row" style="border-top:1px solid var(--sp-bg-app);padding-top:12px;">
+            <el-select
+              v-model="assignmentDrafts[customer.customer_id || customer.id]"
+              :disabled="isCskh"
+              filterable
+              placeholder="Chọn nhân viên"
+              class="w-full"
+            >
+              <el-option
+                v-for="staff in assignableStaffOptions"
+                :key="staff.user_id"
+                :label="staff.full_name ? `${staff.full_name} (${staff.username})` : staff.username"
+                :value="staff.user_id"
+              />
+            </el-select>
+            <button
+              class="btn-primary" style="width:100%;justify-content:center;"
+              :disabled="assigningCustomerId === (customer.customer_id || customer.id)"
+              @click="assignCustomer(customer)"
+            >
+              <el-icon><UserFilled /></el-icon>
+              <span>{{ assigningCustomerId === (customer.customer_id || customer.id) ? 'Đang gán...' : 'Gán NVCSKH' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-show="activeTab === 'inactive'" class="content-card table-wrapper animate-fade-in-up desktop-only">
         <div class="assignment-header">
           <div>
             <h3 class="section-title">Khách hàng ngừng hợp tác</h3>
@@ -287,7 +392,7 @@
           row-class-name="modern-row"
           style="width: 100%"
         >
-          <el-table-column prop="customer_code" label="Mã KH" width="120" fixed="left">
+          <el-table-column prop="customer_code" label="Mã KH" width="120">
             <template #default="{ row }">
               <span class="code-badge">{{ row.customer_code }}</span>
             </template>
@@ -324,7 +429,7 @@
               <span class="text-dark fw-500"><el-icon class="mr-1 text-muted"><UserFilled /></el-icon>{{ row.staff_in_charge_name || '—' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="Thao tác" width="90" fixed="right" align="center">
+          <el-table-column label="Thao tác" width="90" align="center">
             <template #default="{ row }">
               <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa"><el-icon><Edit /></el-icon></button>
             </template>
@@ -333,6 +438,32 @@
             <el-empty description="Không có khách hàng ngừng hợp tác" :image-size="100" />
           </template>
         </el-table>
+      </div>
+
+      <!-- Mobile Cards: Inactive -->
+      <div v-show="activeTab === 'inactive'" class="mobile-only" v-loading="inactiveLoading">
+        <div class="assignment-header" style="background:var(--sp-surface);padding:16px;border-radius:14px;margin-bottom:16px;">
+          <div>
+            <h3 class="section-title">Ngừng hợp tác</h3>
+          </div>
+          <el-button @click="fetchInactiveCustomers">Làm mới</el-button>
+        </div>
+        <el-empty v-if="inactiveCustomers.length === 0 && !inactiveLoading" description="Không có khách hàng ngừng hợp tác" :image-size="80" />
+        <div v-for="customer in inactiveCustomers" :key="customer.id" class="mobile-customer-card animate-fade-in-up">
+          <div class="mcc-header">
+            <div class="avatar-icon inactive-avatar"><el-icon><Shop /></el-icon></div>
+            <div class="mcc-identity">
+              <span class="fw-bold text-dark mcc-name">{{ customer.transaction_name || customer.company_name || customer.customer_code }}</span>
+              <span class="code-badge" style="padding:2px 6px;font-size:11px;">{{ customer.customer_code }}</span>
+            </div>
+            <el-tag type="danger" size="small" effect="plain" style="flex-shrink:0;">Ngừng</el-tag>
+          </div>
+          <div class="mcc-footer" style="padding-top:10px;justify-content:flex-end;">
+            <button class="btn-secondary" style="padding:8px 16px;" @click="openDialog(customer)">
+              <el-icon class="mr-1"><Edit /></el-icon> Chỉnh sửa
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Modern Dialog Form (2-Column Layout) -->

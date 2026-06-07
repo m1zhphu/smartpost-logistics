@@ -47,7 +47,7 @@
 
               <el-table-column prop="from_hub_name" label="Nơi Gửi" min-width="130" show-overflow-tooltip />
 
-              <el-table-column label="Thao Tác" width="90" align="center" fixed="right">
+              <el-table-column label="Thao Tác" width="90" align="center">
                 <template #default="{ row }">
                   <el-button type="primary" size="small" plain @click="viewManifestDetail(row.manifest_code)">
                     Xem chi tiết

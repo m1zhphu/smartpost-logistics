@@ -83,7 +83,7 @@
                       <span class="text-dark fw-bold">{{ row.receiver_name }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column label="Thao tác" width="90" align="center" fixed="right">
+                  <el-table-column label="Thao tác" width="90" align="center">
                     <template #default="{ row }">
                       <button class="btn-action-small" @click="handleScan(row.waybill_code)">
                         Nhập
@@ -146,7 +146,7 @@
                     </template>
                   </el-table-column>
                   
-                  <el-table-column label="Bỏ" width="60" align="center" fixed="right">
+                  <el-table-column label="Bỏ" width="60" align="center">
                     <template #default="{ $index }">
                       <button class="icon-btn delete small" @click="removeItem($index)">
                         <el-icon><Close /></el-icon>

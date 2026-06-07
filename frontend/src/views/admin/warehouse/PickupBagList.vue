@@ -195,7 +195,7 @@
           </el-table-column>
           
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="220" fixed="right" align="center">
+          <el-table-column label="Thao tác" width="220" align="center">
             <template #default="{ row }">
               <div class="action-btn-group">
                 <!-- Chi tiết -->

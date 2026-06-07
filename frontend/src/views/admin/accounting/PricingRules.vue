@@ -102,7 +102,7 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="Thao tác" width="120" fixed="right" align="center">
+              <el-table-column label="Thao tác" min-width="120" align="center">
                 <template #default="{ row }">
                   <div class="action-buttons" style="display: flex; gap: 8px; justify-content: center;">
                     <button class="icon-btn edit" @click.stop="viewPolicyRules(row)" title="Xem cước tuyến">
@@ -164,7 +164,7 @@
               style="width: 100%"
             >
               <!-- Tuyến đường -->
-              <el-table-column label="Tuyến đường vận chuyển" min-width="320" fixed="left">
+              <el-table-column label="Tuyến đường vận chuyển" min-width="320">
                 <template #default="{ row }">
                   <div class="route-visualization">
                     <div class="route-hub origin">
@@ -229,7 +229,7 @@
               </el-table-column>
 
               <!-- Thao tác -->
-              <el-table-column v-if="canEditPricing" label="Thao tác" width="120" fixed="right" align="center">
+              <el-table-column v-if="canEditPricing" label="Thao tác" min-width="120" align="center">
                 <template #default="{ row }">
                   <div class="action-buttons">
                     <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa">
@@ -321,7 +321,7 @@
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="canEditPricing" label="Thao tác" width="100" fixed="right" align="center">
+              <el-table-column v-if="canEditPricing" label="Thao tác" min-width="100" align="center">
                 <template #default="{ row }">
                   <button class="icon-btn edit mx-auto" @click="openServiceDialog(row)" title="Chỉnh sửa">
                     <el-icon><Edit /></el-icon>
@@ -583,6 +583,7 @@
         v-model="rulesDrawerVisible"
         :title="`Cấu hình Cước Tuyến - ${selectedPolicy?.policy_name || ''}`"
         size="75%"
+        class="responsive-drawer"
         destroy-on-close
       >
         <template #header>
@@ -598,7 +599,7 @@
         <div v-if="selectedPolicy" class="drawer-body-content">
           <!-- Policy Overview Mini-Card -->
           <div class="policy-mini-card" style="margin-bottom: 20px;">
-            <el-descriptions :column="3" border size="small">
+            <el-descriptions :column="3" border size="small" class="responsive-descriptions">
               <el-descriptions-item label="Loại bảng giá">
                 <el-tag size="small" type="primary">{{ selectedPolicy.policy_type === 'GENERAL' ? 'Bảng giá chung' : 'Bảng giá riêng' }}</el-tag>
               </el-descriptions-item>
@@ -616,7 +617,7 @@
           </div>
 
           <!-- Add Rule Trigger -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div class="drawer-action-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--sp-text-main);">Quy tắc cước tuyến theo dịch vụ</h4>
             <button v-if="canEditPricing" class="btn-primary" @click="openDialogForPolicy(selectedPolicy)">
               <el-icon><Plus /></el-icon> Thêm Tuyến Giá mới
@@ -647,14 +648,30 @@
                   </template>
                 </el-table-column>
                 
-                <el-table-column label="Khối lượng" width="150" align="center">
+                <el-table-column label="Khối lượng" min-width="150" align="center">
                   <template #default="{ row }">
                     <span>{{ row.min_weight }} - {{ row.max_weight }} kg</span>
                   </template>
                 </el-table-column>
 
-                <el-table-column label="Đơn giá" width="150" align="right">
+                <el-table-column label="Đơn giá" min-width="150" align="right">
                   <template #default="{ row }">
+                    <span class="fw-bold text-dark">{{ formatMoney(row.price) }} đ</span>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="Trạng thái" min-width="120" align="center">
+                  <template #default="{ row }">
+                    <el-switch
+                      v-model="row.is_active"
+                      :disabled="!canEditPricing"
+                      @change="toggleRuleStatus(row)"
+                      style="--el-switch-on-color: #05CD99"
+                    />
+                  </template>
+                </el-table-column>
+
+                <el-table-column v-if="canEditPricing" label="Thao tác" min-width="120" align="center">      <template #default="{ row }">
                     <span class="fw-bold text-dark">{{ formatMoney(row.price) }} đ</span>
                   </template>
                 </el-table-column>
@@ -1102,3 +1119,33 @@ onMounted(() => {
 </script>
 
 <style scoped src="@/styles/admin/accounting/PricingRules.css"></style>
+
+<style>
+/* Global CSS overrrides for teleported Element Plus components on Mobile */
+@media (max-width: 768px) {
+  .responsive-drawer {
+    width: 100% !important;
+  }
+  
+  .responsive-descriptions .el-descriptions__body table tbody tr {
+    display: flex;
+    flex-direction: column;
+  }
+  .responsive-descriptions .el-descriptions__body table tbody tr td {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    border-bottom: 1px solid var(--sp-border);
+  }
+  
+  .drawer-action-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+  .drawer-action-bar button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>

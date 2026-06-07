@@ -132,7 +132,7 @@
           </el-table-column>
           
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="120" fixed="right" align="center">
+          <el-table-column label="Thao tác" width="120" align="center">
             <template #default="{ row }">
               <button class="icon-btn edit mx-auto" @click="viewBagDetails(row)" title="Xem chi tiết">
                 <el-icon><View /></el-icon>

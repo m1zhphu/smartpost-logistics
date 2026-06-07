@@ -45,6 +45,10 @@
   gap: 24px;
 }
 
+.content-side {
+  min-width: 0; /* KHẮC PHỤC LỖI TRÀN BẢNG TRÊN DESKTOP */
+}
+
 .filter-item label {
   display: block;
   font-size: 12px;
@@ -213,3 +217,69 @@
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* =============================================
+   RESPONSIVE DESIGN CHO BẢNG KÊ CƯỚC
+   ============================================= */
+
+/* Tablet & Desktop nhỏ (Dưới 1200px) */
+@media (max-width: 1200px) {
+  .main-layout {
+    /* Đổi từ 2 cột sang 1 cột dọc (stacking) để bảng không bị ép hẹp */
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile (Dưới 640px) */
+@media (max-width: 640px) {
+  .debt-statement-container {
+    padding: 16px 12px;
+  }
+  
+  .page-header {
+    margin-bottom: 20px;
+  }
+  
+  .header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .page-title {
+    font-size: 20px;
+  }
+  
+  .page-subtitle {
+    font-size: 12px;
+  }
+  
+  /* Cột filter trên mobile cách nhau ra một chút */
+  .mb-12-mobile {
+    margin-bottom: 12px;
+  }
+  
+  /* Lưới các bảng kê (Danh sách bảng kê đã tạo) */
+  .statements-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Card bảng kê trên mobile */
+  .statement-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .card-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .card-actions {
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px dashed var(--sp-border);
+  }
+}

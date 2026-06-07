@@ -111,7 +111,7 @@
               </el-table-column>
 
               <!-- Thao tác -->
-              <el-table-column label="Thao tác" width="130" align="center" fixed="right">
+              <el-table-column label="Thao tác" width="130" align="center">
                 <template #default="{ row }">
                   <button 
                     class="btn-primary w-full justify-center fw-800" 

@@ -138,6 +138,8 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   --el-table-header-bg-color: #F8FAFC;
   --el-table-header-text-color: var(--sp-text-muted);
   --el-table-text-color: var(--sp-text-main);
+  --el-table-bg-color: var(--sp-surface);
+  --el-table-tr-bg-color: var(--sp-surface);
 }
 :deep(.modern-table th.el-table__cell) { font-weight: 700; font-size: 12px; text-transform: uppercase; padding: 16px 0; border-bottom: 2px solid var(--sp-bg-app) !important; }
 :deep(.modern-table td.el-table__cell) { padding: 16px 0; border-bottom: 1px solid var(--sp-bg-app) !important; }

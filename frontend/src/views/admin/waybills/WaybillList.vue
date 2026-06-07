@@ -186,7 +186,7 @@
           style="width: 100%"
         >
           <!-- Mã vận đơn -->
-          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="160" fixed="left">
+          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="160">
             <template #default="{ row }">
                <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
                  <span class="fw-bold">{{ row.waybill_code }}</span>
@@ -298,7 +298,7 @@
           </el-table-column>
 
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="180" fixed="right" align="center">
+          <el-table-column label="Thao tác" width="180" align="center">
             <template #default="{ row }">
               <div class="action-buttons">
                 <button class="icon-btn edit" @click="handlePrint(row.waybill_code)" title="In tem vận đơn">

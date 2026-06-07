@@ -138,7 +138,7 @@
                    </template>
                 </el-table-column>
                 
-                <el-table-column label="Lên xe" width="70" align="center" fixed="right">
+                <el-table-column label="Lên xe" width="70" align="center">
                    <template #default="{ row }">
                       <button class="icon-btn warning small" @click="addBagFromList(row)" :disabled="!isLocked" title="Bốc túi này lên xe">
                         <el-icon><Top /></el-icon>
@@ -187,7 +187,7 @@
                      </template>
                   </el-table-column>
                   
-                  <el-table-column label="Dỡ hàng" width="90" align="center" fixed="right">
+                  <el-table-column label="Dỡ hàng" width="90" align="center">
                      <template #default="{ row }">
                         <button class="btn-action-small" @click="selectIncomingManifest(row)">Chọn xe</button>
                      </template>
@@ -291,7 +291,7 @@
                    </template>
                 </el-table-column>
                 
-                <el-table-column label="Bỏ" width="70" align="center" fixed="right">
+                <el-table-column label="Bỏ" width="70" align="center">
                   <template #default="{ row, $index }">
                     <button class="icon-btn delete small mx-auto" @click="removeBag($index, row)" title="Hủy thao tác">
                       <el-icon><Delete /></el-icon>

@@ -368,3 +368,123 @@
 .text-muted { color: var(--sp-text-muted); }
 .text-xs { font-size: 12px; }
 .text-danger { color: var(--sp-danger); }
+
+/* =============================================
+   RESPONSIVE — MainLayout
+   ============================================= */
+
+/* ── Tablet (≤ 900px): sidebar thu hẹp tự động ── */
+@media (max-width: 900px) {
+  .primary-sidebar {
+    width: 78px;
+    align-items: center;
+  }
+
+  /* Ẩn text menu, chỉ giữ icon */
+  .sidebar-collapsed .primary-sidebar,
+  .primary-sidebar {
+    width: 64px;
+  }
+
+  .modern-header {
+    padding: 0 16px;
+  }
+
+  .page-title {
+    font-size: 18px;
+  }
+}
+
+/* ── Mobile đứng (≤ 640px): sidebar overlay, header gọn ── */
+@media (max-width: 640px) {
+
+  /* Toàn bộ layout giữ nguyên flex-row để sidebar nằm bên trái */
+  .modern-layout-container {
+    flex-direction: row;
+  }
+
+  /* Sidebar luôn nằm bên trái, thu gọn thành icon */
+  .primary-sidebar,
+  .sidebar-collapsed .primary-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 64px !important;
+    height: 100vh !important;
+    flex-direction: column !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 2000;
+    padding: 0 !important;
+  }
+
+  .main-wrapper {
+    margin-left: 64px; /* Chừa chỗ cho sidebar cố định */
+  }
+
+  .sidebar-logo {
+    display: flex !important;
+    padding: 16px 0;
+    justify-content: center;
+  }
+  
+  .logo-text {
+    display: none; /* Ẩn chữ logo, chỉ hiện icon */
+  }
+
+  .modern-el-menu {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .modern-el-menu .el-menu-item,
+  .modern-el-menu .el-sub-menu {
+    justify-content: center !important;
+  }
+
+  /* ── Header gọn ── */
+  .modern-header {
+    height: 60px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .main-content {
+    /* Trừ đi 60px header và 60px bottom nav */
+    height: calc(100vh - 120px);
+  }
+
+  .hamburger-btn {
+    display: none; /* Ẩn nút hamburger trên mobile vì đã có bottom nav */
+  }
+
+  /* Breadcrumb: ẩn home icon + separator, chỉ giữ title */
+  .home-icon-box,
+  .separator {
+    display: none;
+  }
+
+  .page-title {
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+  }
+
+  /* User profile: ẩn tên, chỉ hiện avatar */
+  .user-display-name,
+  .dropdown-icon {
+    display: none;
+  }
+
+  .user-profile-trigger {
+    padding: 4px;
+    border-radius: 50%;
+    gap: 0;
+  }
+
+  .user-profile-wrapper {
+    margin-left: 8px;
+  }
+}

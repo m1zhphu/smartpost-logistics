@@ -126,6 +126,8 @@
   --el-table-header-bg-color: var(--sp-bg-app);
   --el-table-header-text-color: var(--sp-text-muted);
   --el-table-text-color: var(--sp-text-main);
+  --el-table-bg-color: var(--sp-surface);
+  --el-table-tr-bg-color: var(--sp-surface);
 }
 :deep(.modern-table th.el-table__cell) { font-weight: 700; font-size: 13px; text-transform: uppercase; padding: 16px 0; border-bottom: 2px solid var(--sp-bg-app) !important; }
 :deep(.modern-table td.el-table__cell) { padding: 16px 0; border-bottom: 1px solid var(--sp-bg-app) !important; }
@@ -252,4 +254,9 @@
   .route-selector-container { flex-direction: column; align-items: stretch; gap: 8px; }
   .route-arrow-center { display: none; }
   :deep(.custom-radio-group) { flex-direction: column; }
+  
+  /* Responsive Drawer and Table */
+  :deep(.el-drawer) { width: 100% !important; }
+  .modern-pricing-management { padding: 16px 12px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
 }

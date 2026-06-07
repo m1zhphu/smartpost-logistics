@@ -12,6 +12,7 @@
         :collapse="isSidebarCollapsed"
         router
         unique-opened
+        @select="handleMenuSelect"
       >
         <template v-for="menu in menuData" :key="menu.id">
           <!-- Item without children -->
@@ -94,9 +95,9 @@
       
       <!-- Main Content -->
       <el-main class="main-content">
-        <router-view v-slot="{ Component }">
+        <router-view v-slot="{ Component, route }">
           <transition name="fade-slide" mode="out-in">
-            <component :is="Component" />
+            <component :is="Component" :key="route.fullPath" />
           </transition>
         </router-view>
       </el-main>
@@ -120,10 +121,20 @@ const router = useRouter();
 const authStore = useAuthStore();
 const { user, isAdmin } = storeToRefs(authStore);
 
-const isSidebarCollapsed = ref(false);
+const isSidebarCollapsed = ref(true);
 
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
+
+// Đóng menu nổi (tooltip) trên mobile sau khi click chọn
+const handleMenuSelect = () => {
+  if (isSidebarCollapsed.value) {
+    // Giả lập click ra ngoài body để Element Plus tự đóng tooltip của menu con
+    setTimeout(() => {
+      document.body.click();
+    }, 100);
+  }
 };
 
 // Menu động dựa vào role_id của user

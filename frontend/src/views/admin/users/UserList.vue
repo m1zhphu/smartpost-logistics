@@ -75,8 +75,8 @@
         </el-row>
       </div>
 
-      <!-- Main Table Card -->
-      <div class="content-card table-wrapper animate-fade-in-up">
+      <!-- ===== DESKTOP TABLE (ẩn trên mobile) ===== -->
+      <div class="content-card table-wrapper animate-fade-in-up desktop-only">
         <el-table 
           :data="paginatedUsers" 
           v-loading="loading" 
@@ -85,7 +85,7 @@
           style="width: 100%"
         >
           <!-- Thông tin nhân sự -->
-          <el-table-column label="Thông tin nhân viên" min-width="250" fixed="left">
+          <el-table-column label="Thông tin nhân viên" min-width="250">
             <template #default="{ row }">
               <div class="user-profile">
                 <div class="avatar-circle" :class="getRoleTypeClass(getRoleType(row.role_id))">
@@ -142,7 +142,7 @@
           </el-table-column>
 
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="160" fixed="right" align="center">
+          <el-table-column label="Thao tác" width="160" align="center">
             <template #default="{ row }">
               <div class="action-buttons">
                 <button class="icon-btn edit" @click="viewStaffDetails(row)" title="Xem chi tiết">
@@ -173,6 +173,82 @@
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next, jumper"
             :total="filteredUsers.length"
+          />
+        </div>
+      </div>
+
+      <!-- ===== MOBILE CARD LIST (chỉ hiện trên điện thoại) ===== -->
+      <div class="mobile-only" v-loading="loading">
+        <el-empty v-if="paginatedUsers.length === 0 && !loading" description="Không tìm thấy nhân viên nào" :image-size="80" />
+        <div
+          v-for="user in paginatedUsers"
+          :key="user.user_id"
+          class="mobile-user-card animate-fade-in-up"
+        >
+          <!-- Header: Avatar + Tên + Badge chức vụ -->
+          <div class="muc-header">
+            <div class="avatar-circle" :class="getRoleTypeClass(getRoleType(user.role_id))">
+              {{ getInitials(user.full_name) }}
+            </div>
+            <div class="muc-identity">
+              <span class="fw-bold text-dark muc-name">{{ user.full_name }}</span>
+              <div class="modern-tag" :class="'tag-' + getRoleType(user.role_id)" style="width:fit-content;margin-top:4px;">
+                <span class="dot"></span>
+                {{ getRoleName(user.role_id) }}
+              </div>
+            </div>
+            <div class="status-pill" :class="user.is_active ? 'active' : 'locked'" style="flex-shrink:0;">
+              {{ user.is_active ? 'HĐ' : 'Khóa' }}
+            </div>
+          </div>
+
+          <!-- Info rows -->
+          <div class="muc-info-list">
+            <div class="muc-info-row">
+              <span class="muc-label">Email</span>
+              <span class="muc-value">{{ user.email || 'Chưa cập nhật' }}</span>
+            </div>
+            <div class="muc-info-row" v-if="user.phone_number">
+              <span class="muc-label">SĐT</span>
+              <span class="muc-value">
+                <el-icon style="font-size:12px;margin-right:4px;"><Phone /></el-icon>
+                {{ user.phone_number }}
+              </span>
+            </div>
+            <div class="muc-info-row">
+              <span class="muc-label">Bưu cục</span>
+              <span class="muc-value">
+                <el-icon style="font-size:12px;margin-right:4px;"><OfficeBuilding /></el-icon>
+                {{ user.primary_hub?.hub_name || 'Trung tâm HT' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Footer: Thao tác -->
+          <div class="muc-footer">
+            <button class="icon-btn edit" @click="viewStaffDetails(user)" title="Xem chi tiết">
+              <el-icon><InfoFilled /></el-icon>
+            </button>
+            <button class="icon-btn edit" @click="openDialog(user)" title="Chỉnh sửa">
+              <el-icon><Edit /></el-icon>
+            </button>
+            <button v-if="!user.is_active" class="icon-btn success" @click="toggleStatus(user, true)" title="Mở khóa">
+              <el-icon><Unlock /></el-icon>
+            </button>
+            <button v-else class="icon-btn warning" @click="toggleStatus(user, false)" title="Khóa tài khoản">
+              <el-icon><Lock /></el-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pagination mobile -->
+        <div v-if="filteredUsers.length > pageSize" class="muc-pagination">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            layout="prev, pager, next"
+            :total="filteredUsers.length"
+            small
           />
         </div>
       </div>

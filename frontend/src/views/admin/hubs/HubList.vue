@@ -23,8 +23,8 @@
         </div>
       </header>
 
-      <!-- Main Table Card -->
-      <div class="content-card table-wrapper animate-fade-in-up">
+      <!-- ===== DESKTOP TABLE (ẩn trên mobile) ===== -->
+      <div class="content-card table-wrapper animate-fade-in-up desktop-only">
         <el-table 
           :data="hubs" 
           v-loading="loading" 
@@ -33,7 +33,7 @@
           style="width: 100%"
         >
           <!-- Mã Bưu cục -->
-          <el-table-column prop="hub_code" label="Mã BC" min-width="120" fixed="left">
+          <el-table-column prop="hub_code" label="Mã BC" min-width="120">
             <template #default="{ row }">
               <span class="code-text">{{ row.hub_code }}</span>
             </template>
@@ -97,7 +97,7 @@
           </el-table-column>
           
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="120" fixed="right" align="center">
+          <el-table-column label="Thao tác" width="120" align="center">
             <template #default="{ row }">
               <div class="action-buttons">
                 <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa">
@@ -115,6 +115,70 @@
             <el-empty description="Chưa có dữ liệu bưu cục" :image-size="100" />
           </template>
         </el-table>
+      </div>
+
+      <!-- ===== MOBILE CARD LIST (chỉ hiện trên điện thoại) ===== -->
+      <div class="mobile-only" v-loading="loading">
+        <el-empty v-if="hubs.length === 0 && !loading" description="Chưa có dữ liệu bưu cục" :image-size="80" />
+        <div
+          v-for="hub in hubs"
+          :key="hub.hub_id"
+          class="mobile-hub-card animate-fade-in-up"
+        >
+          <!-- Card Header: Mã + Badge loại -->
+          <div class="mhc-header">
+            <span class="code-text">{{ hub.hub_code }}</span>
+            <div class="modern-tag" :class="getHubTypeClass(hub.hub_type)">
+              <span class="dot"></span>
+              {{ getHubTypeName(hub.hub_type) }}
+            </div>
+          </div>
+
+          <!-- Tên bưu cục -->
+          <div class="mhc-name">{{ hub.hub_name }}</div>
+
+          <!-- Thông tin chi tiết -->
+          <div class="mhc-info-list">
+            <div class="mhc-info-row">
+              <span class="mhc-label">Tỉnh/Thành ID</span>
+              <div class="id-badge">{{ hub.province_id }}</div>
+            </div>
+            <div class="mhc-info-row">
+              <span class="mhc-label">Trưởng BC</span>
+              <span class="mhc-value">
+                <el-icon style="font-size:12px; margin-right:4px;"><UserFilled /></el-icon>
+                {{ getManagerName(hub.manager_id) }}
+              </span>
+            </div>
+            <div class="mhc-info-row mhc-address">
+              <span class="mhc-label">Địa chỉ</span>
+              <span class="mhc-value mhc-address-text">
+                <el-icon style="font-size:12px; margin-right:4px;"><Location /></el-icon>
+                {{ hub.address_detail || 'Chưa cập nhật' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Footer: Trạng thái + Thao tác -->
+          <div class="mhc-footer">
+            <div class="mhc-status">
+              <span class="mhc-label" style="margin-right:8px;">Hoạt động</span>
+              <el-switch
+                v-model="hub.status"
+                @change="toggleStatus(hub)"
+                style="--el-switch-on-color: #05CD99; --el-switch-off-color: #E2E8F0"
+              />
+            </div>
+            <div class="action-buttons">
+              <button class="icon-btn edit" @click="openDialog(hub)" title="Chỉnh sửa">
+                <el-icon><Edit /></el-icon>
+              </button>
+              <button class="icon-btn delete" @click="handleDelete(hub)" title="Xóa">
+                <el-icon><Delete /></el-icon>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Modern Dialog Form -->

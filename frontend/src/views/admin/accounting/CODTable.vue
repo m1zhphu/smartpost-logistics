@@ -148,7 +148,7 @@
           <el-table-column type="selection" width="55" :selectable="canSelectRow" align="center" />
 
           <!-- Mã vận đơn -->
-          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="150" fixed="left">
+          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="150">
             <template #default="{ row }">
               <span class="code-badge primary">{{ row.waybill_code }}</span>
             </template>
@@ -201,7 +201,7 @@
           </el-table-column>
 
           <!-- Trạng thái -->
-          <el-table-column label="Trạng thái" width="140" align="center" fixed="right">
+          <el-table-column label="Trạng thái" width="140" align="center">
             <template #default="{ row }">
               <div class="modern-tag" :class="row.status === 'SETTLED' ? 'tag-success' : 'tag-warning'">
                 <span class="dot"></span>
@@ -211,7 +211,7 @@
           </el-table-column>
 
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="120" align="center" fixed="right">
+          <el-table-column label="Thao tác" width="120" align="center">
             <template #default="{ row }">
               <el-button
                 size="small"
@@ -577,8 +577,9 @@ const exportExcel = async () => {
 const calculateSummaries = ({ columns, data }) => {
   const sums = [];
   columns.forEach((column, index) => {
-    if (index === 0) { sums[index] = 'TỔNG CỘNG'; return; }
-    if ([1, 2, 3, 7].includes(index)) { sums[index] = ''; return; }
+    if (index === 0) { sums[index] = ''; return; } // Checkbox
+    if (index === 1) { sums[index] = 'TỔNG CỘNG'; return; } // Mã vận đơn
+    if ([2, 3, 7, 8].includes(index)) { sums[index] = ''; return; }
     
     if (index === 4) {
         const totalCod = data.reduce((prev, curr) => prev + (Number(curr.cod_amount) || 0), 0);

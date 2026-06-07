@@ -24,7 +24,7 @@
           </template>
           
           <el-row :gutter="20">
-            <el-col :span="12">
+            <el-col :xs="24" :sm="24" :md="12" :lg="10" class="mb-12-mobile">
               <div class="filter-item">
                 <label>KHÁCH HÀNG / SHOP</label>
                 <el-select v-model="filters.customer_id" placeholder="Tất cả khách hàng..." filterable class="w-full">
@@ -32,7 +32,7 @@
                 </el-select>
               </div>
             </el-col>
-            <el-col :span="8">
+            <el-col :xs="24" :sm="12" :md="8" :lg="10" class="mb-12-mobile">
               <div class="filter-item">
                 <label>TRẠNG THÁI ĐƠN</label>
                 <el-select v-model="filters.status" class="w-full">
@@ -41,7 +41,7 @@
                 </el-select>
               </div>
             </el-col>
-            <el-col :span="4" class="flex-bottom">
+            <el-col :xs="24" :sm="12" :md="4" :lg="4" class="flex-bottom mb-12-mobile">
               <el-button type="primary" :loading="loading" @click="fetchWaybills" class="w-full">
                 <el-icon><Search /></el-icon> Tải danh sách
               </el-button>

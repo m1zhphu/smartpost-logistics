@@ -108,6 +108,8 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   --el-table-header-bg-color: #F8FAFC;
   --el-table-header-text-color: var(--sp-text-muted);
   --el-table-text-color: var(--sp-text-main);
+  --el-table-bg-color: var(--sp-surface);
+  --el-table-tr-bg-color: var(--sp-surface);
 }
 :deep(.modern-table th.el-table__cell) { font-weight: 700; font-size: 12px; text-transform: uppercase; padding: 16px 0; border-bottom: 2px solid var(--sp-bg-app) !important; }
 :deep(.modern-table td.el-table__cell) { padding: 16px 0; border-bottom: 1px solid var(--sp-bg-app) !important; }
@@ -167,7 +169,21 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 /* Responsive */
 @media (max-width: 1200px) {
-  .form-row-container { flex-direction: column; gap: 24px; }
-  .column-layout { width: 100%; max-width: 100%; }
+  .form-row-container { flex-direction: column; gap: 24px; display: flex; }
+  .column-layout { width: 100%; max-width: 100%; min-width: 0; }
   .sticky-card { position: relative; top: 0; }
+}
+
+@media (max-width: 640px) {
+  .modern-confirm-cash { padding: 16px 12px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+  .header-actions { width: 100%; }
+  .header-actions .btn-secondary { width: 100%; justify-content: center; }
+  .page-title { font-size: 20px; }
+  .content-card { padding: 16px; }
+  .section-header { font-size: 13px; flex-wrap: wrap; }
+  
+  /* Đảm bảo table tự cuộn ngang trên điện thoại mà không làm tràn trang */
+  .list-card { overflow: hidden; }
+  :deep(.el-table__body-wrapper) { overflow-x: auto; }
 }
