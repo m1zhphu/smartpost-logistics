@@ -24,6 +24,12 @@ export default function ForgotPasswordScreen({ route, navigation }) {
             return;
         }
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            Toast.show({ type: 'error', text1: 'Email không hợp lệ', text2: 'Vui lòng nhập đúng định dạng email (vd: abc@gmail.com)' });
+            return;
+        }
+
         setLoading(true);
         try {
             const response = await requestForgotPasswordOtp(email.trim());
@@ -207,7 +213,6 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'ios' ? 55 : 35,
         backgroundColor: COLORS.primary,
         borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
-        zIndex: 10,
     },
     backBtn: { padding: 4 },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#FFF' },

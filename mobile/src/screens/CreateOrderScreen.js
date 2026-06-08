@@ -381,7 +381,6 @@ export default function CreateOrderScreen({ route, navigation }) {
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
-            <Toast />
         </View>
     );
 }

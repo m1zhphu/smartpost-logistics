@@ -5,6 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { API_BASE_URL, CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
+import { ADMIN_ENDPOINTS } from '../constants/adminEndpoints';
 import { WAREHOUSE_API_URL, WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';
 import { CommonActions, createNavigationContainerRef } from '@react-navigation/native';
 import { checkNetworkConnection } from '../utils/networkUtils';
@@ -93,8 +94,8 @@ export const UserProvider = ({ children }) => {
             try {
                 const uType = await AsyncStorage.getItem('user_type') || 'employee';
 
-                // Tạm thời nếu là Khách hàng thì chưa có tính năng thông báo ở FastAPI, bỏ qua gọi API để không bị lỗi 401 từ kho cũ
-                if (uType === 'customer') {
+                // Tạm thời nếu là Khách hàng hoặc Nội bộ (Admin) thì chưa có tính năng thông báo ở FastAPI, bỏ qua gọi API để không bị lỗi 401 từ kho cũ
+                if (uType === 'customer' || uType === 'admin') {
                     isConnectingRef.current = false;
                     return;
                 }
@@ -169,7 +170,7 @@ export const UserProvider = ({ children }) => {
             registerForPushNotificationsAsync(false).then(async pushToken => {
                 if (pushToken) {
                     const uType = await AsyncStorage.getItem('user_type') || 'employee';
-                    if (uType === 'customer') {
+                    if (uType === 'customer' || uType === 'admin') {
                         apiClient.post(CUSTOMER_ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken })
                             .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
                     } else {
@@ -219,7 +220,7 @@ export const UserProvider = ({ children }) => {
         const pushToken = await registerForPushNotificationsAsync(true); // true = Cho phép bật popup
         if (pushToken) {
             const uType = await AsyncStorage.getItem('user_type') || 'employee';
-            if (uType === 'customer') {
+            if (uType === 'customer' || uType === 'admin') {
                 apiClient.post(CUSTOMER_ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken })
                     .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
             } else {
@@ -311,9 +312,9 @@ export const UserProvider = ({ children }) => {
             const currentToken = directToken || await AsyncStorage.getItem('access_token');
             const userType = providedUserType || await AsyncStorage.getItem('user_type') || 'employee';
             
-            // NẾU LÀ KHÁCH HÀNG: Gọi API /api/customers/me để lấy hồ sơ mới nhất
-            if (userType === 'customer') {
-                const profileUrl = CUSTOMER_ENDPOINTS.GET_PROFILE_CUSTOMER;
+            // NẾU LÀ KHÁCH HÀNG HOẶC NỘI BỘ (ADMIN/SHIPPER) CỦA HỆ THỐNG MỚI: Gọi API tương ứng
+            if (userType === 'customer' || userType === 'admin') {
+                const profileUrl = userType === 'customer' ? CUSTOMER_ENDPOINTS.GET_PROFILE_CUSTOMER : ADMIN_ENDPOINTS.GET_PROFILE_ADMIN;
                 try {
                     const response = await apiClient.get(profileUrl, {
                         headers: { Authorization: `Bearer ${currentToken}` }
@@ -324,7 +325,7 @@ export const UserProvider = ({ children }) => {
                         id: data.user_id || data.id,
                         username: data.username,
                         customer_id: data.customer_id,
-                        full_name: data.full_name || data.name || data.representative_name || 'Khách hàng',
+                        full_name: data.full_name || data.name || data.representative_name || (userType === 'customer' ? 'Khách hàng' : 'Nhân viên'),
                         phone_number: data.phone || data.phone_number,
                         email: data.email,
                         address: data.address || data.address_detail,
@@ -350,14 +351,14 @@ export const UserProvider = ({ children }) => {
                     
                     return profileData;
                 } catch (err) {
-                    console.error("Lỗi lấy hồ sơ khách hàng:", err);
+                    console.error("Lỗi lấy hồ sơ:", err);
                     // Fallback to JWT if API fails
                     const decoded = jwtDecode(currentToken);
                     const mockProfileData = {
                         id: decoded.user_id,
                         username: decoded.sub,
                         customer_id: decoded.customer_id,
-                        full_name: 'Khách hàng', 
+                        full_name: userType === 'customer' ? 'Khách hàng' : 'Nhân viên', 
                     };
                     setUser(mockProfileData);
                     return mockProfileData;
@@ -399,11 +400,13 @@ export const UserProvider = ({ children }) => {
 
     const loginUserAndFetchProfile = async (username, password, userType = 'employee') => {
         try {
-            const loginUrl = userType === 'customer' ? CUSTOMER_ENDPOINTS.CUSTOMER_LOGIN : WAREHOUSE_ENDPOINTS.EMPLOYEE_LOGIN;
+            const loginUrl = userType === 'customer' ? CUSTOMER_ENDPOINTS.CUSTOMER_LOGIN : 
+                             userType === 'admin' ? ADMIN_ENDPOINTS.ADMIN_LOGIN : 
+                             WAREHOUSE_ENDPOINTS.EMPLOYEE_LOGIN;
 
             let response;
-            if (userType === 'customer') {
-                // Khách hàng: Backend FastAPI mong đợi JSON
+            if (userType === 'customer' || userType === 'admin') {
+                // Khách hàng hoặc Admin: Backend FastAPI mong đợi JSON
                 response = await axios.post(loginUrl, {
                     username: username,
                     password: password
@@ -468,7 +471,7 @@ export const UserProvider = ({ children }) => {
         //     const currentToken = await AsyncStorage.getItem('access_token');
         //     const uType = await AsyncStorage.getItem('user_type') || 'employee';
         //     if (currentToken) {
-        //         if (uType === 'customer') {
+        //         if (uType === 'customer' || uType === 'admin') {
         //             await apiClient.post(
         //                 `${API_BASE_URL}/api/users/register-push-token`,
         //                 { push_token: null },

@@ -67,12 +67,55 @@ export default function CustomerHomeScreen({ navigation }) {
 
             {/* Content */}
             <View style={styles.content}>
-                <View style={styles.emptyState}>
-                    <View style={styles.emptyIconBg}>
-                        <Ionicons name="construct-outline" size={40} color="#9CA3AF" />
+                <View style={styles.quickActions}>
+                    <TouchableOpacity 
+                        style={styles.actionCard}
+                        onPress={() => navigation.navigate('CustomerCreatePickup')}
+                    >
+                        <View style={[styles.iconBox, { backgroundColor: '#e0f2fe' }]}>
+                            <Ionicons name="add-circle" size={32} color="#0284c7" />
+                        </View>
+                        <Text style={styles.actionTitle}>Tạo Lấy Hàng</Text>
+                        <Text style={styles.actionDesc}>Lên đơn, gọi shipper tới lấy</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={styles.actionCard}
+                        onPress={() => navigation.navigate('CustomerPickupList')}
+                    >
+                        <View style={[styles.iconBox, { backgroundColor: '#fef3c7' }]}>
+                            <Ionicons name="list" size={32} color="#d97706" />
+                        </View>
+                        <Text style={styles.actionTitle}>Đơn Lấy Hàng</Text>
+                        <Text style={styles.actionDesc}>Quản lý trạng thái, lịch sử</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.quickActions}>
+                    <TouchableOpacity 
+                        style={[styles.actionCard, { width: '100%', flexDirection: 'row', alignItems: 'center', padding: 20 }]}
+                        onPress={() => navigation.navigate('CustomerTracking')}
+                    >
+                        <View style={[styles.iconBox, { backgroundColor: '#f3e8ff', marginBottom: 0, marginRight: 15 }]}>
+                            <Ionicons name="search" size={32} color="#9333ea" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.actionTitle, { fontSize: 16 }]}>Tra cứu vận đơn</Text>
+                            <Text style={[styles.actionDesc, { textAlign: 'left', fontSize: 13 }]}>Kiểm tra hành trình đơn hàng</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={24} color="#ccc" />
+                    </TouchableOpacity>
+                </View>
+                
+                <View style={{ marginTop: 20 }}>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>Dịch vụ khác</Text>
+                    <View style={styles.emptyState}>
+                        <View style={styles.emptyIconBg}>
+                            <Ionicons name="construct-outline" size={40} color="#9CA3AF" />
+                        </View>
+                        <Text style={styles.emptyTitle}>Đang phát triển</Text>
+                        <Text style={styles.emptyText}>Các tính năng khác sẽ sớm ra mắt.</Text>
                     </View>
-                    <Text style={styles.emptyTitle}>Đang phát triển</Text>
-                    <Text style={styles.emptyText}>Tính năng dành cho khách hàng đang được xây dựng và sẽ sớm ra mắt.</Text>
                 </View>
             </View>
 
@@ -115,8 +158,18 @@ const styles = StyleSheet.create({
 
     content: { flex: 1, paddingHorizontal: 16, paddingTop: 20 },
 
-    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40 },
-    emptyIconBg: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-    emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#374151', marginBottom: 8 },
-    emptyText: { textAlign: 'center', color: '#6B7280', paddingHorizontal: 30, lineHeight: 20 },
+    quickActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+    actionCard: { 
+        backgroundColor: 'white', width: '48%', padding: 15, borderRadius: 16, 
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2,
+        alignItems: 'center'
+    },
+    iconBox: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    actionTitle: { fontSize: 15, fontWeight: 'bold', color: '#333', marginBottom: 4 },
+    actionDesc: { fontSize: 12, color: '#666', textAlign: 'center' },
+
+    emptyState: { justifyContent: 'center', alignItems: 'center', marginTop: 10, padding: 30, backgroundColor: 'white', borderRadius: 16 },
+    emptyIconBg: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+    emptyTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 8 },
+    emptyText: { textAlign: 'center', color: '#6B7280', fontSize: 13, lineHeight: 20 },
 });

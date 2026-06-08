@@ -104,10 +104,23 @@ export const requestForgotPasswordOtp = async (email) => {
             body: JSON.stringify({ email }),
         });
 
-        const data = await response.json();
+        let data;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const textData = await response.text();
+            if (response.status === 502) {
+                throw new Error('Hệ thống đang bảo trì (502). Vui lòng thử lại sau.');
+            }
+            if (response.status === 404) {
+                throw new Error('Không tìm thấy tài nguyên (404).');
+            }
+            throw new Error(`Lỗi kết nối máy chủ (${response.status})`);
+        }
 
         if (!response.ok) {
-            throw new Error(data.detail || 'Lỗi gửi yêu cầu OTP đặt lại mật khẩu');
+            throw new Error(data?.detail || 'Lỗi gửi yêu cầu OTP đặt lại mật khẩu');
         }
 
         return { success: true, data };
@@ -125,10 +138,20 @@ export const resetPasswordWithOtp = async (payload) => {
             body: JSON.stringify(payload),
         });
 
-        const data = await response.json();
+        let data;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const textData = await response.text();
+            if (response.status === 502) {
+                throw new Error('Hệ thống đang bảo trì (502). Vui lòng thử lại sau.');
+            }
+            throw new Error(`Lỗi kết nối máy chủ (${response.status})`);
+        }
 
         if (!response.ok) {
-            throw new Error(data.detail || 'Lỗi đặt lại mật khẩu');
+            throw new Error(data?.detail || 'Lỗi đặt lại mật khẩu');
         }
 
         return { success: true, data };

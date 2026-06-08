@@ -21,6 +21,14 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 
+// New Pickup Screens
+import CustomerCreatePickupScreen from './src/screens/CustomerCreatePickupScreen';
+import CustomerPickupListScreen from './src/screens/CustomerPickupListScreen';
+import CustomerPickupDetailScreen from './src/screens/CustomerPickupDetailScreen';
+import CustomerTrackingScreen from './src/screens/CustomerTrackingScreen';
+import ShipperPickupListScreen from './src/screens/ShipperPickupListScreen';
+import ShipperPickupDetailScreen from './src/screens/ShipperPickupDetailScreen';
+
 import { QueueProvider } from './src/context/QueueContext';
 import { UserProvider, navigationRef } from './src/context/UserContext';
 
@@ -98,6 +106,14 @@ export default function App() {
             <Stack.Screen name="Success" component={SuccessScreen} />
             <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
             <Stack.Screen name="ProcessedList" component={ProcessedListScreen} />
+
+            {/* Màn hình Pickup mới */}
+            <Stack.Screen name="CustomerCreatePickup" component={CustomerCreatePickupScreen} />
+            <Stack.Screen name="CustomerPickupList" component={CustomerPickupListScreen} />
+            <Stack.Screen name="CustomerPickupDetail" component={CustomerPickupDetailScreen} />
+            <Stack.Screen name="CustomerTracking" component={CustomerTrackingScreen} />
+            <Stack.Screen name="ShipperPickupList" component={ShipperPickupListScreen} />
+            <Stack.Screen name="ShipperPickupDetail" component={ShipperPickupDetailScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         <Toast config={toastConfig} />

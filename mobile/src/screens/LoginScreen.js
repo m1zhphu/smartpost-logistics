@@ -83,6 +83,8 @@ export default function LoginScreen({ navigation }) {
 
             if (result.userType === "customer") {
               nextScreen = "CustomerHome";
+            } else if (result.userType === "admin") {
+              nextScreen = "ShipperPickupList";
             } else if (hasWarehousePerms) {
               nextScreen = "WarehouseHome";
             } else {
@@ -148,6 +150,8 @@ export default function LoginScreen({ navigation }) {
         // Ưu tiên: Customer -> Vào CustomerHome. Có quyền Kho -> Vào Kho trước. Chỉ là Shipper -> Vào Shipper.
         if (userType === "customer") {
           nextScreen = "CustomerHome";
+        } else if (userType === "admin") {
+          nextScreen = "ShipperPickupList";
         } else if (hasWarehousePerms) {
           nextScreen = "WarehouseHome";
         } else {
@@ -163,10 +167,20 @@ export default function LoginScreen({ navigation }) {
       );
     } catch (error) {
       console.error("Login error:", error);
+      let errorMsg = "Sai tài khoản hoặc mật khẩu";
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMsg = "Sai tài khoản hoặc mật khẩu (401)";
+        } else if (error.response.status === 502) {
+          errorMsg = "Hệ thống đang bảo trì hoặc lỗi kết nối (502). Vui lòng thử lại sau.";
+        } else {
+          errorMsg = `Lỗi kết nối (${error.response.status})`;
+        }
+      }
       Toast.show({
         type: "error",
         text1: "Lỗi đăng nhập",
-        text2: "Sai tài khoản hoặc mật khẩu",
+        text2: errorMsg,
       });
     } finally {
       setLoading(false);
@@ -584,6 +598,27 @@ export default function LoginScreen({ navigation }) {
                 Nhân viên
               </Text>
             </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.toggleButton,
+                userType === "admin" && styles.toggleButtonActive,
+              ]}
+              onPress={() => {
+                setUserType("admin");
+                setIsRegistering(false);
+              }}
+            >
+              <Text
+                style={[
+                  styles.toggleText,
+                  userType === "admin" && styles.toggleTextActive,
+                ]}
+              >
+                Nội bộ
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.toggleButton,
@@ -666,7 +701,6 @@ export default function LoginScreen({ navigation }) {
         </View>
       </Modal>
 
-      <Toast />
     </ImageBackground>
   );
 }
