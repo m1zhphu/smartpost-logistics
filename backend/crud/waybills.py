@@ -112,6 +112,10 @@ def create_customer_pickup_waybill(
     shipping_fee: float,
     extra_services_fee: float,
     vat_amount: float,
+    source: str = "PORTAL",
+    target_hub_id: int | None = None,
+    initial_status: str | None = None,
+    log_action: str | None = None,
 ) -> tuple[models.BookingRequests, models.Waybills]:
     sender = data.sender
     receiver = data.receiver
@@ -126,25 +130,30 @@ def create_customer_pickup_waybill(
     estimated_total = float(shipping_fee or 0) + float(extra_services_fee or 0) + float(vat_amount or 0)
 
     request_code = generate_waybill_code(db)
+    booking_status = initial_status or ("DRAFT" if data.save_as_draft else "PENDING_CONFIRMATION")
+    assigned_origin_hub_id = target_hub_id if booking_status == "RECEIVED" else None
     booking = models.BookingRequests(
         request_code=request_code,
-        source="PORTAL",
+        source=source,
         shop_order_code=data.shop_order_code,
         customer_id=customer.customer_id,
         sender_phone=sender.phone or customer.phone_number,
         pickup_address=sender.address or customer.address_detail,
-        target_hub_id=None,
+        target_hub_id=target_hub_id if booking_status == "RECEIVED" else None,
         product_type=first_item.product_group,
         est_weight=total_weight,
         est_quantity=sum(int(item.quantity or 1) for item in items),
         is_vehicle_required=False,
-        status="DRAFT" if data.save_as_draft else "PENDING_CONFIRMATION",
+        status=booking_status,
         requested_pickup_time=data.pickup_time,
         pickup_method=data.pickup_method,
         priority="NORMAL",
         sla_deadline=None,
         notes=data.note,
     )
+    if booking_status == "RECEIVED":
+        booking.confirmed_by_user_id = creator_id
+        booking.confirmed_at = datetime.utcnow()
     db.add(booking)
     db.flush()
 
@@ -156,7 +165,7 @@ def create_customer_pickup_waybill(
         receiver_name=receiver.name,
         receiver_phone=receiver.phone,
         receiver_address=receiver.address,
-        origin_hub_id=None,
+        origin_hub_id=assigned_origin_hub_id,
         dest_hub_id=dest_hub_id or origin_hub_id,
         service_type=service_type,
         delivery_type=data.order_type,
@@ -205,7 +214,7 @@ def create_customer_pickup_waybill(
         length=first_item.length,
         width=first_item.width,
         height=first_item.height,
-        holding_hub_id=None,
+        holding_hub_id=assigned_origin_hub_id,
     )
     db.add(waybill)
     db.flush()
@@ -248,10 +257,10 @@ def create_customer_pickup_waybill(
     db.add(models.BookingRequestLogs(
         request_id=booking.request_id,
         user_id=creator_id,
-        action="Tao yeu cau lay hang tu portal",
+        action=log_action or ("Tao yeu cau lay hang tu portal" if source == "PORTAL" else "Nhan vien tao yeu cau lay hang thay khach"),
         note=f"Van don {waybill_code}",
     ))
-    create_initial_log(db, waybill.waybill_id, origin_hub_id, creator_id)
+    create_initial_log(db, waybill.waybill_id, assigned_origin_hub_id or origin_hub_id, creator_id)
     return booking, waybill
 
 
@@ -289,7 +298,7 @@ def get_customer_pickup_waybills(db: Session, customer_id: int):
         .join(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)
         .filter(
             models.BookingRequests.customer_id == customer_id,
-            models.BookingRequests.source == "PORTAL",
+            models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
             models.Waybills.is_deleted == False,
         )
         .order_by(models.BookingRequests.request_id.desc())
@@ -304,7 +313,7 @@ def get_customer_pickup_waybill_by_code(db: Session, customer_id: int, waybill_c
         .join(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)
         .filter(
             models.BookingRequests.customer_id == customer_id,
-            models.BookingRequests.source == "PORTAL",
+            models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
             models.Waybills.waybill_code == waybill_code,
             models.Waybills.is_deleted == False,
         )

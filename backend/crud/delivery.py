@@ -267,7 +267,9 @@ def get_booking_requests(db: Session, status: str = None, assigned_shipper_id: i
 
 
 def get_online_pickup_requests(db: Session, status: str = None, hub_id: int = None) -> list[models.BookingRequests]:
-    query = db.query(models.BookingRequests).filter(models.BookingRequests.source == "PORTAL")
+    query = db.query(models.BookingRequests).filter(
+        models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"])
+    )
     if status:
         query = query.filter(models.BookingRequests.status == status)
     if hub_id:
@@ -328,7 +330,7 @@ def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
 
 def get_mobile_pickup_tasks_for_shipper(db: Session, shipper_id: int, status: str = None) -> list[dict]:
     query = db.query(models.BookingRequests).filter(
-        models.BookingRequests.source == "PORTAL",
+        models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
         models.BookingRequests.assigned_shipper_id == shipper_id,
     )
     if status:
@@ -341,7 +343,7 @@ def get_mobile_pickup_tasks_for_shipper(db: Session, shipper_id: int, status: st
 
 def get_mobile_pickup_task_for_shipper(db: Session, shipper_id: int, code: str):
     db_req = db.query(models.BookingRequests).filter(
-        models.BookingRequests.source == "PORTAL",
+        models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
         models.BookingRequests.request_code == code,
         models.BookingRequests.assigned_shipper_id == shipper_id,
     ).first()

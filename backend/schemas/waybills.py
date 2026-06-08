@@ -88,6 +88,12 @@ class CustomerPickupCreate(BaseModel):
     save_as_draft: bool = False
 
 
+class AdminPickupCreate(CustomerPickupCreate):
+    customer_id: int
+    target_hub_id: Optional[int] = None
+    source: str = Field(default="HOTLINE", description="HOTLINE, CSKH, ADMIN")
+
+
 class CustomerPickupCreateResponse(BaseModel):
     waybill_id: int
     waybill_code: str

@@ -353,7 +353,7 @@ def confirm_online_pickup_hub(
 
     requests = db.query(models.BookingRequests).filter(
         models.BookingRequests.request_id.in_(data.request_ids),
-        models.BookingRequests.source == "PORTAL",
+        models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
     ).all()
     found_ids = {req.request_id for req in requests}
     missing_ids = [req_id for req_id in data.request_ids if req_id not in found_ids]
@@ -512,7 +512,7 @@ async def assign_shipper_online_pickup(
 ):
     _require_pickup_operator(current_user)
     db_req = crud_delivery.get_booking_request_by_code(db, code)
-    if not db_req or db_req.source != "PORTAL":
+    if not db_req or db_req.source not in ["PORTAL", "HOTLINE", "CSKH", "ADMIN"]:
         raise HTTPException(status_code=404, detail="Khong tim thay yeu cau pickup online")
     if db_req.status != "RECEIVED":
         raise HTTPException(status_code=400, detail="Yeu cau pickup chua o trang thai vua tiep nhan")
@@ -550,7 +550,7 @@ def mark_pickup_request_picked(
     current_user: dict = Depends(get_current_user)
 ):
     db_req = crud_delivery.get_booking_request_by_code(db, code)
-    if not db_req or db_req.source != "PORTAL":
+    if not db_req or db_req.source not in ["PORTAL", "HOTLINE", "CSKH", "ADMIN"]:
         raise HTTPException(status_code=404, detail="Khong tim thay yeu cau pickup online")
     if db_req.status != "ASSIGNED_PICKUP":
         raise HTTPException(status_code=400, detail="Yeu cau pickup chua duoc gan buu ta")

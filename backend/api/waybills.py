@@ -381,6 +381,17 @@ def _require_customer_account(current_user: dict):
         raise HTTPException(status_code=403, detail="Chi tai khoan khach hang moi duoc tao pickup tu trang thanh vien")
 
 
+def _require_pickup_operator(current_user: dict):
+    if current_user.get("role_id") not in [1, 2, 3, 7]:
+        raise HTTPException(status_code=403, detail="Khong co quyen tao pickup thay khach hang")
+
+
+def _can_operate_hub(current_user: dict, hub_id: int | None) -> bool:
+    if current_user.get("role_id") == 1:
+        return True
+    return bool(hub_id and current_user.get("primary_hub_id") == hub_id)
+
+
 def _normalize_location_name(value: str | None) -> str:
     if not value:
         return ""
@@ -409,6 +420,50 @@ def _find_hub_for_province(db: Session, province_id: int | None, province_name: 
         if normalized_name in hub_text or hub_text in normalized_name:
             return hub
     return None
+
+
+def _build_pickup_create_response(booking: models.BookingRequests, waybill: models.Waybills):
+    return {
+        "waybill_id": waybill.waybill_id,
+        "waybill_code": waybill.waybill_code,
+        "bill_code": waybill.waybill_code,
+        "request_id": booking.request_id,
+        "request_code": booking.request_code,
+        "status": waybill.status,
+        "pickup_status": booking.status,
+        "office_status": "CHUA_XAC_NHAN_VAN_PHONG" if not booking.target_hub_id else booking.target_hub.hub_name,
+        "price_status": waybill.price_status or "ESTIMATED",
+        "shipping_fee": float(waybill.shipping_fee or 0),
+        "extra_services_fee": float(waybill.extra_services_fee or 0),
+        "vat_amount": float(waybill.vat_amount or 0),
+        "total_amount_to_collect": float(waybill.total_amount_to_collect or 0),
+        "estimated_shipping_fee": float(waybill.estimated_shipping_fee or waybill.shipping_fee or 0),
+        "estimated_vat_amount": float(waybill.estimated_vat_amount or waybill.vat_amount or 0),
+        "estimated_total_amount": float(waybill.estimated_total_amount or 0),
+    }
+
+
+def _calculate_pickup_estimated_price(db: Session, customer: models.Customers, data, origin_hub, dest_hub):
+    actual_weight = sum(float(item.weight) * int(item.quantity or 1) for item in data.items)
+    converted_weight = max(
+        [
+            ((float(item.length) * float(item.width) * float(item.height)) / 5000) * int(item.quantity or 1)
+            for item in data.items
+            if item.length and item.width and item.height
+        ] or [0]
+    )
+    charge_weight = max(actual_weight, converted_weight)
+    shipping_fee = calculate_shipping_fee(
+        db,
+        origin_hub.hub_id,
+        dest_hub.hub_id,
+        charge_weight,
+        data.service_type or "STANDARD",
+        customer_id=customer.customer_id,
+    )
+    extra_services_fee = sum(float(service.service_fee or 0) for service in data.extra_services or [])
+    vat_amount = round((float(shipping_fee or 0) + extra_services_fee) * 0.08, 0)
+    return shipping_fee, extra_services_fee, vat_amount
 
 
 @router.post("/customer/pickups", response_model=schema_wb.CustomerPickupCreateResponse)
@@ -442,25 +497,7 @@ def create_customer_pickup_waybill(
     if not dest_hub:
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc phat hang theo tinh/thanh nguoi nhan")
 
-    actual_weight = sum(float(item.weight) * int(item.quantity or 1) for item in data.items)
-    converted_weight = max(
-        [
-            ((float(item.length) * float(item.width) * float(item.height)) / 5000) * int(item.quantity or 1)
-            for item in data.items
-            if item.length and item.width and item.height
-        ] or [0]
-    )
-    charge_weight = max(actual_weight, converted_weight)
-    shipping_fee = calculate_shipping_fee(
-        db,
-        origin_hub.hub_id,
-        dest_hub.hub_id,
-        charge_weight,
-        data.service_type or "STANDARD",
-        customer_id=customer.customer_id,
-    )
-    extra_services_fee = sum(float(service.service_fee or 0) for service in data.extra_services or [])
-    vat_amount = round((float(shipping_fee or 0) + extra_services_fee) * 0.08, 0)
+    shipping_fee, extra_services_fee, vat_amount = _calculate_pickup_estimated_price(db, customer, data, origin_hub, dest_hub)
 
     try:
         booking, waybill = crud_wb.create_customer_pickup_waybill(
@@ -477,24 +514,83 @@ def create_customer_pickup_waybill(
         db.commit()
         db.refresh(booking)
         db.refresh(waybill)
-        return {
-            "waybill_id": waybill.waybill_id,
-            "waybill_code": waybill.waybill_code,
-            "bill_code": waybill.waybill_code,
-            "request_id": booking.request_id,
-            "request_code": booking.request_code,
-            "status": waybill.status,
-            "pickup_status": booking.status,
-            "office_status": "CHUA_XAC_NHAN_VAN_PHONG" if not booking.target_hub_id else booking.target_hub.hub_name,
-            "price_status": waybill.price_status or "ESTIMATED",
-            "shipping_fee": float(waybill.shipping_fee or 0),
-            "extra_services_fee": float(waybill.extra_services_fee or 0),
-            "vat_amount": float(waybill.vat_amount or 0),
-            "total_amount_to_collect": float(waybill.total_amount_to_collect or 0),
-            "estimated_shipping_fee": float(waybill.estimated_shipping_fee or waybill.shipping_fee or 0),
-            "estimated_vat_amount": float(waybill.estimated_vat_amount or waybill.vat_amount or 0),
-            "estimated_total_amount": float(waybill.estimated_total_amount or 0),
-        }
+        return _build_pickup_create_response(booking, waybill)
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/admin/pickups", response_model=schema_wb.CustomerPickupCreateResponse)
+def create_admin_pickup_waybill(
+    data: schema_wb.AdminPickupCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Nhan vien/QTV tao pickup thay khach hang khi khach goi tong dai."""
+    _require_pickup_operator(current_user)
+
+    customer = db.query(models.Customers).filter(
+        models.Customers.customer_id == data.customer_id,
+        models.Customers.status == "ACTIVE",
+    ).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Khong tim thay khach hang dang hoat dong")
+
+    target_hub = None
+    if data.target_hub_id:
+        target_hub = db.query(models.Hubs).filter(
+            models.Hubs.hub_id == data.target_hub_id,
+            models.Hubs.status == True,
+        ).first()
+        if not target_hub:
+            raise HTTPException(status_code=404, detail="Khong tim thay van phong nhan hop le")
+        if not _can_operate_hub(current_user, data.target_hub_id):
+            raise HTTPException(status_code=403, detail="Khong co quyen tao pickup cho van phong nay")
+
+    sender_province_id = data.sender.province_id or customer.province_id
+    origin_hub = target_hub or _find_hub_for_province(
+        db,
+        sender_province_id,
+        data.sender.province_name or customer.province_name,
+    )
+    if not origin_hub:
+        origin_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == current_user.get("primary_hub_id")).first()
+    if not origin_hub:
+        raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc lay hang")
+
+    dest_hub = _find_hub_for_province(db, data.receiver.province_id, data.receiver.province_name)
+    if not dest_hub:
+        raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc phat hang theo tinh/thanh nguoi nhan")
+
+    shipping_fee, extra_services_fee, vat_amount = _calculate_pickup_estimated_price(db, customer, data, origin_hub, dest_hub)
+    initial_status = "RECEIVED" if target_hub else "PENDING_CONFIRMATION"
+    source = (data.source or "HOTLINE").upper()
+    if source not in ["HOTLINE", "CSKH", "ADMIN"]:
+        source = "HOTLINE"
+
+    try:
+        booking, waybill = crud_wb.create_customer_pickup_waybill(
+            db,
+            customer=customer,
+            data=data,
+            origin_hub_id=origin_hub.hub_id,
+            dest_hub_id=dest_hub.hub_id,
+            creator_id=current_user["user_id"],
+            shipping_fee=shipping_fee,
+            extra_services_fee=extra_services_fee,
+            vat_amount=vat_amount,
+            source=source,
+            target_hub_id=target_hub.hub_id if target_hub else None,
+            initial_status=initial_status,
+            log_action="Nhan vien tao pickup thay khach hang",
+        )
+        db.commit()
+        db.refresh(booking)
+        db.refresh(waybill)
+        return _build_pickup_create_response(booking, waybill)
     except ValueError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
