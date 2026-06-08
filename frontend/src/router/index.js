@@ -128,6 +128,12 @@ const adminRoutes = [
         name: 'AssignShipper',
         component: () => import('../views/admin/delivery/AssignShipper.vue'),
       },
+      {
+        path: 'delivery/pickup-management',
+        name: 'PickupManagement',
+        component: () => import('../views/admin/delivery/PickupManagement.vue'),
+        meta: { requiresAuth: true }
+      },
       // Accounting & Pricing
       {
         path: 'accounting/cod',

@@ -124,7 +124,7 @@
                     </template>
                   </el-table-column>
                   
-                  <el-table-column label="Cân lại (Thực tế)" width="150" align="center">
+                  <el-table-column label="Cân lại (Thực tế)" width="110" align="center">
                     <template #default="{ row, $index }">
                       <el-input-number 
                         v-model="row.actual_weight" 
@@ -137,6 +137,24 @@
                         class="w-full modern-input-small weight-input"
                         :controls="false"
                       />
+                    </template>
+                  </el-table-column>
+
+                  <el-table-column label="Cước tạm tính" width="120" align="right">
+                    <template #default="{ row }">
+                      <span class="text-xs text-primary">{{ (row.estimated_total_amount || 0).toLocaleString() }}đ</span>
+                    </template>
+                  </el-table-column>
+
+                  <el-table-column label="Cước thực tế" width="120" align="right">
+                    <template #default="{ row }">
+                      <span class="text-xs text-success fw-bold">{{ (row.final_total_amount || 0).toLocaleString() }}đ</span>
+                    </template>
+                  </el-table-column>
+
+                  <el-table-column label="Chênh lệch" width="110" align="center">
+                    <template #default="{ row }">
+                      <span :class="getDiffColorClass(row)" style="font-size: 12px;">{{ getDiffAmountText(row) }}</span>
                     </template>
                   </el-table-column>
 
@@ -215,12 +233,27 @@
                 </template>
               </el-table-column>
               
-              <el-table-column label="So sánh Khối lượng" width="200" align="center">
+              <el-table-column label="So sánh Khối lượng" width="180" align="center">
                 <template #default="{ row }">
                   <div class="weight-compare">
                     <span class="text-muted">{{ row.declared_weight || '---' }} kg</span>
                     <el-icon class="arrow-right"><Right /></el-icon>
                     <span class="text-success fw-bold">{{ row.actual_weight || '---' }} kg</span>
+                  </div>
+                </template>
+              </el-table-column>
+
+              <el-table-column label="So sánh Cước phí" width="220" align="center">
+                <template #default="{ row }">
+                  <div class="price-compare" style="display: flex; flex-direction: column; align-items: center; font-size: 13px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="text-muted" style="text-decoration: line-through;">{{ (row.estimated_total_amount || 0).toLocaleString() }}đ</span>
+                      <el-icon class="arrow-right"><Right /></el-icon>
+                      <span class="text-success fw-bold">{{ (row.final_total_amount || 0).toLocaleString() }}đ</span>
+                    </div>
+                    <span :class="getDiffColorClass(row)" style="font-size: 11px; margin-top: 2px;">
+                      Chênh lệch: {{ getDiffAmountText(row) }}
+                    </span>
                   </div>
                 </template>
               </el-table-column>
@@ -309,25 +342,35 @@ const currentHubId = computed(() => auth.user?.primary_hub_id);
 const fetchPendingBills = async () => {
   pendingLoading.value = true;
   try {
-    const payload = {
-      status: 'CREATED', 
-      page: 1,
-      size: 100 
-    };
+    const statuses = ['CREATED', 'READY_WAREHOUSE', 'PICKED_PENDING_VERIFY'];
+    let allItems = [];
+    
+    for (const status of statuses) {
+      const payload = {
+        status: status,
+        page: 1,
+        size: 50
+      };
 
-    if (auth.user?.role_id === 1) {
-       // Logic for Admin (omitted)
-    } else {
-       if (currentHubId.value) {
-         payload.origin_hub_id = currentHubId.value;
-       } else {
-         pendingItems.value = [];
-         return;
-       }
+      if (auth.user?.role_id !== 1) {
+        if (currentHubId.value) {
+          payload.origin_hub_id = currentHubId.value;
+        } else {
+          continue;
+        }
+      }
+
+      try {
+        const res = await api.post('/api/waybills/search', payload);
+        if (res.data && res.data.items) {
+          allItems = allItems.concat(res.data.items);
+        }
+      } catch (err) {
+        console.error(`Error loading status ${status}:`, err);
+      }
     }
-
-    const res = await api.post('/api/waybills/search', payload);
-    pendingItems.value = res.data.items || [];
+    
+    pendingItems.value = allItems;
   } catch (err) {
     ElMessage.error('Không tải được danh sách chờ nhập kho');
   } finally {
@@ -381,6 +424,8 @@ const handleScan = async (codeToScan) => {
       time: moment().format('HH:mm:ss'),
       actual_weight: res.data.actual_weight || 0.5,
       declared_weight: res.data.declared_weight,
+      estimated_total_amount: res.data.estimated_total_amount || 0,
+      final_total_amount: res.data.final_total_amount || 0,
       error: false
     };
 
@@ -436,9 +481,13 @@ const handleScan = async (codeToScan) => {
 
 const updateWeight = async (row) => {
   try {
-    await api.patch(`/api/waybills/${row.barcode}/weight`, {
-      actual_weight: row.actual_weight
+    const res = await api.patch(`/api/scans/${row.barcode}/weigh`, {
+      waybill_code: row.barcode,
+      actual_weight: row.actual_weight,
+      note: "Cân lại thực tế tại kho"
     });
+    row.estimated_total_amount = res.data.estimated_total_amount || 0;
+    row.final_total_amount = res.data.final_total_amount || 0;
     ElNotification({
       title: 'Thành công',
       message: `Đã lưu cân nặng thực tế ${row.actual_weight}kg cho đơn ${row.barcode}`,
@@ -458,6 +507,20 @@ const handleWeightEnter = () => {
 };
 
 const removeItem = (idx) => scannedItems.value.splice(idx, 1);
+
+const getDiffAmountText = (row) => {
+  const diff = (row.final_total_amount || 0) - (row.estimated_total_amount || 0);
+  if (diff > 0) return `+${diff.toLocaleString()}đ`;
+  if (diff < 0) return `${diff.toLocaleString()}đ`;
+  return '0đ';
+};
+
+const getDiffColorClass = (row) => {
+  const diff = (row.final_total_amount || 0) - (row.estimated_total_amount || 0);
+  if (diff > 0) return 'text-warning fw-bold';
+  if (diff < 0) return 'text-success fw-bold';
+  return 'text-muted';
+};
 
 const historyDate = ref(moment().format('YYYY-MM-DD'));
 const historyItems = ref([]);

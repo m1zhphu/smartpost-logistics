@@ -186,10 +186,17 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'delivery', icon: Location, label: 'Điều phối', roles: [1, 2, 4], // Admin, Manager, Shipper
-      children: [
+      id: 'delivery', icon: Location, label: 'Điều phối', roles: [1, 2, 3, 4, 7], // Admin, Manager, Kho, Shipper, CSKH
+      children: role === 4 ? [
         { title: 'GIAO HÀNG', items: [
-          { label: role === 4 ? 'Nhiệm vụ của tôi' : 'Phân công Shipper', path: role === 4 ? '/admin/delivery/my-tasks' : '/admin/delivery/assign' }
+          { label: 'Nhiệm vụ của tôi', path: '/admin/delivery/my-tasks' }
+        ]}
+      ] : [
+        { title: 'LẤY HÀNG (PICKUP)', items: [
+          { label: 'Điều phối Lấy hàng', path: '/admin/delivery/pickup-management' }
+        ]},
+        { title: 'GIAO HÀNG', items: [
+          { label: 'Phân công Shipper', path: '/admin/delivery/assign' }
         ]}
       ]
     },
