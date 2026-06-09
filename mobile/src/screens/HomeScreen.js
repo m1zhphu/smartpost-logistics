@@ -1,559 +1,759 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from "react";
 import {
-    View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet, Alert, Dimensions, Modal, Linking, Animated, Easing
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as ScreenOrientation from 'expo-screen-orientation';
-import { Ionicons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
-import { CommonActions } from '@react-navigation/native';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
-import styles from '../styles/HomeStyles';
-import { useQueue } from '../context/QueueContext';
-import { COLORS } from '../constants/colors';
-import { checkNetworkConnection } from '../utils/networkUtils';
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+} from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { COLORS } from "../constants/colors";
+import { useUser } from "../context/UserContext";
+import { useQueue } from "../context/QueueContext";
+import NotificationModal from "../components/NotificationModal";
+import GlobalChat from "../components/GlobalChat";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import ProcessedListScreen from './ProcessedListScreen';
-import { useUser } from '../context/UserContext';
-import Constants from 'expo-constants';
+const PRIMARY = COLORS.primary || "#1B5E20";
 
-export default function HomeScreen({ route, navigation }) {
-    const [permission, requestPermission] = useCameraPermissions();
-    const cameraRef = useRef(null);
-    const [isCameraReady, setIsCameraReady] = useState(false);
-    const { user } = useUser();
+export default function HomeScreen({ navigation }) {
+  const { user, logout, isWarehouseStaff, unreadCount } = useUser();
+  const { clearQueue } = useQueue();
 
-    const { queue, addToQueue, updateQueueItem, removeQueueItem, clearQueue } = useQueue();
+  const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
-    const [isCapturing, setIsCapturing] = useState(false);
+  const blurProps = {
+    intensity: Platform.OS === "ios" ? 68 : 42,
+    tint: "light",
+  };
 
-    const [showList, setShowList] = useState(false);
+  const handleLogout = () => {
+    Alert.alert(
+      "Xác nhận đăng xuất",
+      "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Đăng xuất",
+          style: "destructive",
+          onPress: () => {
+            clearQueue();
+            logout();
+          },
+        },
+      ],
+    );
+  };
 
-    const [showMenu, setShowMenu] = useState(false);
-    const [showAccountInfo, setShowAccountInfo] = useState(false);
+  const handleFeaturePress = async (screenName) => {
+    const uType = await AsyncStorage.getItem("user_type");
 
-    const isProcessing = useRef(false);
-
-    const isUploadingRef = useRef(false);
-
-    const appVersion = Constants.expoConfig?.version || Constants.manifest?.version || '1.0.2';
-    const [focusPoint, setFocusPoint] = useState(null);
-    const focusAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        async function lockOrientation() {
-            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        }
-        lockOrientation();
-    }, []);
-
-    // HÀM XỬ LÝ KHI NGƯỜI DÙNG CHẠM MÀN HÌNH (CÓ ANIMATION)
-    const handleTapToFocus = (event) => {
-        const { pageX, pageY } = event.nativeEvent;
-        // ... (Giữ nguyên đoạn code tính toán giới hạn vùng bấm trong scanFrame mà tôi hướng dẫn ở turn trước) ...
-        const { width: screenW, height: screenH } = Dimensions.get('window');
-        const frameW = screenW * 0.8;
-        const frameH = screenW * 1.2;
-        const minX = (screenW - frameW) / 2;
-        const maxX = minX + frameW;
-        const minY = (screenH - frameH) / 2 - 50;
-        const maxY = minY + frameH;
-
-        // KIỂM TRA: Ngón tay có nằm trong khung không?
-        if (pageX >= minX && pageX <= maxX && pageY >= minY && pageY <= maxY) {
-
-            // 1. DỪNG TẤT CẢ ANIMATION ĐANG CHẠY (Nếu người dùng bấm liên tiếp)
-            focusAnim.stopAnimation();
-            focusAnim.setValue(0); // Reset về trạng thái ban đầu
-
-            // 2. Lưu tọa độ ngón tay để vẽ
-            setFocusPoint({ x: pageX, y: pageY });
-
-            // 3. KÍCH HOẠT CHUỖI ANIMATION MƯỢT MÀ
-            Animated.sequence([
-                // Pha 1: Hiện lên và Thu nhỏ nhẹ (Tạo cảm giác "bắt điểm")
-                Animated.timing(focusAnim, {
-                    toValue: 1, // Đi đến trạng thái 1 (hiện rõ)
-                    duration: 200, // Chạy trong 0.2 giây
-                    easing: Easing.out(Easing.cubic),
-                    useNativeDriver: true, // Dùng phần cứng để mượt nhất
-                }),
-                // Pha 2: Chờ 0.8 giây cho người dùng nhìn rõ
-                Animated.delay(800),
-                // Pha 3: Thu nhỏ dần và Mờ dần (Fade out)
-                Animated.timing(focusAnim, {
-                    toValue: 0, // Về lại 0 (ẩn đi)
-                    duration: 400, // Chạy trong 0.4 giây
-                    easing: Easing.inOut(Easing.ease),
-                    useNativeDriver: true,
-                }),
-            ]).start(({ finished }) => {
-                // Khi toàn bộ chuỗi animation xong, mới xóa tọa độ để ẩn hẳn View
-                if (finished) setFocusPoint(null);
-            });
-
-        } else {
-            // NẾU KHÔNG (Bấm ra ngoài vùng viền mờ): Không làm gì cả
-            return;
-        }
-    };
-    const handleLogout = () => {
-        setShowMenu(false);
-        Alert.alert("Đăng xuất", "Bạn có muốn thoát không?", [
-            { text: "Hủy", style: "cancel" },
-            {
-                text: "Đồng ý",
-                onPress: () => {
-                    clearQueue();
-                    navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
-                },
-                style: 'destructive'
-            }
-        ]);
-    };
-
-    useEffect(() => {
-        const processNextItem = async () => {
-            if (isUploadingRef.current) return;
-
-            const nextItem = [...queue].reverse().find(item => item.status === 'loading');
-
-            if (nextItem) {
-                isUploadingRef.current = true;
-
-                await processQueueItem(nextItem);
-
-                isUploadingRef.current = false;
-            }
-        };
-
-        processNextItem();
-    }, [queue]);
-
-    // const handleDeleteAccount = () => {
-    //     const email = "nmhien3007@gmail.com";
-    //     const subject = "Yêu cầu xóa tài khoản Speed Light";
-    //     const body = `Xin chào Admin,\n\nTôi là user: ${user.username || '...'}.\nTôi muốn yêu cầu xóa tài khoản và dữ liệu cá nhân của mình khỏi hệ thống.\n\nLý do (nếu có): ...`;
-
-    //     const mailUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-    //     Linking.openURL(mailUrl).catch(() => {
-    //         Alert.alert("Lỗi", "Không thể mở ứng dụng Mail. Vui lòng gửi thủ công tới: " + email);
-    //     });
-    // };
-
-    const takePicture = async () => {
-        if (!cameraRef.current || isProcessing.current || !isCameraReady) return;
-
-        const isConnected = await checkNetworkConnection();
-        if (!isConnected) {
-            return;
-        }
-
-        try {
-            isProcessing.current = true;
-            setIsCapturing(true);
-
-            if (Platform.OS === 'ios') {
-                const photo = await cameraRef.current.takePictureAsync({
-                    quality: 1, exif: true
-                });
-
-                let currentUri = photo.uri;
-                let currentW = photo.width;
-                let currentH = photo.height;
-
-                if (currentW < currentH) {
-                    const rotated = await manipulateAsync(
-                        currentUri,
-                        [{ rotate: 270 }],
-                        { format: SaveFormat.JPEG }
-                    );
-                    currentUri = rotated.uri;
-                    currentW = rotated.width;
-                    currentH = rotated.height;
-                }
-
-                const { width: screenWidth } = Dimensions.get('window');
-                const scale = currentH / screenWidth;
-
-                const cropRealW = (screenWidth * 1.2) * scale;
-                const cropRealH = (screenWidth * 0.8) * scale;
-
-                let originX = (currentW - cropRealW) / 2;
-                let originY = (currentH - cropRealH) / 2;
-                const shiftReal = 50 * scale;
-                originX = originX - shiftReal;
-
-                const safeX = Math.max(0, Math.floor(originX));
-                const safeY = Math.max(0, Math.floor(originY));
-                const safeW = Math.min(Math.floor(cropRealW), currentW - safeX);
-                const safeH = Math.min(Math.floor(cropRealH), currentH - safeY);
-
-                const manipResult = await manipulateAsync(
-                    currentUri,
-                    [
-                        { crop: { originX: safeX, originY: safeY, width: safeW, height: safeH } },
-                        { resize: { width: 1800 } }
-                    ],
-                    { compress: 0.7, format: SaveFormat.JPEG }
-                );
-
-                addToQueue(manipResult.uri);
-            }
-            else {
-
-                const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
-                const fixedPhoto = await manipulateAsync(photo.uri, [{ rotate: 0 }], { format: SaveFormat.JPEG });
-                let realW = fixedPhoto.width; let realH = fixedPhoto.height;
-
-                let currentUri = fixedPhoto.uri;
-
-                if (realW < realH) {
-                    const rotated = await manipulateAsync(
-                        currentUri,
-                        [{ rotate: 270 }],
-                        { format: SaveFormat.JPEG }
-                    );
-
-                    currentUri = rotated.uri;
-                    realW = rotated.width;
-                    realH = rotated.height;
-                }
-
-                const { width: screenW, height: screenH } = Dimensions.get('window');
-                const scale = realW / screenH;
-                const cropTargetW = (screenW * 1.2) * scale;
-                const cropTargetH = (screenW * 0.8) * scale;
-                const visibleImgW = screenH * scale; const visibleImgH = screenW * scale;
-                const visibleOriginY = (realH - visibleImgH) / 2;
-                let cropY_in_Visible = (visibleImgH - cropTargetH) / 2;
-                let originX = (realW - cropTargetW) / 2;
-                let originY = visibleOriginY + cropY_in_Visible;
-                const SHIFT_PIXEL_UI = 50; originX = originX - (SHIFT_PIXEL_UI * scale);
-                let finalX = Math.floor(Math.max(0, originX)); let finalY = Math.floor(Math.max(0, originY));
-                let finalW = Math.floor(cropTargetW); let finalH = Math.floor(cropTargetH);
-                if (finalX + finalW > realW) finalW = realW - finalX;
-                if (finalY + finalH > realH) finalH = realH - finalY;
-                finalW = Math.max(1, finalW - 2); finalH = Math.max(1, finalH - 2);
-
-                const actions = [{ crop: { originX: finalX, originY: finalY, width: finalW, height: finalH } }];
-                actions.push({ resize: { width: 1800 } });
-
-                const manipResult = await manipulateAsync(currentUri, actions, { compress: 0.7, format: SaveFormat.JPEG });
-
-                const newItem = addToQueue(manipResult.uri);
-                // processQueueItem(newItem);
-            }
-            Toast.show({ type: 'success', text1: 'Đã thêm vào hàng chờ xử lý', visibilityTime: 1400 });
-
-        } catch (error) {
-            Toast.show({ type: 'error', text1: 'Lỗi chụp ảnh' });
-        } finally {
-            isProcessing.current = false;
-            setIsCapturing(false);
-        }
-    };
-
-    const processQueueItem = async (item) => {
-        try {
-
-            const formData = new FormData();
-            const cleanUri = Platform.OS === 'android' ? item.uri : item.uri.replace('file://', '');
-            const filename = cleanUri.split('/').pop();
-            const match = /\.(\w+)$/.exec(filename);
-            const type = match ? `image/${match[1]}` : `image/jpeg`;
-
-            formData.append('file', { uri: cleanUri, name: filename, type });
-
-            const response = await fetch(CUSTOMER_CUSTOMER_ENDPOINTS.EXTRACT, {
-                method: 'POST', body: formData, headers: { 'Accept': 'application/json' },
-            });
-
-            const textResponse = await response.text();
-
-            if (!response.ok) {
-                // console.error(`!!! Server Error ${response.status}:`, textResponse);
-                throw new Error(`SERVER_${response.status}_${textResponse}`);
-            }
-
-            let data;
-            try {
-                data = JSON.parse(textResponse);
-            } catch (e) {
-                throw new Error("JSON_PARSE_ERROR");
-            }
-
-            let success = (data.sender || data.receiver || data.tracking_number);
-
-            if (success) {
-                updateQueueItem(item.id, { status: 'success', data: data });
-            } else {
-                updateQueueItem(item.id, { status: 'error', errorType: 'FORMAT' });
-            }
-        } catch (error) {
-            updateQueueItem(item.id, { status: 'error', errorType: 'SERVER' });
-        }
-    };
-
-    if (!permission) return <View style={{ flex: 1, backgroundColor: '#000' }} />;
-    if (!permission.granted) {
-        return (
-            <View style={styles.permissionContainer}>
-                <Ionicons name="videocam-off" size={50} color="#666" />
-                <Text style={styles.permissionText}>Cần cấp quyền Camera</Text>
-                <TouchableOpacity onPress={requestPermission} style={styles.btnPermission}>
-                    <Text style={styles.btnPermissionText}>CẤP QUYỀN</Text>
-                </TouchableOpacity>
-            </View>
-        );
+    if (uType === "employee") {
+      Alert.alert(
+        "Tính năng chưa phát triển",
+        "Tính năng này đang được phát triển cho hệ thống Kho và sẽ sớm ra mắt.",
+      );
+      return;
     }
 
-    return (
-        <View style={styles.container}>
-            <StatusBar style="light" />
-            <TouchableOpacity
-                activeOpacity={1}
+    navigation.navigate(screenName);
+  };
+
+  const GlassCircleButton = ({ icon, onPress, children, style }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.circleButtonShadow, style]}
+      activeOpacity={0.78}
+    >
+      <BlurView {...blurProps} intensity={58} style={styles.appleCircleBtn}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={[
+            "rgba(255,255,255,0.36)",
+            "rgba(255,255,255,0.14)",
+            "rgba(255,255,255,0.06)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <View pointerEvents="none" style={styles.circleButtonTopLine} />
+
+        <Ionicons name={icon} size={20} color="#FFF" />
+        {children}
+      </BlurView>
+    </TouchableOpacity>
+  );
+
+  const MenuItem = ({ title, icon, onPress, color }) => (
+    <TouchableOpacity
+      style={styles.gridCardTouchable}
+      onPress={onPress}
+      activeOpacity={0.82}
+      disabled={isMenuVisible || isNotifModalVisible}
+    >
+      <BlurView {...blurProps} intensity={56} style={styles.gridCard}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={[
+            "rgba(255,255,255,0.92)",
+            "rgba(255,255,255,0.58)",
+            "rgba(255,255,255,0.32)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <View pointerEvents="none" style={styles.cardTopLine} />
+        <View pointerEvents="none" style={styles.cardGlow} />
+
+        <View
+          style={[
+            styles.gridIconBox,
+            {
+              backgroundColor: `${color}18`,
+              borderColor: `${color}22`,
+            },
+          ]}
+        >
+          <LinearGradient
+            pointerEvents="none"
+            colors={["rgba(255,255,255,0.72)", "rgba(255,255,255,0.18)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+
+          <Ionicons name={icon} size={28} color={color} />
+        </View>
+
+        <Text style={styles.gridCardTitle} numberOfLines={2}>
+          {title}
+        </Text>
+      </BlurView>
+    </TouchableOpacity>
+  );
+
+  const DropdownMenuItem = ({ title, icon, onPress, danger }) => (
+    <TouchableOpacity
+      style={styles.menuItem}
+      onPress={onPress}
+      activeOpacity={0.78}
+    >
+      <View style={[styles.menuIconBox, danger && styles.menuIconBoxDanger]}>
+        <Ionicons
+          name={icon}
+          size={20}
+          color={danger ? "#EF4444" : "#4B5563"}
+        />
+      </View>
+
+      <Text style={[styles.menuText, danger && styles.menuTextDanger]}>
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={[PRIMARY, "#15803D", "#16A34A"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <View pointerEvents="none" style={styles.headerOrbOne} />
+        <View pointerEvents="none" style={styles.headerOrbTwo} />
+        <View pointerEvents="none" style={styles.headerGlassLine} />
+
+        <View style={styles.headerTextGroup}>
+          <Text style={styles.greeting}>Xin chào,</Text>
+
+          <Text style={styles.userName}>
+            {user?.username || user?.full_name || "Shipper"}
+          </Text>
+
+          <BlurView {...blurProps} intensity={42} style={styles.roleBadge}>
+            <LinearGradient
+              pointerEvents="none"
+              colors={["rgba(255,255,255,0.28)", "rgba(255,255,255,0.1)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+
+            <View style={styles.roleDot} />
+            <Text style={styles.roleText}>Tài xế giao hàng</Text>
+          </BlurView>
+        </View>
+
+        <View style={styles.headerActions}>
+          <GlassCircleButton
+            icon="notifications"
+            onPress={() => setIsNotifModalVisible(true)}
+          >
+            {unreadCount > 0 && (
+              <View style={styles.appleBadge}>
+                <Text style={styles.appleBadgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
+          </GlassCircleButton>
+
+          <GlassCircleButton
+            icon="options-outline"
+            onPress={() => setIsMenuVisible(true)}
+            style={{ marginLeft: 12 }}
+          />
+        </View>
+      </View>
+
+      {/* Menu Grid */}
+      <View style={styles.content}>
+        <View style={styles.rowWrapper}>
+          <MenuItem
+            title="Đơn lấy hàng"
+            icon="cube-outline"
+            color="#0284C7"
+            onPress={() => handleFeaturePress("ShipperPickupList")}
+          />
+
+          <MenuItem
+            title="Tự điều phối"
+            icon="git-pull-request-outline"
+            color="#10B981"
+            onPress={() => handleFeaturePress("ShipperSelfAssignPickup")}
+          />
+        </View>
+
+        <View style={styles.rowWrapper}>
+          <MenuItem
+            title="Giao hàng"
+            icon="paper-plane-outline"
+            color="#D97706"
+            onPress={() => handleFeaturePress("ShipperDeliveryList")}
+          />
+
+          <MenuItem
+            title="Tracking"
+            icon="search-outline"
+            color="#8B5CF6"
+            onPress={() => handleFeaturePress("ShipperTracking")}
+          />
+        </View>
+      </View>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("ShipperCamera")}
+        activeOpacity={0.86}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(249,115,22,0.98)",
+            "rgba(251,146,60,0.95)",
+            "rgba(253,186,116,0.9)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabGradient}
+        >
+          <LinearGradient
+            pointerEvents="none"
+            colors={[
+              "rgba(255,255,255,0.5)",
+              "rgba(255,255,255,0.12)",
+              "rgba(255,255,255,0)",
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGloss}
+          />
+
+          <Ionicons name="camera" size={28} color="#FFF" />
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* MODAL 1: THÔNG BÁO */}
+      <NotificationModal
+        visible={isNotifModalVisible}
+        onClose={() => setIsNotifModalVisible(false)}
+      />
+
+      {/* MODAL 2: MENU CHỨC NĂNG */}
+      <Modal
+        visible={isMenuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.menuOverlay}
+          onPress={(e) => {
+            e.stopPropagation();
+            setIsMenuVisible(false);
+          }}
+        >
+          <Pressable
+            style={styles.dropdownShadow}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <BlurView {...blurProps} intensity={76} style={styles.dropdownMenu}>
+              <LinearGradient
+                pointerEvents="none"
+                colors={[
+                  "rgba(255,255,255,0.94)",
+                  "rgba(255,255,255,0.68)",
+                  "rgba(255,255,255,0.42)",
+                ]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
-                onPress={handleTapToFocus}
-            >
-                {/* <View style={StyleSheet.absoluteFill}> */}
-                <CameraView
-                    style={{ flex: 1 }}
-                    facing="back"
-                    ref={cameraRef}
-                    onCameraReady={() => setIsCameraReady(true)}
-                    autoFocus="on"
-                    flash="auto"
-                />
+              />
 
-                {focusPoint && (
-                    <Animated.View
-                        style={{
-                            position: 'absolute',
-                            top: focusPoint.y - 25,
-                            left: focusPoint.x - 25,
-                            width: 50,
-                            height: 50,
-                            // ----------------------------------------------------
-                            borderWidth: 2,
-                            borderColor: '#FFD700',
-                            backgroundColor: 'transparent',
-                            zIndex: 10,
+              <View pointerEvents="none" style={styles.dropdownTopLine} />
 
-                            opacity: focusAnim,
-                            transform: [{
-                                scale: focusAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [1.3, 1],
-                                })
-                            }]
-                        }}
-                    />
-                )}
-
-                <SafeAreaView style={styles.cameraOverlay} pointerEvents="box-none">
-                    <View style={styles.headerRow}>
-                        <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: 'rgba(255, 255, 255, 0.09)',
-                            borderRadius: 25,
-                            paddingHorizontal: 4,
-                            paddingVertical: 4,
-                            zIndex: 20
-                        }}>
-
-                            <TouchableOpacity
-                                onPress={() => setShowMenu(true)}
-                                style={{ padding: 8, paddingHorizontal: 12 }}
-                                activeOpacity={0.6}
-                            >
-                                <Ionicons name="grid-outline" size={24} color="#FFF" />
-                            </TouchableOpacity>
-
-                            {/* Vạch ngăn cách dọc mờ ở giữa */}
-                            <View style={{ width: 1, height: 22, backgroundColor: 'rgba(255, 255, 255, 0.4)' }} />
-
-                            <TouchableOpacity
-                                onPress={() => navigation.replace('WarehouseHome')}
-                                style={{ padding: 8, paddingHorizontal: 12 }}
-                                activeOpacity={0.6}
-                            >
-                                <Ionicons name="swap-horizontal-outline" size={24} color="#FFF" />
-                            </TouchableOpacity>
-
-
-                        </View>
-
-                        <TouchableOpacity
-                            onPress={() => setShowList(true)}
-                            style={[styles.listButton, { zIndex: 20 }]}
-                        >
-                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Hàng chờ</Text>
-                            {queue.length > 0 && (
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>{queue.length}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.scanFrameContainer} pointerEvents="none">
-                        <View style={styles.maskOverlay} />
-                        <View style={styles.scanFrame}>
-                            {/* --- THÊM 4 CÁI GÓC VUÔNG VÀO ĐÂY --- */}
-                            <View style={[styles.corner, styles.topLeft]} />
-                            <View style={[styles.corner, styles.topRight]} />
-                            <View style={[styles.corner, styles.bottomLeft]} />
-                            <View style={[styles.corner, styles.bottomRight]} />
-                            {/* ------------------------------------- */}
-                            <View style={[styles.maskBase, styles.maskTop]} />
-                            <View style={[styles.maskBase, styles.maskBottom]} />
-                            <View style={[styles.maskBase, styles.maskLeft]} />
-                            <View style={[styles.maskBase, styles.maskRight]} />
-                        </View>
-                        <Text style={styles.scanHintText}>Căn mã vận đơn vào khung ảnh</Text>
-                    </View>
-
-                    <View style={styles.captureFloatingContainer}>
-                        <TouchableOpacity
-                            style={[styles.shutterBtnOuter, isCapturing && { opacity: 0.5 }]}
-                            onPress={takePicture}
-                            disabled={isCapturing}
-                        >
-                            {isCapturing ? <ActivityIndicator color={COLORS.primary} /> : <View style={styles.shutterBtnInner} />}
-                        </TouchableOpacity>
-                    </View>
-                </SafeAreaView>
-                {/* </View > */}
-
-            </TouchableOpacity>
-
-            <Modal
-                visible={showMenu}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setShowMenu(false)}
-            >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setShowMenu(false)}
-                >
-                    <View style={styles.menuContainer}>
-                        <View style={styles.menuHeader}>
-                            <Text style={styles.menuTitle}>Tiện ích</Text>
-                            <TouchableOpacity onPress={() => setShowMenu(false)}>
-                                <Ionicons name="close" size={24} color="#333" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.menuItem}
-                            onPress={() => {
-                                setShowMenu(false);
-                                setShowAccountInfo(true);
-                            }}
-                        >
-                            <View style={styles.iconBox}>
-                                <Ionicons name="person" size={20} color={COLORS.secondary} />
-                            </View>
-                            <Text style={styles.menuText}>Thông tin tài khoản</Text>
-                            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-                        </TouchableOpacity>
-
-                        <View style={styles.divider} />
-
-                        <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-                            <View style={[styles.iconBox, { backgroundColor: '#ffebee' }]}>
-                                <Ionicons name="log-out" size={20} color={COLORS.logOut} />
-                            </View>
-                            <Text style={[styles.menuText, { color: COLORS.logOut }]}>Đăng xuất</Text>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
-
-
-            <Modal
-                visible={showAccountInfo}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setShowAccountInfo(false)}
-            >
-                <View style={styles.accountModalContainer}>
-                    <View style={styles.accountHeader}>
-                        <Text style={styles.accountHeaderTitle}>Tài khoản</Text>
-                        <TouchableOpacity onPress={() => setShowAccountInfo(false)} style={styles.closeBtnCircle}>
-                            <Ionicons name="close" size={20} color="#333" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.accountBody}>
-                        <View style={{ alignItems: 'center', marginBottom: 30 }}>
-                            <View style={styles.avatarCircle}>
-                                {/* Nhớ dùng user?.username để tránh lỗi văng app khi đăng xuất */}
-                                <Text style={{ fontSize: 30, color: 'white', fontWeight: 'bold' }}>
-                                    {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
-                                </Text>
-                            </View>
-                            <Text style={{ fontSize: 20, fontWeight: 'bold', marginTop: 10 }}>{user?.username}</Text>
-                            <Text style={{ color: '#666' }}>Thành viên Speed Light</Text>
-                        </View>
-
-                        <View style={styles.sectionBox}>
-                            <TouchableOpacity style={styles.rowItem}>
-                                <Text style={styles.rowLabel}>Tên đăng nhập</Text>
-                                <Text style={styles.rowValue}>{user?.username}</Text>
-                            </TouchableOpacity>
-                            <View style={styles.divider} />
-
-                            <TouchableOpacity style={styles.rowItem}>
-                                <Text style={styles.rowLabel}>Phiên bản App</Text>
-                                <Text style={styles.rowValue}>{appVersion}</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                    </View>
-                </View>
-            </Modal>
-
-            <Modal Modal
-                visible={showList}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setShowList(false)
-                }
-            >
-                <ProcessedListScreen
-                    queue={queue}
-                    navigation={navigation}
-                    onClose={() => setShowList(false)}
-                    onClear={clearQueue}
-                    onDelete={(id) => removeQueueItem(id)}
-                    onRetry={(item) => {
-                        updateQueueItem(item.id, { status: 'loading' });
-                        // processQueueItem(item);
+              {isWarehouseStaff() && (
+                <>
+                  <DropdownMenuItem
+                    title="Giao diện Kho"
+                    icon="swap-horizontal-outline"
+                    onPress={() => {
+                      setIsMenuVisible(false);
+                      navigation.replace("WarehouseHome");
                     }}
-                />
-            </Modal >
+                  />
 
-            <View style={{
-                position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
-                zIndex: 9999,
-                elevation: 9999,
-                pointerEvents: 'box-none'
-            }}>
-                <Toast
-                    position='top'
-                    topOffset={Platform.OS === 'android' ? 40 : 60}
-                />
-            </View>
-        </View >
-    );
+                  <View style={styles.menuDivider} />
+                </>
+              )}
+
+              <DropdownMenuItem
+                title="Đăng xuất"
+                icon="log-out-outline"
+                danger
+                onPress={() => {
+                  setIsMenuVisible(false);
+                  handleLogout();
+                }}
+              />
+            </BlurView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <GlobalChat />
+    </View>
+  );
 }
+
+const glassShadow = {
+  ...Platform.select({
+    ios: {
+      shadowColor: "#123816",
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.14,
+      shadowRadius: 22,
+    },
+    android: {
+      elevation: 6,
+    },
+  }),
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F1F5F9",
+  },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 25,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    backgroundColor: PRIMARY,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    overflow: "hidden",
+    zIndex: 10,
+
+    ...Platform.select({
+      ios: {
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.22,
+        shadowRadius: 18,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+
+  headerOrbOne: {
+    position: "absolute",
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    top: -80,
+    right: -62,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+
+  headerOrbTwo: {
+    position: "absolute",
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    bottom: -70,
+    left: -42,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+
+  headerGlassLine: {
+    position: "absolute",
+    left: 28,
+    right: 28,
+    top: Platform.OS === "ios" ? 48 : 28,
+    height: 1,
+    borderRadius: 1,
+    backgroundColor: "rgba(255,255,255,0.34)",
+  },
+
+  headerTextGroup: {
+    flex: 1,
+    paddingRight: 14,
+  },
+
+  greeting: {
+    fontSize: Platform.OS === "ios" ? 14 : 11,
+    color: "rgba(255,255,255,0.78)",
+    letterSpacing: 0.5,
+    fontWeight: "600",
+  },
+
+  userName: {
+    fontSize: Platform.OS === "ios" ? 20 : 14,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    marginTop: 4,
+    marginBottom: 8,
+  },
+
+  roleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.24)",
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+
+  roleDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#22C55E",
+    marginRight: 7,
+  },
+
+  roleText: {
+    fontSize: Platform.OS === "ios" ? 13 : 10,
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  circleButtonShadow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.14,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+
+  appleCircleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.28)",
+  },
+
+  circleButtonTopLine: {
+    position: "absolute",
+    top: 1,
+    left: 8,
+    right: 8,
+    height: 1,
+    borderRadius: 1,
+    backgroundColor: "rgba(255,255,255,0.48)",
+  },
+
+  appleBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#EF4444",
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: PRIMARY,
+    paddingHorizontal: 4,
+  },
+
+  appleBadgeText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "900",
+  },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 30,
+  },
+
+  rowWrapper: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+
+  gridCardTouchable: {
+    width: "48%",
+    borderRadius: 24,
+    ...glassShadow,
+  },
+
+  gridCard: {
+    minHeight: 142,
+    paddingVertical: 20,
+    paddingHorizontal: 8,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.86)",
+    alignItems: "center",
+    backgroundColor:
+      Platform.OS === "android"
+        ? "rgba(255,255,255,0.82)"
+        : "rgba(255,255,255,0.36)",
+  },
+
+  cardTopLine: {
+    position: "absolute",
+    top: 1,
+    left: 18,
+    right: 18,
+    height: 1,
+    borderRadius: 1,
+    backgroundColor: "rgba(255,255,255,0.96)",
+  },
+
+  cardGlow: {
+    position: "absolute",
+    top: 12,
+    left: 14,
+    width: 58,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.28)",
+    transform: [{ rotate: "-18deg" }],
+  },
+
+  gridIconBox: {
+    width: 62,
+    height: 62,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+
+  gridCardTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0F172A",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+
+  fab: {
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    overflow: "hidden",
+    zIndex: 999,
+
+    ...Platform.select({
+      ios: {
+        shadowColor: "#f97316",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.36,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 9,
+      },
+    }),
+  },
+
+  fabGradient: {
+    flex: 1,
+    borderRadius: 31,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.42)",
+    overflow: "hidden",
+  },
+
+  fabGloss: {
+    position: "absolute",
+    top: 4,
+    left: 10,
+    right: 10,
+    height: 24,
+    borderRadius: 999,
+  },
+
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.18)",
+  },
+
+  dropdownShadow: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 115 : 75,
+    right: 20,
+    width: 220,
+    borderRadius: 22,
+
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.18,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+
+  dropdownMenu: {
+    width: 220,
+    paddingVertical: 8,
+    borderRadius: 22,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.86)",
+    backgroundColor:
+      Platform.OS === "android"
+        ? "rgba(255,255,255,0.92)"
+        : "rgba(255,255,255,0.42)",
+  },
+
+  dropdownTopLine: {
+    position: "absolute",
+    top: 1,
+    left: 18,
+    right: 18,
+    height: 1,
+    borderRadius: 1,
+    backgroundColor: "rgba(255,255,255,0.96)",
+  },
+
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+
+  menuIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: "rgba(243,244,246,0.86)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.84)",
+  },
+
+  menuIconBoxDanger: {
+    backgroundColor: "rgba(254,242,242,0.9)",
+  },
+
+  menuText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#374151",
+  },
+
+  menuTextDanger: {
+    color: "#EF4444",
+    fontWeight: "800",
+  },
+
+  menuDivider: {
+    height: 1,
+    backgroundColor: "rgba(148,163,184,0.18)",
+    marginHorizontal: 16,
+  },
+});

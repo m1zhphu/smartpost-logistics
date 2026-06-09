@@ -28,6 +28,13 @@ import CustomerPickupDetailScreen from './src/screens/CustomerPickupDetailScreen
 import CustomerTrackingScreen from './src/screens/CustomerTrackingScreen';
 import ShipperPickupListScreen from './src/screens/ShipperPickupListScreen';
 import ShipperPickupDetailScreen from './src/screens/ShipperPickupDetailScreen';
+import ShipperSelfAssignPickupScreen from './src/screens/ShipperSelfAssignPickupScreen';
+import ShipperCreateBillScreen from './src/screens/ShipperCreateBillScreen';
+import ShipperCameraScreen from './src/screens/ShipperCameraScreen';
+import ShipperDeliveryListScreen from './src/screens/ShipperDeliveryListScreen';
+import ShipperDeliveryDetailScreen from './src/screens/ShipperDeliveryDetailScreen';
+import ShipperReportIncidentScreen from './src/screens/ShipperReportIncidentScreen';
+import ShipperTrackingScreen from './src/screens/ShipperTrackingScreen';
 
 import { QueueProvider } from './src/context/QueueContext';
 import { UserProvider, navigationRef } from './src/context/UserContext';
@@ -89,6 +96,7 @@ export default function App() {
 
             {/* Màn hình của Shipper */}
             <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="ShipperCamera" component={ShipperCameraScreen} />
 
             {/* Màn hình của Nhân viên Kho */}
             <Stack.Screen name="WarehouseHome" component={WarehouseHomeScreen} />
@@ -114,6 +122,12 @@ export default function App() {
             <Stack.Screen name="CustomerTracking" component={CustomerTrackingScreen} />
             <Stack.Screen name="ShipperPickupList" component={ShipperPickupListScreen} />
             <Stack.Screen name="ShipperPickupDetail" component={ShipperPickupDetailScreen} />
+            <Stack.Screen name="ShipperSelfAssignPickup" component={ShipperSelfAssignPickupScreen} />
+            <Stack.Screen name="ShipperCreateBill" component={ShipperCreateBillScreen} />
+            <Stack.Screen name="ShipperDeliveryList" component={ShipperDeliveryListScreen} />
+            <Stack.Screen name="ShipperDeliveryDetail" component={ShipperDeliveryDetailScreen} />
+            <Stack.Screen name="ShipperReportIncident" component={ShipperReportIncidentScreen} />
+            <Stack.Screen name="ShipperTracking" component={ShipperTrackingScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         <Toast config={toastConfig} />

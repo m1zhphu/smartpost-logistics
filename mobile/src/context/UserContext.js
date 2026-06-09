@@ -58,7 +58,14 @@ export const UserProvider = ({ children }) => {
             (response) => response,
             async (error) => {
                 if (error.response && error.response.status === 401 && !isSessionExpired) {
+                    // Nếu request đánh dấu ignore401 thì không logout (dùng cho các background tasks dễ bị lỗi 401 ảo)
+                    if (error.config && error.config.ignore401) {
+                        return Promise.reject(error);
+                    }
+
                     isSessionExpired = true;
+                    console.error("401 Unauthorized for URL:", error.config?.url);
+                    Toast.show({ type: 'error', text1: 'Lỗi xác thực', text2: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' });
                     logout(true);
 
                     setTimeout(() => {
@@ -101,7 +108,8 @@ export const UserProvider = ({ children }) => {
                 }
 
                 const res = await apiClient.get(WAREHOUSE_ENDPOINTS.GET_UNREAD_NOTIFICATIONS, {
-                    headers: { Authorization: `Bearer ${currentToken}` }
+                    headers: { Authorization: `Bearer ${currentToken}` },
+                    ignore401: true
                 });
                 const data = res.data.data || res.data;
                 setNotifications(data);
@@ -170,12 +178,15 @@ export const UserProvider = ({ children }) => {
             registerForPushNotificationsAsync(false).then(async pushToken => {
                 if (pushToken) {
                     const uType = await AsyncStorage.getItem('user_type') || 'employee';
-                    if (uType === 'customer' || uType === 'admin') {
-                        apiClient.post(CUSTOMER_ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken })
-                            .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
+                    if (uType === 'customer') {
+                        apiClient.post(CUSTOMER_ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken }, { ignore401: true })
+                            .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token Customer!' }));
+                    } else if (uType === 'admin') {
+                        apiClient.post(ADMIN_ENDPOINTS.ADMIN_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken }, { ignore401: true })
+                            .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token Admin!' }));
                     } else {
-                        apiClient.put(WAREHOUSE_ENDPOINTS.UPDATE_PUSH_TOKEN_URL, { token: pushToken })
-                            .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
+                        apiClient.put(WAREHOUSE_ENDPOINTS.UPDATE_PUSH_TOKEN_URL, { token: pushToken }, { ignore401: true })
+                            .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token Warehouse!' }));
                     }
                 }
             });
@@ -220,12 +231,15 @@ export const UserProvider = ({ children }) => {
         const pushToken = await registerForPushNotificationsAsync(true); // true = Cho phép bật popup
         if (pushToken) {
             const uType = await AsyncStorage.getItem('user_type') || 'employee';
-            if (uType === 'customer' || uType === 'admin') {
-                apiClient.post(CUSTOMER_ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken })
-                    .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
+            if (uType === 'customer') {
+                apiClient.post(CUSTOMER_ENDPOINTS.CUSTOMER_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken }, { ignore401: true })
+                    .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token Customer!' }));
+            } else if (uType === 'admin') {
+                apiClient.post(ADMIN_ENDPOINTS.ADMIN_REGISTER_PUSH_TOKEN_URL, { push_token: pushToken }, { ignore401: true })
+                    .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token Admin!' }));
             } else {
-                apiClient.put(WAREHOUSE_ENDPOINTS.UPDATE_PUSH_TOKEN_URL, { token: pushToken })
-                    .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token!' }));
+                apiClient.put(WAREHOUSE_ENDPOINTS.UPDATE_PUSH_TOKEN_URL, { token: pushToken }, { ignore401: true })
+                    .catch(err => Toast.show({ type: 'error', text1: 'Không thể đồng bộ Push Token Warehouse!' }));
             }
         }
     };
@@ -267,11 +281,14 @@ export const UserProvider = ({ children }) => {
 
             // Lấy mã Token. Lấy cả cấu hình projectId từ app.json (nếu có dùng EAS Build)
             try {
-                const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+                const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? '0c288d76-926e-4022-b908-9778d8cc31bb';
                 pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
             } catch (e) {
-                // console.log("Lỗi khi xin Expo Push Token:", e);
-                Toast.show({ type: 'error', text1: 'Không thể lấy Push Token!' });
+                console.log("Lỗi khi xin Expo Push Token:", e);
+                const errorStr = String(e);
+                if (!errorStr.includes('FirebaseApp is not initialized')) {
+                    Toast.show({ type: 'error', text1: 'Không thể lấy Push Token', text2: e.message || errorStr });
+                }
             }
         }
         return pushToken;

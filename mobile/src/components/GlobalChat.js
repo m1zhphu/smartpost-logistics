@@ -37,6 +37,12 @@ export default function GlobalChat() {
 
     const [isBanned, setIsBanned] = useState(user?.is_chat_banned || false);
 
+    const [userType, setUserType] = useState(null);
+
+    useEffect(() => {
+        AsyncStorage.getItem('user_type').then(type => setUserType(type || 'employee'));
+    }, []);
+
     // HÀM KIỂM TRA EULA KHI MỞ CHAT
     const handleOpenChat = async () => {
         setIsOpen(true);
@@ -91,6 +97,9 @@ export default function GlobalChat() {
     const connectWS = async () => {
         if (!isNetworkAlive || isBanned) return;
 
+        const uType = await AsyncStorage.getItem('user_type');
+        if (uType === 'customer' || uType === 'admin') return;
+
         // 1. CỔNG CHỐT CHẶN: Phải có dòng này thì mới chống đếm tin nhắn 2 lần được!
         if (isConnectingRef.current || (ws.current && ws.current.readyState === WebSocket.OPEN)) return;
 
@@ -98,7 +107,7 @@ export default function GlobalChat() {
         setIsConnecting(true);
 
         try {
-            const res = await apiClient.get('https://warehouse.speedlight.com.vn/api/chat/history');
+            const res = await apiClient.get('https://warehouse.speedlight.com.vn/api/chat/history', { ignore401: true });
             if (res.data && res.data.data) {
                 setMessages(res.data.data.reverse());
                 setNextCursor(res.data.next_cursor); // Lưu mốc ID cũ nhất
@@ -209,7 +218,7 @@ export default function GlobalChat() {
 
         setIsLoadingMore(true);
         try {
-            const res = await apiClient.get(`https://warehouse.speedlight.com.vn/api/chat/history?cursor=${nextCursor}`);
+            const res = await apiClient.get(`https://warehouse.speedlight.com.vn/api/chat/history?cursor=${nextCursor}`, { ignore401: true });
 
             if (res.data && res.data.data) {
                 const olderMessages = res.data.data.reverse();
@@ -302,7 +311,7 @@ export default function GlobalChat() {
                 style: 'destructive',
                 onPress: async () => {
                     try {
-                        await apiClient.delete(`https://warehouse.speedlight.com.vn/api/chat/${msg.id}`);
+                        await apiClient.delete(`https://warehouse.speedlight.com.vn/api/chat/${msg.id}`, { ignore401: true });
                     } catch (e) {
                         Alert.alert("Lỗi", "Không thể xóa tin nhắn lúc này.");
                     }
@@ -329,10 +338,10 @@ export default function GlobalChat() {
                                         // Gọi API tới Backend để cập nhật trạng thái user thành "banned_from_chat"
                                         await apiClient.post('https://warehouse.speedlight.com.vn/api/chat/ban-user', {
                                             target_user_id: msg.user_id
-                                        });
+                                        }, { ignore401: true });
 
                                         // (Tùy chọn) Xóa luôn tin nhắn vi phạm này
-                                        await apiClient.delete(`https://warehouse.speedlight.com.vn/api/chat/${msg.id}`);
+                                        await apiClient.delete(`https://warehouse.speedlight.com.vn/api/chat/${msg.id}`, { ignore401: true });
 
                                         Alert.alert("Thành công", `Đã khóa quyền chat của ${msg.sender_name}.`);
                                     } catch (e) {
@@ -351,7 +360,7 @@ export default function GlobalChat() {
                 text: 'Báo cáo vi phạm',
                 onPress: async () => {
                     try {
-                        await apiClient.post('https://warehouse.speedlight.com.vn/api/chat/report', { message_id: msg.id, reason: "Nội dung không phù hợp" });
+                        await apiClient.post('https://warehouse.speedlight.com.vn/api/chat/report', { message_id: msg.id, reason: "Nội dung không phù hợp" }, { ignore401: true });
                         setMessages(prev => prev.filter(m => m.id !== msg.id));
                         Alert.alert("Đã báo cáo", "Tin nhắn này đã bị báo cáo và ẩn khỏi màn hình của bạn.");
                     } catch (e) {
@@ -364,7 +373,7 @@ export default function GlobalChat() {
                 text: 'Ẩn người này',
                 onPress: async () => {
                     try {
-                        await apiClient.post('https://warehouse.speedlight.com.vn/api/chat/block', { blocked_id: msg.user_id });
+                        await apiClient.post('https://warehouse.speedlight.com.vn/api/chat/block', { blocked_id: msg.user_id }, { ignore401: true });
                         setMessages(prev => prev.filter(m => m.user_id !== msg.user_id));
                         Alert.alert("Thành công", "Bạn sẽ không thấy tin nhắn của người này nữa.");
                     } catch (e) {
@@ -377,6 +386,9 @@ export default function GlobalChat() {
         buttons.push({ text: 'Hủy', style: 'cancel' });
         Alert.alert("Tùy chọn tin nhắn", `Từ: ${msg.sender_name}`, buttons);
     };
+
+    // CHỈ RENDER CHO NHÂN VIÊN KHO (vì server chat hiện tại nằm bên warehouse)
+    if (userType && userType !== 'employee') return null;
 
     return (
         <>

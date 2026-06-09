@@ -154,6 +154,11 @@ const LoginStyles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    modalKeyboardWrap: {
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     modalContent: {
         width: '85%',
         backgroundColor: COLORS.background,

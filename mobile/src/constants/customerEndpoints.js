@@ -21,6 +21,10 @@ export const CUSTOMER_ENDPOINTS = {
   GET_PICKUP_DETAIL: (waybillCode) =>
     `${API_BASE_URL}/api/waybills/customer/pickups/${waybillCode}`,
 
+  // Pricing
+  GET_EXTRA_SERVICES: `${API_BASE_URL}/api/pricing/extra-services`,
+  SIMULATE_PRICE: `${API_BASE_URL}/api/pricing/simulate`,
+
   // Legacy / Others
   EXTRACT: `${API_BASE_URL}/extract`,
   SUBMIT: `${API_BASE_URL}/submit`,

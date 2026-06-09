@@ -3,13 +3,29 @@ import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
 import { ADMIN_ENDPOINTS } from '../constants/adminEndpoints';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const buildIdempotencyHeaders = (prefix) => ({
+    'Idempotency-Key': `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+});
+
+const getErrorMessage = (error) => {
+    const detail = error.response?.data?.detail;
+    if (detail) {
+        if (Array.isArray(detail)) return detail.map(e => e.msg || JSON.stringify(e)).join(', ');
+        if (typeof detail === 'object') return JSON.stringify(detail);
+        return String(detail);
+    }
+    return error.message;
+};
+
 // Customer APIs
 export const createCustomerPickup = async (data) => {
     try {
-        const response = await apiClient.post(CUSTOMER_ENDPOINTS.CREATE_PICKUP, data);
+        const response = await apiClient.post(CUSTOMER_ENDPOINTS.CREATE_PICKUP, data, {
+            headers: buildIdempotencyHeaders('mobile-customer-pickup')
+        });
         return { success: true, data: response.data };
     } catch (error) {
-        return { success: false, message: error.response?.data?.detail || error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 };
 
@@ -18,7 +34,7 @@ export const getCustomerPickups = async () => {
         const response = await apiClient.get(CUSTOMER_ENDPOINTS.GET_PICKUPS);
         return { success: true, data: response.data };
     } catch (error) {
-        return { success: false, message: error.response?.data?.detail || error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 };
 
@@ -27,7 +43,7 @@ export const getCustomerPickupDetail = async (waybillCode) => {
         const response = await apiClient.get(CUSTOMER_ENDPOINTS.GET_PICKUP_DETAIL(waybillCode));
         return { success: true, data: response.data };
     } catch (error) {
-        return { success: false, message: error.response?.data?.detail || error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 };
 
@@ -60,7 +76,7 @@ export const getShipperAssignedPickups = async () => {
         const response = await apiClient.get(ADMIN_ENDPOINTS.GET_ASSIGNED_PICKUPS);
         return { success: true, data: response.data };
     } catch (error) {
-        return { success: false, message: error.response?.data?.detail || error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 };
 
@@ -69,7 +85,7 @@ export const getShipperPickupDetail = async (requestCode) => {
         const response = await apiClient.get(ADMIN_ENDPOINTS.GET_PICKUP_DETAIL(requestCode));
         return { success: true, data: response.data };
     } catch (error) {
-        return { success: false, message: error.response?.data?.detail || error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 };
 
@@ -78,10 +94,33 @@ export const confirmPickup = async (requestCode, imageUrl, note) => {
         const response = await apiClient.post(ADMIN_ENDPOINTS.CONFIRM_PICKED(requestCode), {
             pickup_image_url: imageUrl,
             note: note || ''
+        }, {
+            headers: buildIdempotencyHeaders('mobile-shipper-picked')
         });
         return { success: true, data: response.data };
     } catch (error) {
-        return { success: false, message: error.response?.data?.detail || error.message };
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const uploadPickupImage = async (file) => {
+    try {
+        const formData = new FormData();
+        formData.append('file', {
+            uri: file.uri,
+            name: file.name || `pickup-${Date.now()}.jpg`,
+            type: file.type || 'image/jpeg'
+        });
+
+        const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_PICKUP_IMAGE, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
     }
 };
 
@@ -95,6 +134,25 @@ export const sendGpsLocation = async (latitude, longitude, accuracy, note) => {
         });
         return { success: true, data: response.data };
     } catch (error) {
-        return { success: false, message: error.response?.data?.detail || error.message };
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+// Pricing APIs
+export const fetchExtraServices = async () => {
+    try {
+        const response = await apiClient.get(CUSTOMER_ENDPOINTS.GET_EXTRA_SERVICES);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: error.message };
+    }
+};
+
+export const simulatePrice = async (payload) => {
+    try {
+        const response = await apiClient.post(CUSTOMER_ENDPOINTS.SIMULATE_PRICE, payload);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
     }
 };
