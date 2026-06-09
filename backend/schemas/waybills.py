@@ -80,6 +80,7 @@ class CustomerPickupCreate(BaseModel):
     cod_fee_payment_method: Optional[str] = None
     service_type: str = Field(default="STANDARD")
     extra_services: Optional[List[CustomerPickupExtraService]] = Field(default_factory=list)
+    packing_type: Optional[str] = None
     delivery_note_option: Optional[str] = None
     note: Optional[str] = None
     payment_method: str = Field(default="SENDER_DEBT")
@@ -109,6 +110,9 @@ class CustomerPickupCreateResponse(BaseModel):
     vat_amount: float
     total_amount_to_collect: float
     estimated_shipping_fee: Optional[float] = None
+    estimated_fuel_surcharge: Optional[float] = None
+    estimated_extra_services_fee: Optional[float] = None
+    estimated_packing_fee: Optional[float] = None
     estimated_vat_amount: Optional[float] = None
     estimated_total_amount: Optional[float] = None
 

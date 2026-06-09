@@ -6,6 +6,7 @@ from core.database import get_db
 from core.permissions import PermissionChecker
 from core.idempotency import validate_idempotency, commit_idempotency 
 from core.security import get_current_user
+from core.pricing import calculate_shipping_fee_detail
 import crud.pricing as crud_pricing
 import schemas.pricing as schema_pricing
 
@@ -31,6 +32,11 @@ def add_pricing_rule(
 
     if data.min_weight >= data.max_weight:
         raise HTTPException(status_code=400, detail="Khối lượng tối thiểu phải nhỏ hơn tối đa")
+
+    if data.pricing_method == "INCREMENTAL" and (
+        not data.base_weight or not data.increment_weight or not data.increment_price
+    ):
+        raise HTTPException(status_code=400, detail="Quy tắc giá cộng thêm phải có mốc cân gốc, bước cân và giá cộng thêm")
 
     rule = crud_pricing.create_rule(db, data.model_dump())
     db.commit()
@@ -92,6 +98,11 @@ def update_pricing_rule(
     if data.min_weight >= data.max_weight:
         raise HTTPException(status_code=400, detail="Khối lượng tối thiểu phải nhỏ hơn tối đa")
         
+    if data.pricing_method == "INCREMENTAL" and (
+        not data.base_weight or not data.increment_weight or not data.increment_price
+    ):
+        raise HTTPException(status_code=400, detail="Quy tắc giá cộng thêm phải có mốc cân gốc, bước cân và giá cộng thêm")
+
     rule = crud_pricing.update_rule(db, rule_id, data.model_dump())
     if not rule:
         raise HTTPException(status_code=404, detail="Không tìm thấy quy tắc hoặc đã bị trùng")
@@ -132,6 +143,34 @@ def calculate_shipping_fee(
     # Khối lượng quy đổi = (L * W * H) / 5000
     volumetric_weight = (data.length * data.width * data.height) / 5000 if data.length and data.width and data.height else 0
     charge_weight = max(data.weight, volumetric_weight)
+    fee_detail = calculate_shipping_fee_detail(
+        db,
+        origin_hub_id=data.origin_hub_id,
+        dest_hub_id=data.dest_hub_id,
+        weight=charge_weight,
+        service_type=data.service_type,
+        customer_id=data.customer_id,
+        extra_service_codes=data.extra_services or [],
+        cod_amount=float(data.cod_amount or 0),
+        declared_value=float(data.declared_value or data.cod_amount or 0),
+        quantity=int(data.quantity or 1),
+        packing_type=data.packing_type,
+        dest_district_id=data.dest_district_id,
+        dest_ward_id=data.dest_ward_id,
+    )
+    return {
+        "main_fee": fee_detail["main_fee"],
+        "fuel_surcharge": fee_detail["fuel_surcharge"],
+        "extra_fee": fee_detail["extra_services_fee"],
+        "packing_fee": fee_detail["packing_fee"],
+        "remote_fee": fee_detail["remote_fee"],
+        "vat": fee_detail["vat_amount"],
+        "total": fee_detail["total_amount"],
+        "rule_id": fee_detail["rule_id"],
+        "charge_weight": fee_detail["chargeable_weight"],
+        "pricing_method": fee_detail["pricing_method"],
+        "matched_rule": f"{fee_detail['chargeable_weight']}kg @ {fee_detail['main_fee']:,.0f}d"
+    }
 
     # Lấy policy_id dựa trên customer_id (nếu có)
     policy_id = 1
@@ -156,7 +195,8 @@ def calculate_shipping_fee(
         )
 
     # 4. Tính toán tiền
-    main_fee = float(rule.price)
+    fee_detail = crud_pricing.calculate_rule_shipping_fee(rule, charge_weight)
+    main_fee = fee_detail["main_fee"]
     extra_fee = 0
     remote_fee = 0
 
@@ -174,29 +214,30 @@ def calculate_shipping_fee(
         
         for srv_code in data.extra_services:
             if srv_code in service_map:
-                config = service_map[srv_code]
-                if config.fee_type == "FIXED":
-                    extra_fee += float(config.fee_value)
-                elif config.fee_type == "PERCENT":
-                    if data.cod_amount and data.cod_amount > 0:
-                        calculated_val = float(data.cod_amount) * (float(config.fee_value) / 100)
-                        extra_fee += max(10000.0, calculated_val)
+                extra_fee += crud_pricing.calculate_extra_service_fee(
+                    service_map[srv_code],
+                    cod_amount=float(data.cod_amount or 0),
+                    declared_value=float(data.cod_amount or 0),
+                    main_fee=main_fee,
+                    quantity=1,
+                )
 
-    total_service = main_fee + extra_fee + remote_fee
-    
-    # Theo chuẩn mới không thu phụ phí nhiên liệu và VAT là 8%
-    vat = round(total_service * 0.08, 0)
+    fuel_surcharge = fee_detail["fuel_surcharge"]
+    total_service = main_fee + fuel_surcharge + extra_fee + remote_fee
+    vat = round(total_service * (float(rule.vat_percent or 0) / 100), 0)
     total = total_service + vat
 
     return {
         "main_fee": main_fee,
+        "fuel_surcharge": fuel_surcharge,
         "extra_fee": extra_fee,
         "remote_fee": remote_fee,
         "vat": vat,
         "total": total,
         "rule_id": rule.rule_id,
         "charge_weight": charge_weight,
-        "matched_rule": f"{rule.min_weight}-{rule.max_weight}kg @ {rule.price:,.0f}đ"
+        "pricing_method": rule.pricing_method,
+        "matched_rule": f"{rule.min_weight}-{rule.max_weight}kg @ {main_fee:,.0f}đ"
     }
 
 @router.get("/extra-services", response_model=List[schema_pricing.ServiceConfigResponse])
@@ -241,6 +282,56 @@ def update_extra_service_config(
     db.refresh(updated_config)
     return updated_config
 
+@router.get("/packing-rules", response_model=List[schema_pricing.PackingRuleResponse])
+def list_packing_rules(db: Session = Depends(get_db)):
+    """Lấy danh sách cấu hình phí đóng kiện theo mốc cân."""
+    return crud_pricing.get_all_packing_rules(db)
+
+@router.post("/packing-rules", response_model=schema_pricing.PackingRuleResponse)
+def create_packing_rule(
+    data: schema_pricing.PackingRuleCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    verify_pricing_edit_access(current_user)
+    if data.min_weight >= data.max_weight:
+        raise HTTPException(status_code=400, detail="Khối lượng tối thiểu phải nhỏ hơn tối đa")
+    rule = crud_pricing.create_packing_rule(db, data.model_dump())
+    if not rule:
+        raise HTTPException(status_code=400, detail="Quy tắc đóng kiện này đã tồn tại")
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+@router.put("/packing-rules/{rule_id}", response_model=schema_pricing.PackingRuleResponse)
+def update_packing_rule(
+    rule_id: int,
+    data: schema_pricing.PackingRuleCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    verify_pricing_edit_access(current_user)
+    if data.min_weight >= data.max_weight:
+        raise HTTPException(status_code=400, detail="Khối lượng tối thiểu phải nhỏ hơn tối đa")
+    rule = crud_pricing.update_packing_rule(db, rule_id, data.model_dump())
+    if not rule:
+        raise HTTPException(status_code=404, detail="Không tìm thấy quy tắc đóng kiện hoặc đã bị trùng")
+    db.commit()
+    return rule
+
+@router.delete("/packing-rules/{rule_id}")
+def remove_packing_rule(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    verify_pricing_edit_access(current_user)
+    success = crud_pricing.delete_packing_rule(db, rule_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Không tìm thấy quy tắc đóng kiện")
+    db.commit()
+    return {"message": "Đã xóa quy tắc đóng kiện"}
+
 @router.post("/simulate")
 def simulate_pricing(
     data: schema_pricing.PricingSimulatorRequest,
@@ -251,6 +342,30 @@ def simulate_pricing(
     # 1. Tính khối lượng quy đổi
     volumetric_weight = (data.length * data.width * data.height) / 5000 if data.length and data.width and data.height else 0
     charge_weight = max(data.weight, volumetric_weight)
+    fee_detail = calculate_shipping_fee_detail(
+        db,
+        origin_province_id=data.origin_province_id,
+        dest_province_id=data.dest_province_id,
+        weight=charge_weight,
+        service_type=data.service_type,
+        extra_service_codes=data.extra_services or [],
+        cod_amount=float(data.cod_amount or 0),
+        declared_value=float(data.declared_value or data.cod_amount or 0),
+        quantity=int(data.quantity or 1),
+        packing_type=data.packing_type,
+    )
+    return {
+        "status": "SUCCESS",
+        "charge_weight": fee_detail["chargeable_weight"],
+        "main_fee": fee_detail["main_fee"],
+        "fuel_surcharge": fee_detail["fuel_surcharge"],
+        "extra_fee": fee_detail["extra_services_fee"],
+        "packing_fee": fee_detail["packing_fee"],
+        "vat": fee_detail["vat_amount"],
+        "grand_total": fee_detail["total_amount"],
+        "pricing_method": fee_detail["pricing_method"],
+        "note": f"Ap dung bang gia rule_id={fee_detail['rule_id']}"
+    }
 
     # 2. Tra cứu giá (Simulator dùng policy_id = 1 mặc định)
     rule = crud_pricing.get_pricing_rule_exact(
@@ -270,7 +385,8 @@ def simulate_pricing(
         )
 
     # 3. Tính toán tiền
-    main_fee = float(rule.price)
+    fee_detail = crud_pricing.calculate_rule_shipping_fee(rule, charge_weight)
+    main_fee = fee_detail["main_fee"]
     extra_fee = 0
     
     # Dịch vụ tiện ích (Simulator)
@@ -280,25 +396,28 @@ def simulate_pricing(
         
         for srv_code in data.extra_services:
             if srv_code in service_map:
-                config = service_map[srv_code]
-                if config.fee_type == "FIXED":
-                    extra_fee += float(config.fee_value)
-                elif config.fee_type == "PERCENT":
-                    if data.cod_amount and data.cod_amount > 0:
-                        calculated_val = float(data.cod_amount) * (float(config.fee_value) / 100)
-                        extra_fee += max(10000.0, calculated_val)
+                extra_fee += crud_pricing.calculate_extra_service_fee(
+                    service_map[srv_code],
+                    cod_amount=float(data.cod_amount or 0),
+                    declared_value=float(data.cod_amount or 0),
+                    main_fee=main_fee,
+                    quantity=1,
+                )
 
-    total_service = main_fee + extra_fee
-    vat = round(total_service * 0.08, 0)
+    fuel_surcharge = fee_detail["fuel_surcharge"]
+    total_service = main_fee + fuel_surcharge + extra_fee
+    vat = round(total_service * (float(rule.vat_percent or 0) / 100), 0)
     total = total_service + vat
 
     return {
         "status": "SUCCESS",
         "charge_weight": charge_weight,
         "main_fee": main_fee,
+        "fuel_surcharge": fuel_surcharge,
         "extra_fee": extra_fee,
-        "vat_8": vat,
+        "vat": vat,
         "grand_total": total,
+        "pricing_method": rule.pricing_method,
         "note": f"Áp dụng bảng giá: {rule.min_weight}-{rule.max_weight}kg"
     }
 

@@ -4,7 +4,8 @@ from core.database import get_db
 from core.idempotency import validate_idempotency, commit_idempotency
 from core.security import get_current_user
 from core.state_machine import WaybillStatus, validate_state_transition
-from core.pricing import calculate_shipping_fee
+from core.pricing import calculate_shipping_fee, calculate_shipping_fee_detail
+from core.realtime import realtime_manager
 import crud.warehouse as crud_wh
 import schemas.warehouse as schema_wh
 from core.permissions import PermissionChecker
@@ -117,17 +118,25 @@ async def update_actual_weight(
     waybill.actual_weight = data.actual_weight
     final_converted_weight = float(waybill.converted_weight or data.actual_weight or 0)
     charge_weight = max(float(data.actual_weight), final_converted_weight)
-    final_shipping_fee = calculate_shipping_fee(
+    extra_service_codes = [srv.service_name for srv in getattr(waybill, "waybill_extra_services", []) or [] if srv.service_name]
+    fee_detail = calculate_shipping_fee_detail(
         db,
-        waybill.origin_hub_id,
-        waybill.dest_hub_id,
-        charge_weight,
-        waybill.service_type or "STANDARD",
+        origin_hub_id=waybill.origin_hub_id,
+        dest_hub_id=waybill.dest_hub_id,
+        weight=charge_weight,
+        service_type=waybill.service_type or "STANDARD",
         customer_id=waybill.customer_id,
+        extra_service_codes=extra_service_codes,
+        cod_amount=float(waybill.cod_amount or 0),
+        declared_value=0,
+        quantity=1,
+        dest_district_id=waybill.receiver_district_id,
+        dest_ward_id=waybill.receiver_ward_id,
     )
-    final_extra_fee = float(waybill.extra_services_fee or 0)
-    final_vat = round((float(final_shipping_fee or 0) + final_extra_fee) * 0.08, 0)
-    final_total = float(final_shipping_fee or 0) + final_extra_fee + final_vat
+    final_shipping_fee = float(fee_detail["main_fee"] or 0)
+    final_extra_fee = float(fee_detail["extra_services_fee"] or 0) + float(fee_detail["fuel_surcharge"] or 0) + float(fee_detail["packing_fee"] or 0) + float(fee_detail["remote_fee"] or 0)
+    final_vat = float(fee_detail["vat_amount"] or 0)
+    final_total = float(fee_detail["total_amount"] or 0)
     estimated_total = float(waybill.estimated_total_amount or 0)
     waybill.final_weight = data.actual_weight
     waybill.final_converted_weight = final_converted_weight
@@ -151,6 +160,12 @@ async def update_actual_weight(
     )
 
     db.commit()
+    realtime_manager.publish([f"hub:{current_user.get('primary_hub_id')}", f"customer:{waybill.customer_id}", "admin"], "pickup.price_finalized", {
+        "waybill_code": waybill_code,
+        "price_status": waybill.price_status,
+        "estimated_total_amount": float(waybill.estimated_total_amount or 0),
+        "final_total_amount": float(waybill.final_total_amount or 0),
+    })
     return {
         "waybill_code": waybill_code,
         "declared_weight": float(waybill.converted_weight),

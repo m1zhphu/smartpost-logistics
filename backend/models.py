@@ -188,6 +188,9 @@ class Users(Base):
     vehicle_plate: Mapped[Optional[str]] = mapped_column(String(50))
     status: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('true'))
     push_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_online: Mapped[bool] = mapped_column(Boolean, server_default=text('false'), default=False)
+    online_status_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     hubs_manager: Mapped[list['Hubs']] = relationship('Hubs', foreign_keys='[Hubs.manager_id]', back_populates='manager')
     department: Mapped[Optional['Departments']] = relationship('Departments', back_populates='users')
@@ -481,6 +484,12 @@ class BookingRequests(Base):
     confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     pickup_assigned_by_user_id: Mapped[Optional[int]] = mapped_column(Integer)
     pickup_assigned_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    dispatched_by_user_id: Mapped[Optional[int]] = mapped_column(Integer)
+    dispatched_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    dispatch_note: Mapped[Optional[str]] = mapped_column(Text)
+    rejected_by_user_id: Mapped[Optional[int]] = mapped_column(Integer)
+    rejected_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    rejection_note: Mapped[Optional[str]] = mapped_column(Text)
 
     # NEW FIELDS FOR PICKUP REQUESTS
     est_quantity: Mapped[Optional[int]] = mapped_column(Integer)
@@ -505,6 +514,35 @@ class BookingRequests(Base):
     @property
     def assigned_shipper_name(self):
         return self.assigned_shipper.full_name if self.assigned_shipper else None
+
+    @property
+    def bag_code(self):
+        if not self.waybills or not self.waybills[0].bag_items:
+            return None
+        bag = self.waybills[0].bag_items[0].bag
+        return bag.bag_code if bag else None
+
+    @property
+    def bag_item_count(self):
+        if not self.waybills or not self.waybills[0].bag_items:
+            return None
+        bag = self.waybills[0].bag_items[0].bag
+        return len(bag.bag_items) if bag else None
+
+    @property
+    def total_estimated_weight(self):
+        if not self.waybills or not self.waybills[0].bag_items:
+            return None
+        bag = self.waybills[0].bag_items[0].bag
+        if not bag:
+            return None
+        return sum(float(item.waybill.estimated_weight or 0) for item in bag.bag_items if item.waybill)
+
+    @property
+    def latest_request_at(self):
+        if not self.logs:
+            return None
+        return max((log.created_at for log in self.logs if log.created_at), default=None)
 
 
 class BookingRequestLogs(Base):
@@ -821,8 +859,8 @@ class PricingRules(Base):
     policy_id: Mapped[int] = mapped_column(Integer, ForeignKey('pricing_policies.policy_id'), nullable=False)
     
     # Tra cứu theo ID Tỉnh (Province) như đặc tả yêu cầu
-    from_province_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    to_province_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    from_province_id: Mapped[Optional[int]] = mapped_column(Integer)
+    to_province_id: Mapped[Optional[int]] = mapped_column(Integer)
     zone_name: Mapped[Optional[str]] = mapped_column(String(50)) # Hỗ trợ tính giá theo Vùng (Nội tỉnh, Nội vùng...)
     
     service_type: Mapped[str] = mapped_column(String(20), nullable=False) # EXPRESS, STANDARD
@@ -830,6 +868,12 @@ class PricingRules(Base):
     max_weight: Mapped[decimal.Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     
     price: Mapped[decimal.Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    pricing_method: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'FIXED'"))
+    base_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    increment_weight: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    increment_price: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2))
+    fuel_surcharge_percent: Mapped[decimal.Decimal] = mapped_column(Numeric(5, 2), nullable=False, server_default=text('10'))
+    vat_percent: Mapped[decimal.Decimal] = mapped_column(Numeric(5, 2), nullable=False, server_default=text('8'))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text('true'))
 
     # Liên kết ngược lại với chính sách giá
@@ -990,6 +1034,26 @@ class ServiceConfigs(Base):
     service_name: Mapped[str] = mapped_column(String(100), nullable=False) # VD: 'Dịch vụ Đồng kiểm'
     fee_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'FIXED'")) # 'FIXED' (Giá cố định) hoặc 'PERCENT' (Phần trăm)
     fee_value: Mapped[decimal.Decimal] = mapped_column(Numeric(15, 2), nullable=False, server_default=text('0')) # Số tiền hoặc Số %
+    calculation_base: Mapped[str] = mapped_column(String(30), nullable=False, server_default=text("'FIXED'"))
+    min_order_value: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2))
+    max_order_value: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2))
+    min_fee: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2))
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text('true'))
+
+class PackingRules(Base):
+    """Cấu hình phí đóng kiện theo loại đóng kiện và mốc cân."""
+    __tablename__ = 'packing_rules'
+    __table_args__ = (
+        PrimaryKeyConstraint('id', name='packing_rules_pkey'),
+        UniqueConstraint('packing_type', 'min_weight', 'max_weight', name='unique_packing_rule')
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    packing_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    min_weight: Mapped[decimal.Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    max_weight: Mapped[decimal.Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    packing_fee: Mapped[decimal.Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    added_weight: Mapped[decimal.Decimal] = mapped_column(Numeric(10, 2), nullable=False, server_default=text('0'))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text('true'))
 
 class ProvinceZones(Base):

@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+import math
 import models
 
 # ==========================================
@@ -7,28 +8,28 @@ import models
 
 def create_rule(db: Session, data: dict):
     mapped_data = data.copy()
-    
-    # Resolving Province IDs from Hub IDs
-    origin_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.get('origin_hub_id')).first()
-    dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.get('dest_hub_id')).first()
-    
-    if not origin_hub or not dest_hub:
-        return None # Hub not found
-
-    mapped_data['from_province_id'] = origin_hub.province_id
-    mapped_data['to_province_id'] = dest_hub.province_id
-    
     mapped_data.pop('origin_hub_id', None)
     mapped_data.pop('dest_hub_id', None)
 
-    existing = db.query(models.PricingRules).filter(
-        models.PricingRules.from_province_id == mapped_data['from_province_id'],
-        models.PricingRules.to_province_id == mapped_data['to_province_id'],
+    if not mapped_data.get('zone_name') and (
+        not mapped_data.get('from_province_id') or not mapped_data.get('to_province_id')
+    ):
+        return None
+
+    existing_query = db.query(models.PricingRules).filter(
         models.PricingRules.service_type == mapped_data['service_type'],
         models.PricingRules.min_weight == mapped_data['min_weight'],
         models.PricingRules.max_weight == mapped_data['max_weight'],
         models.PricingRules.policy_id == mapped_data.get('policy_id', 1)
-    ).first()
+    )
+    if mapped_data.get('zone_name'):
+        existing_query = existing_query.filter(models.PricingRules.zone_name == mapped_data['zone_name'])
+    else:
+        existing_query = existing_query.filter(
+            models.PricingRules.from_province_id == mapped_data['from_province_id'],
+            models.PricingRules.to_province_id == mapped_data['to_province_id'],
+        )
+    existing = existing_query.first()
     
     if existing:
         return None 
@@ -100,10 +101,17 @@ def format_rule_with_hub(db: Session, rule: models.PricingRules):
         "dest_hub_id": dest_hub.hub_id if dest_hub else 0,       # Schema yêu cầu
         "from_province_id": rule.from_province_id,
         "to_province_id": rule.to_province_id,
+        "zone_name": rule.zone_name,
         "service_type": rule.service_type,
         "min_weight": rule.min_weight,
         "max_weight": rule.max_weight,
         "price": rule.price,
+        "pricing_method": rule.pricing_method,
+        "base_weight": rule.base_weight,
+        "increment_weight": rule.increment_weight,
+        "increment_price": rule.increment_price,
+        "fuel_surcharge_percent": rule.fuel_surcharge_percent,
+        "vat_percent": rule.vat_percent,
         "is_active": rule.is_active,
         "policy_id": rule.policy_id,
         "origin_hub": {
@@ -125,23 +133,24 @@ def update_rule(db: Session, rule_id: int, data: dict):
         return None
 
     mapped_data = data.copy()
-    if 'origin_hub_id' in mapped_data:
-        hub = db.query(models.Hubs).filter(models.Hubs.hub_id == mapped_data.pop('origin_hub_id')).first()
-        if hub: mapped_data['from_province_id'] = hub.province_id
-        
-    if 'dest_hub_id' in mapped_data:
-        hub = db.query(models.Hubs).filter(models.Hubs.hub_id == mapped_data.pop('dest_hub_id')).first()
-        if hub: mapped_data['to_province_id'] = hub.province_id
+    mapped_data.pop('origin_hub_id', None)
+    mapped_data.pop('dest_hub_id', None)
 
-    conflict = db.query(models.PricingRules).filter(
-        models.PricingRules.from_province_id == mapped_data.get('from_province_id', rule.from_province_id),
-        models.PricingRules.to_province_id == mapped_data.get('to_province_id', rule.to_province_id),
+    conflict_query = db.query(models.PricingRules).filter(
         models.PricingRules.service_type == mapped_data.get('service_type', rule.service_type),
         models.PricingRules.min_weight == mapped_data.get('min_weight', rule.min_weight),
         models.PricingRules.max_weight == mapped_data.get('max_weight', rule.max_weight),
         models.PricingRules.policy_id == mapped_data.get('policy_id', rule.policy_id),
         models.PricingRules.rule_id != rule_id
-    ).first()
+    )
+    if mapped_data.get('zone_name'):
+        conflict_query = conflict_query.filter(models.PricingRules.zone_name == mapped_data['zone_name'])
+    else:
+        conflict_query = conflict_query.filter(
+            models.PricingRules.from_province_id == mapped_data.get('from_province_id', rule.from_province_id),
+            models.PricingRules.to_province_id == mapped_data.get('to_province_id', rule.to_province_id),
+        )
+    conflict = conflict_query.first()
 
     if conflict:
         return None
@@ -262,6 +271,30 @@ def get_pricing_rule_fallback(db: Session, origin_prov: int, dest_prov: int, ser
         
     return rule
 
+def calculate_rule_shipping_fee(rule: models.PricingRules, charge_weight: float) -> dict:
+    base_fee = float(rule.price or 0)
+    method = (rule.pricing_method or "FIXED").upper()
+
+    if method == "INCREMENTAL":
+        base_weight = float(rule.base_weight or rule.min_weight or 0)
+        increment_weight = float(rule.increment_weight or 0)
+        increment_price = float(rule.increment_price or 0)
+
+        if charge_weight > base_weight and increment_weight > 0 and increment_price > 0:
+            extra_steps = math.ceil((charge_weight - base_weight) / increment_weight)
+            base_fee += extra_steps * increment_price
+
+    fuel_surcharge = round(base_fee * (float(rule.fuel_surcharge_percent or 0) / 100), 0)
+    taxable_amount = base_fee + fuel_surcharge
+    vat = round(taxable_amount * (float(rule.vat_percent or 0) / 100), 0)
+
+    return {
+        "main_fee": base_fee,
+        "fuel_surcharge": fuel_surcharge,
+        "vat": vat,
+        "total": taxable_amount + vat,
+    }
+
 def get_all_service_configs(db: Session):
     return db.query(models.ServiceConfigs).all()
 
@@ -285,6 +318,97 @@ def update_service_config(db: Session, config: models.ServiceConfigs, data: dict
         setattr(config, key, value)
     db.flush()
     return config
+
+def get_all_packing_rules(db: Session):
+    return db.query(models.PackingRules).order_by(
+        models.PackingRules.packing_type.asc(),
+        models.PackingRules.min_weight.asc()
+    ).all()
+
+def get_packing_rule_by_id(db: Session, rule_id: int):
+    return db.query(models.PackingRules).filter(models.PackingRules.id == rule_id).first()
+
+def create_packing_rule(db: Session, data: dict):
+    existing = db.query(models.PackingRules).filter(
+        models.PackingRules.packing_type == data["packing_type"],
+        models.PackingRules.min_weight == data["min_weight"],
+        models.PackingRules.max_weight == data["max_weight"],
+    ).first()
+    if existing:
+        return None
+
+    rule = models.PackingRules(**data)
+    db.add(rule)
+    db.flush()
+    db.refresh(rule)
+    return rule
+
+def update_packing_rule(db: Session, rule_id: int, data: dict):
+    rule = get_packing_rule_by_id(db, rule_id)
+    if not rule:
+        return None
+
+    duplicate = db.query(models.PackingRules).filter(
+        models.PackingRules.packing_type == data["packing_type"],
+        models.PackingRules.min_weight == data["min_weight"],
+        models.PackingRules.max_weight == data["max_weight"],
+        models.PackingRules.id != rule_id,
+    ).first()
+    if duplicate:
+        return None
+
+    for key, value in data.items():
+        setattr(rule, key, value)
+    db.flush()
+    db.refresh(rule)
+    return rule
+
+def delete_packing_rule(db: Session, rule_id: int):
+    rule = get_packing_rule_by_id(db, rule_id)
+    if not rule:
+        return False
+    db.delete(rule)
+    db.flush()
+    return True
+
+def get_packing_rule_for_weight(db: Session, packing_type: str, weight: float):
+    return db.query(models.PackingRules).filter(
+        models.PackingRules.packing_type == packing_type,
+        models.PackingRules.min_weight < weight,
+        models.PackingRules.max_weight >= weight,
+        models.PackingRules.is_active == True
+    ).first()
+
+def calculate_extra_service_fee(config: models.ServiceConfigs, *, cod_amount: float = 0, declared_value: float = 0, main_fee: float = 0, quantity: int = 1) -> float:
+    base_map = {
+        "FIXED": 1,
+        "COD_AMOUNT": cod_amount or 0,
+        "DECLARED_VALUE": declared_value or 0,
+        "MAIN_FEE": main_fee or 0,
+        "QUANTITY": quantity or 1,
+    }
+    calculation_base = config.calculation_base or ("FIXED" if config.fee_type == "FIXED" else "COD_AMOUNT")
+    base_value = float(base_map.get(calculation_base, 0))
+
+    min_value = float(config.min_order_value) if config.min_order_value is not None else None
+    max_value = float(config.max_order_value) if config.max_order_value is not None else None
+    if min_value is not None and base_value < min_value:
+        return 0
+    if max_value is not None and base_value >= max_value:
+        return 0
+
+    if config.fee_type == "FIXED":
+        fee = float(config.fee_value)
+    elif config.fee_type == "PERCENT":
+        fee = base_value * (float(config.fee_value) / 100)
+    elif config.fee_type == "PER_ITEM":
+        fee = float(config.fee_value) * max(1, int(quantity or 1))
+    else:
+        fee = 0
+
+    if config.min_fee is not None and fee > 0:
+        fee = max(fee, float(config.min_fee))
+    return fee
 
 # ==========================================
 # PHẦN 3: VÙNG SÂU VÙNG XA (REMOTE AREAS)

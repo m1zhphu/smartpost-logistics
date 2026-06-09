@@ -142,7 +142,7 @@ def toggle_user_status_record(db: Session, user: models.Users, is_active: bool):
     db.flush()
     return user
 
-def get_active_shippers_by_hub(db: Session, hub_id: int = None):
+def get_active_shippers_by_hub(db: Session, hub_id: int = None, is_online: bool | None = None, managed_by_cskh_id: int | None = None):
     """Lấy danh sách các Shipper đang hoạt động để phân công đơn"""
     query = db.query(models.Users).filter(
         models.Users.role_id == 4,
@@ -154,11 +154,15 @@ def get_active_shippers_by_hub(db: Session, hub_id: int = None):
             (models.Users.primary_hub_id == hub_id) |
             (models.Users.user_data_access.any(models.UserDataAccess.accessible_hub_id == hub_id))
         )
+    if is_online is not None:
+        query = query.filter(models.Users.is_online == is_online)
+    if managed_by_cskh_id:
+        query = query.filter(models.Users.managed_by_cskh_id == managed_by_cskh_id)
         
     return query.all()
 
-def get_shippers_by_cskh(db: Session, cskh_id: int):
-    return db.query(models.Users).options(
+def get_shippers_by_cskh(db: Session, cskh_id: int, is_online: bool | None = None):
+    query = db.query(models.Users).options(
         joinedload(models.Users.role),
         joinedload(models.Users.primary_hub),
         joinedload(models.Users.managed_by_cskh),
@@ -167,4 +171,7 @@ def get_shippers_by_cskh(db: Session, cskh_id: int):
         models.Users.role_id == 4,
         models.Users.managed_by_cskh_id == cskh_id,
         models.Users.is_deleted == False
-    ).all()
+    )
+    if is_online is not None:
+        query = query.filter(models.Users.is_online == is_online)
+    return query.all()

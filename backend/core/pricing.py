@@ -6,6 +6,122 @@ from typing import Optional, Tuple
 
 import crud.pricing as crud_pricing
 
+def _resolve_policy_id(db: Session, customer_id: int = None) -> int:
+    if customer_id:
+        return crud_pricing.get_customer_policy_id(db, customer_id)
+    return 1
+
+
+def _find_pricing_rule(db: Session, origin_province_id: int, dest_province_id: int, weight: float, service_type: str, policy_id: int = 1):
+    rule = crud_pricing.get_pricing_rule_exact(
+        db, origin_province_id, dest_province_id, service_type, weight, policy_id
+    )
+    if not rule:
+        rule = crud_pricing.get_pricing_rule_fallback(
+            db, origin_province_id, dest_province_id, service_type, policy_id
+        )
+    return rule
+
+
+def calculate_shipping_fee_detail(
+    db: Session,
+    *,
+    origin_hub_id: int | None = None,
+    dest_hub_id: int | None = None,
+    origin_province_id: int | None = None,
+    dest_province_id: int | None = None,
+    weight: float,
+    service_type: str,
+    customer_id: int = None,
+    extra_service_codes: list[str] | None = None,
+    cod_amount: float = 0,
+    declared_value: float = 0,
+    quantity: int = 1,
+    packing_type: str | None = None,
+    dest_district_id: int | None = None,
+    dest_ward_id: int | None = None,
+) -> dict:
+    if origin_hub_id:
+        origin_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == origin_hub_id).first()
+        if not origin_hub:
+            raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc gui de tinh gia.")
+        origin_province_id = origin_hub.province_id
+    if dest_hub_id:
+        dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == dest_hub_id).first()
+        if not dest_hub:
+            raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc nhan de tinh gia.")
+        dest_province_id = dest_hub.province_id
+
+    if not origin_province_id or not dest_province_id:
+        raise HTTPException(status_code=400, detail="Khong xac dinh duoc tinh/thanh gui hoac nhan de tinh gia.")
+
+    charge_weight = max(float(weight or 0), 0.01)
+    policy_id = _resolve_policy_id(db, customer_id)
+    rule = _find_pricing_rule(db, origin_province_id, dest_province_id, charge_weight, (service_type or "STANDARD").upper(), policy_id)
+
+    if not rule:
+        base_fee = 20000.0
+        main_fee = base_fee if charge_weight <= 1.0 else base_fee + (charge_weight - 1.0) * 5000.0
+        fuel_surcharge = 0.0
+        vat_percent = 8.0
+        rule_id = None
+        pricing_method = "FALLBACK"
+    else:
+        fee_detail = crud_pricing.calculate_rule_shipping_fee(rule, charge_weight)
+        main_fee = float(fee_detail["main_fee"])
+        fuel_surcharge = float(fee_detail["fuel_surcharge"])
+        vat_percent = float(rule.vat_percent or 0)
+        rule_id = rule.rule_id
+        pricing_method = rule.pricing_method
+
+    extra_fee = 0.0
+    service_codes = [str(code).upper() for code in (extra_service_codes or []) if code]
+    if service_codes:
+        service_map = {s.service_code.upper(): s for s in crud_pricing.get_active_service_configs(db)}
+        for code in service_codes:
+            config = service_map.get(code)
+            if config:
+                extra_fee += crud_pricing.calculate_extra_service_fee(
+                    config,
+                    cod_amount=float(cod_amount or 0),
+                    declared_value=float(declared_value or 0),
+                    main_fee=main_fee,
+                    quantity=quantity,
+                )
+
+    packing_fee = 0.0
+    added_weight = 0.0
+    if packing_type:
+        packing_rule = crud_pricing.get_packing_rule_for_weight(db, packing_type, charge_weight)
+        if packing_rule:
+            packing_fee = float(packing_rule.packing_fee or 0)
+            added_weight = float(packing_rule.added_weight or 0)
+
+    remote_fee = 0.0
+    if dest_province_id and dest_district_id and dest_ward_id:
+        remote_fee = crud_pricing.get_remote_area_fee(db, dest_province_id, dest_district_id, dest_ward_id)
+
+    taxable_amount = main_fee + fuel_surcharge + extra_fee + packing_fee + remote_fee
+    vat_amount = round(taxable_amount * (vat_percent / 100), 0)
+    total_amount = taxable_amount + vat_amount
+
+    return {
+        "main_fee": main_fee,
+        "shipping_fee": main_fee,
+        "fuel_surcharge": fuel_surcharge,
+        "extra_services_fee": extra_fee,
+        "packing_fee": packing_fee,
+        "added_weight": added_weight,
+        "remote_fee": remote_fee,
+        "vat_amount": vat_amount,
+        "total_amount": total_amount,
+        "chargeable_weight": charge_weight,
+        "rule_id": rule_id,
+        "pricing_method": pricing_method,
+        "price_status": "ESTIMATED",
+    }
+
+
 def calculate_shipping_fee(db: Session, origin_hub_id: int, dest_hub_id: int, weight: float, service_type: str, customer_id: int = None):
     """
     Tra cứu bảng giá dựa trên Tỉnh đi -> Tỉnh đến và Nấc khối lượng theo chuẩn 3 lớp (Exact -> Zone -> Fallback)
@@ -17,9 +133,7 @@ def calculate_shipping_fee(db: Session, origin_hub_id: int, dest_hub_id: int, we
     if not origin_hub or not dest_hub:
         raise HTTPException(status_code=400, detail="Không xác định được bưu cục gửi hoặc nhận để tính giá.")
 
-    policy_id = 1
-    if customer_id:
-        policy_id = crud_pricing.get_customer_policy_id(db, customer_id)
+    policy_id = _resolve_policy_id(db, customer_id)
 
     # 2. Tìm quy tắc giá khớp với ma trận Tỉnh, Dịch vụ và Khối lượng (Lớp 1 & Lớp 2)
     rule = crud_pricing.get_pricing_rule_exact(
@@ -40,7 +154,7 @@ def calculate_shipping_fee(db: Session, origin_hub_id: int, dest_hub_id: int, we
             return base_fee
         return base_fee + (weight - 1.0) * 5000.0
 
-    return float(rule.price)
+    return crud_pricing.calculate_rule_shipping_fee(rule, weight)["main_fee"]
 
 
 # ======== SLA CALCULATION HELPERS ========

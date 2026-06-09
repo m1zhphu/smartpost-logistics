@@ -1,5 +1,5 @@
 # File: main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from api import auth, hubs, waybills, warehouse, delivery, accounting, pricing, users, dashboard, printing, customers
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
@@ -12,6 +12,9 @@ import os
 import models
 from core.database import engine, SessionLocal
 from sqlalchemy import text
+import jwt
+from core.security import SECRET_KEY, ALGORITHM
+from core.realtime import realtime_manager
 
 # Tạo các bảng mới nếu chưa tồn tại
 if os.getenv("AUTO_CREATE_TABLES", "false").lower() == "true":
@@ -58,6 +61,33 @@ app.include_router(customers.router)
 async def root():
     return {"message": "Chào mừng đến với Smartpost API. Hệ thống đang hoạt động!"}
 
+@app.websocket("/ws/realtime")
+async def realtime_socket(websocket: WebSocket):
+    token = websocket.query_params.get("token")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except Exception:
+        await websocket.close(code=1008)
+        return
+
+    channels = ["admin"] if payload.get("role_id") == 1 else []
+    if payload.get("primary_hub_id"):
+        channels.append(f"hub:{payload['primary_hub_id']}")
+    if payload.get("role_id") == 4 and payload.get("user_id"):
+        channels.append(f"shipper:{payload['user_id']}")
+    if payload.get("role_id") == 6 and payload.get("customer_id"):
+        channels.append(f"customer:{payload['customer_id']}")
+    if not channels:
+        channels = [f"user:{payload.get('user_id')}"]
+
+    await realtime_manager.connect(websocket, channels)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        realtime_manager.disconnect(websocket)
+
+
 async def schedule_overdue_check():
     """Tự động quét đơn ngâm mỗi 1 tiếng"""
     while True:
@@ -75,5 +105,6 @@ async def schedule_overdue_check():
 @app.on_event("startup")
 async def startup_event():
     # Chạy tác vụ quét quá hạn ngay khi server lên
+    realtime_manager.set_loop(asyncio.get_running_loop())
     asyncio.create_task(schedule_overdue_check())
     os.makedirs("uploads/pod", exist_ok=True)

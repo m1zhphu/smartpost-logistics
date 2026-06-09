@@ -226,23 +226,32 @@ def delete_staff(
 
 @router.get("/my-shippers", response_model=List[schema_users.UserResponse])
 def get_my_shippers(
+    is_online: bool = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     if current_user.get("role_id") != 7:
         raise HTTPException(status_code=403, detail="Chỉ CSKH mới được xem danh sách bưu tá mình quản lý")
-    return crud_users.get_shippers_by_cskh(db, current_user.get("user_id"))
+    return crud_users.get_shippers_by_cskh(db, current_user.get("user_id"), is_online=is_online)
 
 @router.get("/shippers")
 def get_shippers_by_hub(
     hub_id: int = None, 
+    is_online: bool = None,
+    managed_by_current_cskh: bool = False,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Lấy danh sách Shipper để phân công"""
     user_role = current_user.get("role_id")
     target_hub = hub_id if user_role == 1 else current_user.get("primary_hub_id")
-    return crud_users.get_active_shippers_by_hub(db, target_hub)
+    managed_by_cskh_id = current_user.get("user_id") if managed_by_current_cskh and user_role == 7 else None
+    return crud_users.get_active_shippers_by_hub(
+        db,
+        target_hub,
+        is_online=is_online,
+        managed_by_cskh_id=managed_by_cskh_id,
+    )
 
 @router.post("/register-push-token")
 def register_push_token(

@@ -21,6 +21,42 @@ def generate_waybill_code(db: Session) -> str:
             return code
     raise ValueError("Khong the tao ma van don duy nhat")
 
+
+def generate_pickup_bag_code(db: Session, customer_code: str | None = None) -> str:
+    prefix = customer_code or "KH"
+    for _ in range(20):
+        time_part = datetime.utcnow().strftime("%y%m%d%H%M%S%f")[:-3]
+        random_part = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+        code = f"PB-{prefix}-{time_part}{random_part}"
+        exists = db.query(models.Bags).filter(models.Bags.bag_code == code).first()
+        if not exists:
+            return code
+    raise ValueError("Khong the tao ma tui pickup duy nhat")
+
+
+def get_or_create_open_pickup_bag(db: Session, customer: models.Customers, creator_id: int, est_quantity: int = 1):
+    bag = db.query(models.Bags).filter(
+        models.Bags.customer_id == customer.customer_id,
+        models.Bags.bag_type == "PICKUP",
+        models.Bags.status.in_(["OPEN", "CREATED"]),
+    ).order_by(models.Bags.bag_id.desc()).first()
+    if bag:
+        bag.est_quantity = int(bag.est_quantity or 0) + int(est_quantity or 1)
+        return bag
+
+    bag = models.Bags(
+        bag_code=generate_pickup_bag_code(db, customer.customer_code),
+        bag_type="PICKUP",
+        customer_id=customer.customer_id,
+        status="OPEN",
+        created_by=creator_id,
+        est_quantity=est_quantity or 1,
+        pickup_time=datetime.utcnow(),
+    )
+    db.add(bag)
+    db.flush()
+    return bag
+
 def get_waybill_by_code(db: Session, code: str):
     return db.query(models.Waybills).filter(
         models.Waybills.waybill_code == code,
@@ -218,6 +254,12 @@ def create_customer_pickup_waybill(
     )
     db.add(waybill)
     db.flush()
+
+    pickup_bag = get_or_create_open_pickup_bag(db, customer, creator_id, booking.est_quantity or 1)
+    db.add(models.BagItems(
+        bag_id=pickup_bag.bag_id,
+        waybill_id=waybill.waybill_id,
+    ))
 
     for index, item in enumerate(items, start=1):
         converted_weight = 0

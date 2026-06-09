@@ -44,9 +44,31 @@ class OnlinePickupConfirmHubRequest(BaseModel):
     hub_id: int
     note: Optional[str] = None
 
+class OnlinePickupDispatchHubRequest(BaseModel):
+    request_ids: List[int] = Field(min_length=1)
+    hub_id: int
+    note: Optional[str] = None
+
+class HubDispatchDecisionRequest(BaseModel):
+    note: Optional[str] = None
+
+class HubDispatchRejectRequest(BaseModel):
+    note: str = Field(min_length=1)
+
 class PickupPickedRequest(BaseModel):
     pickup_image_url: Optional[str] = None
     note: Optional[str] = None
+
+class ShipperAvailabilityRequest(BaseModel):
+    is_online: bool
+    note: Optional[str] = None
+
+class ShipperAvailabilityResponse(BaseModel):
+    status: str
+    shipper_id: int
+    is_online: bool
+    online_status_updated_at: datetime
+    last_seen_at: Optional[datetime] = None
 
 class MobileShipperLocationRequest(BaseModel):
     latitude: float = Field(..., description="Vĩ độ")
@@ -167,6 +189,16 @@ class BookingRequestResponse(BaseModel):
     sla_deadline: Optional[datetime]
     notes: Optional[str]
     logs: List[BookingRequestLogResponse] = []
+    dispatched_by_user_id: Optional[int] = None
+    dispatched_at: Optional[datetime] = None
+    dispatch_note: Optional[str] = None
+    rejected_by_user_id: Optional[int] = None
+    rejected_at: Optional[datetime] = None
+    rejection_note: Optional[str] = None
+    bag_code: Optional[str] = None
+    bag_item_count: Optional[int] = None
+    total_estimated_weight: Optional[float] = None
+    latest_request_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

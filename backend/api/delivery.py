@@ -10,6 +10,7 @@ import schemas.delivery as schema_delivery
 import crud.waybills as crud_wb
 import models
 from core.push import send_expo_push_notification
+from core.realtime import realtime_manager
 
 router = APIRouter(prefix="/api/delivery", tags=["Delivery Operations"])
 
@@ -68,6 +69,9 @@ async def assign_shipper(
         if not shipper:
             raise HTTPException(status_code=404, detail="Không tìm thấy Shipper hợp lệ.")
             
+        if shipper.is_online is False:
+            raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan don")
+
         if current_user.get("role_id") != 1 and shipper.primary_hub_id != user_hub:
             raise HTTPException(status_code=403, detail="Không thể phân công cho Shipper của bưu cục khác!")
 
@@ -338,6 +342,45 @@ def list_online_pickup_requests(
     return crud_delivery.get_online_pickup_requests(db, status=status)
 
 
+@router.post("/online-pickup-requests/dispatch-hub")
+def dispatch_online_pickup_hub(
+    data: schema_delivery.OnlinePickupDispatchHubRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_pickup_operator(current_user)
+    hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.hub_id, models.Hubs.status == True).first()
+    if not hub:
+        raise HTTPException(status_code=404, detail="Khong tim thay van phong nhan hop le")
+
+    requests = db.query(models.BookingRequests).filter(
+        models.BookingRequests.request_id.in_(data.request_ids),
+        models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
+    ).all()
+    found_ids = {req.request_id for req in requests}
+    missing_ids = [req_id for req_id in data.request_ids if req_id not in found_ids]
+    if missing_ids:
+        raise HTTPException(status_code=404, detail=f"Khong tim thay yeu cau: {missing_ids}")
+
+    dispatched_ids = []
+    try:
+        for req in requests:
+            if req.status not in ["PENDING_CONFIRMATION", "HUB_REJECTED"]:
+                raise HTTPException(status_code=400, detail=f"Yeu cau {req.request_id} khong o trang thai cho dieu phoi")
+            crud_delivery.dispatch_online_pickup_hub(db, req, data.hub_id, current_user["user_id"], data.note)
+            dispatched_ids.append(req.request_id)
+        db.commit()
+        payload = {"hub_id": data.hub_id, "request_ids": dispatched_ids, "note": data.note}
+        realtime_manager.publish(["admin", f"hub:{data.hub_id}"], "pickup.dispatched_to_hub", payload)
+        return {"status": "SUCCESS", "dispatched_count": len(dispatched_ids), "hub_id": data.hub_id, "request_ids": dispatched_ids}
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/online-pickup-requests/confirm-hub")
 def confirm_online_pickup_hub(
     data: schema_delivery.OnlinePickupConfirmHubRequest,
@@ -396,6 +439,73 @@ def list_hub_pickup_requests(
     return crud_delivery.get_online_pickup_requests(db, status=status, hub_id=target_hub_id)
 
 
+@router.get("/hub-dispatch-requests", response_model=list[schema_delivery.BookingRequestResponse])
+def list_hub_dispatch_requests(
+    status: Optional[str] = "DISPATCHED_TO_HUB",
+    hub_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_pickup_operator(current_user)
+    target_hub_id = hub_id if current_user.get("role_id") == 1 else current_user.get("primary_hub_id")
+    if not target_hub_id:
+        raise HTTPException(status_code=400, detail="Khong xac dinh duoc van phong")
+    return crud_delivery.get_online_pickup_requests(db, status=status, hub_id=target_hub_id)
+
+
+@router.post("/hub-dispatch-requests/{code}/accept")
+def accept_hub_dispatch(
+    code: str,
+    data: schema_delivery.HubDispatchDecisionRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_pickup_operator(current_user)
+    db_req = crud_delivery.get_booking_request_by_code(db, code)
+    if not db_req or db_req.source not in ["PORTAL", "HOTLINE", "CSKH", "ADMIN"]:
+        raise HTTPException(status_code=404, detail="Khong tim thay yeu cau pickup")
+    if db_req.status != "DISPATCHED_TO_HUB":
+        raise HTTPException(status_code=400, detail="Yeu cau pickup khong o trang thai cho van phong xac nhan")
+    if not _can_operate_hub(current_user, db_req.target_hub_id):
+        raise HTTPException(status_code=403, detail="Khong co quyen xac nhan yeu cau cua van phong nay")
+    try:
+        _, waybill = crud_delivery.accept_hub_dispatch(db, db_req, current_user["user_id"], data.note)
+        db.commit()
+        payload = {"request_code": code, "waybill_code": waybill.waybill_code if waybill else None, "hub_id": db_req.target_hub_id}
+        realtime_manager.publish(["admin", f"hub:{db_req.target_hub_id}", f"customer:{db_req.customer_id}"], "pickup.hub_accepted", payload)
+        return {"status": "RECEIVED", **payload}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/hub-dispatch-requests/{code}/reject")
+def reject_hub_dispatch(
+    code: str,
+    data: schema_delivery.HubDispatchRejectRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_pickup_operator(current_user)
+    db_req = crud_delivery.get_booking_request_by_code(db, code)
+    if not db_req or db_req.source not in ["PORTAL", "HOTLINE", "CSKH", "ADMIN"]:
+        raise HTTPException(status_code=404, detail="Khong tim thay yeu cau pickup")
+    if db_req.status != "DISPATCHED_TO_HUB":
+        raise HTTPException(status_code=400, detail="Yeu cau pickup khong o trang thai cho van phong xac nhan")
+    rejected_hub_id = db_req.target_hub_id
+    if not _can_operate_hub(current_user, rejected_hub_id):
+        raise HTTPException(status_code=403, detail="Khong co quyen tu choi yeu cau cua van phong nay")
+    try:
+        _, waybill = crud_delivery.reject_hub_dispatch(db, db_req, current_user["user_id"], data.note)
+        db.commit()
+        payload = {"request_code": code, "waybill_code": waybill.waybill_code if waybill else None, "rejected_hub_id": rejected_hub_id, "note": data.note}
+        realtime_manager.publish(["admin", f"hub:{rejected_hub_id}", f"customer:{db_req.customer_id}"], "pickup.hub_rejected", payload)
+        return {"status": "HUB_REJECTED", **payload}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/mobile/shipper/pickup-requests", response_model=list[schema_delivery.MobilePickupTaskResponse])
 def list_mobile_shipper_pickup_requests(
     status: Optional[str] = "ASSIGNED_PICKUP",
@@ -423,6 +533,49 @@ def get_mobile_shipper_pickup_request_detail(
     return task
 
 
+@router.post("/mobile/shipper/availability", response_model=schema_delivery.ShipperAvailabilityResponse)
+def update_mobile_shipper_availability(
+    data: schema_delivery.ShipperAvailabilityRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role_id") != 4:
+        raise HTTPException(status_code=403, detail="Chi buu ta moi duoc cap nhat trang thai online")
+    shipper = db.query(models.Users).filter(
+        models.Users.user_id == current_user["user_id"],
+        models.Users.role_id == 4,
+        models.Users.is_active == True,
+        models.Users.is_deleted == False,
+    ).first()
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Khong tim thay buu ta hoat dong")
+    now = datetime.utcnow()
+    shipper.is_online = data.is_online
+    shipper.online_status_updated_at = now
+    shipper.last_seen_at = now
+    db.add(models.TrackingLogs(
+        waybill_id=None,
+        status_id="SHIPPER_ONLINE" if data.is_online else "SHIPPER_OFFLINE",
+        user_id=shipper.user_id,
+        hub_id=shipper.primary_hub_id,
+        system_time=now,
+        note=data.note or ("Buu ta bat trang thai online" if data.is_online else "Buu ta tat trang thai online"),
+    ))
+    db.commit()
+    realtime_manager.publish([f"hub:{shipper.primary_hub_id}", "admin"], "shipper.availability_changed", {
+        "shipper_id": shipper.user_id,
+        "is_online": shipper.is_online,
+        "hub_id": shipper.primary_hub_id,
+    })
+    return {
+        "status": "SUCCESS",
+        "shipper_id": shipper.user_id,
+        "is_online": shipper.is_online,
+        "online_status_updated_at": shipper.online_status_updated_at,
+        "last_seen_at": shipper.last_seen_at,
+    }
+
+
 @router.post("/mobile/shipper/location", response_model=schema_delivery.ShipperLocationResponse)
 def save_mobile_shipper_location(
     data: schema_delivery.MobileShipperLocationRequest,
@@ -442,6 +595,9 @@ def save_mobile_shipper_location(
     )
     if not success:
         raise HTTPException(status_code=400, detail=message)
+    shipper = db.query(models.Users).filter(models.Users.user_id == current_user["user_id"]).first()
+    if shipper:
+        shipper.last_seen_at = datetime.utcnow()
     db.commit()
     return {
         "status": "SUCCESS",
@@ -490,6 +646,9 @@ async def assign_shipper_pickup(
     if not shipper:
         raise HTTPException(status_code=404, detail="Không tìm thấy Shipper hoạt động.")
         
+    if shipper.is_online is False:
+        raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan pickup")
+
     crud_delivery.assign_shipper_to_pickup(db, db_req, data.shipper_id, current_user["user_id"])
     db.commit()
     
@@ -524,6 +683,15 @@ async def assign_shipper_online_pickup(
     shipper = crud_delivery.get_active_shipper(db, data.shipper_id)
     if not shipper or not shipper.is_active:
         raise HTTPException(status_code=404, detail="Khong tim thay buu ta hoat dong")
+    if shipper.is_online is False:
+        db.add(models.BookingRequestLogs(
+            request_id=db_req.request_id,
+            user_id=current_user["user_id"],
+            action="Gan buu ta that bai",
+            note=f"Buu ta ID {data.shipper_id} dang offline",
+        ))
+        db.commit()
+        raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan pickup")
     if shipper.primary_hub_id != db_req.target_hub_id:
         raise HTTPException(status_code=400, detail="Buu ta khong thuoc van phong nhan hang")
 
@@ -538,6 +706,11 @@ async def assign_shipper_online_pickup(
         title = "Yeu cau lay hang moi"
         body = f"Ban vua duoc gan yeu cau lay hang {code} tai {db_req.pickup_address}."
         background_tasks.add_task(send_expo_push_notification, shipper.push_token, title, body, {"request_code": code})
+    realtime_manager.publish([f"shipper:{shipper.user_id}", f"hub:{db_req.target_hub_id}", f"customer:{db_req.customer_id}", "admin"], "pickup.assigned_shipper", {
+        "request_code": code,
+        "assigned_shipper_id": shipper.user_id,
+        "target_hub_id": db_req.target_hub_id,
+    })
 
     return {"status": "ASSIGNED_PICKUP", "request_code": code, "assigned_shipper_id": data.shipper_id}
 
@@ -570,6 +743,11 @@ def mark_pickup_request_picked(
             note=data.note,
         )
         db.commit()
+        realtime_manager.publish([f"hub:{db_req.target_hub_id}", f"customer:{db_req.customer_id}", "admin"], "pickup.picked", {
+            "request_code": code,
+            "waybill_code": waybill.waybill_code if waybill else None,
+            "target_hub_id": db_req.target_hub_id,
+        })
         return {
             "status": "PICKED",
             "request_code": code,

@@ -60,6 +60,9 @@ class UserSummary(BaseModel):
 class UserResponse(UserBase):
     user_id: int
     is_active: Optional[bool] = True
+    is_online: Optional[bool] = False
+    online_status_updated_at: Optional[datetime] = None
+    last_seen_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     
     # Nested objects for display

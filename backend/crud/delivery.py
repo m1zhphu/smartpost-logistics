@@ -277,6 +277,40 @@ def get_online_pickup_requests(db: Session, status: str = None, hub_id: int = No
     return query.order_by(models.BookingRequests.request_id.desc()).all()
 
 
+def get_open_customer_pickup_bag(db: Session, customer_id: int):
+    if not customer_id:
+        return None
+    return db.query(models.Bags).filter(
+        models.Bags.customer_id == customer_id,
+        models.Bags.bag_type == "PICKUP",
+        models.Bags.status.in_(["OPEN", "CREATED"]),
+    ).order_by(models.Bags.bag_id.desc()).first()
+
+
+def get_request_bag_summary(db: Session, db_req: models.BookingRequests) -> dict:
+    waybill = db_req.waybills[0] if db_req.waybills else None
+    if not waybill:
+        return {}
+    bag_item = db.query(models.BagItems).filter(models.BagItems.waybill_id == waybill.waybill_id).first()
+    if not bag_item or not bag_item.bag:
+        return {}
+    bag = bag_item.bag
+    item_count = db.query(models.BagItems).filter(models.BagItems.bag_id == bag.bag_id).count()
+    total_weight = (
+        db.query(models.Waybills)
+        .join(models.BagItems, models.BagItems.waybill_id == models.Waybills.waybill_id)
+        .filter(models.BagItems.bag_id == bag.bag_id)
+        .with_entities(models.Waybills.estimated_weight)
+        .all()
+    )
+    return {
+        "bag_code": bag.bag_code,
+        "bag_item_count": item_count,
+        "total_estimated_weight": sum(float(row[0] or 0) for row in total_weight),
+        "latest_request_at": bag.pickup_time,
+    }
+
+
 def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
     waybill = db_req.waybills[0] if db_req.waybills else None
     hub = db_req.target_hub
@@ -387,6 +421,107 @@ def confirm_online_pickup_hub(db: Session, db_req: models.BookingRequests, hub_i
         user_id=user_id,
         action="Xac nhan van phong nhan hang",
         note=note or f"Van phong nhan ID: {hub_id}",
+    ))
+    return db_req, waybill
+
+
+def dispatch_online_pickup_hub(db: Session, db_req: models.BookingRequests, hub_id: int, user_id: int, note: str = None):
+    waybill = get_request_waybill(db, db_req.request_id)
+    now = datetime.utcnow()
+    db_req.status = "DISPATCHED_TO_HUB"
+    db_req.target_hub_id = hub_id
+    db_req.dispatched_by_user_id = user_id
+    db_req.dispatched_at = now
+    db_req.dispatch_note = note
+    db_req.rejected_by_user_id = None
+    db_req.rejected_at = None
+    db_req.rejection_note = None
+
+    if waybill:
+        waybill.origin_hub_id = None
+        waybill.holding_hub_id = None
+        waybill.holding_shipper_id = None
+        waybill.version = (waybill.version or 1) + 1
+        db.add(models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id="DISPATCHED_TO_HUB",
+            hub_id=hub_id,
+            user_id=user_id,
+            system_time=now,
+            note=note or "Dieu phoi yeu cau pickup sang van phong nhan",
+        ))
+
+    db.add(models.BookingRequestLogs(
+        request_id=db_req.request_id,
+        user_id=user_id,
+        action="Dieu phoi van phong nhan",
+        note=note or f"Van phong nhan ID: {hub_id}",
+    ))
+    return db_req, waybill
+
+
+def accept_hub_dispatch(db: Session, db_req: models.BookingRequests, user_id: int, note: str = None):
+    waybill = get_request_waybill(db, db_req.request_id)
+    now = datetime.utcnow()
+    db_req.status = "RECEIVED"
+    db_req.confirmed_by_user_id = user_id
+    db_req.confirmed_at = now
+
+    if waybill:
+        waybill.origin_hub_id = db_req.target_hub_id
+        waybill.holding_hub_id = db_req.target_hub_id
+        waybill.holding_shipper_id = None
+        waybill.status = WaybillStatus.CREATED
+        waybill.version = (waybill.version or 1) + 1
+        db.add(models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id="RECEIVED",
+            hub_id=db_req.target_hub_id,
+            user_id=user_id,
+            system_time=now,
+            note=note or "Van phong da xac nhan nhan yeu cau pickup",
+        ))
+
+    db.add(models.BookingRequestLogs(
+        request_id=db_req.request_id,
+        user_id=user_id,
+        action="Van phong xac nhan nhan pickup",
+        note=note or "Da tiep nhan",
+    ))
+    return db_req, waybill
+
+
+def reject_hub_dispatch(db: Session, db_req: models.BookingRequests, user_id: int, note: str):
+    waybill = get_request_waybill(db, db_req.request_id)
+    now = datetime.utcnow()
+    rejected_hub_id = db_req.target_hub_id
+    db_req.status = "HUB_REJECTED"
+    db_req.rejected_by_user_id = user_id
+    db_req.rejected_at = now
+    db_req.rejection_note = note
+    db_req.target_hub_id = None
+    db_req.confirmed_by_user_id = None
+    db_req.confirmed_at = None
+
+    if waybill:
+        waybill.origin_hub_id = None
+        waybill.holding_hub_id = None
+        waybill.holding_shipper_id = None
+        waybill.version = (waybill.version or 1) + 1
+        db.add(models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id="HUB_REJECTED",
+            hub_id=rejected_hub_id,
+            user_id=user_id,
+            system_time=now,
+            note=f"Van phong tu choi nhan pickup: {note}",
+        ))
+
+    db.add(models.BookingRequestLogs(
+        request_id=db_req.request_id,
+        user_id=user_id,
+        action="Van phong tu choi nhan pickup",
+        note=note,
     ))
     return db_req, waybill
 

@@ -9,7 +9,8 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
 from core.database import get_db
 from core.security import get_current_user
-from core.pricing import calculate_shipping_fee, calculate_sla_status, get_waybill_current_holder, get_waybill_action_by
+from core.pricing import calculate_shipping_fee, calculate_shipping_fee_detail, calculate_sla_status, get_waybill_current_holder, get_waybill_action_by
+from core.realtime import realtime_manager
 import schemas.waybills as schema_wb
 import crud.waybills as crud_wb
 from core.permissions import PermissionChecker
@@ -438,6 +439,9 @@ def _build_pickup_create_response(booking: models.BookingRequests, waybill: mode
         "vat_amount": float(waybill.vat_amount or 0),
         "total_amount_to_collect": float(waybill.total_amount_to_collect or 0),
         "estimated_shipping_fee": float(waybill.estimated_shipping_fee or waybill.shipping_fee or 0),
+        "estimated_fuel_surcharge": max(0.0, float(waybill.estimated_total_amount or 0) - float(waybill.estimated_shipping_fee or 0) - float(waybill.estimated_extra_services_fee or 0) - float(waybill.estimated_vat_amount or 0)),
+        "estimated_extra_services_fee": float(waybill.estimated_extra_services_fee or 0),
+        "estimated_packing_fee": 0,
         "estimated_vat_amount": float(waybill.estimated_vat_amount or waybill.vat_amount or 0),
         "estimated_total_amount": float(waybill.estimated_total_amount or 0),
     }
@@ -453,17 +457,26 @@ def _calculate_pickup_estimated_price(db: Session, customer: models.Customers, d
         ] or [0]
     )
     charge_weight = max(actual_weight, converted_weight)
-    shipping_fee = calculate_shipping_fee(
+    extra_service_codes = [service.service_code for service in data.extra_services or []]
+    declared_value = sum(float(item.declared_value or 0) * int(item.quantity or 1) for item in data.items)
+    quantity = sum(int(item.quantity or 1) for item in data.items)
+    fee_detail = calculate_shipping_fee_detail(
         db,
-        origin_hub.hub_id,
-        dest_hub.hub_id,
-        charge_weight,
-        data.service_type or "STANDARD",
+        origin_hub_id=origin_hub.hub_id,
+        dest_hub_id=dest_hub.hub_id,
+        weight=charge_weight,
+        service_type=data.service_type or "STANDARD",
         customer_id=customer.customer_id,
+        extra_service_codes=extra_service_codes,
+        cod_amount=float(data.cod_amount or 0),
+        declared_value=declared_value,
+        quantity=quantity,
+        packing_type=getattr(data, "packing_type", None),
+        dest_district_id=data.receiver.district_id,
+        dest_ward_id=data.receiver.ward_id,
     )
-    extra_services_fee = sum(float(service.service_fee or 0) for service in data.extra_services or [])
-    vat_amount = round((float(shipping_fee or 0) + extra_services_fee) * 0.08, 0)
-    return shipping_fee, extra_services_fee, vat_amount
+    extra_services_fee = float(fee_detail["extra_services_fee"] or 0) + float(fee_detail["fuel_surcharge"] or 0) + float(fee_detail["packing_fee"] or 0) + float(fee_detail["remote_fee"] or 0)
+    return float(fee_detail["main_fee"] or 0), extra_services_fee, float(fee_detail["vat_amount"] or 0)
 
 
 @router.post("/customer/pickups", response_model=schema_wb.CustomerPickupCreateResponse)
@@ -514,6 +527,13 @@ def create_customer_pickup_waybill(
         db.commit()
         db.refresh(booking)
         db.refresh(waybill)
+        realtime_manager.publish(["admin", f"customer:{customer.customer_id}"], "pickup.created", {
+            "request_id": booking.request_id,
+            "request_code": booking.request_code,
+            "waybill_code": waybill.waybill_code,
+            "customer_id": customer.customer_id,
+            "pickup_status": booking.status,
+        })
         return _build_pickup_create_response(booking, waybill)
     except ValueError as e:
         db.rollback()
@@ -590,6 +610,17 @@ def create_admin_pickup_waybill(
         db.commit()
         db.refresh(booking)
         db.refresh(waybill)
+        channels = ["admin", f"customer:{customer.customer_id}"]
+        if target_hub:
+            channels.append(f"hub:{target_hub.hub_id}")
+        realtime_manager.publish(channels, "pickup.created_by_admin", {
+            "request_id": booking.request_id,
+            "request_code": booking.request_code,
+            "waybill_code": waybill.waybill_code,
+            "customer_id": customer.customer_id,
+            "pickup_status": booking.status,
+            "target_hub_id": target_hub.hub_id if target_hub else None,
+        })
         return _build_pickup_create_response(booking, waybill)
     except ValueError as e:
         db.rollback()
