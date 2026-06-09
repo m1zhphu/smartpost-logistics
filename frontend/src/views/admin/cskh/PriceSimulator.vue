@@ -33,7 +33,7 @@
             <el-row :gutter="10">
               <el-col :span="12">
                 <el-form-item label="Khối lượng (kg)">
-                  <el-input-number v-model="simForm.weight" class="w-full" :min="0.1" :step="0.5" :controls="false" />
+                  <el-input-number v-model="simForm.weight" class="w-full" :min="0.01" :step="0.01" :precision="2" :controls="false" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">

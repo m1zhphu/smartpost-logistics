@@ -1,5 +1,6 @@
 # File: core/idempotency.py
 from fastapi import Header, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from core.redis import redis_client
 import json
 
@@ -38,4 +39,4 @@ def commit_idempotency(key: str, response_data: dict):
     Hàm này gọi sau khi xử lý Database thành công để ghi nhận Key đã dùng.
     """
     if key:
-        redis_client.setex(key, EXPIRATION_TIME, json.dumps(response_data))
+        redis_client.setex(key, EXPIRATION_TIME, json.dumps(jsonable_encoder(response_data)))

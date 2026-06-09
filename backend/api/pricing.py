@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -38,11 +39,15 @@ def add_pricing_rule(
     ):
         raise HTTPException(status_code=400, detail="Quy tắc giá cộng thêm phải có mốc cân gốc, bước cân và giá cộng thêm")
 
-    rule = crud_pricing.create_rule(db, data.model_dump())
-    db.commit()
-
-    if not rule:
-        raise HTTPException(status_code=400, detail="Quy tắc giá này đã tồn tại")
+    try:
+        rule = crud_pricing.create_rule(db, data.model_dump())
+        if not rule:
+            db.rollback()
+            raise HTTPException(status_code=400, detail="Quy tac gia nay da ton tai hoac thieu thong tin vung/tuyen.")
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Quy tac gia nay da ton tai")
 
     result = schema_pricing.PricingRuleResponse.model_validate(rule).model_dump()
     commit_idempotency(idem_key, result)

@@ -144,6 +144,12 @@
 .route-connector { display: flex; align-items: center; position: relative; width: 40px; }
 .route-connector .line { flex: 1; height: 2px; background: var(--sp-border); }
 .route-connector .arrow-icon { color: var(--sp-text-muted); font-size: 14px; margin-left: -4px; }
+.zone-route-display { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.zone-route-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; color: var(--sp-primary); background: rgba(67, 24, 255, 0.1); flex: 0 0 auto; }
+.zone-route-content { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.zone-route-code { font-size: 13px; font-weight: 800; color: var(--sp-primary); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zone-route-name { font-size: 12px; font-weight: 600; color: var(--sp-text-muted); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zone-route-inline { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--sp-primary); }
 
 /* Tags & Badges */
 .modern-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
@@ -203,6 +209,13 @@
 .route-selector-container { display: flex; align-items: flex-end; gap: 16px; }
 .route-box { flex: 1; }
 .route-arrow-center { padding-bottom: 15px; font-size: 24px; color: var(--sp-text-muted); }
+.bulk-rate-wrapper { margin: 8px 0 18px; padding: 14px; border: 1px dashed var(--sp-border); border-radius: 8px; background: rgba(248, 250, 252, 0.72); }
+.bulk-rate-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.bulk-rate-title { font-size: 14px; font-weight: 800; color: var(--sp-text-main); line-height: 1.3; }
+.bulk-rate-subtitle { font-size: 12px; font-weight: 600; color: var(--sp-text-muted); line-height: 1.4; }
+.bulk-rate-row { display: grid; grid-template-columns: 42px minmax(110px, 1fr) minmax(110px, 1fr) minmax(150px, 1.2fr) 38px; align-items: center; gap: 10px; margin-top: 10px; }
+.bulk-rate-index { font-size: 12px; font-weight: 800; color: var(--sp-text-muted); }
+.bulk-rate-input, .bulk-rate-price { width: 100%; }
 
 :deep(.modern-form .el-form-item__label) { font-weight: 700; color: var(--sp-text-main); margin-bottom: 8px; }
 :deep(.modern-input-number .el-input__wrapper),
@@ -253,6 +266,8 @@
   .filter-inputs .el-select { width: 100% !important; }
   .route-selector-container { flex-direction: column; align-items: stretch; gap: 8px; }
   .route-arrow-center { display: none; }
+  .bulk-rate-header { align-items: stretch; flex-direction: column; }
+  .bulk-rate-row { grid-template-columns: 1fr; }
   :deep(.custom-radio-group) { flex-direction: column; }
   
   /* Responsive Drawer and Table */

@@ -89,8 +89,8 @@
                   <el-input-number 
                     v-model="simForm.weight" 
                     class="w-full large-number-input" 
-                    :min="0.1" 
-                    :step="0.1" 
+                    :min="0.01" 
+                    :step="0.01" 
                     :precision="2"
                   />
                   <div class="helper-text">Trọng lượng bưu tá cân thực tế tại shop.</div>

@@ -48,7 +48,7 @@
           </div>
           <div class="stat-content">
             <span class="stat-value">{{ expressCount }}</span>
-            <span class="stat-label">Hoả tốc (EXPRESS)</span>
+            <span class="stat-label">Hỏa tốc / hàng đặc biệt</span>
           </div>
         </div>
         <div class="stat-card">
@@ -128,14 +128,10 @@
                 <el-select v-model="filter.service_type" placeholder="Tất cả dịch vụ" clearable class="modern-select w-200">
                   <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
                   <el-option label="Tiết kiệm (TK)" value="TK" />
-                  <el-option label="Hỏa tốc (HT / EXPRESS)" value="HT" />
-                  <el-option label="Phát trước 9h (PT9H)" value="PT9H" />
-                  <el-option label="Quốc tế (QT)" value="QT" />
-                  <el-option label="Tiêu chuẩn (STANDARD)" value="STANDARD" />
-                  <el-option label="⚡ Hoả tốc (EXPRESS)" value="EXPRESS" />
+                  <el-option label="Hỏa tốc / hàng đặc biệt (HT)" value="HT" />
                 </el-select>
-                <el-select v-model="filterHubId" placeholder="Lọc theo Bưu cục" clearable filterable class="modern-select w-260">
-                  <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
+                <el-select v-model="filterProvinceId" placeholder="Lọc theo tỉnh/thành" clearable filterable class="modern-select w-260">
+                  <el-option v-for="province in provinces" :key="province.id" :label="province.name" :value="province.id" />
                 </el-select>
               </div>
               <div class="filter-actions">
@@ -166,18 +162,27 @@
               <!-- Tuyến đường -->
               <el-table-column label="Tuyến đường vận chuyển" min-width="320">
                 <template #default="{ row }">
-                  <div class="route-visualization">
+                  <div v-if="isZoneRule(row)" class="zone-route-display">
+                    <span class="zone-route-icon">
+                      <el-icon><MapLocation /></el-icon>
+                    </span>
+                    <div class="zone-route-content">
+                      <span class="zone-route-code">{{ row.zone_name }}</span>
+                      <span class="zone-route-name">{{ getZoneSummary(row.zone_name) }}</span>
+                    </div>
+                  </div>
+                  <div v-else class="route-visualization">
                     <div class="route-hub origin">
-                      <span class="hub-code">{{ row.origin_hub?.hub_code || '---' }}</span>
-                      <span class="hub-name text-truncate">{{ row.origin_hub ? row.origin_hub.hub_name : `Hub #${row.origin_hub_id}` }}</span>
+                      <span class="hub-code">{{ row.from_province_id || '---' }}</span>
+                      <span class="hub-name text-truncate">{{ getProvinceName(row.from_province_id) }}</span>
                     </div>
                     <div class="route-connector">
                       <div class="line"></div>
                       <el-icon class="arrow-icon"><Right /></el-icon>
                     </div>
                     <div class="route-hub dest">
-                      <span class="hub-code">{{ row.dest_hub?.hub_code || '---' }}</span>
-                      <span class="hub-name text-truncate">{{ row.dest_hub ? row.dest_hub.hub_name : `Hub #${row.dest_hub_id}` }}</span>
+                      <span class="hub-code">{{ row.to_province_id || '---' }}</span>
+                      <span class="hub-name text-truncate">{{ getProvinceName(row.to_province_id) }}</span>
                     </div>
                   </div>
                 </template>
@@ -215,6 +220,9 @@
                   <div class="price-display">
                     <span class="amount">{{ formatMoney(row.price) }}</span>
                     <span class="currency">đ</span>
+                  </div>
+                  <div class="price-hint" v-if="row.pricing_method === 'INCREMENTAL'">
+                    +{{ formatMoney(row.increment_price) }}đ / {{ row.increment_weight }}kg sau {{ row.base_weight }}kg
                   </div>
                 </template>
               </el-table-column>
@@ -296,8 +304,23 @@
                 <template #default="{ row }">
                   <div class="modern-tag" :class="row.fee_type === 'FIXED' ? 'tag-primary' : 'tag-warning'">
                     <span class="dot"></span>
-                    {{ row.fee_type === 'FIXED' ? 'Giá cố định' : 'Phần trăm (%)' }}
+                    {{ getServiceFeeTypeLabel(row.fee_type) }}
                   </div>
+                </template>
+              </el-table-column>
+
+              <el-table-column label="Tính trên" min-width="160" align="center">
+                <template #default="{ row }">
+                  <span>{{ getCalculationBaseLabel(row.calculation_base) }}</span>
+                </template>
+              </el-table-column>
+
+              <el-table-column label="Khoảng áp dụng" min-width="190" align="center">
+                <template #default="{ row }">
+                  <span v-if="row.min_order_value || row.max_order_value">
+                    {{ row.min_order_value ? formatMoney(row.min_order_value) : '0' }} - {{ row.max_order_value ? formatMoney(row.max_order_value) : 'Không giới hạn' }}
+                  </span>
+                  <span v-else>Toàn bộ</span>
                 </template>
               </el-table-column>
 
@@ -305,8 +328,9 @@
                 <template #default="{ row }">
                   <div class="price-display highlight">
                     <span class="amount">{{ formatMoney(row.fee_value) }}</span>
-                    <span class="currency">{{ row.fee_type === 'FIXED' ? 'VNĐ' : '% COD' }}</span>
+                    <span class="currency">{{ row.fee_type === 'PERCENT' ? '%' : 'VNĐ' }}</span>
                   </div>
+                  <div class="price-hint" v-if="row.min_fee">Tối thiểu {{ formatMoney(row.min_fee) }} VNĐ</div>
                 </template>
               </el-table-column>
 
@@ -331,6 +355,108 @@
             </el-table>
           </div>
         </el-tab-pane>
+
+        <el-tab-pane label="Phí đóng kiện" name="packing_rules">
+          <div class="content-card table-wrapper">
+            <div class="card-header-inner mb-4 flex-between">
+              <h3 class="inner-title">Cấu hình phí đóng kiện theo mốc cân</h3>
+              <button v-if="canEditPricing" class="btn-primary" @click="openPackingDialog(null)">
+                <el-icon><Plus /></el-icon> Thêm mốc đóng kiện
+              </button>
+            </div>
+
+            <el-table :data="packingRules" v-loading="packingLoading" class="modern-table" row-class-name="modern-row" style="width: 100%">
+              <el-table-column label="Loại đóng kiện" min-width="160">
+                <template #default="{ row }">
+                  <span class="code-badge">{{ getPackingTypeLabel(row.packing_type) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="Mốc cân" min-width="150" align="center">
+                <template #default="{ row }">
+                  <span>{{ row.min_weight }} - {{ row.max_weight }} kg</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="Phí đóng kiện" min-width="160" align="right">
+                <template #default="{ row }">
+                  <div class="price-display">
+                    <span class="amount">{{ formatMoney(row.packing_fee) }}</span>
+                    <span class="currency">VNĐ</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="Trọng lượng cộng thêm" min-width="180" align="center">
+                <template #default="{ row }">
+                  <span class="fw-bold">{{ row.added_weight }} kg</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="Trạng thái" min-width="140" align="center">
+                <template #default="{ row }">
+                  <el-switch v-model="row.is_active" :disabled="!canEditPricing" @change="togglePackingStatus(row)" style="--el-switch-on-color: #05CD99; --el-switch-off-color: #E2E8F0" />
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canEditPricing" label="Thao tác" min-width="120" align="center">
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <button class="icon-btn edit" @click="openPackingDialog(row)" title="Chỉnh sửa">
+                      <el-icon><Edit /></el-icon>
+                    </button>
+                    <button class="icon-btn delete" @click="handleDeletePacking(row)" title="Xóa">
+                      <el-icon><Delete /></el-icon>
+                    </button>
+                  </div>
+                </template>
+              </el-table-column>
+              <template #empty>
+                <el-empty description="Chưa có mốc phí đóng kiện" :image-size="100" />
+              </template>
+            </el-table>
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="Phân vùng tỉnh" name="province_zones">
+          <div class="content-card table-wrapper">
+            <div class="card-header-inner mb-4 flex-between">
+              <h3 class="inner-title">Cấu hình tỉnh/thành theo vùng giá</h3>
+              <button v-if="canEditPricing" class="btn-primary" @click="openZoneDialog(null)">
+                <el-icon><Plus /></el-icon> Thêm phân vùng
+              </button>
+            </div>
+
+            <el-table
+              :data="provinceZones"
+              v-loading="zoneLoading"
+              class="modern-table"
+              row-class-name="modern-row"
+              style="width: 100%"
+            >
+              <el-table-column label="Tỉnh/thành gửi" min-width="220">
+                <template #default="{ row }">
+                  <span class="fw-bold">{{ getProvinceName(row.origin_province_id) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="Tỉnh/thành nhận" min-width="220">
+                <template #default="{ row }">
+                  <span class="fw-bold">{{ getProvinceName(row.destination_province_id) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="Zone áp dụng" min-width="180" align="center">
+                <template #default="{ row }">
+                  <span class="code-badge">{{ row.zone_name }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canEditPricing" label="Thao tác" width="120" align="center">
+                <template #default="{ row }">
+                  <button class="icon-btn delete" @click="handleDeleteZone(row)" title="Xóa">
+                    <el-icon><Delete /></el-icon>
+                  </button>
+                </template>
+              </el-table-column>
+              <template #empty>
+                <el-empty description="Chưa có phân vùng tỉnh/thành" :image-size="100" />
+              </template>
+            </el-table>
+          </div>
+        </el-tab-pane>
       </el-tabs>
 
       <!-- Dialog: Route Rule -->
@@ -348,11 +474,30 @@
               <el-icon><MapLocation /></el-icon>
               <span>Thiết lập Tuyến đường</span>
             </div>
-            <div class="route-selector-container">
+            <el-form-item label="Kiểu áp dụng giá" prop="scope_type">
+              <el-segmented
+                v-model="ruleForm.scope_type"
+                :options="[
+                  { label: 'Theo zone phân vùng', value: 'ZONE' },
+                  { label: 'Theo tuyến tỉnh cụ thể', value: 'PROVINCE' }
+                ]"
+              />
+            </el-form-item>
+            <el-form-item v-if="ruleForm.scope_type === 'ZONE'" label="Zone áp dụng" prop="zone_name">
+              <el-select v-model="ruleForm.zone_name" filterable allow-create placeholder="Chọn hoặc nhập zone" class="w-full">
+                <el-option label="NOI_THANH_HCM" value="NOI_THANH_HCM" />
+                <el-option label="DUOI_300KM" value="DUOI_300KM" />
+                <el-option label="DAC_BIET_HN_DN" value="DAC_BIET_HN_DN" />
+                <el-option label="TREN_300KM" value="TREN_300KM" />
+                <el-option label="HCM_DN" value="HCM_DN" />
+                <el-option label="HCM_HN" value="HCM_HN" />
+              </el-select>
+            </el-form-item>
+            <div v-if="ruleForm.scope_type === 'PROVINCE'" class="route-selector-container">
               <div class="route-box origin">
-                <el-form-item label="Bưu cục gửi (Origin)" prop="origin_hub_id" class="mb-0">
-                  <el-select v-model="ruleForm.origin_hub_id" filterable placeholder="Chọn bưu cục gửi" class="w-full">
-                    <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
+                <el-form-item label="Tỉnh/thành gửi" prop="from_province_id" class="mb-0">
+                  <el-select v-model="ruleForm.from_province_id" filterable placeholder="Chọn tỉnh/thành gửi" class="w-full">
+                    <el-option v-for="province in provinces" :key="province.id" :label="province.name" :value="province.id" />
                   </el-select>
                 </el-form-item>
               </div>
@@ -360,9 +505,9 @@
                 <el-icon><Right /></el-icon>
               </div>
               <div class="route-box dest">
-                <el-form-item label="Bưu cục nhận (Destination)" prop="dest_hub_id" class="mb-0">
-                  <el-select v-model="ruleForm.dest_hub_id" filterable placeholder="Chọn bưu cục nhận" class="w-full">
-                    <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
+                <el-form-item label="Tỉnh/thành nhận" prop="to_province_id" class="mb-0">
+                  <el-select v-model="ruleForm.to_province_id" filterable placeholder="Chọn tỉnh/thành nhận" class="w-full">
+                    <el-option v-for="province in provinces" :key="province.id" :label="province.name" :value="province.id" />
                   </el-select>
                 </el-form-item>
               </div>
@@ -379,23 +524,19 @@
               <el-select v-model="ruleForm.service_type" placeholder="Chọn loại dịch vụ" class="w-full modern-select">
                 <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
                 <el-option label="Tiết kiệm (TK)" value="TK" />
-                <el-option label="Hỏa tốc (HT / EXPRESS)" value="HT" />
-                <el-option label="Phát trước 9h (PT9H)" value="PT9H" />
-                <el-option label="Quốc tế (QT)" value="QT" />
-                <el-option label="Tiêu chuẩn (STANDARD)" value="STANDARD" />
-                <el-option label="⚡ Hoả tốc (EXPRESS)" value="EXPRESS" />
+                <el-option label="Hỏa tốc / hàng đặc biệt (HT)" value="HT" />
               </el-select>
             </el-form-item>
 
             <el-row :gutter="24">
               <el-col :span="12">
                 <el-form-item label="Khối lượng từ (kg)" prop="min_weight">
-                  <el-input-number v-model="ruleForm.min_weight" :precision="2" :step="0.5" :min="0" class="w-full modern-input-number" />
+                  <el-input-number v-model="ruleForm.min_weight" :precision="2" :step="0.01" :min="0" class="w-full modern-input-number" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="Khối lượng đến (kg)" prop="max_weight">
-                  <el-input-number v-model="ruleForm.max_weight" :precision="2" :step="0.5" :min="0.01" class="w-full modern-input-number" />
+                  <el-input-number v-model="ruleForm.max_weight" :precision="2" :step="0.01" :min="0.01" class="w-full modern-input-number" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -407,6 +548,14 @@
               <span>Đơn giá & Chính sách</span>
             </div>
             <el-row :gutter="24">
+              <el-col :span="12">
+                <el-form-item label="Kiểu tính giá" prop="pricing_method">
+                  <el-select v-model="ruleForm.pricing_method" class="w-full">
+                    <el-option label="Giá cố định theo mốc cân" value="FIXED" />
+                    <el-option label="Giá gốc + cộng thêm theo bước cân" value="INCREMENTAL" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
               <el-col :span="12">
                 <el-form-item label="Đơn giá áp dụng (VNĐ)" prop="price">
                   <el-input-number 
@@ -423,6 +572,33 @@
                   </div>
                 </el-form-item>
               </el-col>
+              <template v-if="ruleForm.pricing_method === 'INCREMENTAL'">
+                <el-col :span="8">
+                  <el-form-item label="Mốc cân gốc (kg)" prop="base_weight">
+                    <el-input-number v-model="ruleForm.base_weight" :precision="2" :step="0.01" :min="0" class="w-full modern-input-number" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="Bước cân cộng thêm (kg)" prop="increment_weight">
+                    <el-input-number v-model="ruleForm.increment_weight" :precision="2" :step="0.01" :min="0.01" class="w-full modern-input-number" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="Giá mỗi bước (VNĐ)" prop="increment_price">
+                    <el-input-number v-model="ruleForm.increment_price" :min="0" :step="1000" class="w-full modern-price-input" :controls="false" />
+                  </el-form-item>
+                </el-col>
+              </template>
+              <el-col :span="12">
+                <el-form-item label="Phụ phí xăng dầu (%)" prop="fuel_surcharge_percent">
+                  <el-input-number v-model="ruleForm.fuel_surcharge_percent" :precision="2" :step="1" :min="0" class="w-full modern-input-number" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="VAT (%)" prop="vat_percent">
+                  <el-input-number v-model="ruleForm.vat_percent" :precision="2" :step="1" :min="0" class="w-full modern-input-number" />
+                </el-form-item>
+              </el-col>
               <el-col :span="12">
                 <el-form-item label="Thuộc Chính sách giá">
                   <el-select v-model="ruleForm.policy_id" class="w-full">
@@ -431,6 +607,36 @@
                 </el-form-item>
               </el-col>
             </el-row>
+            <div v-if="!ruleForm.rule_id" class="bulk-rate-wrapper">
+              <div class="bulk-rate-header">
+                <div>
+                  <div class="bulk-rate-title">Các mốc cước bổ sung</div>
+                  <div class="bulk-rate-subtitle">Cùng zone/tuyến và dịch vụ, chỉ khác khối lượng và giá cước</div>
+                </div>
+                <button type="button" class="btn-secondary" @click="addExtraRateRow">
+                  <el-icon><Plus /></el-icon> Thêm mốc cước
+                </button>
+              </div>
+
+              <div v-for="(item, index) in extraRateRows" :key="item.id" class="bulk-rate-row">
+                <div class="bulk-rate-index">#{{ index + 2 }}</div>
+                <el-input-number v-model="item.min_weight" :precision="2" :step="0.01" :min="0" class="bulk-rate-input" placeholder="Từ kg" />
+                <el-input-number v-model="item.max_weight" :precision="2" :step="0.01" :min="0.01" class="bulk-rate-input" placeholder="Đến kg" />
+                <el-input-number
+                  v-model="item.price"
+                  :min="1000"
+                  :step="5000"
+                  class="bulk-rate-price"
+                  :controls="false"
+                  :formatter="val => val ? val.toLocaleString('vi-VN') : ''"
+                  :parser="val => val.replace(/[^\d]/g, '')"
+                  placeholder="Giá cước"
+                />
+                <button type="button" class="icon-btn delete" @click="removeExtraRateRow(index)" title="Xóa mốc cước">
+                  <el-icon><Delete /></el-icon>
+                </button>
+              </div>
+            </div>
             <el-form-item class="mb-0 mt-2">
               <div class="status-switch-wrapper">
                 <span class="fw-bold text-dark mr-3">Trạng thái:</span>
@@ -451,6 +657,111 @@
             <button class="btn-primary" @click="handleSave" :disabled="saveLoading">
               <el-icon class="is-loading mr-2" v-if="saveLoading"><Loading /></el-icon>
               <span>{{ saveLoading ? 'Đang lưu...' : 'Xác nhận lưu' }}</span>
+            </button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <el-dialog
+        v-model="packingDialogVisible"
+        :title="packingForm.id ? 'Cập nhật mốc phí đóng kiện' : 'Thêm mốc phí đóng kiện'"
+        width="620px"
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <el-form :model="packingForm" :rules="packingRulesForm" ref="packingFormRef" label-position="top" class="modern-form">
+          <div class="form-section no-border">
+            <div class="section-header">
+              <el-icon><Box /></el-icon>
+              <span>Thiết lập phí đóng kiện</span>
+            </div>
+            <el-form-item label="Loại đóng kiện" prop="packing_type">
+              <el-select v-model="packingForm.packing_type" class="w-full">
+                <el-option label="Đóng kiện gỗ" value="WOOD" />
+                <el-option label="Đóng kiện xốp" value="FOAM" />
+              </el-select>
+            </el-form-item>
+            <el-row :gutter="16">
+              <el-col :span="12">
+                <el-form-item label="Khối lượng từ (kg)" prop="min_weight">
+                  <el-input-number v-model="packingForm.min_weight" :precision="2" :step="1" :min="0" class="w-full modern-input-number" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="Khối lượng đến (kg)" prop="max_weight">
+                  <el-input-number v-model="packingForm.max_weight" :precision="2" :step="1" :min="0.01" class="w-full modern-input-number" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="16">
+              <el-col :span="12">
+                <el-form-item label="Phí đóng kiện (VNĐ)" prop="packing_fee">
+                  <el-input-number v-model="packingForm.packing_fee" :min="0" :step="10000" class="w-full modern-price-input" :controls="false" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="Trọng lượng cộng thêm (kg)" prop="added_weight">
+                  <el-input-number v-model="packingForm.added_weight" :precision="2" :step="1" :min="0" class="w-full modern-input-number" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item class="mb-0">
+              <el-switch v-model="packingForm.is_active" active-text="Đang áp dụng" inactive-text="Tạm dừng" style="--el-switch-on-color: #05CD99" />
+            </el-form-item>
+          </div>
+        </el-form>
+        <template #footer>
+          <div class="dialog-footer-actions">
+            <button class="btn-secondary" @click="packingDialogVisible = false">Hủy bỏ</button>
+            <button class="btn-primary" @click="handleSavePacking" :disabled="packingSaveLoading">
+              <el-icon class="is-loading mr-2" v-if="packingSaveLoading"><Loading /></el-icon>
+              <span>{{ packingSaveLoading ? 'Đang lưu...' : 'Xác nhận lưu' }}</span>
+            </button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <el-dialog
+        v-model="zoneDialogVisible"
+        title="Thêm phân vùng tỉnh"
+        width="620px"
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <el-form :model="zoneForm" :rules="zoneRules" ref="zoneFormRef" label-position="top" class="modern-form">
+          <div class="form-section no-border">
+            <div class="section-header">
+              <el-icon><MapLocation /></el-icon>
+              <span>Thiết lập vùng giá</span>
+            </div>
+            <el-form-item label="Tỉnh/thành gửi" prop="origin_province_id">
+              <el-select v-model="zoneForm.origin_province_id" filterable placeholder="Chọn tỉnh/thành gửi" class="w-full">
+                <el-option v-for="province in provinces" :key="province.id" :label="province.name" :value="province.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="Tỉnh/thành nhận" prop="destination_province_ids">
+              <el-select v-model="zoneForm.destination_province_ids" multiple collapse-tags collapse-tags-tooltip filterable placeholder="Chọn một hoặc nhiều tỉnh/thành nhận" class="w-full">
+                <el-option v-for="province in provinces" :key="province.id" :label="province.name" :value="province.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="Zone áp dụng" prop="zone_name">
+              <el-select v-model="zoneForm.zone_name" filterable allow-create placeholder="Chọn hoặc nhập zone" class="w-full">
+                <el-option label="NOI_THANH_HCM" value="NOI_THANH_HCM" />
+                <el-option label="DUOI_300KM" value="DUOI_300KM" />
+                <el-option label="DAC_BIET_HN_DN" value="DAC_BIET_HN_DN" />
+                <el-option label="TREN_300KM" value="TREN_300KM" />
+                <el-option label="HCM_DN" value="HCM_DN" />
+                <el-option label="HCM_HN" value="HCM_HN" />
+              </el-select>
+            </el-form-item>
+          </div>
+        </el-form>
+        <template #footer>
+          <div class="dialog-footer-actions">
+            <button class="btn-secondary" @click="zoneDialogVisible = false">Hủy bỏ</button>
+            <button class="btn-primary" @click="handleSaveZone" :disabled="zoneSaveLoading">
+              <el-icon class="is-loading mr-2" v-if="zoneSaveLoading"><Loading /></el-icon>
+              <span>{{ zoneSaveLoading ? 'Đang lưu...' : 'Xác nhận lưu' }}</span>
             </button>
           </div>
         </template>
@@ -538,8 +849,19 @@
           <el-form-item label="Cách tính phí áp dụng" prop="fee_type">
             <el-radio-group v-model="serviceForm.fee_type" class="custom-radio-group w-full">
               <el-radio-button value="FIXED">Giá Cố định (VNĐ)</el-radio-button>
-              <el-radio-button value="PERCENT">Phần trăm (% COD)</el-radio-button>
+              <el-radio-button value="PERCENT">Phần trăm (%)</el-radio-button>
+              <el-radio-button value="PER_ITEM">Theo sản phẩm</el-radio-button>
             </el-radio-group>
+          </el-form-item>
+
+          <el-form-item label="Tính trên" prop="calculation_base">
+            <el-select v-model="serviceForm.calculation_base" class="w-full">
+              <el-option label="Giá cố định / theo bill" value="FIXED" />
+              <el-option label="Giá trị đơn hàng" value="DECLARED_VALUE" />
+              <el-option label="Tiền thu hộ COD" value="COD_AMOUNT" />
+              <el-option label="Cước chính" value="MAIN_FEE" />
+              <el-option label="Số lượng sản phẩm" value="QUANTITY" />
+            </el-select>
           </el-form-item>
 
           <el-form-item :label="serviceForm.fee_type === 'FIXED' ? 'Số tiền thu (VNĐ)' : 'Tỉ lệ phần trăm (%)'" prop="fee_value">
@@ -552,6 +874,23 @@
               :formatter="val => val ? Number(val).toLocaleString('vi-VN') : ''" 
               :parser="val => val.replace(/[^\d.]/g, '')" 
             />
+          </el-form-item>
+
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="Giá trị từ (VNĐ)" prop="min_order_value">
+                <el-input-number v-model="serviceForm.min_order_value" :min="0" :step="1000000" class="w-full modern-price-input" :controls="false" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="Giá trị đến (VNĐ)" prop="max_order_value">
+                <el-input-number v-model="serviceForm.max_order_value" :min="0" :step="1000000" class="w-full modern-price-input" :controls="false" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-form-item label="Phí tối thiểu (VNĐ)" prop="min_fee">
+            <el-input-number v-model="serviceForm.min_fee" :min="0" :step="10000" class="w-full modern-price-input" :controls="false" />
           </el-form-item>
 
           <el-form-item class="mb-0">
@@ -640,10 +979,14 @@
               >
                 <el-table-column label="Tuyến đường" min-width="260">
                   <template #default="{ row }">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <span style="font-weight: 600;">{{ row.origin_hub?.hub_name || `Hub #${row.origin_hub_id}` }}</span>
+                    <div v-if="isZoneRule(row)" class="zone-route-inline">
+                      <el-icon><MapLocation /></el-icon>
+                      <span>{{ row.zone_name }}</span>
+                    </div>
+                    <div v-else style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-weight: 600;">{{ getProvinceName(row.from_province_id) }}</span>
                       <el-icon><Right /></el-icon>
-                      <span style="font-weight: 600;">{{ row.dest_hub?.hub_name || `Hub #${row.dest_hub_id}` }}</span>
+                      <span style="font-weight: 600;">{{ getProvinceName(row.to_province_id) }}</span>
                     </div>
                   </template>
                 </el-table-column>
@@ -736,11 +1079,21 @@ const canEditPricing = computed(() => user.value?.role_id === 1 || user.value?.r
 // STATE CHUNG
 const activeTab = ref('policies');
 const policies = ref([]);
-const hubs = ref([]);
+const provinces = ref([]);
 const policyLoading = ref(false);
 const policySaveLoading = ref(false);
 const policyDialogVisible = ref(false);
 const policyFormRef = ref(null);
+const provinceZones = ref([]);
+const zoneLoading = ref(false);
+const zoneSaveLoading = ref(false);
+const zoneDialogVisible = ref(false);
+const zoneFormRef = ref(null);
+const packingRules = ref([]);
+const packingLoading = ref(false);
+const packingSaveLoading = ref(false);
+const packingDialogVisible = ref(false);
+const packingFormRef = ref(null);
 
 const policyForm = reactive({
   policy_id: null,
@@ -756,22 +1109,45 @@ const policyRules = {
   policy_name: [{ required: true, message: 'Nhập tên bảng giá', trigger: 'blur' }]
 };
 
+const zoneForm = reactive({
+  origin_province_id: null,
+  destination_province_ids: [],
+  zone_name: ''
+});
+
+const zoneRules = {
+  origin_province_id: [{ required: true, message: 'Vui lòng chọn tỉnh/thành gửi', trigger: 'change' }],
+  destination_province_ids: [{ required: true, type: 'array', min: 1, message: 'Vui lòng chọn ít nhất một tỉnh/thành nhận', trigger: 'change' }],
+  zone_name: [{ required: true, message: 'Vui lòng nhập zone', trigger: 'blur' }]
+};
+
+const packingForm = reactive({
+  id: null,
+  packing_type: 'WOOD',
+  min_weight: 0,
+  max_weight: 5,
+  packing_fee: 30000,
+  added_weight: 6,
+  is_active: true
+});
+
+const packingRulesForm = {
+  packing_type: [{ required: true, message: 'Vui lòng chọn loại đóng kiện', trigger: 'change' }],
+  packing_fee: [{ required: true, type: 'number', min: 0, message: 'Vui lòng nhập phí đóng kiện', trigger: 'blur' }],
+  added_weight: [{ required: true, type: 'number', min: 0, message: 'Vui lòng nhập trọng lượng cộng thêm', trigger: 'blur' }]
+};
+
 const getServiceLabel = (type) => {
   const map = {
-    'CPN': 'Chuyển phát nhanh (CPN)',
-    'TK': 'Tiết kiệm (TK)',
-    'HT': 'Hỏa tốc (HT)',
-    'PT9H': 'Phát trước 9h (PT9H)',
-    'QT': 'Quốc tế (QT)',
-    'STANDARD': 'Tiêu chuẩn (STANDARD)',
-    'EXPRESS': 'Hoả tốc (EXPRESS)'
+    'CPN': 'Chuyển phát nhanh trong nước (CPN)',
+    'TK': 'Chuyển phát tiết kiệm (TK)',
+    'HT': 'Hỏa tốc / hàng đặc biệt (HT)'
   };
   return map[type] || type;
 };
 
 const getServiceTagClass = (type) => {
-  if (type === 'HT' || type === 'EXPRESS' || type === 'PT9H') return 'tag-warning';
-  if (type === 'QT') return 'tag-danger';
+  if (type === 'HT') return 'tag-warning';
   if (type === 'CPN') return 'tag-primary';
   return 'tag-info';
 };
@@ -782,17 +1158,20 @@ const saveLoading = ref(false);
 const dialogVisible = ref(false);
 const ruleFormRef = ref(null);
 const rules = ref([]);
-const filterHubId = ref(null);
+const extraRateRows = ref([]);
+const filterProvinceId = ref(null);
 const filter = reactive({ service_type: '' });
 
 const ruleForm = reactive({
-  rule_id: null, policy_id: 1, origin_hub_id: null, dest_hub_id: null,
-  service_type: 'STANDARD', min_weight: 0, max_weight: 0.5, price: 30000, is_active: true
+  rule_id: null, policy_id: 1, scope_type: 'ZONE', from_province_id: null, to_province_id: null, zone_name: null,
+  service_type: 'CPN', min_weight: 0, max_weight: 0.5, price: 30000,
+  pricing_method: 'FIXED', base_weight: null, increment_weight: null, increment_price: null,
+  fuel_surcharge_percent: 10, vat_percent: 8, is_active: true
 });
 
 const formRules = {
-  origin_hub_id: [{ required: true, message: 'Vui lòng chọn bưu cục gửi', trigger: 'change' }],
-  dest_hub_id: [{ required: true, message: 'Vui lòng chọn bưu cục nhận', trigger: 'change' }],
+  zone_name: [{ required: true, message: 'Vui lòng chọn hoặc nhập zone', trigger: 'change' }],
+  pricing_method: [{ required: true, message: 'Vui lòng chọn kiểu tính giá', trigger: 'change' }],
   price: [{ required: true, type: 'number', min: 1000, message: 'Đơn giá tối thiểu 1,000đ', trigger: 'blur' }]
 };
 
@@ -804,7 +1183,9 @@ const serviceDialogVisible = ref(false);
 const serviceFormRef = ref(null);
 
 const serviceForm = reactive({
-  id: null, service_code: '', service_name: '', fee_type: 'FIXED', fee_value: 0, is_active: true
+  id: null, service_code: '', service_name: '', fee_type: 'FIXED', fee_value: 0,
+  calculation_base: 'FIXED', min_order_value: null, max_order_value: null, min_fee: null,
+  is_active: true
 });
 
 const serviceRules = {
@@ -815,13 +1196,13 @@ const serviceRules = {
 
 // ================= COMPUTED & UTILS =================
 const activeCount = computed(() => rules.value.filter(r => r.is_active).length);
-const expressCount = computed(() => rules.value.filter(r => r.service_type === 'EXPRESS').length);
+const expressCount = computed(() => rules.value.filter(r => r.service_type === 'HT').length);
 
 const filteredRules = computed(() => {
   return rules.value.filter(r => {
     const matchService = !filter.service_type || r.service_type === filter.service_type;
-    const matchHub = !filterHubId.value || r.origin_hub_id === filterHubId.value || r.dest_hub_id === filterHubId.value;
-    return matchService && matchHub;
+    const matchProvince = !filterProvinceId.value || r.from_province_id === filterProvinceId.value || r.to_province_id === filterProvinceId.value;
+    return matchService && matchProvince;
   });
 });
 
@@ -835,7 +1216,7 @@ const paginatedRules = computed(() => {
   return filteredRules.value.slice(start, end);
 });
 
-watch([filter, () => filterHubId.value], () => {
+watch([filter, () => filterProvinceId.value], () => {
   currentRulesPage.value = 1;
 }, { deep: true });
 
@@ -880,15 +1261,24 @@ const toggleRuleStatus = async (row) => {
 };
 
 const openDialogForPolicy = (policy) => {
+  extraRateRows.value = [];
   Object.assign(ruleForm, { 
     rule_id: null, 
     policy_id: policy.policy_id, 
-    origin_hub_id: null, 
-    dest_hub_id: null, 
-    service_type: 'STANDARD', 
+    scope_type: 'ZONE',
+    from_province_id: null, 
+    to_province_id: null, 
+    zone_name: null,
+    service_type: 'CPN', 
     min_weight: 0, 
     max_weight: 0.5, 
     price: 30000, 
+    pricing_method: 'FIXED',
+    base_weight: null,
+    increment_weight: null,
+    increment_price: null,
+    fuel_surcharge_percent: 10,
+    vat_percent: 8,
     is_active: true 
   });
   dialogVisible.value = true;
@@ -904,10 +1294,60 @@ const getPolicyName = (policyId) => {
   return policy ? policy.policy_code : `#${policyId}`;
 };
 
+const getProvinceName = (provinceId) => {
+  const province = provinces.value.find(p => p.id === Number(provinceId));
+  return province ? province.name : `Tỉnh #${provinceId || '---'}`;
+};
+
+const isZoneRule = (row) => Boolean(row?.zone_name);
+
+const getZoneSummary = (zoneName) => {
+  if (!zoneName) return 'Chưa có thông tin zone';
+
+  const matches = provinceZones.value.filter(zone => zone.zone_name === zoneName);
+  if (!matches.length) return 'Quy tắc giá theo zone';
+
+  const originNames = [...new Set(matches.map(zone => getProvinceName(zone.origin_province_id)))];
+  const destinationCount = new Set(matches.map(zone => zone.destination_province_id)).size;
+  const originLabel = originNames.length === 1 ? originNames[0] : `${originNames.length} tỉnh gửi`;
+
+  return `${originLabel} -> ${destinationCount} tỉnh nhận`;
+};
+
+const getPackingTypeLabel = (type) => {
+  const map = {
+    WOOD: 'Đóng kiện gỗ',
+    FOAM: 'Đóng kiện xốp'
+  };
+  return map[type] || type;
+};
+
+const getServiceFeeTypeLabel = (type) => {
+  const map = {
+    FIXED: 'Giá cố định',
+    PERCENT: 'Phần trăm',
+    PER_ITEM: 'Theo sản phẩm'
+  };
+  return map[type] || type;
+};
+
+const getCalculationBaseLabel = (base) => {
+  const map = {
+    FIXED: 'Theo bill',
+    DECLARED_VALUE: 'Giá trị đơn hàng',
+    COD_AMOUNT: 'Tiền thu hộ COD',
+    MAIN_FEE: 'Cước chính',
+    QUANTITY: 'Số lượng sản phẩm'
+  };
+  return map[base] || base || 'Theo bill';
+};
+
 const refreshAll = () => {
   fetchData();
   fetchPolicies();
   fetchServices();
+  fetchProvinceZones();
+  fetchPackingRules();
 };
 
 // ================= HÀM CHO CƯỚC CHÍNH =================
@@ -923,12 +1363,194 @@ const fetchData = async () => {
   }
 };
 
-const resetFilters = () => { filter.service_type = ''; filterHubId.value = null; };
+const resetFilters = () => { filter.service_type = ''; filterProvinceId.value = null; };
+
+const createExtraRateRow = () => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  min_weight: 0,
+  max_weight: 0.5,
+  price: 30000
+});
+
+const addExtraRateRow = () => {
+  const last = extraRateRows.value[extraRateRows.value.length - 1] || ruleForm;
+  const minWeight = Number(last.max_weight || 0);
+  extraRateRows.value.push({
+    ...createExtraRateRow(),
+    min_weight: minWeight,
+    max_weight: Number((minWeight + 0.5).toFixed(2)),
+    price: Number(last.price || ruleForm.price || 30000)
+  });
+};
+
+const removeExtraRateRow = (index) => {
+  extraRateRows.value.splice(index, 1);
+};
 
 const openDialog = (row) => {
-  if (row) Object.assign(ruleForm, row);
-  else Object.assign(ruleForm, { rule_id: null, policy_id: policies.value[0]?.policy_id || 1, origin_hub_id: null, dest_hub_id: null, service_type: 'STANDARD', min_weight: 0, max_weight: 0.5, price: 30000, is_active: true });
+  extraRateRows.value = [];
+  if (row) Object.assign(ruleForm, { ...row, scope_type: row.zone_name ? 'ZONE' : 'PROVINCE' });
+  else Object.assign(ruleForm, { rule_id: null, policy_id: policies.value[0]?.policy_id || 1, scope_type: 'ZONE', from_province_id: null, to_province_id: null, zone_name: null, service_type: 'CPN', min_weight: 0, max_weight: 0.5, price: 30000, pricing_method: 'FIXED', base_weight: null, increment_weight: null, increment_price: null, fuel_surcharge_percent: 10, vat_percent: 8, is_active: true });
   dialogVisible.value = true;
+};
+
+const fetchProvinceZones = async () => {
+  zoneLoading.value = true;
+  try {
+    const res = await api.get('/api/pricing/zones');
+    provinceZones.value = res.data || [];
+  } catch (err) {
+    ElMessage.error('Không tải được danh sách phân vùng tỉnh');
+  } finally {
+    zoneLoading.value = false;
+  }
+};
+
+const fetchPackingRules = async () => {
+  packingLoading.value = true;
+  try {
+    const res = await api.get('/api/pricing/packing-rules');
+    packingRules.value = res.data || [];
+  } catch (err) {
+    ElMessage.error('Không tải được danh sách phí đóng kiện');
+  } finally {
+    packingLoading.value = false;
+  }
+};
+
+const openPackingDialog = (row) => {
+  if (row) Object.assign(packingForm, row);
+  else Object.assign(packingForm, {
+    id: null,
+    packing_type: 'WOOD',
+    min_weight: 0,
+    max_weight: 5,
+    packing_fee: 30000,
+    added_weight: 6,
+    is_active: true
+  });
+  packingDialogVisible.value = true;
+};
+
+const handleSavePacking = async () => {
+  if (!packingFormRef.value) return;
+  await packingFormRef.value.validate(async (valid) => {
+    if (!valid) return;
+    if (packingForm.min_weight >= packingForm.max_weight) {
+      ElMessage.error('Khối lượng tối thiểu phải nhỏ hơn tối đa');
+      return;
+    }
+    packingSaveLoading.value = true;
+    try {
+      if (packingForm.id) {
+        await api.put(`/api/pricing/packing-rules/${packingForm.id}`, packingForm);
+        ElMessage.success('Đã cập nhật mốc phí đóng kiện');
+      } else {
+        await api.post('/api/pricing/packing-rules', packingForm);
+        ElMessage.success('Đã thêm mốc phí đóng kiện');
+      }
+      packingDialogVisible.value = false;
+      fetchPackingRules();
+    } catch (err) {
+      ElMessage.error(err.response?.data?.detail || 'Không thể lưu phí đóng kiện');
+    } finally {
+      packingSaveLoading.value = false;
+    }
+  });
+};
+
+const togglePackingStatus = async (row) => {
+  try {
+    await api.put(`/api/pricing/packing-rules/${row.id}`, row);
+    ElMessage.success('Đã cập nhật trạng thái phí đóng kiện');
+  } catch (err) {
+    row.is_active = !row.is_active;
+    ElMessage.error('Không thể cập nhật trạng thái phí đóng kiện');
+  }
+};
+
+const handleDeletePacking = (row) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn xóa mốc phí <strong>${getPackingTypeLabel(row.packing_type)} ${row.min_weight}-${row.max_weight}kg</strong>?`,
+    'Xác nhận xóa',
+    {
+      confirmButtonText: 'Xóa mốc phí',
+      cancelButtonText: 'Hủy bỏ',
+      type: 'warning',
+      dangerouslyUseHTMLString: true,
+      customClass: 'modern-message-box'
+    }
+  ).then(async () => {
+    try {
+      await api.delete(`/api/pricing/packing-rules/${row.id}`);
+      ElMessage.success('Đã xóa mốc phí đóng kiện');
+      fetchPackingRules();
+    } catch (err) {
+      ElMessage.error('Không thể xóa mốc phí đóng kiện');
+    }
+  }).catch(() => {});
+};
+
+const openZoneDialog = () => {
+  Object.assign(zoneForm, {
+    origin_province_id: null,
+    destination_province_ids: [],
+    zone_name: ''
+  });
+  zoneDialogVisible.value = true;
+};
+
+const handleSaveZone = async () => {
+  if (!zoneFormRef.value) return;
+  await zoneFormRef.value.validate(async (valid) => {
+    if (!valid) return;
+    zoneSaveLoading.value = true;
+    try {
+      const requests = zoneForm.destination_province_ids.map((provinceId) => api.post('/api/pricing/zones', {
+        origin_province_id: zoneForm.origin_province_id,
+        destination_province_id: provinceId,
+        zone_name: zoneForm.zone_name
+      }));
+      const results = await Promise.allSettled(requests);
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+      if (successCount > 0) {
+        ElMessage.success(`Đã thêm ${successCount} phân vùng tỉnh`);
+      }
+      if (failedCount > 0) {
+        ElMessage.warning(`${failedCount} phân vùng chưa lưu được, vui lòng kiểm tra trùng lặp hoặc dữ liệu nhập`);
+      }
+      zoneDialogVisible.value = false;
+      fetchProvinceZones();
+    } catch (err) {
+      ElMessage.error(err.response?.data?.detail || 'Không thể lưu phân vùng tỉnh');
+    } finally {
+      zoneSaveLoading.value = false;
+    }
+  });
+};
+
+const handleDeleteZone = (row) => {
+  const routeLabel = `${getProvinceName(row.origin_province_id)} → ${getProvinceName(row.destination_province_id)}`;
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn xóa phân vùng <strong>${routeLabel}</strong>?`,
+    'Xác nhận xóa',
+    {
+      confirmButtonText: 'Xóa phân vùng',
+      cancelButtonText: 'Hủy bỏ',
+      type: 'warning',
+      dangerouslyUseHTMLString: true,
+      customClass: 'modern-message-box'
+    }
+  ).then(async () => {
+    try {
+      await api.delete(`/api/pricing/zones/${row.id}`);
+      ElMessage.success('Đã xóa phân vùng tỉnh');
+      fetchProvinceZones();
+    } catch (err) {
+      ElMessage.error('Không thể xóa phân vùng tỉnh');
+    }
+  }).catch(() => {});
 };
 
 const handleSave = async () => {
@@ -937,11 +1559,53 @@ const handleSave = async () => {
     if (valid) {
       saveLoading.value = true;
       try {
+        if (ruleForm.scope_type === 'PROVINCE' && (!ruleForm.from_province_id || !ruleForm.to_province_id)) {
+          ElMessage.error('Vui lòng chọn tỉnh/thành gửi và tỉnh/thành nhận');
+          saveLoading.value = false;
+          return;
+        }
+        const payload = { ...ruleForm };
+        delete payload.scope_type;
+        if (ruleForm.scope_type === 'ZONE') {
+          payload.from_province_id = null;
+          payload.to_province_id = null;
+        } else {
+          payload.zone_name = null;
+        }
         if (ruleForm.rule_id) {
-          await api.put(`/api/pricing/rules/${ruleForm.rule_id}`, ruleForm);
+          await api.put(`/api/pricing/rules/${ruleForm.rule_id}`, payload);
           ElMessage.success('Cập nhật quy tắc giá thành công!');
         } else {
-          await api.post('/api/pricing/rules', ruleForm);
+          const rateRows = [
+            { min_weight: ruleForm.min_weight, max_weight: ruleForm.max_weight, price: ruleForm.price },
+            ...extraRateRows.value
+          ];
+          const invalidRowIndex = rateRows.findIndex(row => Number(row.min_weight) >= Number(row.max_weight) || Number(row.price) < 1000);
+          if (invalidRowIndex >= 0) {
+            ElMessage.error(`Mốc cước #${invalidRowIndex + 1} chưa hợp lệ. Kiểm tra khối lượng và giá cước.`);
+            saveLoading.value = false;
+            return;
+          }
+
+          const requests = rateRows.map(row => {
+            const rowPayload = {
+              ...payload,
+              min_weight: Number(row.min_weight),
+              max_weight: Number(row.max_weight),
+              price: Number(row.price)
+            };
+            delete rowPayload.id;
+            return api.post('/api/pricing/rules', rowPayload);
+          });
+          const results = await Promise.allSettled(requests);
+          const successCount = results.filter(r => r.status === 'fulfilled').length;
+          const failedCount = results.length - successCount;
+          if (successCount > 0) ElMessage.success(`Đã thêm ${successCount} mốc cước`);
+          if (failedCount > 0) ElMessage.warning(`${failedCount} mốc cước chưa lưu được, vui lòng kiểm tra trùng lặp`);
+          if (successCount === 0) {
+            saveLoading.value = false;
+            return;
+          }
           ElMessage.success('Thêm quy tắc giá mới thành công!');
         }
         dialogVisible.value = false;
@@ -956,7 +1620,7 @@ const handleSave = async () => {
 };
 
 const handleDelete = (row) => {
-  const routeLabel = `${row.origin_hub?.hub_name || row.origin_hub_id} → ${row.dest_hub?.hub_name || row.dest_hub_id}`;
+  const routeLabel = `${getProvinceName(row.from_province_id)} → ${getProvinceName(row.to_province_id)}`;
   ElMessageBox.confirm(
     `Bạn có chắc chắn muốn xóa quy tắc giá cho tuyến <strong>${routeLabel}</strong>?`, 
     'Xác nhận xóa', 
@@ -993,7 +1657,18 @@ const fetchServices = async () => {
 
 const openServiceDialog = (row) => {
   if (row) Object.assign(serviceForm, row);
-  else Object.assign(serviceForm, { id: null, service_code: '', service_name: '', fee_type: 'FIXED', fee_value: 0, is_active: true });
+  else Object.assign(serviceForm, {
+    id: null,
+    service_code: '',
+    service_name: '',
+    fee_type: 'FIXED',
+    fee_value: 0,
+    calculation_base: 'FIXED',
+    min_order_value: null,
+    max_order_value: null,
+    min_fee: null,
+    is_active: true
+  });
   serviceDialogVisible.value = true;
 };
 
@@ -1003,6 +1678,15 @@ const handleSaveService = async () => {
     if (valid) {
       serviceSaveLoading.value = true;
       try {
+        if (
+          serviceForm.min_order_value !== null &&
+          serviceForm.max_order_value !== null &&
+          serviceForm.min_order_value >= serviceForm.max_order_value
+        ) {
+          ElMessage.error('Giá trị từ phải nhỏ hơn giá trị đến');
+          serviceSaveLoading.value = false;
+          return;
+        }
         if (serviceForm.id) {
           await api.put(`/api/pricing/extra-services/${serviceForm.id}`, serviceForm);
           ElMessage.success('Cập nhật dịch vụ thành công!');
@@ -1103,18 +1787,34 @@ const handleSavePolicy = async () => {
   });
 };
 
-const fetchHubs = async () => {
+const normalizeProvince = (item) => ({
+  id: Number(item.Id || item.id || item.code),
+  name: item.Name || item.name
+});
+
+const fetchProvinces = async () => {
   try {
-    const res = await api.get('/api/hubs');
-    hubs.value = res.data.items || res.data || [];
-  } catch (err) { ElMessage.error('Không tải được danh sách bưu cục'); }
+    const res = await fetch('/vietnam-address.json');
+    const data = await res.json();
+    provinces.value = (data || []).map(normalizeProvince).filter(p => p.id && p.name);
+  } catch (localErr) {
+    try {
+      const res = await fetch('https://provinces.open-api.vn/api/?depth=1');
+      const data = await res.json();
+      provinces.value = (data || []).map(normalizeProvince).filter(p => p.id && p.name);
+    } catch (err) {
+      ElMessage.error('Không tải được danh sách tỉnh/thành');
+    }
+  }
 };
 
 onMounted(() => {
   fetchData();
   fetchServices(); 
   fetchPolicies();
-  fetchHubs();
+  fetchProvinceZones();
+  fetchPackingRules();
+  fetchProvinces();
 });
 </script>
 
