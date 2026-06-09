@@ -695,6 +695,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { 
   Search, Plus, Printer, Download, MoreFilled, Check, Edit, Delete, 
   Location, LocationInformation, Tickets, RefreshRight, Van, User, 
@@ -705,6 +706,7 @@ import api from '@/api/axios';
 import moment from 'moment';
 import { useAuthStore } from '@/stores/auth';
 
+const route = useRoute();
 const auth = useAuthStore();
 const customers = ref([]);
 const loading = ref(false);
@@ -1190,6 +1192,10 @@ const submitTransfer = async () => {
 };
 
 onMounted(() => {
+  const searchCode = route.query.search;
+  if (searchCode) {
+    searchQuery.value = String(searchCode).trim();
+  }
   handleSearch();
   fetchSLAStats();
   fetchHubsAndShippers();

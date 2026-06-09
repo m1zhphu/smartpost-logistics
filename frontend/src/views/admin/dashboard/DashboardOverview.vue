@@ -146,14 +146,17 @@
               <div class="card-header borderless">
                 <h3>Hoạt động gần đây</h3>
               </div>
-              <div class="timeline">
-                <div v-for="i in 3" :key="i" class="timeline-item">
-                  <div class="timeline-marker" :class="['marker-primary', 'marker-warning', 'marker-success'][i-1]"></div>
+              <div class="timeline" v-if="activities && activities.length > 0">
+                <div v-for="act in activities" :key="act.id" class="timeline-item animate-fade-in clickable-activity" @click="goToActivityDetails(act)" title="Nhấn để xem chi tiết đơn hàng">
+                  <div class="timeline-marker" :class="`marker-${act.type}`"></div>
                   <div class="timeline-content">
-                    <p>Bảng giá <strong>{{ ['Express', 'Standard', 'Bulk'][i-1] }}</strong> vừa được cập nhật tự động</p>
-                    <span class="time">{{ i * 5 }} phút trước</span>
+                    <p v-html="act.message"></p>
+                    <span class="time">{{ act.time }}</span>
                   </div>
                 </div>
+              </div>
+              <div class="timeline-empty" v-else>
+                <el-empty description="Chưa có hoạt động nào" :image-size="60" />
               </div>
             </div>
             
@@ -165,9 +168,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
+import { useRouter } from 'vue-router';
 import api from '@/api/axios';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElNotification } from 'element-plus';
 import { 
   Refresh, Box, Money, Check, Top, Warning, 
   CircleCheck, Plus, List, Van, Wallet, Timer, TrendCharts, User, CaretBottom, CaretTop, Calendar
@@ -175,6 +179,7 @@ import {
 import moment from 'moment';
 import { useAuthStore } from '@/stores/auth';
 
+const router = useRouter();
 const authStore = useAuthStore();
 const userName = computed(() => authStore.user?.full_name || authStore.user?.username || 'Nhân viên');
 
@@ -236,6 +241,181 @@ const statConfig = computed(() => [
   }
 ]);
 
+const loadActivities = () => {
+  const stored = localStorage.getItem('dashboard_activities');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      // Lọc bỏ các hoạt động mock cũ nếu có
+      return Array.isArray(parsed) ? parsed.filter(act => act && !String(act.id).startsWith('mock-')) : [];
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return [];
+};
+
+const activities = ref(loadActivities());
+
+const saveActivities = () => {
+  localStorage.setItem('dashboard_activities', JSON.stringify(activities.value));
+};
+
+let socket = null;
+
+const connectWebSocket = () => {
+  const token = authStore.token;
+  if (!token) return;
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  let wsUrl = '';
+  const apiURL = import.meta.env.VITE_API_URL || '';
+  if (apiURL) {
+    wsUrl = apiURL.replace(/^http/, 'ws') + `/ws/realtime?token=${token}`;
+  } else {
+    // Kết nối trực tiếp đến cổng 8000 của backend trên 127.0.0.1 (tránh lỗi IPv6 loopback của localhost trên Windows)
+    // Và không cần sửa config backend hay khởi động lại Vite dev server
+    wsUrl = `${protocol}//127.0.0.1:8000/ws/realtime?token=${token}`;
+  }
+
+  socket = new WebSocket(wsUrl);
+
+  socket.onopen = () => {
+    console.log('Dashboard WebSocket connected successfully');
+  };
+
+  socket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      handleWsEvent(data);
+    } catch (e) {
+      console.error('Error parsing WS message:', e);
+    }
+  };
+
+  socket.onclose = (event) => {
+    console.log(`Dashboard WebSocket closed. Code: ${event.code}, Reason: ${event.reason}. Reconnecting...`);
+    setTimeout(connectWebSocket, 5000);
+  };
+
+  socket.onerror = (err) => {
+    console.error('Dashboard WebSocket error:', err);
+  };
+};
+
+const goToActivityDetails = (act) => {
+  try {
+    console.log('goToActivityDetails clicked:', act);
+    if (!act) return;
+    
+    let code = '';
+    // 1. Lấy mã đơn hàng từ payload
+    if (act.payload && (act.payload.waybill_code || act.payload.request_code)) {
+      code = act.payload.waybill_code || act.payload.request_code;
+    }
+    
+    // 2. Dự phòng: Trích xuất mã đơn hàng từ message bằng regex nếu payload không có
+    if (!code && act.message) {
+      const match = act.message.match(/<strong>([A-Z0-9]+)<\/strong>/i) || act.message.match(/([A-Z0-9]{10,})/i);
+      if (match) {
+        code = match[1];
+        console.log('Regex extracted code:', code);
+      }
+    }
+
+    // 3. Xác định loại sự kiện để chuyển đến trang tương ứng
+    const messageText = act.message ? act.message.toLowerCase() : '';
+    const isPickupEvent = [
+      'pickup.created',
+      'pickup.created_by_admin',
+      'pickup.assigned_shipper',
+      'pickup.picked',
+      'pickup.hub_accepted',
+      'pickup.hub_rejected'
+    ].includes(act.event) || messageText.includes('pickup') || messageText.includes('lấy hàng');
+
+    console.log('Routing details - code:', code, 'isPickupEvent:', isPickupEvent);
+
+    if (isPickupEvent) {
+      router.push({
+        path: '/admin/delivery/pickup-management',
+        query: code ? { search: code } : {}
+      });
+    } else {
+      router.push({
+        path: '/admin/waybills',
+        query: code ? { search: code } : {}
+      });
+    }
+  } catch (err) {
+    console.error('Lỗi khi chuyển hướng chi tiết hoạt động:', err);
+  }
+};
+
+const handleWsEvent = (data) => {
+  const event = data.event;
+  const payload = data.payload || {};
+  
+  let message = '';
+  let type = 'primary'; // 'primary', 'warning', 'success'
+  
+  if (event === 'pickup.created') {
+    message = `Khách hàng vừa yêu cầu pickup đơn mới <strong>${payload.waybill_code || payload.request_code}</strong>`;
+    type = 'primary';
+  } else if (event === 'pickup.created_by_admin') {
+    message = `Admin vừa tạo hộ đơn pickup <strong>${payload.waybill_code || payload.request_code}</strong>`;
+    type = 'primary';
+  } else if (event === 'pickup.price_finalized') {
+    message = `Đơn pickup <strong>${payload.waybill_code || payload.request_code}</strong> đã được chốt giá cước`;
+    type = 'success';
+  } else if (event === 'pickup.assigned_shipper') {
+    message = `Đã gán bưu tá lấy hàng cho đơn <strong>${payload.waybill_code || payload.request_code}</strong>`;
+    type = 'warning';
+  } else if (event === 'pickup.picked') {
+    message = `Bưu tá đã lấy thành công đơn <strong>${payload.waybill_code || payload.request_code}</strong>`;
+    type = 'success';
+  } else if (event === 'pickup.dispatched_to_hub') {
+    message = `Đơn hàng <strong>${payload.waybill_code || payload.request_code}</strong> đã được điều phối đến kho`;
+    type = 'primary';
+  } else if (event === 'pickup.hub_accepted') {
+    message = `Kho đã chấp nhận đơn hàng <strong>${payload.waybill_code || payload.request_code}</strong>`;
+    type = 'success';
+  } else if (event === 'pickup.hub_rejected') {
+    message = `Kho đã từ chối nhận đơn <strong>${payload.waybill_code || payload.request_code}</strong>`;
+    type = 'warning';
+  } else {
+    return;
+  }
+  
+  activities.value.unshift({
+    id: `ws-${Date.now()}-${Math.random()}`,
+    message: message,
+    time: moment().format('HH:mm:ss DD/MM'),
+    type: type,
+    event: event,
+    payload: payload
+  });
+  
+  if (activities.value.length > 10) {
+    activities.value = activities.value.slice(0, 10);
+  }
+  
+  saveActivities();
+  
+  // Show premium notification with click-to-navigate action
+  ElNotification({
+    title: 'Cập nhật đơn hàng',
+    message: message,
+    dangerouslyUseHTMLString: true,
+    type: type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'info'),
+    duration: 8000,
+    position: 'bottom-right',
+    onClick: () => {
+      goToActivityDetails({ event, payload });
+    }
+  });
+};
+
 const refreshData = async () => {
   loading.value = true;
   try {
@@ -250,7 +430,29 @@ const refreshData = async () => {
   }
 };
 
-onMounted(refreshData);
+onMounted(() => {
+  refreshData();
+  connectWebSocket();
+});
+
+onUnmounted(() => {
+  if (socket) {
+    socket.close();
+  }
+});
 </script>
 
 <style scoped src="@/styles/admin/dashboard/DashboardOverview.css"></style>
+
+<style scoped>
+.clickable-activity {
+  cursor: pointer;
+  padding: 8px 12px;
+  margin: -8px -12px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+.clickable-activity:hover {
+  background-color: rgba(67, 24, 255, 0.08);
+}
+</style>

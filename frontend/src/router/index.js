@@ -31,12 +31,7 @@ const publicRoutes = [
     name: 'CustomerTracking',
     component: () => import('../views/customer/tracking/PublicTracking.vue'),
   },
-  {
-    path: '/customer/portal',
-    name: 'CustomerPortal',
-    component: () => import('../views/customer/CustomerPortal.vue'),
-    meta: { requiresAuth: true }
-  },
+
   {
     path: '/',
     redirect: '/login'
@@ -187,9 +182,49 @@ const adminRoutes = [
   },
 ];
 
+const customerRoutes = [
+  {
+    path: '/customer',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'CustomerDashboard',
+        component: () => import('../views/customer/CustomerDashboard.vue'),
+        meta: { title: 'Tổng quan' }
+      },
+      {
+        path: 'create',
+        name: 'CustomerCreatePickup',
+        component: () => import('../views/customer/CustomerCreatePickup.vue'),
+        meta: { title: 'Tạo yêu cầu lấy hàng' }
+      },
+      {
+        path: 'drafts',
+        name: 'CustomerDrafts',
+        component: () => import('../views/customer/CustomerDrafts.vue'),
+        meta: { title: 'Bản nháp & Hàng chờ' }
+      },
+      {
+        path: 'orders',
+        name: 'CustomerOrders',
+        component: () => import('../views/customer/CustomerOrders.vue'),
+        meta: { title: 'Yêu cầu của tôi' }
+      },
+      {
+        path: 'profile',
+        name: 'CustomerProfile',
+        component: () => import('../views/customer/CustomerProfile.vue'),
+        meta: { title: 'Thông tin cá nhân' }
+      }
+    ]
+  }
+];
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [...publicRoutes, ...adminRoutes],
+  routes: [...publicRoutes, ...adminRoutes, ...customerRoutes],
 });
 
 // 4. Navigation Guard
@@ -206,18 +241,18 @@ router.beforeEach((to, from) => {
   // Nếu đã đăng nhập và đang cố vào trang login/admin-login/setup-admin
   if ((to.path === '/login' || to.path === '/admin/login' || to.path === '/setup-admin') && auth.isAuthenticated) {
     if (auth.isCustomer) {
-      return '/customer/portal';
+      return '/customer/dashboard';
     }
     return '/admin/dashboard';
   }
 
   // Chặn khách hàng vào các trang /admin/*
   if (to.path.startsWith('/admin') && auth.isAuthenticated && auth.isCustomer) {
-    return '/customer/portal';
+    return '/customer/dashboard';
   }
 
-  // Chặn nhân viên/admin vào trang /customer/portal
-  if (to.path.startsWith('/customer/portal') && auth.isAuthenticated && !auth.isCustomer) {
+  // Chặn nhân viên/admin vào trang /customer/*
+  if (to.path.startsWith('/customer') && auth.isAuthenticated && !auth.isCustomer) {
     return '/admin/dashboard';
   }
 

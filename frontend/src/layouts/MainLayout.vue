@@ -72,7 +72,11 @@
                  <el-avatar :size="40" class="modern-avatar">{{ user?.full_name?.charAt(0) || 'A' }}</el-avatar>
                  <div class="user-display-name">
                     <span class="fw-bold text-dark">{{ user?.full_name || 'Quản trị viên' }}</span>
-                    <span class="text-xs text-muted">{{ isAdmin ? 'Administrator' : 'Nhân viên' }}</span>
+                    <span class="text-xs text-muted" v-if="userHubName">
+                      <el-icon style="vertical-align: middle; margin-right: 2px;"><Location /></el-icon>
+                      <span style="vertical-align: middle;">{{ userHubName }}</span>
+                    </span>
+                    <span class="text-xs text-muted" v-else>{{ isAdmin ? 'Administrator' : 'Nhân viên' }}</span>
                  </div>
                  <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
                </div>
@@ -81,7 +85,7 @@
                  <el-dropdown-menu class="modern-dropdown">
                    <div class="dropdown-header">
                       <div class="fw-bold text-dark">{{ user?.full_name || 'Quản trị viên' }}</div>
-                      <div class="text-xs text-muted">@{{ user?.username || 'admin' }}</div>
+                      <div class="text-xs text-muted">@{{ user?.username || 'admin' }} <span v-if="userHubName">| {{ userHubName }}</span></div>
                    </div>
                    <el-dropdown-item divided @click="handleLogout" class="text-danger">
                       <el-icon><Close /></el-icon> Đăng xuất
@@ -107,10 +111,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { storeToRefs } from 'pinia';
+import api from '@/api/axios';
 import { 
   Monitor, Management, Document, Box, Bicycle, Money, 
   Close, Search, HomeFilled, ArrowDown, User, Collection, Location, List, TrendCharts, Service, Fold, Expand
@@ -136,6 +141,27 @@ const handleMenuSelect = () => {
     }, 100);
   }
 };
+
+// Fetch Hub Name
+const userHubName = ref('');
+
+onMounted(async () => {
+  if (user.value) {
+    try {
+      const res = await api.get('/api/auth/me');
+      if (res.data?.primary_hub?.hub_name) {
+        userHubName.value = res.data.primary_hub.hub_name;
+      } else if (res.data?.primary_hub_id) {
+         // Fallback if primary_hub object doesn't exist but we have the ID
+         const hubRes = await api.get(`/api/hubs`);
+         const myHub = hubRes.data.find(h => h.hub_id === res.data.primary_hub_id);
+         if (myHub) userHubName.value = myHub.hub_name;
+      }
+    } catch (e) {
+      console.error('Không thể lấy thông tin bưu cục', e);
+    }
+  }
+});
 
 // Menu động dựa vào role_id của user
 const menuData = computed(() => {
@@ -193,7 +219,9 @@ const menuData = computed(() => {
         ]}
       ] : [
         { title: 'LẤY HÀNG (PICKUP)', items: [
-          { label: 'Điều phối Lấy hàng', path: '/admin/delivery/pickup-management' }
+          { label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' },
+          { label: 'Chờ gán bưu tá', path: '/admin/delivery/pickup-management?tab=received' },
+          { label: 'Đang đi lấy', path: '/admin/delivery/pickup-management?tab=assigned' }
         ]},
         { title: 'GIAO HÀNG', items: [
           { label: 'Phân công Shipper', path: '/admin/delivery/assign' }
@@ -220,11 +248,27 @@ const menuData = computed(() => {
           { label: 'Mô phỏng giá cước', path: '/admin/pricing/simulator' }
         ]}
       ]
+    },
+    {
+      id: 'customer_portal', icon: HomeFilled, label: 'Cổng Khách Hàng', roles: [6], // Khách hàng
+      children: [
+        { title: 'TỔNG QUAN', items: [
+          { label: 'Bảng điều khiển', path: '/customer/dashboard' },
+        ]},
+        { title: 'VẬN ĐƠN', items: [
+          { label: 'Tạo yêu cầu lấy hàng', path: '/customer/create' },
+          { label: 'Bản nháp & Hàng chờ', path: '/customer/drafts' },
+          { label: 'Yêu cầu của tôi', path: '/customer/orders' },
+        ]},
+        { title: 'TÀI KHOẢN', items: [
+          { label: 'Thông tin cá nhân', path: '/customer/profile' },
+        ]}
+      ]
     }
   ];
 
   if (!role) return [];
-  return allMenus.filter(menu => menu.roles.includes(role));
+  return allMenus.filter(m => m.roles.includes(role));
 });
 
 const currentPageTitle = computed(() => {

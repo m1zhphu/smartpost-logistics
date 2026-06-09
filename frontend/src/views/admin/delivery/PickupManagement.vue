@@ -65,56 +65,85 @@
             </div>
 
             <el-table 
-              :data="filteredPending" 
+              :data="groupedPending" 
               v-loading="loading" 
               class="modern-table" 
               @selection-change="handleSelectionChange"
               stripe
             >
               <el-table-column type="selection" width="55" align="center" />
-              <el-table-column prop="request_code" label="Mã Yêu Cầu" width="150">
+              <el-table-column type="expand">
                 <template #default="{ row }">
-                  <span class="code-badge warning">{{ row.request_code }}</span>
+                  <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
+                    <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                      <el-icon><List /></el-icon> Danh sách đơn chi tiết ({{ row.requests.length }} đơn)
+                    </h4>
+                    <el-table :data="row.requests" class="modern-table inner-table" size="small" border stripe>
+                      <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
+                        <template #default="scope">
+                          <el-link type="warning" class="fw-bold" @click="viewRequestDetails(scope.row)">
+                            {{ scope.row.request_code }}
+                          </el-link>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Mã Vận Đơn" width="140">
+                        <template #default="scope">
+                          <span v-if="getWaybillCode(scope.row)" class="code-badge info text-xs" style="background: rgba(67, 24, 255, 0.1); color: #4318ff;">
+                            {{ getWaybillCode(scope.row) }}
+                          </span>
+                          <span v-else class="text-muted text-xs">Chưa có</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Ước tính" width="140" align="center">
+                        <template #default="scope">
+                          <div class="text-xs">KL: <strong>{{ scope.row.est_weight }} kg</strong> | SL: <strong>{{ scope.row.est_quantity }} kiện</strong></div>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Độ ưu tiên" width="120" align="center">
+                        <template #default="scope">
+                          <el-tag :type="getPriorityType(scope.row.priority)" size="small" effect="dark">{{ scope.row.priority }}</el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Ngày hẹn" width="140" align="center">
+                        <template #default="scope">
+                          <span class="text-xs">{{ formatDate(scope.row.created_at) }}</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Thao tác" width="120" align="center" fixed="right">
+                        <template #default="scope">
+                          <el-button type="info" size="small" plain @click="viewRequestDetails(scope.row)">Chi tiết</el-button>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
                 </template>
               </el-table-column>
-              <el-table-column label="Nguồn đơn" width="130" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">
-                    {{ row.source || 'PORTAL' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="Người gửi / Shop" min-width="160">
+              
+              <el-table-column label="Khách hàng / Shop" min-width="200">
                 <template #default="{ row }">
                   <div class="sender-info">
-                    <span class="fw-bold text-dark">{{ row.customer_name || 'Khách vãng lai' }}</span>
-                    <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.sender_phone }}</span>
+                    <span class="fw-bold text-dark">{{ row.customer_name }}</span>
+                    <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.customer_phone }}</span>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="Địa chỉ lấy hàng" min-width="220" show-overflow-tooltip>
+              <el-table-column label="Nguồn" width="110" align="center">
                 <template #default="{ row }">
-                  <span class="address-text">{{ row.pickup_address }}</span>
+                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="Ước tính" width="140" align="center">
+              <el-table-column label="Địa chỉ lấy hàng" min-width="250" show-overflow-tooltip prop="pickup_address" />
+              <el-table-column label="Tổng số đơn" width="120" align="center">
                 <template #default="{ row }">
-                  <div class="text-xs">
-                    <div>KL: <strong>{{ row.est_weight }} kg</strong></div>
-                    <div>SL: <strong>{{ row.est_quantity }} kiện</strong></div>
-                  </div>
+                  <el-tag type="warning" effect="dark" size="large" style="font-weight: bold; font-size: 14px;">{{ row.requests.length }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="Ngày hẹn" width="150" align="center">
+              <el-table-column label="Tổng khối lượng" width="140" align="center">
                 <template #default="{ row }">
-                  <span class="text-xs">{{ formatDate(row.created_at) }}</span>
+                  <span class="fw-bold" style="color: #4318ff;">{{ row.total_weight.toFixed(1) }} kg</span>
                 </template>
               </el-table-column>
-              <el-table-column label="Độ ưu tiên" width="120" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getPriorityType(row.priority)" size="small" effect="dark">{{ row.priority }}</el-tag>
-                </template>
-              </el-table-column>
+              
               <template #empty>
                 <el-empty description="Không có yêu cầu nào chờ xác nhận văn phòng" :image-size="100" />
               </template>
@@ -158,55 +187,85 @@
             </div>
 
             <el-table 
-              :data="filteredReceived" 
+              :data="groupedReceived" 
               v-loading="loading" 
               class="modern-table" 
               stripe
             >
-              <el-table-column prop="request_code" label="Mã Yêu Cầu" width="150">
+              <el-table-column type="expand">
                 <template #default="{ row }">
-                  <span class="code-badge success">{{ row.request_code }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column label="Nguồn đơn" width="120" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">
-                    {{ row.source || 'PORTAL' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="Người gửi / Shop" min-width="160">
-                <template #default="{ row }">
-                  <div class="sender-info">
-                    <span class="fw-bold text-dark">{{ row.customer_name || 'Khách vãng lai' }}</span>
-                    <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.sender_phone }}</span>
+                  <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
+                    <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                      <el-icon><List /></el-icon> Danh sách đơn chi tiết chờ lấy ({{ row.requests.length }} đơn)
+                    </h4>
+                    <el-table :data="row.requests" class="modern-table inner-table" size="small" border stripe>
+                      <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
+                        <template #default="scope">
+                          <el-link type="success" class="fw-bold" @click="viewRequestDetails(scope.row)">
+                            {{ scope.row.request_code }}
+                          </el-link>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Mã Vận Đơn" width="140">
+                        <template #default="scope">
+                          <span v-if="getWaybillCode(scope.row)" class="code-badge info text-xs" style="background: rgba(67, 24, 255, 0.1); color: #4318ff;">
+                            {{ getWaybillCode(scope.row) }}
+                          </span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Văn phòng nhận" width="150" show-overflow-tooltip>
+                        <template #default="scope">
+                          <span class="fw-bold text-primary">{{ scope.row.target_hub_name || getHubName(scope.row.target_hub_id) || 'N/A' }}</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="notes" label="Ghi chú khách" min-width="120" show-overflow-tooltip />
+                      <el-table-column label="Thao tác" width="220" align="center" fixed="right">
+                        <template #default="scope">
+                          <div class="flex justify-center gap-2">
+                            <el-button type="info" size="small" plain @click="viewRequestDetails(scope.row)">Chi tiết</el-button>
+                            <el-button type="primary" size="small" plain @click="openAssignShipperDialog(scope.row)">
+                              <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá
+                            </el-button>
+                          </div>
+                        </template>
+                      </el-table-column>
+                    </el-table>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="Địa chỉ lấy hàng" min-width="220" show-overflow-tooltip>
+              
+              <el-table-column label="Khách hàng / Shop" min-width="200">
                 <template #default="{ row }">
-                  <span class="address-text">{{ row.pickup_address }}</span>
+                  <div class="sender-info">
+                    <span class="fw-bold text-dark">{{ row.customer_name }}</span>
+                    <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.customer_phone }}</span>
+                  </div>
                 </template>
               </el-table-column>
-              <el-table-column label="Văn phòng nhận" width="160" show-overflow-tooltip>
+              <el-table-column label="Nguồn" width="110" align="center">
                 <template #default="{ row }">
-                  <span class="fw-bold text-primary">{{ row.target_hub_name || getHubName(row.target_hub_id) || 'N/A' }}</span>
+                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="notes" label="Ghi chú khách" min-width="150" show-overflow-tooltip />
-              <el-table-column label="Thao tác" width="150" align="center" fixed="right">
+              <el-table-column label="Địa chỉ lấy hàng" min-width="250" show-overflow-tooltip prop="pickup_address" />
+              <el-table-column label="Tổng số đơn" width="120" align="center">
                 <template #default="{ row }">
-                  <el-button 
-                    type="primary" 
-                    size="small" 
-                    plain 
-                    @click="openAssignShipperDialog(row)"
-                  >
-                    <el-icon class="mr-1"><Bicycle /></el-icon>
-                    <span>Gán bưu tá</span>
+                  <el-tag type="primary" effect="dark" size="large" style="font-weight: bold; font-size: 14px;">{{ row.requests.length }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="Tổng khối lượng" width="140" align="center">
+                <template #default="{ row }">
+                  <span class="fw-bold" style="color: #4318ff;">{{ row.total_weight.toFixed(1) }} kg</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="Thao tác chung" width="160" align="center" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="primary" size="small" @click="openGroupAssignShipperDialog(row)">
+                    <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá tất cả
                   </el-button>
                 </template>
               </el-table-column>
+
               <template #empty>
                 <el-empty description="Không có yêu cầu lấy hàng nào tại văn phòng của bạn" :image-size="100" />
               </template>
@@ -255,15 +314,22 @@
               class="modern-table" 
               stripe
             >
-              <el-table-column prop="request_code" label="Mã Yêu Cầu" width="150">
+              <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
                 <template #default="{ row }">
-                  <span class="code-badge info">{{ row.request_code }}</span>
+                  <div class="flex flex-col gap-1">
+                    <el-link type="info" class="fw-bold" style="font-size: 13px;" @click="viewRequestDetails(row)">
+                      {{ row.request_code }}
+                    </el-link>
+                    <span v-if="getWaybillCode(row)" class="code-badge info text-xs" style="background: rgba(67, 24, 255, 0.1); color: #4318ff; display: inline-block; width: max-content;">
+                      {{ getWaybillCode(row) }}
+                    </span>
+                  </div>
                 </template>
               </el-table-column>
               <el-table-column label="Người gửi / Shop" min-width="160">
                 <template #default="{ row }">
                   <div class="sender-info">
-                    <span class="fw-bold text-dark">{{ row.customer_name || 'Khách vãng lai' }}</span>
+                    <span class="fw-bold text-dark">{{ getCustomerName(row) }}</span>
                     <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.sender_phone }}</span>
                   </div>
                 </template>
@@ -287,16 +353,26 @@
                   <span class="text-xs">{{ formatDate(row.pickup_assigned_at || row.created_at) }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="Thao tác" width="180" align="center" fixed="right">
+              <el-table-column label="Thao tác" width="260" align="center" fixed="right">
                 <template #default="{ row }">
-                  <el-button 
-                    type="success" 
-                    size="small" 
-                    @click="openPickedDialog(row)"
-                  >
-                    <el-icon class="mr-1"><Check /></el-icon>
-                    <span>Xác nhận đã lấy</span>
-                  </el-button>
+                  <div class="flex justify-center gap-2">
+                    <el-button 
+                      type="info" 
+                      size="small" 
+                      plain
+                      @click="viewRequestDetails(row)"
+                    >
+                      Chi tiết
+                    </el-button>
+                    <el-button 
+                      type="success" 
+                      size="small" 
+                      @click="openPickedDialog(row)"
+                    >
+                      <el-icon class="mr-1"><Check /></el-icon>
+                      <span>Xác nhận đã lấy</span>
+                    </el-button>
+                  </div>
                 </template>
               </el-table-column>
               <template #empty>
@@ -760,18 +836,263 @@
         </template>
       </el-dialog>
 
+      <!-- Dialog: Chi tiết yêu cầu lấy hàng -->
+      <el-dialog 
+        v-model="detailDialogVisible" 
+        title="Chi tiết yêu cầu lấy hàng" 
+        width="750px"
+        destroy-on-close
+      >
+        <div v-if="selectedRequest" class="detail-dialog-content" v-loading="detailLoading">
+          <!-- Header Status Cards -->
+          <div class="flex justify-between items-center mb-4 p-3 rounded" style="background: var(--bg-hover, #f8fafc);">
+            <div>
+              <span class="text-xs text-muted block mb-1">MÃ YÊU CẦU</span>
+              <strong class="text-lg text-primary" style="color: var(--sp-primary, #4318ff);">{{ selectedRequest.request_code }}</strong>
+            </div>
+            <div class="text-right">
+              <span class="text-xs text-muted block mb-1">TRẠNG THÁI</span>
+              <el-tag :type="getStatusTagType(selectedRequest.status)" effect="dark" class="fw-bold">
+                {{ getStatusLabel(selectedRequest.status) }}
+              </el-tag>
+            </div>
+          </div>
+
+          <el-tabs v-model="detailActiveTab">
+            <el-tab-pane label="Thông tin chung" name="info">
+              <!-- Row 1: Người gửi & Người nhận -->
+              <el-row :gutter="20" class="mt-2">
+                <el-col :span="12">
+                  <h4 class="section-title"><el-icon class="mr-1"><User /></el-icon> Thông tin người gửi</h4>
+                  <div class="info-card">
+                    <div class="info-row">
+                      <span class="label">Khách hàng:</span>
+                      <span class="value fw-bold">{{ getCustomerName(selectedRequest) }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Mã khách:</span>
+                      <span class="value">{{ selectedRequest.customer_code || 'Khách vãng lai' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Số điện thoại:</span>
+                      <span class="value">{{ selectedRequest.sender_phone || 'N/A' }}</span>
+                    </div>
+                    <div class="info-row flex-column items-start">
+                      <span class="label mb-1">Địa chỉ lấy hàng:</span>
+                      <span class="value text-left text-xs" style="max-width: 100%; text-align: left;">{{ selectedRequest.pickup_address }}</span>
+                    </div>
+                  </div>
+                </el-col>
+                
+                <el-col :span="12">
+                  <h4 class="section-title"><el-icon class="mr-1"><User /></el-icon> Thông tin người nhận</h4>
+                  <div class="info-card">
+                    <div class="info-row">
+                      <span class="label">Họ tên người nhận:</span>
+                      <span class="value fw-bold">{{ waybillDetail?.receiver_name || 'Chưa liên kết vận đơn' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Số điện thoại nhận:</span>
+                      <span class="value">{{ waybillDetail?.receiver_phone || 'Chưa liên kết' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Tỉnh/Thành:</span>
+                      <span class="value">{{ parseAddress(waybillDetail?.receiver_address).province || 'Chưa liên kết' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Quận/Huyện:</span>
+                      <span class="value">{{ parseAddress(waybillDetail?.receiver_address).district || 'Chưa liên kết' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Phường/Xã:</span>
+                      <span class="value">{{ parseAddress(waybillDetail?.receiver_address).ward || 'Chưa liên kết' }}</span>
+                    </div>
+                    <div class="info-row flex-column items-start">
+                      <span class="label mb-1">Địa chỉ giao hàng chi tiết:</span>
+                      <span class="value text-left text-xs" style="max-width: 100%; text-align: left;">{{ parseAddress(waybillDetail?.receiver_address).detail || 'Chưa liên kết' }}</span>
+                    </div>
+                  </div>
+                </el-col>
+              </el-row>
+
+              <!-- Row 2: Hàng hóa & Cấu hình vận chuyển -->
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <h4 class="section-title"><el-icon class="mr-1"><Box /></el-icon> Thông tin hàng hóa</h4>
+                  <div class="info-card">
+                    <div class="info-row">
+                      <span class="label">Tên sản phẩm:</span>
+                      <span class="value">{{ waybillDetail?.product_name || selectedRequest.product_type || 'Chưa rõ' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Khối lượng:</span>
+                      <span class="value fw-bold">{{ waybillDetail?.actual_weight || selectedRequest.est_weight || 0 }} kg</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Số lượng:</span>
+                      <span class="value fw-bold">{{ selectedRequest.est_quantity || 1 }} kiện</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Kích thước (D x R x C):</span>
+                      <span class="value">
+                        {{ waybillDetail ? `${waybillDetail.length || 0} x ${waybillDetail.width || 0} x ${waybillDetail.height || 0} cm` : '0 x 0 x 0 cm' }}
+                      </span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Khai giá:</span>
+                      <span class="value fw-semibold">{{ formatCurrencyManual(waybillDetail?.declared_value || 0) }}</span>
+                    </div>
+                  </div>
+                </el-col>
+
+                <el-col :span="12">
+                  <h4 class="section-title"><el-icon class="mr-1"><OfficeBuilding /></el-icon> Cấu hình Vận chuyển</h4>
+                  <div class="info-card">
+                    <div class="info-row">
+                      <span class="label">Dịch vụ vận chuyển:</span>
+                      <span class="value fw-semibold text-primary">{{ waybillDetail?.service_type || 'Chưa liên kết' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Số tiền thu hộ (COD):</span>
+                      <span class="value fw-bold text-success">{{ formatCurrencyManual(waybillDetail?.cod_amount || 0) }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">P.T. thanh toán:</span>
+                      <span class="value">{{ getPaymentMethodLabel(waybillDetail?.payment_method) }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Ghi chú khi giao:</span>
+                      <span class="value text-xs text-muted" style="max-width: 65%;">{{ waybillDetail?.note || 'Không có' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Dịch vụ gia tăng:</span>
+                      <span class="value">
+                        <el-tag :type="selectedRequest.is_vehicle_required ? 'danger' : 'info'" size="small">
+                          {{ selectedRequest.is_vehicle_required ? 'Yêu cầu xe tải' : 'Không có' }}
+                        </el-tag>
+                      </span>
+                    </div>
+                  </div>
+                </el-col>
+              </el-row>
+
+              <!-- Row 3: Điều phối & Biên nhận thực địa -->
+              <h4 class="section-title"><el-icon class="mr-1"><OfficeBuilding /></el-icon> Thông tin điều phối & Vận chuyển</h4>
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <div class="info-card">
+                    <div class="info-row">
+                      <span class="label">Nguồn đơn:</span>
+                      <span class="value">
+                        <el-tag :type="getSourceTagType(selectedRequest.source)" size="small" effect="dark">
+                          {{ selectedRequest.source || 'PORTAL' }}
+                        </el-tag>
+                      </span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Mã đơn của shop:</span>
+                      <span class="value">{{ selectedRequest.shop_order_code || 'Không có' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Mã vận đơn liên kết:</span>
+                      <span class="value text-primary fw-bold">{{ getWaybillCode(selectedRequest) || 'Chưa liên kết' }}</span>
+                    </div>
+                  </div>
+                </el-col>
+                <el-col :span="12">
+                  <div class="info-card">
+                    <div class="info-row">
+                      <span class="label">Bưu cục xử lý:</span>
+                      <span class="value fw-semibold text-primary">{{ selectedRequest.target_hub_name || getHubName(selectedRequest.target_hub_id) || 'Chưa tiếp nhận' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Bưu tá phụ trách:</span>
+                      <span class="value fw-semibold text-success">{{ selectedRequest.assigned_shipper_name || 'Chưa gán bưu tá' }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Ghi chú yêu cầu:</span>
+                      <span class="value text-xs text-muted" style="max-width: 65%;">{{ selectedRequest.notes || 'Không có ghi chú' }}</span>
+                    </div>
+                  </div>
+                </el-col>
+              </el-row>
+
+              <!-- Nếu đơn đã lấy thành công và có ảnh biên nhận -->
+              <div v-if="selectedRequest.status === 'PICKED' || selectedRequest.pickup_image_url" class="mt-2">
+                <h4 class="section-title"><el-icon class="mr-1"><Check /></el-icon> Biên nhận thực địa</h4>
+                <div class="info-card flex gap-4 items-center">
+                  <div v-if="selectedRequest.pickup_image_url">
+                    <el-image 
+                      style="width: 100px; height: 100px; border-radius: 4px; border: 1px solid var(--border-color, #e2e8f0);" 
+                      :src="getFullImageUrl(selectedRequest.pickup_image_url)" 
+                      :preview-src-list="[getFullImageUrl(selectedRequest.pickup_image_url)]"
+                      fit="cover" 
+                    />
+                  </div>
+                  <div>
+                    <div class="info-row mb-1">
+                      <span class="label mr-2">Thời gian lấy hàng:</span>
+                      <span class="value">
+                        {{ 
+                          selectedRequest.pickup_assigned_at 
+                            ? formatDate(selectedRequest.pickup_assigned_at) 
+                            : (selectedRequest.logs?.find(l => l.action?.includes('Gán bưu tá') || l.action?.includes('Gan buu ta'))?.created_at 
+                                ? formatDate(selectedRequest.logs.find(l => l.action?.includes('Gán bưu tá') || l.action?.includes('Gan buu ta')).created_at) 
+                                : 'Chưa xác định') 
+                        }}
+                      </span>
+                    </div>
+                    <div class="info-row mb-0">
+                      <span class="label mr-2">Ghi chú lấy hàng:</span>
+                      <span class="value text-xs">{{ selectedRequest.logs?.find(l => l.action && l.action.includes('lấy'))?.note || 'Đã lấy hàng thành công' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="Lịch sử hoạt động" name="logs">
+              <div class="mt-2 p-2" style="max-height: 350px; overflow-y: auto;">
+                <el-timeline v-if="selectedRequest.logs && selectedRequest.logs.length > 0">
+                  <el-timeline-item
+                    v-for="(log, index) in selectedRequest.logs"
+                    :key="index"
+                    :timestamp="formatDate(log.created_at)"
+                    type="primary"
+                  >
+                    <div class="flex flex-col gap-1">
+                      <strong class="text-dark">{{ log.action }}</strong>
+                      <span class="text-xs text-muted" v-if="log.user_name">Thực hiện bởi: {{ log.user_name }}</span>
+                      <span class="text-xs text-muted" v-if="log.note">Chi tiết: {{ log.note }}</span>
+                    </div>
+                  </el-timeline-item>
+                </el-timeline>
+                <el-empty v-else description="Chưa có lịch sử hoạt động" :image-size="80" />
+              </div>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
+        <template #footer>
+          <div class="flex justify-end">
+            <el-button type="primary" @click="detailDialogVisible = false">Đóng</el-button>
+          </div>
+        </template>
+      </el-dialog>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, computed, reactive, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check, User, Box } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
 import moment from 'moment';
 import { useAuthStore } from '@/stores/auth';
 
+const route = useRoute();
 const authStore = useAuthStore();
 
 const activeTab = ref('pending');
@@ -803,6 +1124,86 @@ const assignShipperVisible = ref(false);
 const selectedRequest = ref(null);
 const selectedShipperId = ref(null);
 const shipperAssignNote = ref('');
+
+const detailDialogVisible = ref(false);
+const detailActiveTab = ref('info');
+const waybillDetail = ref(null);
+const detailLoading = ref(false);
+
+const viewRequestDetails = async (row) => {
+  selectedRequest.value = row;
+  detailActiveTab.value = 'info';
+  detailDialogVisible.value = true;
+  waybillDetail.value = null;
+
+  const waybillCode = getWaybillCode(row);
+  if (waybillCode) {
+    detailLoading.value = true;
+    try {
+      const response = await api.post('/api/waybills/search', {
+        search_term: waybillCode,
+        page: 1,
+        size: 1
+      });
+      if (response.data && response.data.items && response.data.items.length > 0) {
+        waybillDetail.value = response.data.items[0];
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải chi tiết vận đơn:', error);
+    } finally {
+      detailLoading.value = false;
+    }
+  }
+};
+
+const parseAddress = (addrStr) => {
+  if (!addrStr) return { province: 'Chưa rõ', district: 'Chưa rõ', ward: 'Chưa rõ', detail: 'Chưa rõ' };
+  const parts = addrStr.split(',').map(p => p.trim());
+  const len = parts.length;
+  const province = len >= 1 ? parts[len - 1] : 'Chưa rõ';
+  const district = len >= 2 ? parts[len - 2] : 'Chưa rõ';
+  const ward = len >= 3 ? parts[len - 3] : 'Chưa rõ';
+  const detail = parts.slice(0, Math.max(1, len - 3)).join(', ');
+  return { province, district, ward, detail };
+};
+
+const getPaymentMethodLabel = (method) => {
+  switch (method) {
+    case 'SENDER_PP': return 'Người gửi thanh toán';
+    case 'RECEIVER_PP': return 'Người nhận thanh toán';
+    case 'SENDER_DEBT': return 'Công nợ người gửi';
+    default: return method || 'Chưa rõ';
+  }
+};
+
+const formatCurrencyManual = (amount) => {
+  if (amount === null || amount === undefined) return '0 đ';
+  return Number(amount).toLocaleString('vi-VN') + ' đ';
+};
+const getStatusLabel = (status) => {
+  switch (status) {
+    case 'PENDING_CONFIRMATION': return 'Chờ xác nhận văn phòng';
+    case 'DISPATCHED_TO_HUB': return 'Đã điều phối sang văn phòng';
+    case 'RECEIVED': return 'Chờ gán bưu tá';
+    case 'ASSIGNED_PICKUP': return 'Đang đi lấy';
+    case 'PICKED': return 'Đã lấy hàng thành công';
+    case 'HUB_REJECTED': return 'Văn phòng từ chối';
+    case 'CANCELLED': return 'Đã hủy';
+    default: return status || 'Chưa rõ';
+  }
+};
+const getStatusTagType = (status) => {
+  switch (status) {
+    case 'PENDING_CONFIRMATION': return 'warning';
+    case 'DISPATCHED_TO_HUB': return 'info';
+    case 'RECEIVED': return 'primary';
+    case 'ASSIGNED_PICKUP': return 'info';
+    case 'PICKED': return 'success';
+    case 'HUB_REJECTED': return 'danger';
+    case 'CANCELLED': return 'danger';
+    default: return 'info';
+  }
+};
 
 // --- Geographic data loaders ---
 const ADDR_API = '/vietnam-address.json';
@@ -933,43 +1334,119 @@ const receiverProvinceNoHub = computed(() => {
 });
 
 
+const getWaybillCode = (row) => {
+  if (!row) return '';
+  if (row.waybill_code) return row.waybill_code;
+  if (row.logs && Array.isArray(row.logs)) {
+    for (const log of row.logs) {
+      if (log.note && log.note.includes('Van don')) {
+        const match = log.note.match(/SP[A-Z0-9]+/i);
+        if (match) {
+          return match[0];
+        }
+      }
+    }
+  }
+  return '';
+};
+
+const getCustomerName = (row) => {
+  if (!row) return 'Khách vãng lai';
+  if (row.customer_name) return row.customer_name;
+  if (row.customer_id) {
+    const cust = customers.value.find(c => c.customer_id === row.customer_id);
+    if (cust) {
+      return cust.company_name || cust.transaction_name || cust.name || 'Khách vãng lai';
+    }
+  }
+  return 'Khách vãng lai';
+};
+
 // Filtered data computed properties
 const filteredPending = computed(() => {
   if (!searchPending.value) return pendingRequests.value;
   const q = searchPending.value.toLowerCase().trim();
-  return pendingRequests.value.filter(r => 
-    r.request_code.toLowerCase().includes(q) ||
-    (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
-    (r.sender_phone && r.sender_phone.includes(q)) ||
-    r.pickup_address.toLowerCase().includes(q)
-  );
+  return pendingRequests.value.filter(r => {
+    const wb = getWaybillCode(r).toLowerCase();
+    const custName = getCustomerName(r).toLowerCase();
+    return r.request_code.toLowerCase().includes(q) ||
+      wb.includes(q) ||
+      custName.includes(q) ||
+      (r.sender_phone && r.sender_phone.includes(q)) ||
+      r.pickup_address.toLowerCase().includes(q);
+  });
 });
 
 const filteredReceived = computed(() => {
   if (!searchReceived.value) return receivedRequests.value;
   const q = searchReceived.value.toLowerCase().trim();
-  return receivedRequests.value.filter(r => 
-    r.request_code.toLowerCase().includes(q) ||
-    (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
-    (r.sender_phone && r.sender_phone.includes(q)) ||
-    r.pickup_address.toLowerCase().includes(q)
-  );
+  return receivedRequests.value.filter(r => {
+    const wb = getWaybillCode(r).toLowerCase();
+    const custName = getCustomerName(r).toLowerCase();
+    return r.request_code.toLowerCase().includes(q) ||
+      wb.includes(q) ||
+      custName.includes(q) ||
+      (r.sender_phone && r.sender_phone.includes(q)) ||
+      r.pickup_address.toLowerCase().includes(q);
+  });
 });
 
 const filteredAssigned = computed(() => {
   if (!searchAssigned.value) return assignedRequests.value;
   const q = searchAssigned.value.toLowerCase().trim();
-  return assignedRequests.value.filter(r => 
-    r.request_code.toLowerCase().includes(q) ||
-    (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
-    (r.sender_phone && r.sender_phone.includes(q)) ||
-    (r.assigned_shipper_name && r.assigned_shipper_name.toLowerCase().includes(q)) ||
-    r.pickup_address.toLowerCase().includes(q)
-  );
+  return assignedRequests.value.filter(r => {
+    const wb = getWaybillCode(r).toLowerCase();
+    const custName = getCustomerName(r).toLowerCase();
+    return r.request_code.toLowerCase().includes(q) ||
+      wb.includes(q) ||
+      custName.includes(q) ||
+      (r.sender_phone && r.sender_phone.includes(q)) ||
+      (r.assigned_shipper_name && r.assigned_shipper_name.toLowerCase().includes(q)) ||
+      r.pickup_address.toLowerCase().includes(q);
+  });
 });
 
-const handleSelectionChange = (val) => {
-  multipleSelection.value = val;
+const handleSelectionChange = (groups) => {
+  const selectedRequests = [];
+  groups.forEach(g => {
+    if (g.requests) {
+      selectedRequests.push(...g.requests);
+    } else {
+      selectedRequests.push(g);
+    }
+  });
+  multipleSelection.value = selectedRequests;
+};
+
+const groupRequestsByCustomer = (requests) => {
+  const groups = {};
+  requests.forEach(req => {
+    const key = `${req.sender_phone}_${getCustomerName(req)}_${req.pickup_address}`;
+    if (!groups[key]) {
+      groups[key] = {
+        group_key: key,
+        customer_name: getCustomerName(req),
+        customer_phone: req.sender_phone,
+        pickup_address: req.pickup_address,
+        source: req.source || 'PORTAL',
+        requests: [],
+        total_weight: 0,
+        total_quantity: 0
+      };
+    }
+    groups[key].requests.push(req);
+    groups[key].total_weight += Number(req.est_weight || 0);
+    groups[key].total_quantity += Number(req.est_quantity || 0);
+  });
+  return Object.values(groups);
+};
+
+const groupedPending = computed(() => groupRequestsByCustomer(filteredPending.value));
+const groupedReceived = computed(() => groupRequestsByCustomer(filteredReceived.value));
+
+const openGroupAssignShipperDialog = (group) => {
+  multipleSelection.value = group.requests;
+  openAssignShipperDialog(group.requests[0]);
 };
 
 const handleTabChange = (tab) => {
@@ -1488,12 +1965,55 @@ const getSourceTagType = (source) => {
   }
 };
 
-onMounted(() => {
-  fetchTabRequests('pending');
+onMounted(async () => {
   fetchHubs();
   fetchCustomers();
   fetchProvinces();
+
+  if (route.query.tab) {
+    activeTab.value = route.query.tab;
+  }
+
+  const searchCode = route.query.search;
+  if (searchCode) {
+    const q = String(searchCode).trim();
+
+    // Tải dữ liệu của cả 3 tab để tìm xem đơn nằm ở đâu
+    await Promise.all([
+      fetchTabRequests('pending'),
+      fetchTabRequests('received'),
+      fetchTabRequests('assigned')
+    ]);
+
+    // Tự động chuyển tab tương ứng có chứa mã đơn hàng tìm kiếm (mã yêu cầu hoặc mã vận đơn)
+    if (pendingRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
+      activeTab.value = 'pending';
+      searchPending.value = q;
+    } else if (receivedRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
+      activeTab.value = 'received';
+      searchReceived.value = q;
+    } else if (assignedRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
+      activeTab.value = 'assigned';
+      searchAssigned.value = q;
+    } else {
+      // Fallback nếu không khớp tab nào cụ thể, đặt ở pending
+      activeTab.value = 'pending';
+      searchPending.value = q;
+    }
+  } else {
+    fetchTabRequests(activeTab.value);
+  }
 });
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab) {
+      activeTab.value = newTab;
+      fetchTabRequests(newTab);
+    }
+  }
+);
 </script>
 
 <style scoped>
@@ -1635,7 +2155,7 @@ onMounted(() => {
 
 /* Tabs styles */
 :deep(.el-tabs__header) {
-  margin-bottom: 24px;
+  display: none;
 }
 :deep(.el-tabs__nav-wrap::after) {
   background-color: var(--sp-bg-app, #f8fafc);
@@ -1723,4 +2243,47 @@ onMounted(() => {
 .animate-fade-in-up { animation: fadeInUp 0.4s ease-out; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Detail Dialog Styles */
+.detail-dialog-content {
+  padding: 0 10px;
+}
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 6px;
+}
+.info-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.info-row:last-child {
+  margin-bottom: 0;
+}
+.info-row .label {
+  color: #64748b;
+  font-weight: 500;
+}
+.info-row .value {
+  color: #0f172a;
+  text-align: right;
+  max-width: 65%;
+  word-break: break-word;
+}
 </style>
