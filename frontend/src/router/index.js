@@ -132,7 +132,7 @@ const adminRoutes = [
         path: 'delivery/pickup-management',
         name: 'PickupManagement',
         component: () => import('../views/admin/delivery/PickupManagement.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, title: 'Điều phối lấy hàng (Pickup)' }
       },
       // Accounting & Pricing
       {

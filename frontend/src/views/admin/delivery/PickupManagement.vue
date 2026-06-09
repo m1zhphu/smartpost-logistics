@@ -132,7 +132,19 @@
             </template>
 
             <div class="flex-between mb-4">
-              <div></div>
+              <div>
+                <el-select 
+                  v-if="authStore.user?.role_id === 1" 
+                  v-model="selectedHubId" 
+                  placeholder="Chọn bưu cục để xem đơn" 
+                  filterable 
+                  class="modern-input-small w-[250px]"
+                  @change="() => fetchTabRequests('received')"
+                >
+                  <el-option label="Tất cả bưu cục" :value="null" />
+                  <el-option v-for="h in hubs" :key="h.hub_id" :label="h.hub_name" :value="h.hub_id" />
+                </el-select>
+              </div>
               <div class="search-wrapper">
                 <el-input 
                   v-model="searchReceived" 
@@ -178,7 +190,7 @@
               </el-table-column>
               <el-table-column label="Văn phòng nhận" width="160" show-overflow-tooltip>
                 <template #default="{ row }">
-                  <span class="fw-bold text-primary">{{ row.target_hub_name || 'N/A' }}</span>
+                  <span class="fw-bold text-primary">{{ row.target_hub_name || getHubName(row.target_hub_id) || 'N/A' }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="notes" label="Ghi chú khách" min-width="150" show-overflow-tooltip />
@@ -212,7 +224,19 @@
             </template>
 
             <div class="flex-between mb-4">
-              <div></div>
+              <div>
+                <el-select 
+                  v-if="authStore.user?.role_id === 1" 
+                  v-model="selectedHubId" 
+                  placeholder="Chọn bưu cục để xem đơn" 
+                  filterable 
+                  class="modern-input-small w-[250px]"
+                  @change="() => fetchTabRequests('assigned')"
+                >
+                  <el-option label="Tất cả bưu cục" :value="null" />
+                  <el-option v-for="h in hubs" :key="h.hub_id" :label="h.hub_name" :value="h.hub_id" />
+                </el-select>
+              </div>
               <div class="search-wrapper">
                 <el-input 
                   v-model="searchAssigned" 
@@ -472,6 +496,22 @@
                 </el-col>
               </el-row>
 
+              <!-- Cảnh báo tỉnh người nhận chưa có bưu cục -->
+              <el-alert
+                v-if="receiverProvinceNoHub"
+                type="warning"
+                :closable="false"
+                show-icon
+                class="mb-3"
+              >
+                <template #title>
+                  ⚠️ Tỉnh/thành <strong>{{ createForm.receiver_province_name }}</strong> chưa có bưu cục phát hàng trong hệ thống.
+                </template>
+                <template #default>
+                  Vui lòng liên hệ Admin để thêm bưu cục cho tỉnh này, hoặc chọn tỉnh khác có bưu cục. Không thể tạo đơn nếu tỉnh người nhận chưa có bưu cục.
+                </template>
+              </el-alert>
+
               <el-form-item label="Địa chỉ nhận hàng chi tiết" prop="receiver_address_detail">
                 <el-input v-model="createForm.receiver_address_detail" type="textarea" :rows="2" placeholder="Số nhà, ngõ, tên đường..." resize="none" />
               </el-form-item>
@@ -547,9 +587,21 @@
         <template #footer>
           <div class="flex justify-end gap-2">
             <el-button @click="createDialogVisible = false">Hủy</el-button>
-            <el-button type="primary" :disabled="dialogLoading" @click="submitCreatePickup">
-              Tạo Yêu Cầu
-            </el-button>
+            <el-tooltip
+              :content="receiverProvinceNoHub ? 'Tỉnh người nhận chưa có bưu cục trong hệ thống' : ''"
+              :disabled="!receiverProvinceNoHub"
+              placement="top"
+            >
+              <span>
+                <el-button 
+                  type="primary" 
+                  :disabled="dialogLoading || receiverProvinceNoHub" 
+                  @click="submitCreatePickup"
+                >
+                  Tạo Yêu Cầu
+                </el-button>
+              </span>
+            </el-tooltip>
           </div>
         </template>
       </el-dialog>
@@ -738,6 +790,7 @@ const searchPending = ref('');
 const searchReceived = ref('');
 const searchAssigned = ref('');
 
+
 // Selection states
 const multipleSelection = ref([]);
 
@@ -751,15 +804,14 @@ const selectedRequest = ref(null);
 const selectedShipperId = ref(null);
 const shipperAssignNote = ref('');
 
-// "Tạo đơn CSKH" States & Address Cascades
-const ADDR_API = 'https://provinces.open-api.vn/api';
+// --- Geographic data loaders ---
+const ADDR_API = '/vietnam-address.json';
 const provinces = ref([]);
 const senderDistricts = ref([]);
 const senderWards = ref([]);
 const receiverDistricts = ref([]);
 const receiverWards = ref([]);
-const districtsCache = {};
-const wardsCache = {};
+let allAddressData = [];
 
 const createDialogVisible = ref(false);
 const createFormRef = ref(null);
@@ -844,6 +896,43 @@ const getFullImageUrl = (url) => {
   return `${base}${url}`;
 };
 
+// Lấy tên bưu cục từ hub_id (vì BookingRequestResponse không có target_hub_name)
+const getHubName = (hubId) => {
+  if (!hubId) return null;
+  const hub = hubs.value.find(h => h.hub_id === hubId);
+  return hub ? hub.hub_name : null;
+};
+
+const normalizeProvinceName = (name) => {
+  if (!name) return '';
+  return name.normalize('NFC').trim().toLowerCase()
+    .replace(/^thành phố\s+/i, '')
+    .replace(/^tỉnh\s+/i, '')
+    .replace(/^tp\.\s*/i, '')
+    .replace(/^tp\s+/i, '');
+};
+
+// Kiểm tra tỉnh người nhận có bưu cục phát hàng không
+// So sánh cả province_id lẫn tên tỉnh (normalized) — giống logic backend _find_hub_for_province
+const receiverProvinceNoHub = computed(() => {
+  if (!createForm.receiver_province_id) return false;
+
+  const pid = Number(createForm.receiver_province_id);
+  const receiverName = normalizeProvinceName(createForm.receiver_province_name);
+
+  const found = hubs.value.some(h => {
+    if (h.status === false) return false;
+    // 1. So sánh province_id trực tiếp
+    if (h.province_id && Number(h.province_id) === pid) return true;
+    // 2. Fallback: so sánh tên tỉnh trong hub_name / address_detail
+    const hubText = normalizeProvinceName(`${h.hub_name || ''} ${h.address_detail || ''}`);
+    return receiverName && (hubText.includes(receiverName) || receiverName.includes(hubText.split(' ')[0]));
+  });
+
+  return !found;
+});
+
+
 // Filtered data computed properties
 const filteredPending = computed(() => {
   if (!searchPending.value) return pendingRequests.value;
@@ -894,28 +983,55 @@ const handleRefresh = () => {
 const fetchTabRequests = async (tabName) => {
   loading.value = true;
   try {
+    const isAdmin = authStore.user?.role_id === 1;
+    const hubId = isAdmin ? null : (authStore.user?.primary_hub_id || null);
+
     if (tabName === 'pending') {
       const res = await api.get('/api/delivery/online-pickup-requests', {
         params: { status: 'PENDING_CONFIRMATION' }
       });
       pendingRequests.value = res.data || [];
     } else if (tabName === 'received') {
-      const res = await api.get('/api/delivery/hub-pickup-requests', {
-        params: { status: 'RECEIVED' }
-      });
-      receivedRequests.value = res.data || [];
+      if (isAdmin) {
+        // Super Admin: dùng /pickup-requests — trả về tất cả đơn hoặc lọc theo selectedHubId
+        const params = { status: 'RECEIVED' };
+        if (selectedHubId.value) params.hub_id = selectedHubId.value;
+        const res = await api.get('/api/delivery/pickup-requests', { params });
+        receivedRequests.value = res.data || [];
+      } else {
+        const res = await api.get('/api/delivery/hub-pickup-requests', {
+          params: { status: 'RECEIVED', hub_id: hubId }
+        });
+        receivedRequests.value = res.data || [];
+      }
     } else if (tabName === 'assigned') {
-      const res = await api.get('/api/delivery/hub-pickup-requests', {
-        params: { status: 'ASSIGNED_PICKUP' }
-      });
-      assignedRequests.value = res.data || [];
+      if (isAdmin) {
+        // Super Admin: dùng /pickup-requests — trả về tất cả đơn hoặc lọc theo selectedHubId
+        const params = { status: 'ASSIGNED_PICKUP' };
+        if (selectedHubId.value) params.hub_id = selectedHubId.value;
+        const res = await api.get('/api/delivery/pickup-requests', { params });
+        assignedRequests.value = res.data || [];
+      } else {
+        const res = await api.get('/api/delivery/hub-pickup-requests', {
+          params: { status: 'ASSIGNED_PICKUP', hub_id: hubId }
+        });
+        assignedRequests.value = res.data || [];
+      }
     }
   } catch (err) {
-    ElMessage.error(err.response?.data?.detail || 'Lỗi tải danh sách yêu cầu lấy hàng');
+    const detail = err.response?.data?.detail || '';
+
+    if (detail.toLowerCase().includes('van phong')) {
+      receivedRequests.value = [];
+      assignedRequests.value = [];
+    } else {
+      ElMessage.error(detail || 'Lỗi tải danh sách yêu cầu lấy hàng');
+    }
   } finally {
     loading.value = false;
   }
 };
+
 
 const fetchHubs = async () => {
   try {
@@ -946,47 +1062,37 @@ const fetchCustomers = async () => {
   }
 };
 
-// --- GSO API Geographic data loaders ---
+// --- Geographic data loaders using local JSON ---
 const fetchProvinces = async () => {
   try {
-    const res = await fetch(`${ADDR_API}/p`);
-    const data = await res.json();
-    provinces.value = data.map(p => ({ id: p.code, name: p.name }));
+    const res = await fetch(ADDR_API);
+    allAddressData = await res.json();
+    provinces.value = allAddressData.map(p => ({ id: p.Id, name: p.Name }));
   } catch (err) {
     console.error('Không thể tải danh sách tỉnh/thành phố', err);
   }
 };
 
 const fetchDistrictsForProvince = async (provinceId) => {
-  if (!provinceId) return [];
+  if (!provinceId || !allAddressData.length) return [];
   const pId = Number(provinceId);
-  if (districtsCache[pId]) return districtsCache[pId];
-  try {
-    const res = await fetch(`${ADDR_API}/p/${pId}?depth=2`);
-    const data = await res.json();
-    const list = (data.districts || []).map(d => ({ id: d.code, name: d.name }));
-    districtsCache[pId] = list;
-    return list;
-  } catch (err) {
-    console.error('Không thể tải danh sách quận/huyện', err);
-    return [];
-  }
+  const prov = allAddressData.find(p => Number(p.Id) === pId);
+  if (!prov || !prov.Districts) return [];
+  return prov.Districts.map(d => ({ id: d.Id, name: d.Name }));
 };
 
 const fetchWardsForDistrict = async (districtId) => {
-  if (!districtId) return [];
+  if (!districtId || !allAddressData.length) return [];
   const dId = Number(districtId);
-  if (wardsCache[dId]) return wardsCache[dId];
-  try {
-    const res = await fetch(`${ADDR_API}/d/${dId}?depth=2`);
-    const data = await res.json();
-    const list = (data.wards || []).map(w => ({ id: w.code, name: w.name }));
-    wardsCache[dId] = list;
-    return list;
-  } catch (err) {
-    console.error('Không thể tải danh sách phường/xã', err);
-    return [];
+  for (const prov of allAddressData) {
+    if (prov.Districts) {
+      const dist = prov.Districts.find(d => Number(d.Id) === dId);
+      if (dist && dist.Wards) {
+        return dist.Wards.map(w => ({ id: w.Id, name: w.Name }));
+      }
+    }
   }
+  return [];
 };
 
 const handleSenderProvinceChange = async () => {
@@ -1214,6 +1320,10 @@ const submitCreatePickup = async () => {
 
       // Handle redirect / switch tabs depending on target_hub_id selection
       if (data.pickup_status === 'RECEIVED') {
+        // Nếu Super Admin, tự đổi selectedHubId sang hub của đơn vừa tạo
+        if (authStore.user?.role_id === 1 && createForm.target_hub_id) {
+          selectedHubId.value = createForm.target_hub_id;
+        }
         activeTab.value = 'received';
         fetchTabRequests('received');
       } else {
