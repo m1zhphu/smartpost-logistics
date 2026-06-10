@@ -9,6 +9,7 @@ def build_address_detail(data_dict: dict):
     parts = [
         data_dict.get("street_address"),
         data_dict.get("ward"),
+        data_dict.get("district") or data_dict.get("district_name"),
         data_dict.get("province"),
         data_dict.get("country"),
     ]

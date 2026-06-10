@@ -152,7 +152,7 @@ def create_customer_pickup_waybill(
     target_hub_id: int | None = None,
     initial_status: str | None = None,
     log_action: str | None = None,
-) -> tuple[models.BookingRequests, models.Waybills]:
+) -> tuple[models.BookingRequests, models.Waybills, models.Bags]:
     sender = data.sender
     receiver = data.receiver
     items = data.items or []
@@ -303,7 +303,7 @@ def create_customer_pickup_waybill(
         note=f"Van don {waybill_code}",
     ))
     create_initial_log(db, waybill.waybill_id, assigned_origin_hub_id or origin_hub_id, creator_id)
-    return booking, waybill
+    return booking, waybill, pickup_bag
 
 
 def customer_pickup_payload(request: models.BookingRequests, waybill: models.Waybills) -> dict:

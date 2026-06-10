@@ -9,6 +9,10 @@ export const WAYBILL_STATUS_LABELS = {
   CREATED: 'Vận đơn vừa tạo',
   PICKED_PENDING_VERIFY: 'Đã lấy hàng, chờ nhập kho',
   IN_HUB: 'Đã nhập kho',
+  DELIVERING: 'Đang giao hàng',
+  DELIVERED: 'Giao hàng thành công',
+  DELIVERY_FAILED: 'Giao hàng thất bại',
+  RETURNED: 'Đã hoàn trả',
 };
 
 export const PRICE_STATUS_LABELS = {

@@ -34,6 +34,10 @@ export const WAREHOUSE_ENDPOINTS = {
   GET_CUSTOMERS: (skip = 0, limit = 100, search = "") =>
     `${WAREHOUSE_API_URL}/api/customers?skip=${skip}&limit=${limit}&search=${encodeURIComponent(search)}`,
   GET_SHIPPERS: `${WAREHOUSE_API_URL}/api/shippers`,
+  CREATE_PICKUP_BAG: `${WAREHOUSE_API_URL}/api/scans/pickup-bags`,
+  GET_PICKUP_BAGS: `${WAREHOUSE_API_URL}/api/scans/pickup-bags`,
+  GET_PICKUP_BAG_DETAIL: (bagCode) => `${WAREHOUSE_API_URL}/api/scans/pickup-bags/${bagCode}`,
+  CLOSE_PICKUP_BAG: (bagCode) => `${WAREHOUSE_API_URL}/api/scans/pickup-bags/${bagCode}/close`,
   GET_LOCATIONS: `${WAREHOUSE_API_URL}/api/vi-tri-kho`,
   GET_MA_MAY: (maSanPham) =>
     `${WAREHOUSE_API_URL}/api/products/by-code/${maSanPham}`,

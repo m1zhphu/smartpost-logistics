@@ -23,6 +23,7 @@ import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 
 // New Pickup Screens
 import CustomerCreatePickupScreen from './src/screens/CustomerCreatePickupScreen';
+import CustomerPickupDraftsScreen from './src/screens/CustomerPickupDraftsScreen';
 import CustomerPickupListScreen from './src/screens/CustomerPickupListScreen';
 import CustomerPickupDetailScreen from './src/screens/CustomerPickupDetailScreen';
 import CustomerTrackingScreen from './src/screens/CustomerTrackingScreen';
@@ -117,6 +118,7 @@ export default function App() {
 
             {/* Màn hình Pickup mới */}
             <Stack.Screen name="CustomerCreatePickup" component={CustomerCreatePickupScreen} />
+            <Stack.Screen name="CustomerPickupDrafts" component={CustomerPickupDraftsScreen} />
             <Stack.Screen name="CustomerPickupList" component={CustomerPickupListScreen} />
             <Stack.Screen name="CustomerPickupDetail" component={CustomerPickupDetailScreen} />
             <Stack.Screen name="CustomerTracking" component={CustomerTrackingScreen} />

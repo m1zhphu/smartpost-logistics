@@ -42,6 +42,8 @@ class CustomerSelfUpdate(BaseModel):
     province: Optional[str] = None
     province_name: Optional[str] = None
     province_id: Optional[int] = None
+    district: Optional[str] = None
+    district_name: Optional[str] = None
     district_id: Optional[int] = None
     ward: Optional[str] = None
     ward_name: Optional[str] = None

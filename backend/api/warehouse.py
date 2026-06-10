@@ -515,26 +515,74 @@ def create_pickup_bag(
     current_user: dict = Depends(get_current_user)
 ):
     """CSKH hoặc Bưu tá tạo túi lấy hàng (PICKUP Bag)"""
-    if current_user.get("role_id") not in [1, 2, 3, 4]:
+    if current_user.get("role_id") not in [1, 2, 3, 4, 6, 7]:
         raise HTTPException(status_code=403, detail="Bạn không có quyền tạo túi lấy hàng")
     
     customer = db.query(models.Customers).filter(models.Customers.customer_id == data.customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Không tìm thấy khách hàng")
-        
+
+    if current_user.get("role_id") == 6 and current_user.get("customer_id") != data.customer_id:
+        raise HTTPException(status_code=403, detail="Bạn chỉ được tạo túi cho chính tài khoản của mình")
+
+    selected_codes = [code.strip() for code in (data.waybill_codes or []) if code and code.strip()]
+    selected_waybills = []
+    if selected_codes:
+        seen_codes = set()
+        for code in selected_codes:
+            if code in seen_codes:
+                continue
+            seen_codes.add(code)
+            wb = crud_wh.get_waybill(db, code)
+            if not wb:
+                raise HTTPException(status_code=404, detail=f"Không tìm thấy bill {code}")
+            if wb.customer_id != customer.customer_id:
+                raise HTTPException(status_code=400, detail=f"Bill {code} không thuộc khách hàng này")
+            if wb.status not in ["CREATED", "WAIT_PICKUP"]:
+                raise HTTPException(status_code=400, detail=f"Bill {code} không còn ở trạng thái nháp/chờ lấy hàng")
+            selected_waybills.append(wb)
+
+    est_quantity = data.est_quantity or len(selected_waybills)
     bag = crud_wh.create_pickup_bag(
         db=db,
         customer_id=data.customer_id,
         creator_id=current_user["user_id"],
-        est_quantity=data.est_quantity,
+        est_quantity=est_quantity,
         bag_code=data.bag_code,
         note=data.note
     )
+    if selected_waybills:
+        for wb in selected_waybills:
+            crud_wh.add_item_to_bag(db, bag.bag_id, wb.waybill_id)
+            wb.status = WaybillStatus.BAGGED
+            wb.holding_shipper_id = current_user["user_id"] if current_user.get("role_id") == 4 else None
+            crud_wh.create_log(
+                db,
+                wb.waybill_id,
+                WaybillStatus.BAGGED,
+                current_user.get("primary_hub_id"),
+                current_user["user_id"],
+                f"Đưa bill vào túi pickup {bag.bag_code}"
+            )
+        bag.est_quantity = len(selected_waybills)
+        bag.actual_quantity = len(selected_waybills)
+        bag.missing_quantity = 0
+        bag.status = "CLOSED" if data.seal_bag else "CREATED"
+        bag.pickup_time = datetime.utcnow()
+        realtime_manager.publish(
+            [f"customer:{customer.customer_id}", "admin"],
+            "pickup.bag.created",
+            {
+                "bag_code": bag.bag_code,
+                "customer_id": customer.customer_id,
+                "items_count": len(selected_waybills),
+                "status": bag.status,
+            },
+        )
     db.commit()
-    
-    # Gán tạm để response model nhận dạng
-    bag.actual_quantity = 0
-    bag.missing_quantity = data.est_quantity
+    db.refresh(bag)
+    bag.actual_quantity = len(selected_waybills) if selected_waybills else 0
+    bag.missing_quantity = 0 if selected_waybills else (est_quantity or 0)
     return bag
 
 @router.get("/pickup-bags", response_model=list[schema_wh.PickupBagResponse])
@@ -796,11 +844,16 @@ def close_pickup_bag(
     current_user: dict = Depends(get_current_user)
 ):
     """Kho đóng/hoàn tất xử lý túi lấy hàng (Trạng thái CLOSED)"""
-    verify_warehouse_access(current_user)
-    
     bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code, models.Bags.bag_type == "PICKUP").first()
     if not bag:
         raise HTTPException(status_code=404, detail="Không tìm thấy túi lấy hàng")
+
+    if current_user.get("role_id") not in [1, 2, 3, 6]:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền chốt túi lấy hàng")
+    if current_user.get("role_id") == 6 and bag.customer_id != current_user.get("customer_id"):
+        raise HTTPException(status_code=403, detail="Bạn chỉ được chốt túi của chính mình")
+    if current_user.get("role_id") not in [1, 6]:
+        verify_warehouse_access(current_user)
         
     # Phải verify xong hoặc thủ kho chốt chấp nhận sai lệch mới cho đóng túi
     disc = crud_wh.get_pickup_bag_discrepancy(db, bag)

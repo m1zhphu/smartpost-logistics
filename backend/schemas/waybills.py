@@ -99,6 +99,7 @@ class CustomerPickupCreateResponse(BaseModel):
     waybill_id: int
     waybill_code: str
     bill_code: str
+    bag_code: Optional[str] = None
     request_id: int
     request_code: str
     status: str

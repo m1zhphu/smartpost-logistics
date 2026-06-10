@@ -30,6 +30,14 @@ export default function CreateOrderScreen({ route, navigation }) {
     const [unit_code, setUnit_Code] = useState(unitCode || '');
 
     const [trackingCode, setTrackingCode] = useState(trackingNumber || '');
+    const [actualWeight, setActualWeight] = useState('');
+    const [codAmount, setCodAmount] = useState('0');
+    const [shippingFee, setShippingFee] = useState('');
+    const [serviceType, setServiceType] = useState('STANDARD');
+    const [productName, setProductName] = useState('');
+    const [length, setLength] = useState('');
+    const [width, setWidth] = useState('');
+    const [height, setHeight] = useState('');
 
     const scrollViewRef = useRef(null);
     const [senderCardY, setSenderCardY] = useState(0);
@@ -78,19 +86,38 @@ export default function CreateOrderScreen({ route, navigation }) {
             return;
         }
 
+        if (!productName || productName.trim() === "") {
+            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Tên hàng hóa' });
+            return;
+        }
+
+        if (!actualWeight || parseFloat(actualWeight) <= 0) {
+            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Trọng lượng (kg) > 0' });
+            return;
+        }
+
+        if (!shippingFee || parseFloat(shippingFee) <= 0) {
+            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Phí vận chuyển (VNĐ) > 0' });
+            return;
+        }
+
         const payload = {
-            username: username,
-            sender: {
-                name: sName?.trim(),
-                phone: sPhone?.trim(),
-                address: sAddress?.trim()
-            },
-            receiver: {
-                name: rName.trim(),
-                phone: rPhone.trim(),
-                address: rAddress.trim()
-            },
-            tracking_number: trackingCode.trim(),
+            waybill_code: trackingCode.trim(),
+            sender_name: sName?.trim(),
+            sender_phone: sPhone?.trim(),
+            sender_address: sAddress?.trim(),
+            receiver_name: rName.trim(),
+            receiver_phone: rPhone.trim(),
+            receiver_address: rAddress.trim(),
+            actual_weight: parseFloat(actualWeight),
+            cod_amount: parseFloat(codAmount) || 0,
+            shipping_fee: parseFloat(shippingFee),
+            service_type: serviceType,
+            product_name: productName.trim(),
+            length: length ? parseFloat(length) : null,
+            width: width ? parseFloat(width) : null,
+            height: height ? parseFloat(height) : null,
+            payment_method: "SENDER_PAY",
             bank_branch: bank_branch.trim(),
             unit_code: unit_code.trim()
         };
@@ -104,14 +131,14 @@ export default function CreateOrderScreen({ route, navigation }) {
                     removeQueueItem(queueId);
                 }
                 navigation.navigate('Success', {
-                    trackingNumber: payload.tracking_number,
+                    trackingNumber: result.data?.waybill_code || payload.waybill_code,
                 });
             } else {
                 if (result.isDuplicate) {
                     Toast.show({
                         type: 'error',
                         text1: 'Trùng mã vận đơn!',
-                        text2: `${payload.tracking_number} đã tồn tại trên hệ thống`,
+                        text2: `${payload.waybill_code} đã tồn tại trên hệ thống`,
                         visibilityTime: 4000
                     });
                 } else {
@@ -356,6 +383,78 @@ export default function CreateOrderScreen({ route, navigation }) {
                                     multiline
                                     onFocus={Platform.OS === 'ios' ? handleFocusReceiverAddress : undefined}
                                 />
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.connectorContainer}>
+                        <View style={styles.dottedLine} />
+                        <Ionicons name="chevron-down-circle" size={20} color={COLORS.secondary} style={styles.connectorIcon} />
+                    </View>
+
+                    <View style={[styles.card, styles.activeCard]}>
+                        <View style={styles.cardHeader}>
+                            <Ionicons name="cube-outline" size={24} color={COLORS.secondary} />
+                            <Text style={[styles.cardTitle, { color: COLORS.secondary }]}>THÔNG TIN HÀNG HÓA</Text>
+                        </View>
+                        <View style={styles.cardBody}>
+                            <View style={styles.inputWrapper}>
+                                <Ionicons name="pricetag-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
+                                <TextInput
+                                    style={styles.input}
+                                    value={productName}
+                                    onChangeText={setProductName}
+                                    placeholder="Tên hàng hóa (*)"
+                                    placeholderTextColor="#666"
+                                />
+                            </View>
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                <View style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}>
+                                    <Ionicons name="scale-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
+                                    <TextInput
+                                        style={styles.input}
+                                        value={actualWeight}
+                                        onChangeText={setActualWeight}
+                                        placeholder="Trọng lượng (kg) (*)"
+                                        placeholderTextColor="#666"
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                                <View style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}>
+                                    <Ionicons name="cash-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
+                                    <TextInput
+                                        style={styles.input}
+                                        value={codAmount}
+                                        onChangeText={setCodAmount}
+                                        placeholder="Thu hộ COD (VNĐ)"
+                                        placeholderTextColor="#666"
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.inputWrapper}>
+                                <Ionicons name="card-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
+                                <TextInput
+                                    style={styles.input}
+                                    value={shippingFee}
+                                    onChangeText={setShippingFee}
+                                    placeholder="Phí vận chuyển (VNĐ) (*)"
+                                    placeholderTextColor="#666"
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+                                <View style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}>
+                                    <TextInput style={styles.input} value={length} onChangeText={setLength} placeholder="Dài (cm)" placeholderTextColor="#666" keyboardType="numeric" />
+                                </View>
+                                <View style={[styles.inputWrapper, { flex: 1, marginHorizontal: 5 }]}>
+                                    <TextInput style={styles.input} value={width} onChangeText={setWidth} placeholder="Rộng (cm)" placeholderTextColor="#666" keyboardType="numeric" />
+                                </View>
+                                <View style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}>
+                                    <TextInput style={styles.input} value={height} onChangeText={setHeight} placeholder="Cao (cm)" placeholderTextColor="#666" keyboardType="numeric" />
+                                </View>
                             </View>
                         </View>
                     </View>

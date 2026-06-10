@@ -1,67 +1,49 @@
 import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
+import { apiClient } from '../context/UserContext';
 
 export const submitShipment = async (payload) => {
     try {
-
-        const response = await fetch(CUSTOMER_CUSTOMER_ENDPOINTS.SUBMIT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-
-
-        const data = await response.json();
-
-        if (response.status === 409) {
+        const response = await apiClient.post(CUSTOMER_ENDPOINTS.SUBMIT, payload);
+        return { success: true, data: response.data };
+    } catch (error) {
+        if (error.response?.status === 409) {
             return {
                 success: false,
                 isDuplicate: true,
-                message: data.message || 'Mã vận đơn đã tồn tại'
+                message: error.response.data?.message || 'Mã vận đơn đã tồn tại'
             };
         }
 
-        if (!response.ok) {
-            if (data.detail) {
-                const errorMsg = Array.isArray(data.detail)
-                    ? data.detail.map(e => e.msg).join(', ')
-                    : data.detail;
-                throw new Error(errorMsg);
-            }
-            throw new Error('Lỗi khi lưu đơn hàng');
+        if (error.response?.data?.detail) {
+            const detail = error.response.data.detail;
+            const errorMsg = Array.isArray(detail)
+                ? detail.map(e => e.msg).join(', ')
+                : detail;
+            throw new Error(errorMsg);
         }
-
-        return { success: true, data };
-    } catch (error) {
-        if (error.message && error.message !== 'Network request failed') {
-            throw error;
-        }
-
-        throw new Error('Lỗi không xác định. Vui lòng thử lại.');
+        
+        throw new Error('Lỗi khi lưu đơn hàng');
     }
 };
 
 export const getShipment = async (trackingNumber) => {
     try {
-        const url = CUSTOMER_CUSTOMER_ENDPOINTS.GET_SHIPMENT(trackingNumber);
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-        });
+        const url = CUSTOMER_ENDPOINTS.GET_SHIPMENT(trackingNumber);
+        const response = await apiClient.get(url);
 
-        if (response.status === 404) {
-            throw new Error('Không tìm thấy vận đơn này.');
-        }
+        const data = response.data;
 
-        const json = await response.json();
-
-        if (json.status === 'success' && json.data) {
-            return { success: true, data: json.data };
+        if (data.status === 'success' && data.data) {
+            return { success: true, data: data.data };
         } else {
             throw new Error('Cấu trúc dữ liệu không hợp lệ');
         }
 
     } catch (error) {
-        if (error.message === 'Không tìm thấy vận đơn này.' || error.message === 'Cấu trúc dữ liệu không hợp lệ') {
+        if (error.response?.status === 404) {
+            throw new Error('Không tìm thấy vận đơn này.');
+        }
+        if (error.message === 'Cấu trúc dữ liệu không hợp lệ') {
             throw error;
         }
         // throw new Error('Lỗi không xác định. Vui lòng thử lại.');

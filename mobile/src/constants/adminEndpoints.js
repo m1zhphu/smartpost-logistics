@@ -12,6 +12,7 @@ export const ADMIN_ENDPOINTS = {
   SEND_GPS_LOCATION: `${API_BASE_URL}/api/delivery/mobile/shipper/location`,
   UPLOAD_PICKUP_IMAGE: `${API_BASE_URL}/api/upload/bill?is_pickup=true`,
   ADMIN_REGISTER_PUSH_TOKEN_URL: `${API_BASE_URL}/api/users/register-push-token`,
+  TOGGLE_AVAILABILITY: `${API_BASE_URL}/api/delivery/mobile/shipper/availability`,
   
   // New API endpoints for Shipper OCR and Mock functions
   EXTRACT: process.env.EXPO_PUBLIC_EXTRACT_API_URL || 'https://speedlight.minhhien.click/extract',

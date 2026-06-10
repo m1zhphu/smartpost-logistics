@@ -14,7 +14,7 @@ import NetInfo from '@react-native-community/netinfo';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, DeviceEventEmitter } from 'react-native';
 
 const UserContext = createContext();
 export const navigationRef = createNavigationContainerRef();
@@ -38,6 +38,7 @@ export const UserProvider = ({ children }) => {
     const isConnectingRef = useRef(false);       // Tránh kết nối song song
     const reconnectTimeoutRef = useRef(null);    // Lưu ID của bộ đếm giờ để clear
     const retryCountRef = useRef(0);             // Đếm số lần đã thử kết nối lại
+    const realtimeWsRef = useRef(null);          // Logistics Realtime WS
 
     // Cấu hình Axios Interceptors
     useEffect(() => {
@@ -171,6 +172,35 @@ export const UserProvider = ({ children }) => {
                     connectAndFetchNotifications();
                 }, finalDelay);
             };
+
+            // --- THÊM KẾT NỐI WEBSOCKET REALTIME LOGISTICS ---
+            if (realtimeWsRef.current && realtimeWsRef.current.readyState !== WebSocket.CLOSED) {
+                realtimeWsRef.current.onclose = null;
+                realtimeWsRef.current.close();
+            }
+
+            const realtimeWsBaseUrl = API_BASE_URL.replace(/^http/, 'ws');
+            const realtimeWsUrl = `${realtimeWsBaseUrl}/ws/realtime?token=${currentToken}`;
+            realtimeWsRef.current = new WebSocket(realtimeWsUrl);
+
+            realtimeWsRef.current.onopen = () => {
+                // console.log("Connected to Realtime WebSocket");
+            };
+
+            realtimeWsRef.current.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.event) {
+                        DeviceEventEmitter.emit('realtime_event', data);
+                    }
+                } catch (err) {
+                    console.error('Lỗi parse Realtime WS', err);
+                }
+            };
+
+            realtimeWsRef.current.onclose = () => {
+                realtimeWsRef.current = null;
+            };
         };
 
         if (user) {
@@ -213,6 +243,11 @@ export const UserProvider = ({ children }) => {
                 wsRef.current.close();
                 wsRef.current = null;
             }
+            if (realtimeWsRef.current) {
+                realtimeWsRef.current.onclose = null;
+                realtimeWsRef.current.close();
+                realtimeWsRef.current = null;
+            }
             if (unsubscribeNetInfo) unsubscribeNetInfo();
         }
 
@@ -223,6 +258,10 @@ export const UserProvider = ({ children }) => {
             if (wsRef.current) {
                 wsRef.current.onclose = null;
                 wsRef.current.close();
+            }
+            if (realtimeWsRef.current) {
+                realtimeWsRef.current.onclose = null;
+                realtimeWsRef.current.close();
             }
         };
     }, [user]);
@@ -348,9 +387,12 @@ export const UserProvider = ({ children }) => {
                         address: data.address || data.address_detail,
                         street_address: data.street_address,
                         province: data.province || data.province_name,
+                        district: data.district || data.district_name,
                         ward: data.ward || data.ward_name,
                         province_id: data.province_id,
-                        ward_id: data.ward_id
+                        district_id: data.district_id,
+                        ward_id: data.ward_id,
+                        is_online: data.is_online
                     };
                     
                     setUser(profileData);
@@ -554,10 +596,17 @@ export const UserProvider = ({ children }) => {
         }
     };
 
+    const toggleUserOnlineStatus = (status) => {
+        setUser(prev => {
+            if (!prev) return prev;
+            return { ...prev, is_online: status };
+        });
+    };
+
     return (
         <UserContext.Provider value={{
             user, roles, permissions,
-            loginUserAndFetchProfile, autoLogin, logout, isWarehouseStaff, updateUserVehicle, clearUserVehicle, refreshProfile, unreadCount, notifications, setNotifications, promptForPushPermission
+            loginUserAndFetchProfile, autoLogin, logout, isWarehouseStaff, updateUserVehicle, clearUserVehicle, refreshProfile, unreadCount, notifications, setNotifications, promptForPushPermission, toggleUserOnlineStatus
         }}>
             {children}
         </UserContext.Provider>

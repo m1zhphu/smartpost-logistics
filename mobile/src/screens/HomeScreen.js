@@ -19,11 +19,12 @@ import { useQueue } from "../context/QueueContext";
 import NotificationModal from "../components/NotificationModal";
 import GlobalChat from "../components/GlobalChat";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-toast-message";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
 export default function HomeScreen({ navigation }) {
-  const { user, logout, isWarehouseStaff, unreadCount } = useUser();
+  const { user, logout, isWarehouseStaff, unreadCount, toggleUserOnlineStatus } = useUser();
   const { clearQueue } = useQueue();
 
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
@@ -64,6 +65,33 @@ export default function HomeScreen({ navigation }) {
     }
 
     navigation.navigate(screenName);
+  };
+
+  const handleToggleOnline = () => {
+    const isCurrentlyOnline = user?.is_online;
+    const newStatus = !isCurrentlyOnline;
+    const actionText = newStatus ? "Bật Online (Bắt đầu ca làm)" : "Tắt Online (Kết thúc ca làm)";
+    
+    Alert.alert(
+      "Trạng thái hoạt động",
+      `Bạn có muốn ${actionText}?`,
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Đồng ý",
+          onPress: async () => {
+            try {
+              const { shipperService } = require("../services/shipper");
+              await shipperService.toggleAvailability(newStatus, actionText);
+              toggleUserOnlineStatus(newStatus);
+              Toast.show({ type: "success", text1: "Đã cập nhật trạng thái!" });
+            } catch (err) {
+              Toast.show({ type: "error", text1: "Không thể cập nhật trạng thái!" });
+            }
+          }
+        }
+      ]
+    );
   };
 
   const GlassCircleButton = ({ icon, onPress, children, style }) => (
@@ -188,18 +216,22 @@ export default function HomeScreen({ navigation }) {
             {user?.username || user?.full_name || "Shipper"}
           </Text>
 
-          <BlurView {...blurProps} intensity={42} style={styles.roleBadge}>
-            <LinearGradient
-              pointerEvents="none"
-              colors={["rgba(255,255,255,0.28)", "rgba(255,255,255,0.1)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
+          <TouchableOpacity onPress={handleToggleOnline} activeOpacity={0.7}>
+            <BlurView {...blurProps} intensity={42} style={styles.roleBadge}>
+              <LinearGradient
+                pointerEvents="none"
+                colors={["rgba(255,255,255,0.28)", "rgba(255,255,255,0.1)"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
 
-            <View style={styles.roleDot} />
-            <Text style={styles.roleText}>Tài xế giao hàng</Text>
-          </BlurView>
+              <View style={[styles.roleDot, { backgroundColor: user?.is_online ? "#22C55E" : "#9CA3AF" }]} />
+              <Text style={styles.roleText}>
+                {user?.is_online ? "Đang Online" : "Đang Offline"}
+              </Text>
+            </BlurView>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.headerActions}>

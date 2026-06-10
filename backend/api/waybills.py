@@ -513,7 +513,7 @@ def create_customer_pickup_waybill(
     shipping_fee, extra_services_fee, vat_amount = _calculate_pickup_estimated_price(db, customer, data, origin_hub, dest_hub)
 
     try:
-        booking, waybill = crud_wb.create_customer_pickup_waybill(
+        booking, waybill, pickup_bag = crud_wb.create_customer_pickup_waybill(
             db,
             customer=customer,
             data=data,
@@ -531,10 +531,13 @@ def create_customer_pickup_waybill(
             "request_id": booking.request_id,
             "request_code": booking.request_code,
             "waybill_code": waybill.waybill_code,
+            "bag_code": pickup_bag.bag_code if pickup_bag else None,
             "customer_id": customer.customer_id,
             "pickup_status": booking.status,
         })
-        return _build_pickup_create_response(booking, waybill)
+        response = _build_pickup_create_response(booking, waybill)
+        response["bag_code"] = pickup_bag.bag_code if pickup_bag else None
+        return response
     except ValueError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -592,7 +595,7 @@ def create_admin_pickup_waybill(
         source = "HOTLINE"
 
     try:
-        booking, waybill = crud_wb.create_customer_pickup_waybill(
+        booking, waybill, pickup_bag = crud_wb.create_customer_pickup_waybill(
             db,
             customer=customer,
             data=data,
@@ -617,11 +620,14 @@ def create_admin_pickup_waybill(
             "request_id": booking.request_id,
             "request_code": booking.request_code,
             "waybill_code": waybill.waybill_code,
+            "bag_code": pickup_bag.bag_code if pickup_bag else None,
             "customer_id": customer.customer_id,
             "pickup_status": booking.status,
             "target_hub_id": target_hub.hub_id if target_hub else None,
         })
-        return _build_pickup_create_response(booking, waybill)
+        response = _build_pickup_create_response(booking, waybill)
+        response["bag_code"] = pickup_bag.bag_code if pickup_bag else None
+        return response
     except ValueError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))

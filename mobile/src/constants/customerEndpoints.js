@@ -27,7 +27,7 @@ export const CUSTOMER_ENDPOINTS = {
 
   // Legacy / Others
   EXTRACT: `${API_BASE_URL}/extract`,
-  SUBMIT: `${API_BASE_URL}/submit`,
+  SUBMIT: `${API_BASE_URL}/api/waybills`,
   GET_SHIPMENT: (tracking_number) =>
     `${API_BASE_URL}/shipment/${tracking_number}`,
 

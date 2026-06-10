@@ -11,4 +11,16 @@ export const shipperService = {
             throw error;
         }
     },
+    toggleAvailability: async (isOnline, note = "") => {
+        try {
+            const { ADMIN_ENDPOINTS } = require('../constants/adminEndpoints');
+            const response = await apiClient.post(ADMIN_ENDPOINTS.TOGGLE_AVAILABILITY, {
+                is_online: isOnline,
+                note: note
+            });
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    }
 };

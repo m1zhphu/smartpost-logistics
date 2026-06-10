@@ -1,237 +1,185 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
+import * as ImagePicker from "expo-image-picker";
 import { COLORS } from "../constants/colors";
-import { getShipperAssignedPickups } from "../services/pickupService";
-import { useUser } from "../context/UserContext";
-import {
-  formatCurrency,
-  formatDateTime,
-  formatWeight,
-  getPickupStatusColor,
-  getPickupStatusLabel,
-} from "../utils/pickupHelpers";
+import { confirmDelivery, getDeliveryTasks, reportDeliveryFailure, uploadPickupImage } from "../services/deliveryService";
+import { formatCurrency, formatDateTime, formatWeight, getWaybillStatusLabel } from "../utils/pickupHelpers";
 
-export default function ShipperPickupListScreen({ navigation }) {
-  const { logout } = useUser();
-  const [pickups, setPickups] = useState([]);
+export default function ShipperDeliveryDetailScreen({ route, navigation }) {
+  const { waybillCode } = route.params;
+  const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [podImageUrl, setPodImageUrl] = useState("");
+  const [podPreview, setPodPreview] = useState("");
+  const [codCollected, setCodCollected] = useState("0");
+  const [note, setNote] = useState("Đã giao hàng thành công");
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      fetchPickups();
-    });
-    return unsubscribe;
-  }, [navigation]);
+  useEffect(() => { fetchTask(); }, []);
 
-  const fetchPickups = async () => {
+  const fetchTask = async () => {
     setLoading(true);
-    const result = await getShipperAssignedPickups();
+    const result = await getDeliveryTasks();
     if (result.success) {
-      setPickups(result.data || []);
+      setTask((result.data || []).find((item) => item.waybill_code === waybillCode) || null);
     }
     setLoading(false);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigation.replace("Login");
+  const handlePickImage = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (perm.status !== "granted") {
+      Alert.alert("Thiếu quyền", "Vui lòng cấp quyền camera để chụp POD.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.8 });
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    setPodPreview(asset.uri);
+    const upload = await uploadPickupImage({ uri: asset.uri, name: asset.fileName || `pod-${Date.now()}.jpg`, type: asset.mimeType || "image/jpeg" });
+    const uploaded = upload.data?.image_url || upload.data?.file_url;
+    if (upload.success && uploaded) {
+      setPodImageUrl(uploaded);
+      Toast.show({ type: "success", text1: "Đã tải ảnh POD" });
+    } else {
+      setPodPreview("");
+      setPodImageUrl("");
+      Toast.show({ type: "error", text1: "Upload ảnh thất bại", text2: upload.message });
+    }
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() =>
-        navigation.navigate("ShipperPickupDetail", {
-          requestCode: item.request_code,
-        })
-      }
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.codeBlock}>
-          <Text style={styles.requestCode}>{item.request_code}</Text>
-          <Text style={styles.waybillCode}>
-            {item.waybill_code || "Chưa có mã vận đơn"}
-          </Text>
-        </View>
-        <Text
-          style={[
-            styles.statusText,
-            { color: getPickupStatusColor(item.pickup_status) },
-          ]}
-        >
-          {getPickupStatusLabel(item.pickup_status)}
-        </Text>
-      </View>
+  const handleConfirm = () => {
+    if (!podImageUrl) {
+      Toast.show({ type: "error", text1: "Thiếu ảnh POD", text2: "Vui lòng chụp ảnh trước khi xác nhận." });
+      return;
+    }
+    Alert.alert("Xác nhận giao hàng", "Xác nhận đơn này đã giao thành công?", [
+      { text: "Hủy", style: "cancel" },
+      { text: "Đồng ý", onPress: async () => {
+        setSubmitting(true);
+        const result = await confirmDelivery(waybillCode, Number(codCollected || 0), note, podImageUrl);
+        setSubmitting(false);
+        if (result.success) {
+          Toast.show({ type: "success", text1: "Đã xác nhận giao hàng" });
+          navigation.goBack();
+        } else {
+          Toast.show({ type: "error", text1: "Xác nhận thất bại", text2: result.message });
+        }
+      }},
+    ]);
+  };
 
-      <View style={styles.cardBody}>
-        <View style={styles.infoRow}>
-          <Ionicons name="person" size={16} color="#666" style={styles.icon} />
-          <Text style={styles.infoText}>{item.sender_name || "---"}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Ionicons name="call" size={16} color="#666" style={styles.icon} />
-          <Text style={styles.infoText}>{item.sender_phone || "---"}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Ionicons
-            name="location"
-            size={16}
-            color="#666"
-            style={styles.icon}
-          />
-          <Text style={styles.infoText} numberOfLines={2}>
-            {item.pickup_address || "---"}
-          </Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Ionicons
-            name="time-outline"
-            size={16}
-            color="#666"
-            style={styles.icon}
-          />
-          <Text style={styles.infoText}>
-            Hẹn lấy: {formatDateTime(item.requested_pickup_time)}
-          </Text>
-        </View>
-      </View>
+  const handleFail = async () => {
+    Alert.alert("Báo thất bại", "Bạn muốn báo giao không thành công?", [
+      { text: "Hủy", style: "cancel" },
+      { text: "Báo thất bại", style: "destructive", onPress: async () => {
+        setSubmitting(true);
+        const result = await reportDeliveryFailure(waybillCode, "CUSTOMER_UNAVAILABLE", note);
+        setSubmitting(false);
+        if (result.success) {
+          Toast.show({ type: "success", text1: "Đã báo thất bại" });
+          navigation.goBack();
+        } else {
+          Toast.show({ type: "error", text1: "Báo thất bại lỗi", text2: result.message });
+        }
+      }},
+    ]);
+  };
 
-      <View style={styles.metaRow}>
-        <View style={styles.metaPill}>
-          <Text style={styles.metaLabel}>Số kiện</Text>
-          <Text style={styles.metaValue}>{item.est_quantity || 0}</Text>
-        </View>
-        <View style={styles.metaPill}>
-          <Text style={styles.metaLabel}>KL ước tính</Text>
-          <Text style={styles.metaValue}>{formatWeight(item.est_weight)}</Text>
-        </View>
-        <View style={styles.metaPill}>
-          <Text style={styles.metaLabel}>COD</Text>
-          <Text style={styles.metaValue}>
-            {formatCurrency(item.cod_amount)}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+  if (loading) return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  if (!task) return <View style={[styles.container, styles.center]}><Text style={styles.emptyText}>Không tìm thấy đơn giao này.</Text></View>;
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        {navigation.canGoBack() ? (
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.iconButton}
-          >
-            <Ionicons name="arrow-back" size={26} color="white" />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={() => navigation.replace("Home")}
-            style={styles.iconButton}
-          >
-            <Ionicons name="home-outline" size={26} color="white" />
-          </TouchableOpacity>
-        )}
-        <Text style={styles.headerTitle}>Đơn lấy hàng</Text>
-        <TouchableOpacity onPress={fetchPickups} style={styles.iconButton}>
-          <Ionicons name="reload" size={24} color="white" />
-        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}><Ionicons name="arrow-back" size={24} color="white" /></TouchableOpacity>
+        <View>
+          <Text style={styles.headerTitle}>Chi tiết giao hàng</Text>
+          <Text style={styles.headerSub}>{waybillCode}</Text>
+        </View>
+        <View style={{ width: 36 }} />
       </View>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+      <ScrollView contentContainerStyle={{ padding: 15, paddingBottom: 120 }}>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>THÔNG TIN ĐƠN</Text>
+          <Row label="Mã vận đơn" value={task.waybill_code} bold />
+          <Row label="Trạng thái" value={getWaybillStatusLabel(task.status || task.waybill_status)} bold />
+          <Row label="Người nhận" value={task.receiver_name || "---"} />
+          <Row label="SĐT nhận" value={task.receiver_phone || "---"} />
+          <Row label="Hẹn giao" value={formatDateTime(task.requested_pickup_time || task.created_at)} />
         </View>
-      ) : pickups.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyText}>
-            Hiện không có đơn nào cần đi lấy.
-          </Text>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>ĐỊA CHỈ GIAO</Text>
+          <Text style={styles.blockText}>{task.receiver_address || "---"}</Text>
         </View>
-      ) : (
-        <FlatList
-          data={pickups}
-          keyExtractor={(item) => item.request_code}
-          renderItem={renderItem}
-          contentContainerStyle={{ padding: 15 }}
-        />
-      )}
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>COD & KIỆN HÀNG</Text>
+          <Row label="COD" value={formatCurrency(task.cod_amount)} />
+          <Row label="Khối lượng" value={formatWeight(task.actual_weight || task.est_weight)} />
+          <Row label="Số kiện" value={task.est_quantity || 1} />
+          <Row label="Cước phải thu" value={formatCurrency(task.total_amount_to_collect || task.final_total_amount || task.estimated_total_amount)} />
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>XÁC NHẬN GIAO</Text>
+          <TouchableOpacity style={styles.imageBtn} onPress={handlePickImage}>
+            <Ionicons name="camera-outline" size={18} color="white" />
+            <Text style={styles.imageBtnText}>Chụp ảnh POD</Text>
+          </TouchableOpacity>
+          {podPreview ? <Text style={styles.previewHint}>Đã chọn ảnh</Text> : null}
+          <TextInput value={codCollected} onChangeText={setCodCollected} keyboardType="number-pad" placeholder="Tiền COD thu được" style={styles.input} />
+          <TextInput value={note} onChangeText={setNote} placeholder="Ghi chú" style={[styles.input, { minHeight: 80 }]} multiline />
+        </View>
+      </ScrollView>
+
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={[styles.failBtn, submitting && { opacity: 0.7 }]} onPress={handleFail} disabled={submitting}>
+          <Text style={styles.failText}>Báo thất bại</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.okBtn, submitting && { opacity: 0.7 }]} onPress={handleConfirm} disabled={submitting}>
+          <Text style={styles.okText}>{submitting ? "ĐANG XỬ LÝ..." : "Xác nhận giao"}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
+const Row = ({ label, value, bold }) => (
+  <View style={styles.row}>
+    <Text style={styles.label}>{label}</Text>
+    <Text style={[styles.value, bold && styles.valueBold]}>{String(value ?? "---")}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
-  header: {
-    flexDirection: "row",
-    backgroundColor: COLORS.primary,
-    height: 90,
-    paddingTop: 40,
-    paddingHorizontal: 15,
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  iconButton: { padding: 5 },
-  headerTitle: { color: "white", fontSize: 18, fontWeight: "bold" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyText: { color: "#666", fontSize: 16 },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderRadius: 14,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.45)",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    paddingBottom: 10,
-    marginBottom: 10,
-  },
-  codeBlock: { flex: 1 },
-  requestCode: { fontWeight: "bold", fontSize: 16, color: COLORS.secondary },
-  waybillCode: { marginTop: 4, fontSize: 12, color: "#64748b" },
-  statusText: {
-    fontWeight: "bold",
-    fontSize: 13,
-    maxWidth: 110,
-    textAlign: "right",
-  },
-  cardBody: {},
-  infoRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 8 },
-  icon: { marginRight: 8, marginTop: 2 },
-  infoText: { fontSize: 15, color: "#444", flex: 1, marginBottom: 4 },
-  metaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-  metaPill: {
-    flex: 1,
-    backgroundColor: "rgba(248,250,252,0.78)",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-  },
-  metaLabel: { fontSize: 11, color: "#64748b", marginBottom: 4 },
-  metaValue: { fontSize: 13, fontWeight: "700", color: "#0f172a" },
+  container: { flex: 1, backgroundColor: "#f1f5f9" },
+  center: { justifyContent: "center", alignItems: "center" },
+  emptyText: { color: "#64748b", fontSize: 16 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: COLORS.primary, paddingHorizontal: 15, paddingTop: 40, paddingBottom: 14 },
+  iconBtn: { padding: 5 },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  headerSub: { color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 },
+  card: { backgroundColor: "white", borderRadius: 16, padding: 15, marginBottom: 14, borderWidth: 1, borderColor: "#e2e8f0" },
+  sectionTitle: { fontSize: 13, fontWeight: "800", color: COLORS.secondary, marginBottom: 12 },
+  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8, gap: 12 },
+  label: { color: "#64748b", fontSize: 14, flex: 1, fontWeight: "700" },
+  value: { color: "#0f172a", fontSize: 14, flex: 1.2, textAlign: "right" },
+  valueBold: { fontWeight: "800" },
+  blockText: { color: "#0f172a", fontSize: 14, lineHeight: 22, fontWeight: "700" },
+  imageBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: 12, marginBottom: 10 },
+  imageBtnText: { color: "white", fontWeight: "800", marginLeft: 8 },
+  previewHint: { color: "#16a34a", fontSize: 12, marginBottom: 10 },
+  input: { backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginTop: 10, color: "#0f172a" },
+  bottomBar: { flexDirection: "row", gap: 10, padding: 14, backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#e2e8f0" },
+  failBtn: { flex: 1, backgroundColor: "#fff1f2", borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: "#fecdd3" },
+  failText: { color: "#e11d48", fontWeight: "800" },
+  okBtn: { flex: 1.3, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  okText: { color: "white", fontWeight: "800" },
 });

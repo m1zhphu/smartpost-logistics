@@ -444,7 +444,7 @@ export default function WarehouseHomeScreen({ navigation }) {
                             style={styles.menuItem}
                             onPress={() => {
                                 setIsMenuVisible(false);
-                                navigation.replace('Home');
+                                navigation.replace('ShipperCamera');
                             }}
                         >
                             <View style={styles.menuIconBox}>

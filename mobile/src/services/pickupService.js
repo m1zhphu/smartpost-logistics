@@ -1,6 +1,7 @@
 import { apiClient } from '../context/UserContext';
 import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
 import { ADMIN_ENDPOINTS } from '../constants/adminEndpoints';
+import { WAREHOUSE_ENDPOINTS } from '../constants/warehouseEndpoints';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const buildIdempotencyHeaders = (prefix) => ({
@@ -68,6 +69,71 @@ export const getPickupDraft = async () => {
 
 export const clearPickupDraft = async () => {
     await AsyncStorage.removeItem('customer_pickup_draft');
+};
+
+const PICKUP_DRAFT_LIST_KEY = 'customer_pickup_drafts';
+
+export const getPickupDrafts = async () => {
+    try {
+        const drafts = await AsyncStorage.getItem(PICKUP_DRAFT_LIST_KEY);
+        return drafts ? JSON.parse(drafts) : [];
+    } catch (error) {
+        return [];
+    }
+};
+
+export const savePickupDrafts = async (drafts) => {
+    try {
+        await AsyncStorage.setItem(PICKUP_DRAFT_LIST_KEY, JSON.stringify(drafts || []));
+        return { success: true };
+    } catch (error) {
+        return { success: false, message: 'Không thể lưu danh sách nháp' };
+    }
+};
+
+export const upsertPickupDraft = async (draft) => {
+    const drafts = await getPickupDrafts();
+    const draftId = draft.draft_id || Date.now().toString();
+    const nextDraft = { ...draft, draft_id: draftId, updated_at: new Date().toISOString() };
+    const index = drafts.findIndex(item => item.draft_id === draftId);
+    if (index >= 0) {
+        drafts[index] = nextDraft;
+    } else {
+        drafts.unshift(nextDraft);
+    }
+    await savePickupDrafts(drafts);
+    return nextDraft;
+};
+
+export const removePickupDraft = async (draftId) => {
+    const drafts = await getPickupDrafts();
+    const nextDrafts = drafts.filter(item => item.draft_id !== draftId);
+    await savePickupDrafts(nextDrafts);
+    return nextDrafts;
+};
+
+export const clearPickupDrafts = async () => {
+    await AsyncStorage.removeItem(PICKUP_DRAFT_LIST_KEY);
+};
+
+export const createPickupBag = async (payload) => {
+    try {
+        const response = await apiClient.post(WAREHOUSE_ENDPOINTS.CREATE_PICKUP_BAG, payload, {
+            headers: buildIdempotencyHeaders('mobile-pickup-bag')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const closePickupBag = async (bagCode) => {
+    try {
+        const response = await apiClient.post(WAREHOUSE_ENDPOINTS.CLOSE_PICKUP_BAG(bagCode));
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
 };
 
 // Shipper APIs
