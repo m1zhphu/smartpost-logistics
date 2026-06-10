@@ -1,6 +1,6 @@
 # --- Lõi Web & Server ---
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
 
 # --- Database ---
