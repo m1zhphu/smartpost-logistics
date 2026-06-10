@@ -124,7 +124,7 @@
                         </el-col>
                         <el-col :xs="12" :sm="7">
                           <el-form-item label="Khối lượng (kg)">
-                            <el-input v-model.number="item.weight" type="number" step="0.1" min="0" placeholder="0.5" class="w-full" @input="debouncedSimulate">
+                            <el-input v-model.number="item.weight" type="number" step="0.01" min="0.01" placeholder="0.05" class="w-full" @input="debouncedSimulate">
                               <template #append>kg</template>
                             </el-input>
                           </el-form-item>
@@ -183,9 +183,9 @@
                         </el-form-item>
                         <el-form-item label="Dịch vụ vận chuyển" required>
                           <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
-                            <el-radio-button label="STANDARD">Chuẩn (STANDARD)</el-radio-button>
-                            <el-radio-button label="FAST">Nhanh (FAST)</el-radio-button>
-                            <el-radio-button label="EXPRESS">Hỏa tốc (EXPRESS)</el-radio-button>
+                            <el-radio-button label="TK">Tiết kiệm (TK)</el-radio-button>
+                            <el-radio-button label="CPN">Chuyển phát nhanh (CPN)</el-radio-button>
+                            <el-radio-button label="HT">Hỏa tốc (HT)</el-radio-button>
                           </el-radio-group>
                         </el-form-item>
                         <el-form-item label="Số tiền thu hộ (COD)">
@@ -421,7 +421,7 @@ const form = reactive({
   ],
   cod_amount: 0,
   cod_receiver_pays_fee: false,
-  service_type: 'STANDARD',
+  service_type: 'CPN',
   extra_services: [],
   delivery_note_option: 'CHO_XEM_HANG',
   note: '',
@@ -564,42 +564,11 @@ const handleReceiverDistrictChange = async () => {
 };
 
 const mapStandardProvinceToHubProvince = (standardId, targetHubId = null) => {
-  if (targetHubId && hubsList.value && hubsList.value.length) {
-    const hub = hubsList.value.find(h => h.hub_id === targetHubId);
-    if (hub && hub.province_id) {
-      return {
-        province_id: hub.province_id,
-        province_name: hub.hub_name || ''
-      };
-    }
-  }
-
   const id = Number(standardId);
-  if (!id) {
-    return { province_id: 29, province_name: 'Thành phố Hà Nội' };
-  }
-
-  if (id >= 1 && id <= 37) {
-    return { province_id: 29, province_name: 'Thành phố Hà Nội' };
-  }
-  
-  if (id >= 38 && id <= 46) {
-    return { province_id: 74, province_name: 'Tỉnh Quảng Trị' };
-  }
-  
-  if ((id >= 48 && id <= 58) || (id >= 62 && id <= 67)) {
-    return { province_id: 15, province_name: 'Thành phố Đà Nẵng' };
-  }
-  
-  if (id === 68) {
-    return { province_id: 47, province_name: 'Tỉnh Lâm Đồng' };
-  }
-  
-  if (id === 80) {
-    return { province_id: 3, province_name: 'Tỉnh Long An' };
-  }
-  
-  return { province_id: 59, province_name: 'Thành phố Hồ Chí Minh' };
+  return {
+    province_id: id || null,
+    province_name: getProvinceName(id)
+  };
 };
 
 // SIMULATE ESTIMATED SHIPPING FEE
@@ -615,8 +584,8 @@ const triggerSimulation = async () => {
     return;
   }
   
-  const mainItem = form.items[0];
-  if (!mainItem || !mainItem.weight) {
+  const validItems = form.items.filter(item => Number(item.weight || 0) > 0);
+  if (!validItems.length) {
     simulateResult.value = null;
     simulateError.value = '';
     return;
@@ -628,15 +597,30 @@ const triggerSimulation = async () => {
     const mappedSender = mapStandardProvinceToHubProvince(form.sender.province_id, form.target_hub_id);
     const mappedReceiver = mapStandardProvinceToHubProvince(form.receiver.province_id);
 
+    const actualWeight = validItems.reduce((total, item) => {
+      return total + (Number(item.weight || 0) * Number(item.quantity || 1));
+    }, 0);
+    const convertedWeight = validItems.reduce((total, item) => {
+      if (!item.length || !item.width || !item.height) return total;
+      return total + ((Number(item.length) * Number(item.width) * Number(item.height)) / 5000) * Number(item.quantity || 1);
+    }, 0);
+    const chargeWeight = Math.max(actualWeight, convertedWeight, 0.01);
+    const declaredValue = validItems.reduce((total, item) => {
+      return total + (Number(item.declared_value || 0) * Number(item.quantity || 1));
+    }, 0);
+    const totalQuantity = validItems.reduce((total, item) => total + Number(item.quantity || 1), 0);
+
     const payload = {
       origin_province_id: Number(mappedSender.province_id),
       dest_province_id: Number(mappedReceiver.province_id),
-      weight: Number(mainItem.weight),
-      length: Number(mainItem.length || 0),
-      width: Number(mainItem.width || 0),
-      height: Number(mainItem.height || 0),
+      weight: Number(chargeWeight.toFixed(2)),
+      length: 0,
+      width: 0,
+      height: 0,
       service_type: form.service_type,
       cod_amount: Number(form.cod_amount || 0),
+      declared_value: declaredValue,
+      quantity: totalQuantity,
       extra_services: form.extra_services
     };
     
@@ -709,7 +693,7 @@ const startCreatePickup = async () => {
   form.items = [{ product_name: '', weight: 0.5, length: 0, width: 0, height: 0, quantity: 1, declared_value: 0 }];
   form.cod_amount = 0;
   form.extra_services = [];
-  form.service_type = 'STANDARD';
+  form.service_type = 'CPN';
   form.delivery_note_option = 'CHO_XEM_HANG';
   form.note = '';
   form.payment_method = 'SENDER_DEBT';
@@ -1394,11 +1378,12 @@ const handleExcelUpload = async (event) => {
       };
 
       const mapServiceType = (val) => {
-        if (!val) return 'STANDARD';
+        if (!val) return 'CPN';
         const s = val.toString().trim().toLowerCase();
-        if (s.includes('nhanh') || s.includes('fast')) return 'FAST';
-        if (s.includes('hoa toc') || s.includes('hỏa tốc') || s.includes('express')) return 'EXPRESS';
-        return 'STANDARD';
+        if (s.includes('tiet kiem') || s.includes('tiết kiệm') || s.includes('standard') || s.includes('economy') || s.includes('tk')) return 'TK';
+        if (s.includes('hoa toc') || s.includes('hỏa tốc') || s.includes('express') || s.includes('ht')) return 'HT';
+        if (s.includes('nhanh') || s.includes('fast') || s.includes('cpn')) return 'CPN';
+        return 'CPN';
       };
 
       const parseExtraServices = (val) => {

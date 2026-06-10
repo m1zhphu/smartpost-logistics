@@ -9,7 +9,7 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
 from core.database import get_db
 from core.security import get_current_user
-from core.pricing import calculate_shipping_fee, calculate_shipping_fee_detail, calculate_sla_status, get_waybill_current_holder, get_waybill_action_by
+from core.pricing import calculate_shipping_fee, calculate_shipping_fee_detail, calculate_sla_status, get_waybill_current_holder, get_waybill_action_by, normalize_service_type
 from core.realtime import realtime_manager
 import schemas.waybills as schema_wb
 import crud.waybills as crud_wb
@@ -462,10 +462,10 @@ def _calculate_pickup_estimated_price(db: Session, customer: models.Customers, d
     quantity = sum(int(item.quantity or 1) for item in data.items)
     fee_detail = calculate_shipping_fee_detail(
         db,
-        origin_hub_id=origin_hub.hub_id,
-        dest_hub_id=dest_hub.hub_id,
+        origin_province_id=data.sender.province_id,
+        dest_province_id=data.receiver.province_id,
         weight=charge_weight,
-        service_type=data.service_type or "STANDARD",
+        service_type=normalize_service_type(data.service_type),
         customer_id=customer.customer_id,
         extra_service_codes=extra_service_codes,
         cod_amount=float(data.cod_amount or 0),
@@ -510,6 +510,7 @@ def create_customer_pickup_waybill(
     if not dest_hub:
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc phat hang theo tinh/thanh nguoi nhan")
 
+    data.service_type = normalize_service_type(data.service_type)
     shipping_fee, extra_services_fee, vat_amount = _calculate_pickup_estimated_price(db, customer, data, origin_hub, dest_hub)
 
     try:
@@ -588,6 +589,7 @@ def create_admin_pickup_waybill(
     if not dest_hub:
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc phat hang theo tinh/thanh nguoi nhan")
 
+    data.service_type = normalize_service_type(data.service_type)
     shipping_fee, extra_services_fee, vat_amount = _calculate_pickup_estimated_price(db, customer, data, origin_hub, dest_hub)
     initial_status = "RECEIVED" if target_hub else "PENDING_CONFIRMATION"
     source = (data.source or "HOTLINE").upper()

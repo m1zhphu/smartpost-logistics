@@ -6,6 +6,20 @@ from typing import Optional, Tuple
 
 import crud.pricing as crud_pricing
 
+SERVICE_TYPE_ALIASES = {
+    "STANDARD": "TK",
+    "ECONOMY": "TK",
+    "SAVING": "TK",
+    "FAST": "CPN",
+    "EXPRESS_STANDARD": "CPN",
+    "EXPRESS": "HT",
+    "URGENT": "HT",
+}
+
+def normalize_service_type(service_type: str | None) -> str:
+    service = str(service_type or "TK").upper().strip()
+    return SERVICE_TYPE_ALIASES.get(service, service)
+
 def _resolve_policy_id(db: Session, customer_id: int = None) -> int:
     if customer_id:
         return crud_pricing.get_customer_policy_id(db, customer_id)
@@ -57,7 +71,8 @@ def calculate_shipping_fee_detail(
 
     charge_weight = max(float(weight or 0), 0.01)
     policy_id = _resolve_policy_id(db, customer_id)
-    rule = _find_pricing_rule(db, origin_province_id, dest_province_id, charge_weight, (service_type or "STANDARD").upper(), policy_id)
+    normalized_service_type = normalize_service_type(service_type)
+    rule = _find_pricing_rule(db, origin_province_id, dest_province_id, charge_weight, normalized_service_type, policy_id)
 
     if not rule:
         base_fee = 20000.0
@@ -118,6 +133,7 @@ def calculate_shipping_fee_detail(
         "chargeable_weight": charge_weight,
         "rule_id": rule_id,
         "pricing_method": pricing_method,
+        "service_type": normalized_service_type,
         "price_status": "ESTIMATED",
     }
 
@@ -136,14 +152,15 @@ def calculate_shipping_fee(db: Session, origin_hub_id: int, dest_hub_id: int, we
     policy_id = _resolve_policy_id(db, customer_id)
 
     # 2. Tìm quy tắc giá khớp với ma trận Tỉnh, Dịch vụ và Khối lượng (Lớp 1 & Lớp 2)
+    normalized_service_type = normalize_service_type(service_type)
     rule = crud_pricing.get_pricing_rule_exact(
-        db, origin_hub.province_id, dest_hub.province_id, service_type, weight, policy_id
+        db, origin_hub.province_id, dest_hub.province_id, normalized_service_type, weight, policy_id
     )
 
     if not rule:
         # Lớp 3: Tìm quy tắc thay thế (Fallback) lấy nấc lớn nhất của tuyến đó
         rule = crud_pricing.get_pricing_rule_fallback(
-            db, origin_hub.province_id, dest_hub.province_id, service_type, policy_id
+            db, origin_hub.province_id, dest_hub.province_id, normalized_service_type, policy_id
         )
 
     # 3. Logic xử lý kết quả
