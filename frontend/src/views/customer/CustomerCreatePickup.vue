@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="customer-portal">
     <div class="portal-container">
       <el-row :gutter="24" class="portal-content">
@@ -203,6 +203,13 @@
                         <el-form-item label="Số tiền thu hộ (COD)">
                           <el-input-number v-model="form.cod_amount" :min="0" :step="10000" class="w-full" @change="debouncedSimulate" />
                         </el-form-item>
+                        <el-form-item label="Đóng kiện">
+                          <el-radio-group v-model="form.packing_type" class="packing-type-group" @change="debouncedSimulate">
+                            <el-radio-button :label="null">Không đóng kiện</el-radio-button>
+                            <el-radio-button label="WOOD">Đóng kiện gỗ</el-radio-button>
+                            <el-radio-button label="FOAM">Đóng kiện xốp</el-radio-button>
+                          </el-radio-group>
+                        </el-form-item>
                         <el-form-item label="Phương thức thanh toán">
                           <el-select v-model="form.payment_method" class="w-full">
                             <el-option label="Shop trả cước cuối tháng (SENDER_DEBT)" value="SENDER_DEBT" />
@@ -262,9 +269,21 @@
                       <span>Cước chính:</span>
                       <span class="price-val">{{ (simulateResult.main_fee || 0).toLocaleString() }} đ</span>
                     </div>
+                    <div class="billing-line" v-if="simulateResult.fuel_surcharge > 0">
+                      <span>Phụ phí xăng dầu:</span>
+                      <span class="price-val">{{ (simulateResult.fuel_surcharge || 0).toLocaleString() }} đ</span>
+                    </div>
                     <div class="billing-line">
                       <span>Phí dịch vụ gia tăng:</span>
                       <span class="price-val">{{ (simulateResult.extra_fee || 0).toLocaleString() }} đ</span>
+                    </div>
+                    <div class="billing-line" v-if="simulateResult.packing_fee > 0">
+                      <span>Phí đóng kiện:</span>
+                      <span class="price-val">{{ (simulateResult.packing_fee || 0).toLocaleString() }} đ</span>
+                    </div>
+                    <div class="billing-line" v-if="simulateResult.remote_fee > 0">
+                      <span>Phụ phí vùng xa:</span>
+                      <span class="price-val">{{ (simulateResult.remote_fee || 0).toLocaleString() }} đ</span>
                     </div>
                     <div class="billing-line">
                       <span>Thuế VAT (8%):</span>
@@ -435,6 +454,7 @@ const form = reactive({
   cod_receiver_pays_fee: false,
   service_type: 'CPN',
   extra_services: [],
+  packing_type: null,
   delivery_note_option: 'CHO_XEM_HANG',
   note: '',
   payment_method: 'SENDER_DEBT',
@@ -669,6 +689,7 @@ const triggerSimulation = async () => {
       cod_amount: Number(form.cod_amount || 0),
       declared_value: declaredValue,
       quantity: totalQuantity,
+      packing_type: form.packing_type || null,
       extra_services: form.extra_services
     };
     
@@ -741,6 +762,7 @@ const startCreatePickup = async () => {
   form.items = [{ product_name: '', weight: 0.5, length: 0, width: 0, height: 0, quantity: 1, declared_value: 0 }];
   form.cod_amount = 0;
   form.extra_services = [];
+  form.packing_type = null;
   form.service_type = 'CPN';
   form.delivery_note_option = 'CHO_XEM_HANG';
   form.note = '';
@@ -927,6 +949,7 @@ const submitPickupRequest = async () => {
       cod_receiver_pays_fee: form.cod_receiver_pays_fee,
       service_type: form.service_type,
       extra_services: mappedExtra,
+      packing_type: form.packing_type || null,
       delivery_note_option: form.delivery_note_option,
       note: form.note,
       payment_method: form.payment_method,
@@ -1015,6 +1038,7 @@ const submitAllDrafts = async () => {
         cod_receiver_pays_fee: draft.cod_receiver_pays_fee,
         service_type: draft.service_type,
         extra_services: mappedExtra,
+        packing_type: draft.packing_type || null,
         delivery_note_option: draft.delivery_note_option,
         note: draft.note,
         payment_method: draft.payment_method,
@@ -1706,4 +1730,5 @@ onMounted(async () => {
 });
 </script>
 <style scoped src="./CustomerPortal.css"></style>
+
 

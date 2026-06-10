@@ -485,6 +485,25 @@
   color: var(--sp-text-muted, #a3b1cc);
 }
 
+.packing-type-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.packing-type-group :deep(.el-radio-button) {
+  flex: 1 1 110px;
+}
+
+.packing-type-group :deep(.el-radio-button__inner) {
+  width: 100%;
+  border-radius: 6px !important;
+  white-space: normal;
+  line-height: 1.3;
+  padding: 9px 10px;
+}
+
 /* Invoice Ticket Receipt Look for Billing */
 .billing-summary-card {
   border-radius: 20px;

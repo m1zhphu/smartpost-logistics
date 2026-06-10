@@ -205,15 +205,14 @@ def clear_customer_policy(db: Session, customer_id: int):
     db.flush()
 
 def get_province_zone(db: Session, origin_prov_id: int, dest_prov_id: int) -> str:
-    """Lấy Zone mapping cho cặp Tỉnh đi - Tỉnh đến (Mục 6 Đặc tả)"""
     mapping = db.query(models.ProvinceZones).filter(
         models.ProvinceZones.origin_province_id == origin_prov_id,
         models.ProvinceZones.destination_province_id == dest_prov_id
     ).first()
     return mapping.zone_name if mapping else None
 
+
 def get_pricing_rule_by_zone(db: Session, zone_name: str, service_type: str, weight: float, policy_id: int = 1):
-    """Tìm bảng giá theo Zone (Mục 5 Đặc tả)"""
     return db.query(models.PricingRules).filter(
         models.PricingRules.zone_name == zone_name,
         models.PricingRules.service_type == service_type,
@@ -223,10 +222,9 @@ def get_pricing_rule_by_zone(db: Session, zone_name: str, service_type: str, wei
         models.PricingRules.is_active == True
     ).first()
 
-def get_pricing_rule_exact(db: Session, origin_id: int, dest_id: int, service_type: str, weight: float, policy_id: int = 1):
-    """Tìm bảng giá với logic 3 lớp: Exact -> Zone -> Fallback"""
-    # Lớp 1: Khớp chính xác tỉnh
-    rule = db.query(models.PricingRules).filter(
+
+def _get_pricing_rule_exact_direction(db: Session, origin_id: int, dest_id: int, service_type: str, weight: float, policy_id: int = 1):
+    return db.query(models.PricingRules).filter(
         models.PricingRules.from_province_id == origin_id,
         models.PricingRules.to_province_id == dest_id,
         models.PricingRules.service_type == service_type,
@@ -235,41 +233,74 @@ def get_pricing_rule_exact(db: Session, origin_id: int, dest_id: int, service_ty
         models.PricingRules.policy_id == policy_id,
         models.PricingRules.is_active == True
     ).first()
-    
-    if rule: return rule
-    
-    # Lớp 2: Tìm theo Zone mapping (Mục 5 & 6)
-    zone_name = get_province_zone(db, origin_id, dest_id)
-    if zone_name:
-        rule = get_pricing_rule_by_zone(db, zone_name, service_type, weight, policy_id)
-        if rule: return rule
-        
-    return None
 
-def get_pricing_rule_fallback(db: Session, origin_prov: int, dest_prov: int, service_type: str, policy_id: int = 1):
-    """Tìm bảng giá thay thế (Lớp 3)"""
-    # Thử tìm theo tỉnh trước
-    rule = db.query(models.PricingRules).filter(
-        models.PricingRules.from_province_id == origin_prov,
-        models.PricingRules.to_province_id == dest_prov,
+
+def _get_pricing_rule_fallback_direction(db: Session, origin_id: int, dest_id: int, service_type: str, policy_id: int = 1):
+    return db.query(models.PricingRules).filter(
+        models.PricingRules.from_province_id == origin_id,
+        models.PricingRules.to_province_id == dest_id,
         models.PricingRules.service_type == service_type,
         models.PricingRules.policy_id == policy_id,
         models.PricingRules.is_active == True
     ).order_by(models.PricingRules.max_weight.desc()).first()
-    
-    if rule: return rule
-    
-    # Thử tìm theo Zone
+
+
+def _get_pricing_rule_zone_fallback(db: Session, zone_name: str, service_type: str, policy_id: int = 1):
+    return db.query(models.PricingRules).filter(
+        models.PricingRules.zone_name == zone_name,
+        models.PricingRules.service_type == service_type,
+        models.PricingRules.policy_id == policy_id,
+        models.PricingRules.is_active == True
+    ).order_by(models.PricingRules.max_weight.desc()).first()
+
+
+def get_pricing_rule_exact(db: Session, origin_id: int, dest_id: int, service_type: str, weight: float, policy_id: int = 1):
+    rule = _get_pricing_rule_exact_direction(db, origin_id, dest_id, service_type, weight, policy_id)
+    if rule:
+        return rule
+
+    zone_name = get_province_zone(db, origin_id, dest_id)
+    if zone_name:
+        rule = get_pricing_rule_by_zone(db, zone_name, service_type, weight, policy_id)
+        if rule:
+            return rule
+
+    rule = _get_pricing_rule_exact_direction(db, dest_id, origin_id, service_type, weight, policy_id)
+    if rule:
+        return rule
+
+    reverse_zone_name = get_province_zone(db, dest_id, origin_id)
+    if reverse_zone_name:
+        rule = get_pricing_rule_by_zone(db, reverse_zone_name, service_type, weight, policy_id)
+        if rule:
+            return rule
+
+    return None
+
+
+def get_pricing_rule_fallback(db: Session, origin_prov: int, dest_prov: int, service_type: str, policy_id: int = 1):
+    rule = _get_pricing_rule_fallback_direction(db, origin_prov, dest_prov, service_type, policy_id)
+    if rule:
+        return rule
+
     zone_name = get_province_zone(db, origin_prov, dest_prov)
     if zone_name:
-        rule = db.query(models.PricingRules).filter(
-            models.PricingRules.zone_name == zone_name,
-            models.PricingRules.service_type == service_type,
-            models.PricingRules.policy_id == policy_id,
-            models.PricingRules.is_active == True
-        ).order_by(models.PricingRules.max_weight.desc()).first()
-        
-    return rule
+        rule = _get_pricing_rule_zone_fallback(db, zone_name, service_type, policy_id)
+        if rule:
+            return rule
+
+    rule = _get_pricing_rule_fallback_direction(db, dest_prov, origin_prov, service_type, policy_id)
+    if rule:
+        return rule
+
+    reverse_zone_name = get_province_zone(db, dest_prov, origin_prov)
+    if reverse_zone_name:
+        rule = _get_pricing_rule_zone_fallback(db, reverse_zone_name, service_type, policy_id)
+        if rule:
+            return rule
+
+    return None
+
 
 def calculate_rule_shipping_fee(rule: models.PricingRules, charge_weight: float) -> dict:
     base_fee = float(rule.price or 0)
