@@ -176,11 +176,22 @@
                             <el-icon><Setting /></el-icon><span>Cấu hình Vận chuyển</span>
                           </div>
                         </template>
-                        <el-form-item label="Bưu cục xử lý">
-                          <el-input
-                            :model-value="autoProcessingHub ? `${autoProcessingHub.hub_name} - ${getProvinceName(autoProcessingHub.province_id) || 'Theo tỉnh gửi'}` : 'Hệ thống sẽ tự phân công theo tỉnh/thành gửi'"
-                            disabled
-                          />
+                        <el-form-item label="Bưu cục xử lý (Không bắt buộc)">
+                          <el-select
+                            v-model="form.target_hub_id"
+                            class="w-full"
+                            filterable
+                            clearable
+                            placeholder="Hệ thống sẽ tự gợi ý theo tỉnh gửi"
+                            @change="debouncedSimulate"
+                          >
+                            <el-option
+                              v-for="hub in activeHubsList"
+                              :key="hub.hub_id"
+                              :label="`${hub.hub_name}${getProvinceName(hub.province_id) ? ' - ' + getProvinceName(hub.province_id) : ''}`"
+                              :value="hub.hub_id"
+                            />
+                          </el-select>
                         </el-form-item>
                         <el-form-item label="Dịch vụ vận chuyển" required>
                           <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
@@ -500,11 +511,13 @@ const normalizeAddressText = (value = '') => value
 
 const isActiveHub = (hub) => hub?.status === true || hub?.status === 1 || hub?.status === 'ACTIVE';
 
+const activeHubsList = computed(() => hubsList.value.filter(isActiveHub));
+
 const autoProcessingHub = computed(() => {
   const provinceId = Number(form.sender.province_id || 0);
   if (!provinceId) return null;
 
-  const activeHubs = hubsList.value.filter(isActiveHub);
+  const activeHubs = activeHubsList.value;
   const exactMatch = activeHubs.find(hub => Number(hub.province_id) === provinceId);
   if (exactMatch) return exactMatch;
 
@@ -919,7 +932,7 @@ const submitPickupRequest = async () => {
       payment_method: form.payment_method,
       pickup_method: 'OUR_STAFF_PICKUP',
       delivery_method: 'OUR_STAFF_DELIVERY',
-      target_hub_id: autoProcessingHub.value?.hub_id || form.target_hub_id || null,
+      target_hub_id: form.target_hub_id || null,
       save_as_draft: false
     };
 
@@ -1693,3 +1706,4 @@ onMounted(async () => {
 });
 </script>
 <style scoped src="./CustomerPortal.css"></style>
+

@@ -3,6 +3,10 @@ from fastapi import Header, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from core.redis import redis_client
 import json
+import logging
+from redis.exceptions import RedisError
+
+logger = logging.getLogger(__name__)
 
 # Thời gian lưu trữ key (Ví dụ 24h để đảm bảo trong một ngày không bị trùng)
 EXPIRATION_TIME = 86400 
@@ -23,7 +27,11 @@ async def validate_idempotency(
             )
 
         # Kiểm tra xem Key này đã tồn tại trong Redis chưa
-        existing_request = redis_client.get(idempotency_key)
+        try:
+            existing_request = redis_client.get(idempotency_key)
+        except RedisError as exc:
+            logger.warning("Redis unavailable while validating idempotency key %s: %s", idempotency_key, exc)
+            existing_request = None
         
         if existing_request:
             # Nếu tồn tại, trả về lỗi 409 Conflict hoặc kết quả đã lưu tùy nghiệp vụ
@@ -39,4 +47,7 @@ def commit_idempotency(key: str, response_data: dict):
     Hàm này gọi sau khi xử lý Database thành công để ghi nhận Key đã dùng.
     """
     if key:
-        redis_client.setex(key, EXPIRATION_TIME, json.dumps(jsonable_encoder(response_data)))
+        try:
+            redis_client.setex(key, EXPIRATION_TIME, json.dumps(jsonable_encoder(response_data)))
+        except RedisError as exc:
+            logger.warning("Redis unavailable while committing idempotency key %s: %s", key, exc)
