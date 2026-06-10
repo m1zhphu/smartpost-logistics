@@ -184,35 +184,50 @@
                     </template>
                     <div v-for="(item, index) in form.items" :key="index" class="item-input-row">
                       <el-row :gutter="16">
-                        <el-col :xs="24" :sm="6">
+                        <el-col :xs="24" :sm="10">
                           <el-form-item label="Tên sản phẩm" required>
                             <el-input v-model="item.product_name" placeholder="Ví dụ: Quần áo, mỹ phẩm..." @input="debouncedSimulate" />
                           </el-form-item>
                         </el-col>
-                        <el-col :xs="12" :sm="4">
+                        <el-col :xs="12" :sm="7">
                           <el-form-item label="Khối lượng (kg)">
-                            <el-input-number v-model="item.weight" :min="0" :step="0.1" class="w-full animate-calc" @change="debouncedSimulate" />
+                            <el-input v-model.number="item.weight" type="number" step="0.1" min="0" placeholder="0.5" class="w-full" @input="debouncedSimulate">
+                              <template #append>kg</template>
+                            </el-input>
                           </el-form-item>
                         </el-col>
-                        <el-col :xs="12" :sm="3">
+                        <el-col :xs="12" :sm="7">
                           <el-form-item label="Số lượng">
-                            <el-input-number v-model="item.quantity" :min="1" class="w-full animate-calc" @change="debouncedSimulate" />
+                            <el-input v-model.number="item.quantity" type="number" min="1" placeholder="1" class="w-full" @input="debouncedSimulate">
+                              <template #append>cái</template>
+                            </el-input>
                           </el-form-item>
                         </el-col>
-                        <el-col :xs="24" :sm="8">
+                      </el-row>
+                      
+                      <el-row :gutter="16" style="margin-top: 12px;">
+                        <el-col :xs="24" :sm="14">
                           <el-form-item label="Kích thước cm (Dài x Rộng x Cao)">
                             <div class="dimension-inputs">
-                              <el-input-number v-model="item.length" :min="0" placeholder="D" class="animate-calc" @change="debouncedSimulate" />
-                              <span>x</span>
-                              <el-input-number v-model="item.width" :min="0" placeholder="R" class="animate-calc" @change="debouncedSimulate" />
-                              <span>x</span>
-                              <el-input-number v-model="item.height" :min="0" placeholder="C" class="animate-calc" @change="debouncedSimulate" />
+                              <el-input v-model.number="item.length" type="number" min="0" placeholder="Dài" @input="debouncedSimulate">
+                                <template #append>cm</template>
+                              </el-input>
+                              <span class="dimension-sep">×</span>
+                              <el-input v-model.number="item.width" type="number" min="0" placeholder="Rộng" @input="debouncedSimulate">
+                                <template #append>cm</template>
+                              </el-input>
+                              <span class="dimension-sep">×</span>
+                              <el-input v-model.number="item.height" type="number" min="0" placeholder="Cao" @input="debouncedSimulate">
+                                <template #append>cm</template>
+                              </el-input>
                             </div>
                           </el-form-item>
                         </el-col>
-                        <el-col :xs="24" :sm="3">
+                        <el-col :xs="24" :sm="10">
                           <el-form-item label="Khai giá (đ)">
-                            <el-input-number v-model="item.declared_value" :min="0" :step="50000" class="w-full" @change="debouncedSimulate" />
+                            <el-input v-model.number="item.declared_value" type="number" min="0" placeholder="0" class="w-full" @input="debouncedSimulate">
+                              <template #append>đ</template>
+                            </el-input>
                           </el-form-item>
                         </el-col>
                       </el-row>

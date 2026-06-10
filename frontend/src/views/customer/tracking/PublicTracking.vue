@@ -88,7 +88,7 @@ const goBack = () => {
   if (window.history.length > 1) {
     router.back();
   } else {
-    router.push('/customer/portal');
+    router.push('/customer/dashboard');
   }
 };
 

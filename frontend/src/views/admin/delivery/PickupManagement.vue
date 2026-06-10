@@ -16,6 +16,10 @@
           </div>
         </div>
         <div class="header-actions flex gap-2">
+          <el-button type="warning" plain @click="triggerExcelImport">
+            <el-icon class="mr-2"><DocumentAdd /></el-icon>
+            <span>Nhập từ Excel</span>
+          </el-button>
           <el-button type="primary" @click="openCreatePickupDialog">
             <el-icon class="mr-2"><Plus /></el-icon>
             <span>Tạo đơn Hotline/CSKH</span>
@@ -1079,6 +1083,7 @@
         </template>
       </el-dialog>
 
+      <input type="file" ref="excelInput" style="display: none;" accept=".xlsx, .xls" @change="handleExcelUpload" />
     </div>
   </div>
 </template>
@@ -1086,16 +1091,18 @@
 <script setup>
 import { ref, onMounted, computed, reactive, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check, User, Box } from '@element-plus/icons-vue';
+import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check, User, Box, DocumentAdd } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
 import moment from 'moment';
+import * as XLSX from 'xlsx';
 import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
 const authStore = useAuthStore();
 
 const activeTab = ref('pending');
+const excelInput = ref(null);
 const loading = ref(false);
 const dialogLoading = ref(false);
 const uploadLoading = ref(false);
@@ -1928,7 +1935,6 @@ const beforeUpload = (file) => {
   uploadLoading.value = true;
   return true;
 };
-
 const handleUploadSuccess = (response) => {
   uploadLoading.value = false;
   if (response.status === 'success' || response.image_url) {
@@ -1937,6 +1943,317 @@ const handleUploadSuccess = (response) => {
   } else {
     ElMessage.error('Không tìm thấy tệp ảnh tải lên trong kết quả trả về.');
   }
+};
+
+const COLUMN_MAPPING = {
+  customer_code: ['ma khach hang gui', 'mã khách hàng gửi', 'ma khach hang', 'mã khách hàng', 'makh'],
+  shop_order_code: ['ma don hang shop', 'mã đơn hàng shop', 'ma don hang', 'mã đơn hàng'],
+  sender_name: ['ten nguoi gui', 'tên người gửi', 'nguoi gui', 'người gửi'],
+  sender_phone: ['so dien thoai nguoi gui', 'số điện thoại người gửi', 'sdt nguoi gui', 'sđt người gửi'],
+  sender_address: ['dia chi nguoi gui', 'địa chỉ người gửi'],
+  sender_province: ['tinh gui', 'tỉnh gửi'],
+  service_type: ['dich vu', 'dịch vụ'],
+  extra_services: ['dich vu cong them', 'dịch vụ cộng thêm', 'dvct'],
+  receiver_name: ['ho ten nguoi nhan', 'họ tên người nhận', 'ten nguoi nhan', 'tên người nhận', 'nguoi nhan', 'người nhận'],
+  receiver_phone: ['so dien thoai nguoi nhan', 'số điện thoại người nhận', 'sdt nguoi nhan', 'sđt người nhận'],
+  receiver_address: ['dia chi giao hang', 'địa chỉ giao hàng', 'dia chi nguoi nhan', 'địa chỉ người nhận'],
+  receiver_province: ['tinh den', 'tỉnh đến', 'tinh nhan', 'tỉnh nhận'],
+  product_group: ['nhom hang hoa', 'nhóm hàng hóa'],
+  product_name: ['ten hang hoa', 'tên hàng hóa', 'ten san pham', 'tên sản phẩm'],
+  declared_value: ['gia tri hang hoa', 'giá trị hàng hóa', 'gía trị hàng hóa', 'khai gia', 'khai giá'],
+  weight: ['khoi luong [kg]', 'khối lượng [kg]', 'khoi luong', 'khối lượng'],
+  length: ['dai [cm]', 'dài [cm]', 'dai', 'dài'],
+  width: ['rong [cm]', 'rộng [cm]', 'rong', 'rộng'],
+  height: ['cao [cm]', 'cao [cm]', 'cao', 'cao'],
+  quantity: ['so luong', 'số lượng'],
+  payment_method: ['hinh thuc thanh toan', 'hình thức thanh toán'],
+  cod_amount: ['tien thu ho cod', 'tiền thu hộ cod', 'thu ho cod', 'thu hộ cod', 'cod']
+};
+
+const triggerExcelImport = () => {
+  excelInput.value.click();
+};
+
+const mapStandardProvinceToHubProvince = (provinceId) => {
+  const pId = Number(provinceId);
+  if (pId === 79) return 59; // Hồ Chí Minh -> 59
+  if (pId === 1) return 29;  // Hà Nội -> 29
+  if (pId === 48) return 15; // Đà Nẵng -> 15
+  return pId;
+};
+
+const parseVietnameseAddress = (addressStr, fallbackProvinceName) => {
+  let provinceName = '';
+  let districtName = '';
+  let wardName = '';
+  let addressDetail = addressStr || '';
+
+  if (addressStr) {
+    const parts = addressStr.split(',').map(p => p.trim());
+    if (parts.length >= 4) {
+      provinceName = parts[parts.length - 1];
+      districtName = parts[parts.length - 2];
+      wardName = parts[parts.length - 3];
+      addressDetail = parts.slice(0, parts.length - 3).join(', ');
+    } else if (parts.length === 3) {
+      provinceName = parts[parts.length - 1];
+      districtName = parts[parts.length - 2];
+      addressDetail = parts.slice(0, parts.length - 2).join(', ');
+    } else if (parts.length === 2) {
+      provinceName = parts[parts.length - 1];
+      addressDetail = parts[0];
+    }
+  }
+
+  if (!provinceName && fallbackProvinceName) {
+    provinceName = fallbackProvinceName;
+  }
+
+  return {
+    province_name: provinceName,
+    district_name: districtName,
+    ward_name: wardName,
+    address_detail: addressDetail
+  };
+};
+
+const handleExcelUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rawRows = XLSX.utils.sheet_to_json(worksheet);
+
+      if (rawRows.length === 0) {
+        ElMessage.warning('File Excel không có dữ liệu.');
+        return;
+      }
+
+      ElMessage.info(`Đang phân tích và nhập ${rawRows.length} dòng dữ liệu...`);
+
+      const getValueByMapping = (rowObj, fieldKey) => {
+        const possibleHeaders = COLUMN_MAPPING[fieldKey] || [];
+        const rowKeys = Object.keys(rowObj);
+        for (const key of rowKeys) {
+          const normalizedKey = key.trim().toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, ' ');
+          for (const header of possibleHeaders) {
+            const normalizedHeader = header.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+              .replace(/\s+/g, ' ');
+            if (normalizedKey === normalizedHeader) {
+              return rowObj[key];
+            }
+          }
+        }
+        return null;
+      };
+
+      const norm = (str) => {
+        if (!str) return '';
+        return str.toString()
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/^(tinh|thanh pho|tp\.|tp|huyen|quan|phuong|xa)\s+/i, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
+      const findProvinceId = (name) => {
+        if (!name) return null;
+        const nName = norm(name);
+        const found = provinces.value.find(p => norm(p.name) === nName);
+        return found ? found.id : null;
+      };
+
+      const mapServiceType = (val) => {
+        if (!val) return 'STANDARD';
+        const s = val.toString().trim().toLowerCase();
+        if (s.includes('nhanh') || s.includes('fast')) return 'FAST';
+        if (s.includes('hoa toc') || s.includes('hỏa tốc') || s.includes('express')) return 'EXPRESS';
+        return 'STANDARD';
+      };
+
+      const mapPaymentMethod = (val) => {
+        if (!val) return 'SENDER_DEBT';
+        const s = val.toString().trim().toLowerCase();
+        if (s.includes('gui') || s.includes('người gửi') || s.includes('pay')) return 'SENDER_PAY';
+        if (s.includes('nhan') || s.includes('người nhận') || s.includes('thu')) return 'RECEIVER_PAY';
+        return 'SENDER_DEBT';
+      };
+
+      const findCustomerId = (code, phone) => {
+        if (!code && !phone) return null;
+        let match = null;
+        if (code) {
+          match = customers.value.find(c => c.customer_code?.toString().toLowerCase() === code.toString().toLowerCase());
+        }
+        if (!match && phone) {
+          const normPhone = phone.toString().replace(/\D/g, '');
+          match = customers.value.find(c => c.phone_number?.toString().replace(/\D/g, '') === normPhone);
+        }
+        return match ? match.customer_id : null;
+      };
+
+      const parsedRows = [];
+      for (const row of rawRows) {
+        const senderAddrRaw = getValueByMapping(row, 'sender_address');
+        const senderProvRaw = getValueByMapping(row, 'sender_province');
+        const parsedSender = parseVietnameseAddress(senderAddrRaw, senderProvRaw);
+
+        const receiverAddrRaw = getValueByMapping(row, 'receiver_address');
+        const receiverProvRaw = getValueByMapping(row, 'receiver_province');
+        const parsedReceiver = parseVietnameseAddress(receiverAddrRaw, receiverProvRaw);
+
+        parsedRows.push({
+          customer_code: getValueByMapping(row, 'customer_code') || '',
+          shop_order_code: getValueByMapping(row, 'shop_order_code') || '',
+          sender_name: getValueByMapping(row, 'sender_name') || '',
+          sender_phone: getValueByMapping(row, 'sender_phone') || '',
+          sender_address_detail: parsedSender.address_detail,
+          sender_province_name: parsedSender.province_name,
+          sender_district_name: parsedSender.district_name,
+          sender_ward_name: parsedSender.ward_name,
+          senderProvinceId: findProvinceId(parsedSender.province_name),
+          senderDistrictId: null,
+          senderWardId: null,
+
+          receiver_name: getValueByMapping(row, 'receiver_name') || '',
+          receiver_phone: getValueByMapping(row, 'receiver_phone') || '',
+          receiver_address_detail: parsedReceiver.address_detail,
+          receiver_province_name: parsedReceiver.province_name,
+          receiver_district_name: parsedReceiver.district_name,
+          receiver_ward_name: parsedReceiver.ward_name,
+          receiverProvinceId: findProvinceId(parsedReceiver.province_name),
+          receiverDistrictId: null,
+          receiverWardId: null,
+
+          product_group: getValueByMapping(row, 'product_group') || 'PARCEL',
+          product_name: getValueByMapping(row, 'product_name') || 'Hàng hóa',
+          declared_value: Number(getValueByMapping(row, 'declared_value') || 0),
+          weight: Number(getValueByMapping(row, 'weight') || 0.5),
+          length: Number(getValueByMapping(row, 'length') || 0),
+          width: Number(getValueByMapping(row, 'width') || 0),
+          height: Number(getValueByMapping(row, 'height') || 0),
+          quantity: Number(getValueByMapping(row, 'quantity') || 1),
+          payment_method: getValueByMapping(row, 'payment_method') || '',
+          cod_amount: Number(getValueByMapping(row, 'cod_amount') || 0),
+          service_type: getValueByMapping(row, 'service_type') || ''
+        });
+      }
+
+      // Preload districts and wards (synchronous calls since it reads from in-memory allAddressData)
+      for (const row of parsedRows) {
+        if (row.senderProvinceId && row.sender_district_name) {
+          const dists = await fetchDistrictsForProvince(row.senderProvinceId);
+          const match = dists.find(d => norm(d.name) === norm(row.sender_district_name));
+          if (match) row.senderDistrictId = match.id;
+        }
+        if (row.receiverProvinceId && row.receiver_district_name) {
+          const dists = await fetchDistrictsForProvince(row.receiverProvinceId);
+          const match = dists.find(d => norm(d.name) === norm(row.receiver_district_name));
+          if (match) row.receiverDistrictId = match.id;
+        }
+        if (row.senderDistrictId && row.sender_ward_name) {
+          const wrds = await fetchWardsForDistrict(row.senderDistrictId);
+          const match = wrds.find(w => norm(w.name) === norm(row.sender_ward_name));
+          if (match) row.senderWardId = match.id;
+        }
+        if (row.receiverDistrictId && row.receiver_ward_name) {
+          const wrds = await fetchWardsForDistrict(row.receiverDistrictId);
+          const match = wrds.find(w => norm(w.name) === norm(row.receiver_ward_name));
+          if (match) row.receiverWardId = match.id;
+        }
+      }
+
+      // Loop and submit
+      let successCount = 0;
+      let errorCount = 0;
+      for (let i = 0; i < parsedRows.length; i++) {
+        const row = parsedRows[i];
+        const custId = findCustomerId(row.customer_code, row.sender_phone) || customers.value[0]?.customer_id;
+
+        const payload = {
+          customer_id: custId,
+          target_hub_id: null,
+          source: 'HOTLINE',
+          order_type: "DOMESTIC",
+          shop_order_code: row.shop_order_code || `HL-${Date.now()}-${i}`,
+          sender: {
+            name: row.sender_name || (customers.value.find(c => c.customer_id === custId)?.transaction_name || 'Khách gửi'),
+            phone: row.sender_phone || (customers.value.find(c => c.customer_id === custId)?.phone_number || ''),
+            address: `${row.sender_address_detail || 'Địa chỉ'}, ${row.sender_ward_name || ''}, ${row.sender_district_name || ''}, ${row.sender_province_name || ''}`,
+            province_id: Number(row.senderProvinceId),
+            district_id: Number(row.senderDistrictId),
+            ward_id: Number(row.senderWardId),
+            province_name: row.sender_province_name || '',
+            district_name: row.sender_district_name || '',
+            ward_name: row.sender_ward_name || ''
+          },
+          receiver: {
+            name: row.receiver_name || 'Khách nhận',
+            phone: row.receiver_phone || '',
+            address: `${row.receiver_address_detail || 'Địa chỉ'}, ${row.receiver_ward_name || ''}, ${row.receiver_district_name || ''}, ${row.receiver_province_name || ''}`,
+            province_id: Number(row.receiverProvinceId),
+            district_id: Number(row.receiverDistrictId),
+            ward_id: Number(row.receiverWardId),
+            province_name: row.receiver_province_name || '',
+            district_name: row.receiver_district_name || '',
+            ward_name: row.receiver_ward_name || ''
+          },
+          items: [
+            {
+              product_group: row.product_group || "PARCEL",
+              product_name: row.product_name || "Bưu phẩm bưu kiện",
+              description: "",
+              weight: Number(row.weight || 0.5),
+              length: Number(row.length || 0),
+              width: Number(row.width || 0),
+              height: Number(row.height || 0),
+              quantity: Number(row.quantity || 1),
+              declared_value: Number(row.declared_value || 0),
+            }
+          ],
+          documents: [],
+          cod_amount: Number(row.cod_amount || 0),
+          cod_receiver_pays_fee: false,
+          service_type: mapServiceType(row.service_type),
+          extra_services: [],
+          delivery_note_option: "CHO_XEM_HANG",
+          note: "",
+          payment_method: mapPaymentMethod(row.payment_method),
+          save_as_draft: false
+        };
+
+        // Standardize province ID mappings
+        payload.sender.province_id = mapStandardProvinceToHubProvince(payload.sender.province_id);
+        payload.receiver.province_id = mapStandardProvinceToHubProvince(payload.receiver.province_id);
+
+        try {
+          await api.post('/api/waybills/admin/pickups', payload);
+          successCount++;
+        } catch (err) {
+          console.error(`Lỗi tạo đơn dòng ${i + 1}:`, err);
+          errorCount++;
+        }
+      }
+
+      ElMessage.success(`Nhập thành công ${successCount} đơn hàng! Thất bại: ${errorCount}`);
+      handleRefresh();
+      event.target.value = '';
+    } catch (err) {
+      console.error(err);
+      ElMessage.error('Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại cấu trúc file.');
+    }
+  };
+  reader.readAsArrayBuffer(file);
 };
 
 // Formatting utilities

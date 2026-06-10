@@ -1,6 +1,7 @@
 <template>
   <el-config-provider :locale="vi">
     <router-view />
+    <NotificationBanner />
   </el-config-provider>
 </template>
 
@@ -10,6 +11,7 @@ import vi from 'element-plus/es/locale/lang/vi';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
 import { useAuthStore } from '@/stores/auth';
+import NotificationBanner from '@/components/NotificationBanner.vue';
 
 const authStore = useAuthStore();
 let sessionCheckTimer = null;

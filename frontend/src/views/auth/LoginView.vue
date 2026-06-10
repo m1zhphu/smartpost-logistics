@@ -228,7 +228,7 @@ const handleLogin = async () => {
         duration: 1500
       });
       
-      await router.push('/customer/portal');
+      await router.push('/customer/dashboard');
       
     } catch (error) {
       const msg = error.response?.data?.detail || 'Sai tài khoản hoặc mật khẩu';
