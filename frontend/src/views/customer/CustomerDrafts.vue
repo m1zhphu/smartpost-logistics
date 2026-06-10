@@ -453,8 +453,22 @@ const fetchHubs = async () => {
   }
 };
 
-// START CREATE REQUEST & CHECK DRAFT
 const startCreatePickup = async () => {
+  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
+    ElMessageBox.confirm(
+      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng (Tỉnh/Thành, Quận/Huyện, Địa chỉ chi tiết). Vui lòng cập nhật đầy đủ thông tin trong mục "Thông tin tài khoản" trước khi tạo đơn.',
+      'Cập nhật địa chỉ lấy hàng',
+      {
+        confirmButtonText: 'Cập nhật ngay',
+        cancelButtonText: 'Đóng',
+        type: 'warning'
+      }
+    ).then(() => {
+      router.push('/customer/profile');
+    }).catch(() => {});
+    return;
+  }
+
   // Pre-fill sender information from user profile
   form.sender.name = authStore.user?.full_name || '';
   form.sender.phone = customerInfo.value.phone_number || '';
@@ -838,9 +852,11 @@ const formatDate = (val) => {
 
 const getPickupStatusLabel = (status) => {
   switch (status) {
-    case 'PENDING_CONFIRMATION': return 'Chờ bưu cục xác nhận';
-    case 'RECEIVED': return 'Bưu cục đã tiếp nhận';
-    case 'ASSIGNED_PICKUP': return 'Đã gán bưu tá lấy hàng';
+    case 'PENDING_CONFIRMATION': return 'Chờ điều phối';
+    case 'HUB_REJECTED': return 'Chờ điều phối (Bị từ chối)';
+    case 'DISPATCHED_TO_HUB': return 'Chưa xác nhận văn phòng';
+    case 'RECEIVED': return 'Văn phòng đã tiếp nhận';
+    case 'ASSIGNED_PICKUP': return 'Đã gán bưu tá';
     case 'PICKED': return 'Bưu tá đã lấy hàng';
     default: return status || 'Chờ xử lý';
   }
@@ -849,8 +865,10 @@ const getPickupStatusLabel = (status) => {
 const getPickupStatusType = (status) => {
   switch (status) {
     case 'PENDING_CONFIRMATION': return 'warning';
-    case 'RECEIVED': return 'info';
-    case 'ASSIGNED_PICKUP': return 'primary';
+    case 'HUB_REJECTED': return 'danger';
+    case 'DISPATCHED_TO_HUB': return 'info';
+    case 'RECEIVED': return 'primary';
+    case 'ASSIGNED_PICKUP': return 'warning';
     case 'PICKED': return 'success';
     default: return 'info';
   }

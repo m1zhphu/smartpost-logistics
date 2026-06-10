@@ -53,7 +53,7 @@
                   @click="openConfirmHubDialog"
                 >
                   <el-icon class="mr-2"><OfficeBuilding /></el-icon>
-                  <span>Xác nhận văn phòng ({{ multipleSelection.length }} đơn)</span>
+                  <span>Điều phối Hub ({{ multipleSelection.length }} đơn)</span>
                 </el-button>
               </div>
               <div class="search-wrapper">
@@ -98,19 +98,37 @@
                           <span v-else class="text-muted text-xs">Chưa có</span>
                         </template>
                       </el-table-column>
-                      <el-table-column label="Ước tính" width="140" align="center">
+                      <el-table-column label="Mã Khách Hàng" width="130">
                         <template #default="scope">
-                          <div class="text-xs">KL: <strong>{{ scope.row.est_weight }} kg</strong> | SL: <strong>{{ scope.row.est_quantity }} kiện</strong></div>
+                          <span class="text-xs">{{ scope.row.customer_code || scope.row.customer_id || '---' }}</span>
                         </template>
                       </el-table-column>
-                      <el-table-column label="Độ ưu tiên" width="120" align="center">
+                      <el-table-column label="Túi Pickup" width="150" show-overflow-tooltip>
                         <template #default="scope">
-                          <el-tag :type="getPriorityType(scope.row.priority)" size="small" effect="dark">{{ scope.row.priority }}</el-tag>
+                          <span v-if="scope.row.bag_code" class="code-badge text-xs" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                            {{ scope.row.bag_code }}
+                          </span>
+                          <span v-else class="text-muted text-xs">---</span>
                         </template>
                       </el-table-column>
-                      <el-table-column label="Ngày hẹn" width="140" align="center">
+                      <el-table-column label="Đơn/Túi" width="90" align="center">
                         <template #default="scope">
-                          <span class="text-xs">{{ formatDate(scope.row.created_at) }}</span>
+                          <span v-if="scope.row.bag_code" class="text-xs fw-bold">{{ scope.row.bag_item_count }} đơn</span>
+                          <span v-else class="text-muted text-xs">---</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Tổng cân túi" width="110" align="center">
+                        <template #default="scope">
+                          <span v-if="scope.row.bag_code" class="text-xs fw-bold">{{ scope.row.total_estimated_weight }} kg</span>
+                          <span v-else class="text-muted text-xs">---</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Lý do từ chối" min-width="150" show-overflow-tooltip>
+                        <template #default="scope">
+                          <span v-if="scope.row.status === 'HUB_REJECTED'" class="text-danger text-xs">
+                            ❌ {{ scope.row.rejection_note || 'Bị từ chối' }}
+                          </span>
+                          <span v-else class="text-muted text-xs">---</span>
                         </template>
                       </el-table-column>
                       <el-table-column label="Thao tác" width="120" align="center" fixed="right">
@@ -150,6 +168,149 @@
               
               <template #empty>
                 <el-empty description="Không có yêu cầu nào chờ xác nhận văn phòng" :image-size="100" />
+              </template>
+            </el-table>
+          </el-tab-pane>
+
+          <!-- TAB NEW: CHỜ BƯU CỤC XÁC NHẬN (DISPATCHED_TO_HUB) -->
+          <el-tab-pane name="dispatch-hub">
+            <template #label>
+              <div class="flex-center gap-2">
+                <el-badge :value="dispatchRequests.length" :hidden="dispatchRequests.length === 0" type="warning">
+                  <span>Chờ bưu cục xác nhận</span>
+                </el-badge>
+              </div>
+            </template>
+
+            <div class="flex-between mb-4">
+              <div>
+                <el-select 
+                  v-if="authStore.user?.role_id === 1" 
+                  v-model="selectedHubId" 
+                  placeholder="Chọn bưu cục để xem đơn" 
+                  filterable 
+                  class="modern-input-small w-[250px]"
+                  @change="() => fetchTabRequests('dispatch-hub')"
+                >
+                  <el-option label="Tất cả bưu cục" :value="null" />
+                  <el-option v-for="h in hubs" :key="h.hub_id" :label="h.hub_name" :value="h.hub_id" />
+                </el-select>
+              </div>
+              <div class="search-wrapper">
+                <el-input 
+                  v-model="searchDispatch" 
+                  placeholder="Tìm mã, SĐT, địa chỉ..." 
+                  class="modern-input-small"
+                  clearable
+                >
+                  <template #prefix><el-icon><Search /></el-icon></template>
+                </el-input>
+              </div>
+            </div>
+
+            <el-table 
+              :data="groupedDispatch" 
+              v-loading="loading" 
+              class="modern-table" 
+              stripe
+            >
+              <el-table-column type="expand">
+                <template #default="{ row }">
+                  <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
+                    <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                      <el-icon><List /></el-icon> Danh sách đơn chi tiết đang điều phối ({{ row.requests.length }} đơn)
+                    </h4>
+                    <el-table :data="row.requests" class="modern-table inner-table" size="small" border stripe>
+                      <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
+                        <template #default="scope">
+                          <el-link type="warning" class="fw-bold" @click="viewRequestDetails(scope.row)">
+                            {{ scope.row.request_code }}
+                          </el-link>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Mã Vận Đơn" width="140">
+                        <template #default="scope">
+                          <span v-if="getWaybillCode(scope.row)" class="code-badge info text-xs" style="background: rgba(67, 24, 255, 0.1); color: #4318ff;">
+                            {{ getWaybillCode(scope.row) }}
+                          </span>
+                          <span v-else class="text-muted text-xs">Chưa có</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Khách hàng" width="120" show-overflow-tooltip>
+                        <template #default="scope">
+                          <span class="text-xs">{{ scope.row.customer_code || scope.row.customer_id || '---' }}</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Túi Pickup" width="150" show-overflow-tooltip>
+                        <template #default="scope">
+                          <span v-if="scope.row.bag_code" class="code-badge text-xs" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                            {{ scope.row.bag_code }}
+                          </span>
+                          <span v-else class="text-muted text-xs">---</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Đơn/Túi" width="90" align="center">
+                        <template #default="scope">
+                          <span v-if="scope.row.bag_code" class="text-xs fw-bold">{{ scope.row.bag_item_count }} đơn</span>
+                          <span v-else class="text-muted text-xs">---</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Trọng lượng túi" width="120" align="center">
+                        <template #default="scope">
+                          <span v-if="scope.row.bag_code" class="text-xs fw-bold">{{ scope.row.total_estimated_weight }} kg</span>
+                          <span v-else class="text-muted text-xs">---</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="dispatch_note" label="Ghi chú điều phối" min-width="150" show-overflow-tooltip />
+                      <el-table-column label="Ngày điều phối" width="140" align="center">
+                        <template #default="scope">
+                          <span class="text-xs">{{ formatDate(scope.row.dispatched_at) }}</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="Thao tác" width="220" align="center" fixed="right">
+                        <template #default="scope">
+                          <div class="flex justify-center gap-2">
+                            <el-button type="success" size="small" plain @click="handleAcceptDispatch(scope.row)">
+                              <el-icon class="mr-1"><Check /></el-icon> Chấp nhận
+                            </el-button>
+                            <el-button type="danger" size="small" plain @click="openRejectDialog(scope.row)">
+                              <el-icon class="mr-1"><Close /></el-icon> Từ chối
+                            </el-button>
+                          </div>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                </template>
+              </el-table-column>
+              
+              <el-table-column label="Khách hàng / Shop" min-width="200">
+                <template #default="{ row }">
+                  <div class="sender-info">
+                    <span class="fw-bold text-dark">{{ row.customer_name }}</span>
+                    <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.customer_phone }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="Nguồn" width="110" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="Địa chỉ lấy hàng" min-width="250" show-overflow-tooltip prop="pickup_address" />
+              <el-table-column label="Tổng số đơn" width="120" align="center">
+                <template #default="{ row }">
+                  <el-tag type="warning" effect="dark" size="large" style="font-weight: bold; font-size: 14px;">{{ row.requests.length }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="Tổng khối lượng" width="140" align="center">
+                <template #default="{ row }">
+                  <span class="fw-bold" style="color: #4318ff;">{{ row.total_weight.toFixed(1) }} kg</span>
+                </template>
+              </el-table-column>
+              
+              <template #empty>
+                <el-empty description="Không có yêu cầu nào đang chờ bưu cục xác nhận" :image-size="100" />
               </template>
             </el-table>
           </el-tab-pane>
@@ -686,10 +847,10 @@
         </template>
       </el-dialog>
 
-      <!-- Confirm Hub Dialog (Tab 1) -->
+      <!-- Dispatch Hub Dialog (Tab 1) -->
       <el-dialog 
         v-model="confirmHubVisible" 
-        title="Xác nhận Văn phòng lấy hàng" 
+        title="Điều phối Văn phòng nhận hàng (Hub)" 
         width="450px"
         destroy-on-close
       >
@@ -711,12 +872,12 @@
             </el-select>
           </div>
           <div class="dialog-form-item">
-            <label>GHI CHÚ / CHỈ DẪN THÊM</label>
+            <label>GHI CHÚ ĐIỀU PHỐI</label>
             <el-input 
               v-model="hubConfirmNote" 
               type="textarea" 
               :rows="3" 
-              placeholder="Nhập ghi chú cho bưu cục lấy hàng..." 
+              placeholder="Nhập ghi chú điều phối cho bưu cục..." 
               resize="none" 
             />
           </div>
@@ -725,7 +886,40 @@
           <div class="flex justify-end gap-2">
             <el-button @click="confirmHubVisible = false">Hủy</el-button>
             <el-button type="primary" :disabled="!selectedHubId || dialogLoading" @click="submitConfirmHub">
-              Xác nhận
+              Điều phối
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <!-- Dialog: Từ chối Điều phối (Tab Dispatch Hub) -->
+      <el-dialog 
+        v-model="rejectDialogVisible" 
+        title="Từ chối điều phối yêu cầu lấy hàng" 
+        width="450px"
+        destroy-on-close
+      >
+        <div class="dialog-form" v-loading="dialogLoading">
+          <div class="mb-4">
+            <div class="text-xs text-muted mb-2">ĐƠN PICKUP:</div>
+            <div class="fw-bold text-dark mb-2">{{ rejectForm.request_code }}</div>
+          </div>
+          <div class="dialog-form-item">
+            <label>LÝ DO TỪ CHỐI (BẮT BUỘC)</label>
+            <el-input 
+              v-model="rejectForm.note" 
+              type="textarea" 
+              :rows="3" 
+              placeholder="Nhập lý do từ chối cụ thể..." 
+              resize="none" 
+            />
+          </div>
+        </div>
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <el-button @click="rejectDialogVisible = false">Hủy</el-button>
+            <el-button type="danger" :disabled="!rejectForm.note.trim() || dialogLoading" @click="submitRejectDispatch">
+              Từ chối điều phối
             </el-button>
           </div>
         </template>
@@ -758,8 +952,9 @@
               <el-option 
                 v-for="shipper in shippers" 
                 :key="shipper.user_id" 
-                :label="shipper.full_name + ' (' + shipper.phone + ')'" 
+                :label="shipper.full_name + ' (' + (shipper.is_online ? 'Hoạt động' : 'Ngoại tuyến') + ' - ' + shipper.phone + ')'" 
                 :value="shipper.user_id" 
+                :disabled="!shipper.is_online"
               />
             </el-select>
           </div>
@@ -1089,10 +1284,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, reactive, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check, User, Box, DocumentAdd } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check, Close, User, Box, DocumentAdd, List } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import moment from 'moment';
 import * as XLSX from 'xlsx';
@@ -1110,6 +1305,7 @@ const uploadLoading = ref(false);
 const pendingRequests = ref([]);
 const receivedRequests = ref([]);
 const assignedRequests = ref([]);
+const dispatchRequests = ref([]);
 const hubs = ref([]);
 const shippers = ref([]);
 const customers = ref([]);
@@ -1117,7 +1313,13 @@ const customers = ref([]);
 const searchPending = ref('');
 const searchReceived = ref('');
 const searchAssigned = ref('');
+const searchDispatch = ref('');
 
+const rejectDialogVisible = ref(false);
+const rejectForm = reactive({
+  request_code: '',
+  note: ''
+});
 
 // Selection states
 const multipleSelection = ref([]);
@@ -1384,6 +1586,20 @@ const filteredPending = computed(() => {
   });
 });
 
+const filteredDispatch = computed(() => {
+  if (!searchDispatch.value) return dispatchRequests.value;
+  const q = searchDispatch.value.toLowerCase().trim();
+  return dispatchRequests.value.filter(r => {
+    const wb = getWaybillCode(r).toLowerCase();
+    const custName = getCustomerName(r).toLowerCase();
+    return r.request_code.toLowerCase().includes(q) ||
+      wb.includes(q) ||
+      custName.includes(q) ||
+      (r.sender_phone && r.sender_phone.includes(q)) ||
+      r.pickup_address.toLowerCase().includes(q);
+  });
+});
+
 const filteredReceived = computed(() => {
   if (!searchReceived.value) return receivedRequests.value;
   const q = searchReceived.value.toLowerCase().trim();
@@ -1449,6 +1665,7 @@ const groupRequestsByCustomer = (requests) => {
 };
 
 const groupedPending = computed(() => groupRequestsByCustomer(filteredPending.value));
+const groupedDispatch = computed(() => groupRequestsByCustomer(filteredDispatch.value));
 const groupedReceived = computed(() => groupRequestsByCustomer(filteredReceived.value));
 
 const openGroupAssignShipperDialog = (group) => {
@@ -1471,13 +1688,29 @@ const fetchTabRequests = async (tabName) => {
     const hubId = isAdmin ? null : (authStore.user?.primary_hub_id || null);
 
     if (tabName === 'pending') {
-      const res = await api.get('/api/delivery/online-pickup-requests', {
-        params: { status: 'PENDING_CONFIRMATION' }
-      });
-      pendingRequests.value = res.data || [];
+      const [resPending, resRejected] = await Promise.all([
+        api.get('/api/delivery/online-pickup-requests', { params: { status: 'PENDING_CONFIRMATION' } }),
+        api.get('/api/delivery/online-pickup-requests', { params: { status: 'HUB_REJECTED' } })
+      ]);
+      pendingRequests.value = [...(resPending.data || []), ...(resRejected.data || [])];
+    } else if (tabName === 'dispatch-hub') {
+      if (isAdmin) {
+        const res = await api.get('/api/delivery/online-pickup-requests', {
+          params: { status: 'DISPATCHED_TO_HUB' }
+        });
+        let data = res.data || [];
+        if (selectedHubId.value) {
+          data = data.filter(r => r.target_hub_id === selectedHubId.value);
+        }
+        dispatchRequests.value = data;
+      } else {
+        const res = await api.get('/api/delivery/hub-dispatch-requests', {
+          params: { status: 'DISPATCHED_TO_HUB', hub_id: hubId }
+        });
+        dispatchRequests.value = res.data || [];
+      }
     } else if (tabName === 'received') {
       if (isAdmin) {
-        // Super Admin: dùng /pickup-requests — trả về tất cả đơn hoặc lọc theo selectedHubId
         const params = { status: 'RECEIVED' };
         if (selectedHubId.value) params.hub_id = selectedHubId.value;
         const res = await api.get('/api/delivery/pickup-requests', { params });
@@ -1490,7 +1723,6 @@ const fetchTabRequests = async (tabName) => {
       }
     } else if (tabName === 'assigned') {
       if (isAdmin) {
-        // Super Admin: dùng /pickup-requests — trả về tất cả đơn hoặc lọc theo selectedHubId
         const params = { status: 'ASSIGNED_PICKUP' };
         if (selectedHubId.value) params.hub_id = selectedHubId.value;
         const res = await api.get('/api/delivery/pickup-requests', { params });
@@ -1508,6 +1740,7 @@ const fetchTabRequests = async (tabName) => {
     if (detail.toLowerCase().includes('van phong')) {
       receivedRequests.value = [];
       assignedRequests.value = [];
+      dispatchRequests.value = [];
     } else {
       ElMessage.error(detail || 'Lỗi tải danh sách yêu cầu lấy hàng');
     }
@@ -1835,18 +2068,19 @@ const submitConfirmHub = async () => {
   dialogLoading.value = true;
   try {
     const requestIds = multipleSelection.value.map(r => r.request_id);
-    await api.post('/api/delivery/online-pickup-requests/confirm-hub', {
+    await api.post('/api/delivery/online-pickup-requests/dispatch-hub', {
       request_ids: requestIds,
       hub_id: selectedHubId.value,
-      note: hubConfirmNote.value.trim() || 'Xác nhận văn phòng lấy hàng online'
+      note: hubConfirmNote.value.trim() || 'Điều phối văn phòng lấy hàng online'
     });
     
-    ElMessage.success(`Đã xác nhận bưu cục cho ${requestIds.length} yêu cầu thành công!`);
+    ElMessage.success(`Đã điều phối ${requestIds.length} yêu cầu sang bưu cục thành công!`);
     confirmHubVisible.value = false;
     multipleSelection.value = [];
-    fetchTabRequests('pending');
+    activeTab.value = 'dispatch-hub';
+    fetchTabRequests('dispatch-hub');
   } catch (err) {
-    ElMessage.error(err.response?.data?.detail || 'Có lỗi xảy ra khi xác nhận bưu cục');
+    ElMessage.error(err.response?.data?.detail || 'Có lỗi xảy ra khi điều phối bưu cục');
   } finally {
     dialogLoading.value = false;
   }
@@ -1857,6 +2091,10 @@ const openAssignShipperDialog = async (row) => {
   selectedRequest.value = row;
   selectedShipperId.value = null;
   shipperAssignNote.value = '';
+  
+  if (!multipleSelection.value.some(r => r.request_code === row.request_code)) {
+    multipleSelection.value = [];
+  }
   
   dialogLoading.value = true;
   assignShipperVisible.value = true;
@@ -1871,14 +2109,20 @@ const submitAssignShipper = async () => {
   
   dialogLoading.value = true;
   try {
-    const code = selectedRequest.value.request_code;
-    await api.post(`/api/delivery/pickup-requests/${code}/assign-shipper`, {
-      shipper_id: selectedShipperId.value,
-      note: shipperAssignNote.value.trim() || 'Phân công shipper lấy hàng'
-    });
+    const requestsToAssign = multipleSelection.value.length > 0 ? multipleSelection.value : [selectedRequest.value];
+    let successCount = 0;
     
-    ElMessage.success(`Đã gán bưu tá cho đơn ${code} thành công!`);
+    for (const r of requestsToAssign) {
+      await api.post(`/api/delivery/pickup-requests/${r.request_code}/assign-shipper`, {
+        shipper_id: selectedShipperId.value,
+        note: shipperAssignNote.value.trim() || 'Phân công bưu tá lấy hàng'
+      });
+      successCount++;
+    }
+    
+    ElMessage.success(`Đã phân công bưu tá cho ${successCount} yêu cầu thành công!`);
     assignShipperVisible.value = false;
+    multipleSelection.value = [];
     fetchTabRequests('received');
   } catch (err) {
     ElMessage.error(err.response?.data?.detail || 'Có lỗi xảy ra khi phân công bưu tá');
@@ -2282,10 +2526,78 @@ const getSourceTagType = (source) => {
   }
 };
 
+const handleAcceptDispatch = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `Bạn có chắc chắn muốn CHẤP NHẬN yêu cầu lấy hàng ${row.request_code} và tạo vận đơn không?`,
+      'Xác nhận tiếp nhận',
+      {
+        confirmButtonText: 'Đồng ý',
+        cancelButtonText: 'Hủy',
+        type: 'success',
+      }
+    );
+    
+    loading.value = true;
+    const res = await api.post(`/api/delivery/hub-dispatch-requests/${row.request_code}/accept`, {
+      note: 'Bưu cục đã tiếp nhận yêu cầu điều phối'
+    });
+    
+    ElMessage.success(`Đã tiếp nhận yêu cầu điều phối thành công! Vận đơn: ${res.data.waybill_code || '---'}`);
+    fetchTabRequests('dispatch-hub');
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error(err.response?.data?.detail || 'Có lỗi xảy ra khi tiếp nhận yêu cầu');
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+const openRejectDialog = (row) => {
+  rejectForm.request_code = row.request_code;
+  rejectForm.note = '';
+  rejectDialogVisible.value = true;
+};
+
+const submitRejectDispatch = async () => {
+  if (!rejectForm.note.trim()) {
+    ElMessage.warning('Vui lòng nhập lý do từ chối');
+    return;
+  }
+  
+  dialogLoading.value = true;
+  try {
+    await api.post(`/api/delivery/hub-dispatch-requests/${rejectForm.request_code}/reject`, {
+      note: rejectForm.note.trim()
+    });
+    
+    ElMessage.success(`Đã từ chối yêu cầu điều phối ${rejectForm.request_code} thành công!`);
+    rejectDialogVisible.value = false;
+    fetchTabRequests('dispatch-hub');
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Có lỗi xảy ra khi từ chối yêu cầu');
+  } finally {
+    dialogLoading.value = false;
+  }
+};
+
+const handleRealtimeEvent = (e) => {
+  const { event } = e.detail;
+  if (event && event.startsWith('pickup.')) {
+    handleRefresh();
+  }
+};
+
+onBeforeUnmount(() => {
+  window.removeEventListener('realtime-pickup-event', handleRealtimeEvent);
+});
+
 onMounted(async () => {
   fetchHubs();
   fetchCustomers();
   fetchProvinces();
+  window.addEventListener('realtime-pickup-event', handleRealtimeEvent);
 
   if (route.query.tab) {
     activeTab.value = route.query.tab;
@@ -2295,9 +2607,10 @@ onMounted(async () => {
   if (searchCode) {
     const q = String(searchCode).trim();
 
-    // Tải dữ liệu của cả 3 tab để tìm xem đơn nằm ở đâu
+    // Tải dữ liệu của các tab để tìm xem đơn nằm ở đâu
     await Promise.all([
       fetchTabRequests('pending'),
+      fetchTabRequests('dispatch-hub'),
       fetchTabRequests('received'),
       fetchTabRequests('assigned')
     ]);
@@ -2306,6 +2619,9 @@ onMounted(async () => {
     if (pendingRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
       activeTab.value = 'pending';
       searchPending.value = q;
+    } else if (dispatchRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
+      activeTab.value = 'dispatch-hub';
+      searchDispatch.value = q;
     } else if (receivedRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
       activeTab.value = 'received';
       searchReceived.value = q;

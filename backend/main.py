@@ -1,4 +1,5 @@
 # File: main.py
+# Trigger reload to load websockets library
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from api import auth, hubs, waybills, warehouse, delivery, accounting, pricing, users, dashboard, printing, customers
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,9 +34,12 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:5173", # Cho phép chạy dưới localhost khi code Frontend
+        "http://localhost:8081", # Cho phép chạy dưới localhost khi code Mobile Expo Web
+        "http://127.0.0.1:8081",
         "https://smartpost-logistics.vercel.app", # Domain thật của Vercel
         "https://smartpost-logistics-lv7y5cfef-m1zhphus-projects.vercel.app" # Link build cụ thể của Vercel nếu cần
     ], 
+    allow_origin_regex="https?://(localhost|127\\.0\\.0\\.1|192\\.168\\.\\d+\\.\\d+)(:\\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

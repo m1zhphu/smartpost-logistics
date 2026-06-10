@@ -429,11 +429,48 @@
   font-size: 0.85rem;
 }
 
+/* Equal Height Flex Layout for settings & extra-services cards */
+.equal-height-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 768px) {
+  .equal-height-row > .el-col {
+    display: flex;
+    flex-direction: column;
+  }
+  .equal-height-row > .el-col > .form-section-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0 !important;
+  }
+  .equal-height-row > .el-col > .form-section-card :deep(.el-card__body) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+}
+
 /* Selectable Services Cards */
 .extra-services-checkboxes {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .extra-services-checkboxes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .extra-services-checkboxes {
+    grid-template-columns: 1fr;
+  }
 }
 
 .extra-services-checkboxes :deep(.el-checkbox) {

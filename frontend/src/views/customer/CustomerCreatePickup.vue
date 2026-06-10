@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="customer-portal">
     <div class="portal-container">
       <el-row :gutter="24" class="portal-content">
@@ -168,48 +168,50 @@
                   </el-card>
 
                   <!-- SETTINGS & EXTRA SERVICES -->
-                  <el-row :gutter="20">
-                    <el-col :xs="24" :sm="12">
-                      <el-card class="form-section-card settings-card mb-4" shadow="never">
-                        <template #header>
-                          <div class="form-card-title text-info">
-                            <el-icon><Setting /></el-icon><span>Cấu hình Vận chuyển</span>
-                          </div>
-                        </template>
-                        <el-form-item label="Bưu cục xử lý (Không bắt buộc)">
-                          <el-select
-                            v-model="form.target_hub_id"
-                            class="w-full"
-                            filterable
-                            clearable
-                            placeholder="Hệ thống sẽ tự gợi ý theo tỉnh gửi"
-                            @change="debouncedSimulate"
-                          >
-                            <el-option
-                              v-for="hub in activeHubsList"
-                              :key="hub.hub_id"
-                              :label="`${hub.hub_name}${getProvinceName(hub.province_id) ? ' - ' + getProvinceName(hub.province_id) : ''}`"
-                              :value="hub.hub_id"
-                            />
-                          </el-select>
-                        </el-form-item>
-                        <el-form-item label="Dịch vụ vận chuyển" required>
-                          <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
-                            <el-radio-button label="TK">Tiết kiệm (TK)</el-radio-button>
-                            <el-radio-button label="CPN">Chuyển phát nhanh (CPN)</el-radio-button>
-                            <el-radio-button label="HT">Hỏa tốc (HT)</el-radio-button>
-                          </el-radio-group>
-                        </el-form-item>
+                  <el-card class="form-section-card settings-card mb-4" shadow="never">
+                    <template #header>
+                      <div class="form-card-title text-info">
+                        <el-icon><Setting /></el-icon><span>Cấu hình Vận chuyển</span>
+                      </div>
+                    </template>
+                    <el-form-item label="Bưu cục xử lý (Không bắt buộc)">
+                      <el-select
+                        v-model="form.target_hub_id"
+                        class="w-full"
+                        filterable
+                        clearable
+                        placeholder="Hệ thống sẽ tự gợi ý theo tỉnh gửi"
+                        @change="debouncedSimulate"
+                      >
+                        <el-option
+                          v-for="hub in activeHubsList"
+                          :key="hub.hub_id"
+                          :label="`${hub.hub_name}${getProvinceName(hub.province_id) ? ' - ' + getProvinceName(hub.province_id) : ''}`"
+                          :value="hub.hub_id"
+                        />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="Dịch vụ vận chuyển" required>
+                      <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
+                        <el-radio-button label="TK">Tiết kiệm (TK)</el-radio-button>
+                        <el-radio-button label="CPN">Chuyển phát nhanh (CPN)</el-radio-button>
+                        <el-radio-button label="HT">Hỏa tốc (HT)</el-radio-button>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-form-item label="Đóng kiện">
+                      <el-radio-group v-model="form.packing_type" class="packing-type-group" @change="debouncedSimulate">
+                        <el-radio-button :label="null">Không đóng kiện</el-radio-button>
+                        <el-radio-button label="WOOD">Đóng kiện gỗ</el-radio-button>
+                        <el-radio-button label="FOAM">Đóng kiện xốp</el-radio-button>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-row :gutter="20">
+                      <el-col :xs="24" :sm="12">
                         <el-form-item label="Số tiền thu hộ (COD)">
                           <el-input-number v-model="form.cod_amount" :min="0" :step="10000" class="w-full" @change="debouncedSimulate" />
                         </el-form-item>
-                        <el-form-item label="Đóng kiện">
-                          <el-radio-group v-model="form.packing_type" class="packing-type-group" @change="debouncedSimulate">
-                            <el-radio-button :label="null">Không đóng kiện</el-radio-button>
-                            <el-radio-button label="WOOD">Đóng kiện gỗ</el-radio-button>
-                            <el-radio-button label="FOAM">Đóng kiện xốp</el-radio-button>
-                          </el-radio-group>
-                        </el-form-item>
+                      </el-col>
+                      <el-col :xs="24" :sm="12">
                         <el-form-item label="Phương thức thanh toán">
                           <el-select v-model="form.payment_method" class="w-full">
                             <el-option label="Shop trả cước cuối tháng (SENDER_DEBT)" value="SENDER_DEBT" />
@@ -217,6 +219,10 @@
                             <el-option label="Người nhận thanh toán cước (RECEIVER_PAY)" value="RECEIVER_PAY" />
                           </el-select>
                         </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <el-row :gutter="20">
+                      <el-col :xs="24" :sm="12">
                         <el-form-item label="Ghi chú khi giao">
                           <el-select v-model="form.delivery_note_option" class="w-full">
                             <el-option label="Cho xem hàng, không thử (CHO_XEM_HANG)" value="CHO_XEM_HANG" />
@@ -224,34 +230,34 @@
                             <el-option label="Không cho xem hàng (KHONG_CHO_XEM_HANG)" value="KHONG_CHO_XEM_HANG" />
                           </el-select>
                         </el-form-item>
+                      </el-col>
+                      <el-col :xs="24" :sm="12">
                         <el-form-item label="Ghi chú thêm">
-                          <el-input v-model="form.note" type="textarea" :rows="2" placeholder="Ghi chú thêm cho bưu tá..." />
+                          <el-input v-model="form.note" placeholder="Ghi chú thêm cho bưu tá..." />
                         </el-form-item>
-                      </el-card>
-                    </el-col>
+                      </el-col>
+                    </el-row>
+                  </el-card>
 
-                    <el-col :xs="24" :sm="12">
-                      <el-card class="form-section-card extra-services-card mb-4" shadow="never">
-                        <template #header>
-                          <div class="form-card-title text-primary">
-                            <el-icon><CircleCheck /></el-icon><span>Dịch vụ gia tăng</span>
-                          </div>
-                        </template>
-                        <el-checkbox-group v-model="form.extra_services" @change="debouncedSimulate" class="extra-services-checkboxes">
-                          <el-checkbox 
-                            v-for="srv in availableServices" 
-                            :key="srv.service_code" 
-                            :label="srv.service_code"
-                          >
-                            <span class="fw-bold">{{ srv.service_name }}</span>
-                            <span class="text-xs text-muted block">
-                              Phí: {{ srv.fee_type === 'FIXED' ? srv.fee_value.toLocaleString() + 'đ' : srv.fee_value + '%' }}
-                            </span>
-                          </el-checkbox>
-                        </el-checkbox-group>
-                      </el-card>
-                    </el-col>
-                  </el-row>
+                  <el-card class="form-section-card extra-services-card mb-4" shadow="never">
+                    <template #header>
+                      <div class="form-card-title text-primary">
+                        <el-icon><CircleCheck /></el-icon><span>Dịch vụ gia tăng</span>
+                      </div>
+                    </template>
+                    <el-checkbox-group v-model="form.extra_services" @change="debouncedSimulate" class="extra-services-checkboxes">
+                      <el-checkbox 
+                        v-for="srv in availableServices" 
+                        :key="srv.service_code" 
+                        :label="srv.service_code"
+                      >
+                        <span class="fw-bold">{{ srv.service_name }}</span>
+                        <span class="text-xs text-muted block">
+                          Phí: {{ srv.fee_type === 'FIXED' ? srv.fee_value.toLocaleString() + 'đ' : srv.fee_value + '%' }}
+                        </span>
+                      </el-checkbox>
+                    </el-checkbox-group>
+                  </el-card>
 
                 </el-form>
               </el-col>
@@ -269,10 +275,25 @@
                       <span>Cước chính:</span>
                       <span class="price-val">{{ (simulateResult.main_fee || 0).toLocaleString() }} đ</span>
                     </div>
+<<<<<<< Updated upstream
                     <div class="billing-line" v-if="simulateResult.fuel_surcharge > 0">
                       <span>Phụ phí xăng dầu:</span>
                       <span class="price-val">{{ (simulateResult.fuel_surcharge || 0).toLocaleString() }} đ</span>
                     </div>
+=======
+                    <div class="billing-line" v-if="simulateResult.fuel_surcharge">
+                      <span>Phụ phí xăng dầu:</span>
+                      <span class="price-val">{{ (simulateResult.fuel_surcharge || 0).toLocaleString() }} đ</span>
+                    </div>
+                    <div class="billing-line" v-if="simulateResult.packing_fee">
+                      <span>Phí đóng gói:</span>
+                      <span class="price-val">{{ (simulateResult.packing_fee || 0).toLocaleString() }} đ</span>
+                    </div>
+                    <div class="billing-line" v-if="simulateResult.remote_fee">
+                      <span>Phụ phí vùng xa:</span>
+                      <span class="price-val">{{ (simulateResult.remote_fee || 0).toLocaleString() }} đ</span>
+                    </div>
+>>>>>>> Stashed changes
                     <div class="billing-line">
                       <span>Phí dịch vụ gia tăng:</span>
                       <span class="price-val">{{ (simulateResult.extra_fee || 0).toLocaleString() }} đ</span>
@@ -286,13 +307,13 @@
                       <span class="price-val">{{ (simulateResult.remote_fee || 0).toLocaleString() }} đ</span>
                     </div>
                     <div class="billing-line">
-                      <span>Thuế VAT (8%):</span>
+                      <span>Thuế VAT:</span>
                       <span class="price-val">{{ (simulateResult.vat || simulateResult.vat_8 || 0).toLocaleString() }} đ</span>
                     </div>
                     <el-divider class="my-3" />
                     <div class="billing-line total">
                       <span>TỔNG CỘNG TẠM TÍNH:</span>
-                      <span class="price-val text-success">{{ (simulateResult.grand_total || 0).toLocaleString() }} đ</span>
+                      <span class="price-val text-success">{{ (simulateResult.total || simulateResult.grand_total || 0).toLocaleString() }} đ</span>
                     </div>
                     <div class="text-xs text-muted mt-3 text-center">
                       * Cước phí thực tế sẽ được cập nhật sau khi bưu cục cân đo hàng hóa.
@@ -458,7 +479,8 @@ const form = reactive({
   delivery_note_option: 'CHO_XEM_HANG',
   note: '',
   payment_method: 'SENDER_DEBT',
-  target_hub_id: null
+  target_hub_id: null,
+  packing_type: null
 });
 
 const hubsList = ref([]);
@@ -812,6 +834,14 @@ const deleteDraft = (draftId) => {
 };
 
 const saveDraft = () => {
+  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
+    ElMessageBox.alert(
+      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng. Vui lòng cập nhật đầy đủ địa chỉ trong mục "Thông tin tài khoản" trước khi thực hiện chức năng này.',
+      'Yêu cầu cập nhật địa chỉ',
+      { confirmButtonText: 'Đồng ý', type: 'warning' }
+    );
+    return;
+  }
   if (savedDraftsList.value.length >= 20) {
     ElMessage.warning('Chỉ lưu tối đa 20 bản nháp! Vui lòng xóa bớt.');
     return;
@@ -830,12 +860,25 @@ const saveDraft = () => {
 };
 
 const addToQueue = () => {
+  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
+    ElMessageBox.alert(
+      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng. Vui lòng cập nhật đầy đủ địa chỉ trong mục "Thông tin tài khoản" trước khi thực hiện chức năng này.',
+      'Yêu cầu cập nhật địa chỉ',
+      { confirmButtonText: 'Đồng ý', type: 'warning' }
+    );
+    return;
+  }
   if (draftsList.value.length >= 10) {
     ElMessage.warning('Hàng chờ chỉ lưu tối đa 10 đơn! Vui lòng xóa bớt hoặc gửi yêu cầu.');
     return;
   }
   
-  if (!form.sender.name || !form.receiver.name || !form.items[0].product_name || !form.receiver.province_id) {
+  if (!form.sender.name || !form.sender.phone || !form.sender.address_detail || !form.sender.province_id || !form.sender.district_id ||
+      !form.receiver.name || !form.receiver.phone || !form.receiver.address_detail || !form.receiver.province_id || !form.receiver.district_id) {
+    ElMessage.warning('Vui lòng điền đủ thông tin người gửi và người nhận trước khi đưa vào hàng chờ.');
+    return;
+  }
+  if (!form.items[0].product_name) {
     ElMessage.warning('Vui lòng điền đủ thông tin cơ bản trước khi đưa vào hàng chờ.');
     return;
   }
@@ -875,12 +918,20 @@ const cancelCreate = () => {
 
 // SUBMIT REQUEST TO BACKEND
 const submitPickupRequest = async () => {
-  if (!form.sender.name || !form.sender.phone || !form.sender.address_detail || !form.sender.province_id) {
-    ElMessage.warning('Vui lòng điền đầy đủ thông tin người gửi');
+  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
+    ElMessageBox.alert(
+      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng. Vui lòng cập nhật đầy đủ địa chỉ trong mục "Thông tin tài khoản" trước khi tạo đơn.',
+      'Yêu cầu cập nhật địa chỉ',
+      { confirmButtonText: 'Đồng ý', type: 'warning' }
+    );
+    return;
+  }
+  if (!form.sender.name || !form.sender.phone || !form.sender.address_detail || !form.sender.province_id || !form.sender.district_id) {
+    ElMessage.warning('Vui lòng điền đầy đủ thông tin người gửi (bao gồm Tỉnh/Huyện và Địa chỉ chi tiết)');
     return;
   }
   if (!form.receiver.name || !form.receiver.phone || !form.receiver.address_detail || !form.receiver.province_id || !form.receiver.district_id) {
-    ElMessage.warning('Vui lòng điền đầy đủ thông tin người nhận (bao gồm Tỉnh/Huyện)');
+    ElMessage.warning('Vui lòng điền đầy đủ thông tin người nhận (bao gồm Tỉnh/Huyện và Địa chỉ chi tiết)');
     return;
   }
   if (!form.items[0].product_name) {
@@ -1141,9 +1192,11 @@ const formatDate = (val) => {
 
 const getPickupStatusLabel = (status) => {
   switch (status) {
-    case 'PENDING_CONFIRMATION': return 'Chờ bưu cục xác nhận';
-    case 'RECEIVED': return 'Bưu cục đã tiếp nhận';
-    case 'ASSIGNED_PICKUP': return 'Đã gán bưu tá lấy hàng';
+    case 'PENDING_CONFIRMATION': return 'Chờ điều phối';
+    case 'HUB_REJECTED': return 'Chờ điều phối (Bị từ chối)';
+    case 'DISPATCHED_TO_HUB': return 'Chưa xác nhận văn phòng';
+    case 'RECEIVED': return 'Văn phòng đã tiếp nhận';
+    case 'ASSIGNED_PICKUP': return 'Đã gán bưu tá';
     case 'PICKED': return 'Bưu tá đã lấy hàng';
     default: return status || 'Chờ xử lý';
   }
@@ -1152,8 +1205,10 @@ const getPickupStatusLabel = (status) => {
 const getPickupStatusType = (status) => {
   switch (status) {
     case 'PENDING_CONFIRMATION': return 'warning';
-    case 'RECEIVED': return 'info';
-    case 'ASSIGNED_PICKUP': return 'primary';
+    case 'HUB_REJECTED': return 'danger';
+    case 'DISPATCHED_TO_HUB': return 'info';
+    case 'RECEIVED': return 'primary';
+    case 'ASSIGNED_PICKUP': return 'warning';
     case 'PICKED': return 'success';
     default: return 'info';
   }
@@ -1711,6 +1766,21 @@ onMounted(async () => {
     form.sender.district_id = customerInfo.value.district_id || null;
     form.sender.ward_id = customerInfo.value.ward_id || null;
     form.sender.address_detail = customerInfo.value.address_detail || '';
+
+    // RÀNG BUỘC ĐỊA CHỈ: Kiểm tra nếu chưa cập nhật địa chỉ lấy hàng
+    if (!customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
+      ElMessageBox.confirm(
+        'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng (Tỉnh/Thành, Quận/Huyện, Địa chỉ chi tiết). Vui lòng cập nhật đầy đủ thông tin để hệ thống xác định cước phí và bưu cục lấy hàng.',
+        'Cảnh báo: Chưa cập nhật địa chỉ lấy hàng',
+        {
+          confirmButtonText: 'Cập nhật ngay',
+          cancelButtonText: 'Để sau',
+          type: 'warning'
+        }
+      ).then(() => {
+        router.push('/customer/profile');
+      }).catch(() => {});
+    }
   } catch (err) {
     console.error('Không thể tải thông tin hồ sơ khách hàng', err);
     customerInfo.value = {

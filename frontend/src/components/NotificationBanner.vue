@@ -176,7 +176,7 @@ const connectWebSocket = () => {
     ws.close();
   }
   
-  if (!authStore.token || authStore.isCustomer) {
+  if (!authStore.token) {
     return;
   }
   
@@ -210,7 +210,47 @@ const connectWebSocket = () => {
       console.log('WebSocket message received:', data);
       
       if (data.event) {
-        addNotification(data.event, data.payload);
+        const isStaff = authStore.user && [1, 2, 3, 5, 7].includes(authStore.user.role_id);
+        const isCustomer = authStore.user && authStore.user.customer_id;
+        
+        let shouldNotify = false;
+        
+        if (isStaff) {
+          if (authStore.user.role_id === 5) {
+            // Hub Manager/Staff: only show notifications for their hub
+            const targetHubId = data.payload?.target_hub_id || data.payload?.hub_id;
+            if (!targetHubId || targetHubId === authStore.user.primary_hub_id) {
+              shouldNotify = true;
+            }
+          } else {
+            // Admin/CSKH: show all notifications
+            shouldNotify = true;
+          }
+        } else if (isCustomer) {
+          // Customer: only show notifications for their own orders
+          const belongsToCustomer = data.payload?.customer_id === authStore.user.customer_id;
+          if (belongsToCustomer) {
+            const customerEvents = [
+              'pickup.price_finalized',
+              'pickup.hub_accepted',
+              'pickup.hub_rejected',
+              'pickup.assigned_shipper',
+              'pickup.picked'
+            ];
+            if (customerEvents.includes(data.event)) {
+              shouldNotify = true;
+            }
+          }
+        }
+        
+        if (shouldNotify) {
+          addNotification(data.event, data.payload);
+        }
+        
+        // Always dispatch custom window event for realtime updates across views
+        window.dispatchEvent(new CustomEvent('realtime-pickup-event', {
+          detail: { event: data.event, payload: data.payload }
+        }));
       }
     } catch (err) {
       console.error('Error parsing WebSocket message:', err);

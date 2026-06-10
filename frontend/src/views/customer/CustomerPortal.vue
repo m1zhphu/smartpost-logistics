@@ -235,29 +235,31 @@
                   </el-card>
 
                   <!-- SETTINGS & EXTRA SERVICES -->
-                  <el-row :gutter="20">
-                    <el-col :xs="24" :sm="12">
-                      <el-card class="form-section-card mb-4" shadow="never">
-                        <template #header>
-                          <div class="form-card-title text-info">
-                            <el-icon><Setting /></el-icon><span>Cấu hình Vận chuyển</span>
-                          </div>
-                        </template>
-                        <el-form-item label="Bưu cục xử lý (Không bắt buộc)">
-                          <el-select v-model="form.target_hub_id" class="w-full" filterable clearable placeholder="Chọn bưu cục (nếu có)">
-                            <el-option v-for="hub in hubsList" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
-                          </el-select>
-                        </el-form-item>
-                        <el-form-item label="Dịch vụ vận chuyển" required>
-                          <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
-                            <el-radio-button label="STANDARD">Chuẩn (STANDARD)</el-radio-button>
-                            <el-radio-button label="FAST">Nhanh (FAST)</el-radio-button>
-                            <el-radio-button label="EXPRESS">Hỏa tốc (EXPRESS)</el-radio-button>
-                          </el-radio-group>
-                        </el-form-item>
+                  <el-card class="form-section-card settings-card mb-4" shadow="never">
+                    <template #header>
+                      <div class="form-card-title text-info">
+                        <el-icon><Setting /></el-icon><span>Cấu hình Vận chuyển</span>
+                      </div>
+                    </template>
+                    <el-form-item label="Bưu cục xử lý (Không bắt buộc)">
+                      <el-select v-model="form.target_hub_id" class="w-full" filterable clearable placeholder="Chọn bưu cục (nếu có)">
+                        <el-option v-for="hub in hubsList" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="Dịch vụ vận chuyển" required>
+                      <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
+                        <el-radio-button label="STANDARD">Chuẩn (STANDARD)</el-radio-button>
+                        <el-radio-button label="FAST">Nhanh (FAST)</el-radio-button>
+                        <el-radio-button label="EXPRESS">Hỏa tốc (EXPRESS)</el-radio-button>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-row :gutter="20">
+                      <el-col :xs="24" :sm="12">
                         <el-form-item label="Số tiền thu hộ (COD)">
                           <el-input-number v-model="form.cod_amount" :min="0" :step="10000" class="w-full" @change="debouncedSimulate" />
                         </el-form-item>
+                      </el-col>
+                      <el-col :xs="24" :sm="12">
                         <el-form-item label="Phương thức thanh toán">
                           <el-select v-model="form.payment_method" class="w-full">
                             <el-option label="Shop trả cước cuối tháng (SENDER_DEBT)" value="SENDER_DEBT" />
@@ -265,6 +267,10 @@
                             <el-option label="Người nhận thanh toán cước (RECEIVER_PAY)" value="RECEIVER_PAY" />
                           </el-select>
                         </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <el-row :gutter="20">
+                      <el-col :xs="24" :sm="12">
                         <el-form-item label="Ghi chú khi giao">
                           <el-select v-model="form.delivery_note_option" class="w-full">
                             <el-option label="Cho xem hàng, không thử (CHO_XEM_HANG)" value="CHO_XEM_HANG" />
@@ -272,35 +278,34 @@
                             <el-option label="Không cho xem hàng (KHONG_CHO_XEM_HANG)" value="KHONG_CHO_XEM_HANG" />
                           </el-select>
                         </el-form-item>
+                      </el-col>
+                      <el-col :xs="24" :sm="12">
                         <el-form-item label="Ghi chú thêm">
-                          <el-input v-model="form.note" type="textarea" :rows="2" placeholder="Ghi chú thêm cho bưu tá..." />
+                          <el-input v-model="form.note" placeholder="Ghi chú thêm cho bưu tá..." />
                         </el-form-item>
-                      </el-card>
-                    </el-col>
+                      </el-col>
+                    </el-row>
+                  </el-card>
 
-                    <el-col :xs="24" :sm="12">
-                      <el-card class="form-section-card mb-4" shadow="never">
-                        <template #header>
-                          <div class="form-card-title text-primary">
-                            <el-icon><CircleCheck /></el-icon><span>Dịch vụ gia tăng</span>
-                          </div>
-                        </template>
-                        <el-checkbox-group v-model="form.extra_services" @change="debouncedSimulate" class="extra-services-checkboxes">
-                          <el-checkbox 
-                            v-for="srv in availableServices" 
-                            :key="srv.service_code" 
-                            :label="srv.service_code"
-                          >
-                            <span class="fw-bold">{{ srv.service_name }}</span>
-                            <span class="text-xs text-muted block">
-                              Phí: {{ srv.fee_type === 'FIXED' ? srv.fee_value.toLocaleString() + 'đ' : srv.fee_value + '%' }}
-                            </span>
-                          </el-checkbox>
-                        </el-checkbox-group>
-                      </el-card>
-                    </el-col>
-                  </el-row>
-
+                  <el-card class="form-section-card extra-services-card mb-4" shadow="never">
+                    <template #header>
+                      <div class="form-card-title text-primary">
+                        <el-icon><CircleCheck /></el-icon><span>Dịch vụ gia tăng</span>
+                      </div>
+                    </template>
+                    <el-checkbox-group v-model="form.extra_services" @change="debouncedSimulate" class="extra-services-checkboxes">
+                      <el-checkbox 
+                        v-for="srv in availableServices" 
+                        :key="srv.service_code" 
+                        :label="srv.service_code"
+                      >
+                        <span class="fw-bold">{{ srv.service_name }}</span>
+                        <span class="text-xs text-muted block">
+                          Phí: {{ srv.fee_type === 'FIXED' ? srv.fee_value.toLocaleString() + 'đ' : srv.fee_value + '%' }}
+                        </span>
+                      </el-checkbox>
+                    </el-checkbox-group>
+                  </el-card>
                 </el-form>
               </el-col>
 
@@ -766,7 +771,7 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive, onMounted, watch } from 'vue';
+import { computed, ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -1108,8 +1113,22 @@ const fetchHubs = async () => {
   }
 };
 
-// START CREATE REQUEST & CHECK DRAFT
 const startCreatePickup = async () => {
+  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
+    ElMessageBox.confirm(
+      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng (Tỉnh/Thành, Quận/Huyện, Địa chỉ chi tiết). Vui lòng cập nhật đầy đủ thông tin trong mục "Thông tin tài khoản" trước khi tạo đơn.',
+      'Cập nhật địa chỉ lấy hàng',
+      {
+        confirmButtonText: 'Cập nhật ngay',
+        cancelButtonText: 'Đóng',
+        type: 'warning'
+      }
+    ).then(() => {
+      router.push('/customer/profile');
+    }).catch(() => {});
+    return;
+  }
+
   // Pre-fill sender information from user profile
   form.sender.name = authStore.user?.full_name || '';
   form.sender.phone = customerInfo.value.phone_number || '';
@@ -1510,9 +1529,11 @@ const formatDate = (val) => {
 
 const getPickupStatusLabel = (status) => {
   switch (status) {
-    case 'PENDING_CONFIRMATION': return 'Chờ bưu cục xác nhận';
-    case 'RECEIVED': return 'Bưu cục đã tiếp nhận';
-    case 'ASSIGNED_PICKUP': return 'Đã gán bưu tá lấy hàng';
+    case 'PENDING_CONFIRMATION': return 'Chờ điều phối';
+    case 'HUB_REJECTED': return 'Chờ điều phối (Bị từ chối)';
+    case 'DISPATCHED_TO_HUB': return 'Chưa xác nhận văn phòng';
+    case 'RECEIVED': return 'Văn phòng đã tiếp nhận';
+    case 'ASSIGNED_PICKUP': return 'Đã gán bưu tá';
     case 'PICKED': return 'Bưu tá đã lấy hàng';
     default: return status || 'Chờ xử lý';
   }
@@ -1521,8 +1542,10 @@ const getPickupStatusLabel = (status) => {
 const getPickupStatusType = (status) => {
   switch (status) {
     case 'PENDING_CONFIRMATION': return 'warning';
-    case 'RECEIVED': return 'info';
-    case 'ASSIGNED_PICKUP': return 'primary';
+    case 'HUB_REJECTED': return 'danger';
+    case 'DISPATCHED_TO_HUB': return 'info';
+    case 'RECEIVED': return 'primary';
+    case 'ASSIGNED_PICKUP': return 'warning';
     case 'PICKED': return 'success';
     default: return 'info';
   }
@@ -1756,6 +1779,18 @@ onMounted(async () => {
   fetchPickupsList();
   fetchAvailableServices();
   fetchHubs();
+  window.addEventListener('realtime-pickup-event', handleRealtimeEvent);
+});
+
+const handleRealtimeEvent = (e) => {
+  const { event } = e.detail;
+  if (event && event.startsWith('pickup.')) {
+    fetchPickupsList();
+  }
+};
+
+onBeforeUnmount(() => {
+  window.removeEventListener('realtime-pickup-event', handleRealtimeEvent);
 });
 </script>
 
