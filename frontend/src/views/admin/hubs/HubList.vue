@@ -57,9 +57,12 @@
           </el-table-column>
           
           <!-- ID Tỉnh Thành -->
-          <el-table-column prop="province_id" label="Tỉnh/Thành ID" min-width="130" align="center">
+          <el-table-column prop="province_id" label="Tỉnh/Thành" min-width="180" align="center">
             <template #default="{ row }">
-              <div class="id-badge">{{ row.province_id }}</div>
+              <div class="province-cell">
+                <span class="fw-bold text-dark">{{ getProvinceName(row.province_id) || 'Chưa chọn' }}</span>
+                <span class="id-badge">{{ row.province_id || '---' }}</span>
+              </div>
             </template>
           </el-table-column>
           
@@ -140,8 +143,11 @@
           <!-- Thông tin chi tiết -->
           <div class="mhc-info-list">
             <div class="mhc-info-row">
-              <span class="mhc-label">Tỉnh/Thành ID</span>
-              <div class="id-badge">{{ hub.province_id }}</div>
+              <span class="mhc-label">Tỉnh/Thành</span>
+              <div class="province-cell">
+                <span class="fw-bold text-dark">{{ getProvinceName(hub.province_id) || 'Chưa chọn' }}</span>
+                <span class="id-badge">{{ hub.province_id || '---' }}</span>
+              </div>
             </div>
             <div class="mhc-info-row">
               <span class="mhc-label">Trưởng BC</span>
@@ -221,8 +227,15 @@
             </el-input>
           </el-form-item>
           
-          <el-form-item label="Mã định danh Tỉnh/Thành" prop="province_id">
-             <el-input-number v-model="hubForm.province_id" :min="1" class="w-full modern-input-number" />
+          <el-form-item label="Tỉnh/Thành quản lý" prop="province_id">
+             <el-select v-model="hubForm.province_id" class="w-full" filterable clearable placeholder="Chọn tỉnh/thành">
+                <el-option
+                  v-for="province in provinces"
+                  :key="province.id"
+                  :label="`${province.name} (#${province.id})`"
+                  :value="province.id"
+                />
+             </el-select>
           </el-form-item>
 
           <el-form-item label="Địa chỉ chi tiết" prop="address_detail">
@@ -275,13 +288,14 @@ const dialogVisible = ref(false);
 const formRef = ref(null);
 const hubs = ref([]);
 const admins = ref([]);
+const provinces = ref([]);
 
 const hubForm = reactive({
   hub_id: null,
   hub_code: '',
   hub_name: '',
   hub_type: 'HUB',
-  province_id: 1,
+  province_id: null,
   address_detail: '',
   manager_id: null,
   status: true
@@ -290,7 +304,26 @@ const hubForm = reactive({
 const rules = {
   hub_code: [{ required: true, message: 'Vui lòng nhập mã bưu cục', trigger: 'blur' }],
   hub_name: [{ required: true, message: 'Vui lòng nhập tên bưu cục', trigger: 'blur' }],
-  hub_type: [{ required: true, message: 'Vui lòng chọn phân cấp', trigger: 'change' }]
+  hub_type: [{ required: true, message: 'Vui lòng chọn phân cấp', trigger: 'change' }],
+  province_id: [{ required: true, message: 'Vui lòng chọn tỉnh/thành quản lý', trigger: 'change' }]
+};
+
+const fetchProvinces = async () => {
+  if (provinces.value.length) return;
+  try {
+    const res = await fetch('https://provinces.open-api.vn/api/');
+    const data = await res.json();
+    provinces.value = (Array.isArray(data) ? data : [])
+      .map(p => ({ id: Number(p.code), name: p.name }))
+      .filter(p => p.id && p.name);
+  } catch (err) {
+    ElMessage.error('Không thể lấy danh sách tỉnh/thành');
+  }
+};
+
+const getProvinceName = (provinceId) => {
+  const province = provinces.value.find(p => Number(p.id) === Number(provinceId));
+  return province?.name || '';
 };
 
 // Hàm UI Helper
@@ -337,7 +370,7 @@ const openDialog = (row) => {
       hub_code: '',
       hub_name: '',
       hub_type: 'HUB',
-      province_id: 1,
+      province_id: null,
       address_detail: '',
       manager_id: null,
       status: true
@@ -407,7 +440,10 @@ const toggleStatus = async (row) => {
   }
 };
 
-onMounted(fetchData);
+onMounted(() => {
+  fetchProvinces();
+  fetchData();
+});
 </script>
 
 <style scoped src="@/styles/admin/hubs/HubList.css"></style>

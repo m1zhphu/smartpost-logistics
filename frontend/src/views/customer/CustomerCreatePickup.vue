@@ -176,10 +176,11 @@
                             <el-icon><Setting /></el-icon><span>Cấu hình Vận chuyển</span>
                           </div>
                         </template>
-                        <el-form-item label="Bưu cục xử lý (Không bắt buộc)">
-                          <el-select v-model="form.target_hub_id" class="w-full" filterable clearable placeholder="Chọn bưu cục (nếu có)" @change="debouncedSimulate">
-                            <el-option v-for="hub in hubsList" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
-                          </el-select>
+                        <el-form-item label="Bưu cục xử lý">
+                          <el-input
+                            :model-value="autoProcessingHub ? `${autoProcessingHub.hub_name} - ${getProvinceName(autoProcessingHub.province_id) || 'Theo tỉnh gửi'}` : 'Hệ thống sẽ tự phân công theo tỉnh/thành gửi'"
+                            disabled
+                          />
                         </el-form-item>
                         <el-form-item label="Dịch vụ vận chuyển" required>
                           <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
@@ -488,6 +489,40 @@ const getWardName = (distId, wardId) => {
   return '';
 };
 
+const normalizeAddressText = (value = '') => value
+  .toString()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd')
+  .replace(/Đ/g, 'D')
+  .toLowerCase()
+  .trim();
+
+const isActiveHub = (hub) => hub?.status === true || hub?.status === 1 || hub?.status === 'ACTIVE';
+
+const autoProcessingHub = computed(() => {
+  const provinceId = Number(form.sender.province_id || 0);
+  if (!provinceId) return null;
+
+  const activeHubs = hubsList.value.filter(isActiveHub);
+  const exactMatch = activeHubs.find(hub => Number(hub.province_id) === provinceId);
+  if (exactMatch) return exactMatch;
+
+  const provinceName = normalizeAddressText(getProvinceName(provinceId));
+  if (!provinceName) return null;
+
+  return activeHubs.find((hub) => {
+    const hubText = normalizeAddressText(`${hub.hub_name || ''} ${hub.address_detail || ''}`);
+    return hubText.includes(provinceName);
+  }) || null;
+});
+
+const syncAutoProcessingHub = () => {
+  form.target_hub_id = autoProcessingHub.value?.hub_id || null;
+};
+
+watch(autoProcessingHub, syncAutoProcessingHub);
+
 const formattedAddress = computed(() => {
   const c = customerInfo.value;
   if (!c) return 'Chưa cập nhật';
@@ -746,6 +781,7 @@ const saveDraft = () => {
     ElMessage.warning('Chỉ lưu tối đa 20 bản nháp! Vui lòng xóa bớt.');
     return;
   }
+  syncAutoProcessingHub();
   
   const newDraft = {
     ...JSON.parse(JSON.stringify(form)),
@@ -768,6 +804,7 @@ const addToQueue = () => {
     ElMessage.warning('Vui lòng điền đủ thông tin cơ bản trước khi đưa vào hàng chờ.');
     return;
   }
+  syncAutoProcessingHub();
 
   const newDraft = {
     ...JSON.parse(JSON.stringify(form)),
@@ -818,6 +855,7 @@ const submitPickupRequest = async () => {
 
   submitLoading.value = true;
   try {
+    syncAutoProcessingHub();
     const sName = getProvinceName(form.sender.province_id);
     const sDist = getDistrictName(form.sender.province_id, form.sender.district_id);
     const sWrd = getWardName(form.sender.district_id, form.sender.ward_id);
@@ -881,7 +919,7 @@ const submitPickupRequest = async () => {
       payment_method: form.payment_method,
       pickup_method: 'OUR_STAFF_PICKUP',
       delivery_method: 'OUR_STAFF_DELIVERY',
-      target_hub_id: form.target_hub_id || null,
+      target_hub_id: autoProcessingHub.value?.hub_id || form.target_hub_id || null,
       save_as_draft: false
     };
 
