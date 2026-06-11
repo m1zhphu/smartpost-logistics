@@ -437,6 +437,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (socket) {
+    socket.onclose = null;
     socket.close();
   }
 });

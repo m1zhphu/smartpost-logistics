@@ -283,6 +283,7 @@ const disconnectWebSocket = () => {
     reconnectTimeout = null;
   }
   if (ws) {
+    ws.onclose = null;
     ws.close();
     ws = null;
   }
