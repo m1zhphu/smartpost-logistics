@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, TextInput, TouchableOpacity,
-    ActivityIndicator, FlatList, Keyboard, ScrollView
+    ActivityIndicator, FlatList, Keyboard, Platform
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { getWaybillTimeline } from '../services/deliveryService';
 import Toast from 'react-native-toast-message';
+
+const PRIMARY = COLORS.primary || '#1B5E20';
+const SECONDARY = COLORS.secondary || '#0F766E';
 
 export default function ShipperTrackingScreen({ navigation }) {
     const [searchCode, setSearchCode] = useState('');
@@ -71,54 +74,84 @@ export default function ShipperTrackingScreen({ navigation }) {
     return (
         <View style={styles.container}>
             <StatusBar style="light" />
+
+            {/* ===== HEADER ===== */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-                    <Ionicons name="arrow-back" size={26} color="white" />
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    style={styles.headerBtn}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="arrow-back" size={22} color="#FFF" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Tracking Vận Đơn</Text>
-                <View style={{ width: 26 }} />
-            </View>
 
-            <View style={styles.searchContainer}>
-                <View style={styles.searchBox}>
-                    <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Nhập mã vận đơn..."
-                        value={searchCode}
-                        onChangeText={setSearchCode}
-                        autoCapitalize="characters"
-                        onSubmitEditing={handleSearch}
-                    />
-                    {searchCode.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchCode('')} style={styles.clearBtn}>
-                            <Ionicons name="close-circle" size={18} color="#999" />
-                        </TouchableOpacity>
-                    )}
+                <View style={styles.headerCenter}>
+                    <Text style={styles.headerTitle}>Tracking Vận Đơn</Text>
                 </View>
-                <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={loading}>
-                    {loading ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.searchBtnText}>Tìm</Text>}
-                </TouchableOpacity>
+
+                <View style={{ width: 38 }} />
             </View>
 
+            {/* ===== SEARCH BAR ===== */}
+            <View style={styles.searchSection}>
+                <View style={styles.searchRow}>
+                    <View style={styles.searchInputWrap}>
+                        <Ionicons name="search" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Nhập mã vận đơn..."
+                            placeholderTextColor="#94A3B8"
+                            value={searchCode}
+                            onChangeText={setSearchCode}
+                            autoCapitalize="characters"
+                            onSubmitEditing={handleSearch}
+                        />
+                        {searchCode.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchCode('')}>
+                                <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={loading}>
+                        {loading
+                            ? <ActivityIndicator color="#FFF" size="small" />
+                            : <Text style={styles.searchBtnText}>Tìm</Text>
+                        }
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* ===== CONTENT ===== */}
             {trackingData ? (
                 <View style={{ flex: 1 }}>
-                    <View style={styles.statusBox}>
-                        <Text style={styles.statusLabel}>Trạng thái hiện tại:</Text>
-                        <Text style={styles.statusValue}>{trackingData.status}</Text>
+                    <View style={styles.statusCard}>
+                        <View style={styles.statusCardLeft}>
+                            <View style={styles.statusIconBox}>
+                                <Ionicons name="pulse" size={20} color={PRIMARY} />
+                            </View>
+                            <View>
+                                <Text style={styles.statusLabel}>Trạng thái hiện tại</Text>
+                                <Text style={styles.statusValue}>{trackingData.status}</Text>
+                            </View>
+                        </View>
                     </View>
+
                     <Text style={styles.sectionTitle}>Hành trình chi tiết</Text>
-                    
+
                     <FlatList
-                        data={[...trackingData.timeline].reverse()} // Show newest first
+                        data={[...trackingData.timeline].reverse()}
                         keyExtractor={(item, index) => index.toString()}
                         renderItem={renderTimelineItem}
                         contentContainerStyle={styles.timelineContainer}
+                        showsVerticalScrollIndicator={false}
                     />
                 </View>
             ) : (
                 <View style={styles.emptyContainer}>
-                    <Ionicons name="cube-outline" size={60} color="#DDD" />
+                    <View style={styles.emptyIconBox}>
+                        <Ionicons name="cube-outline" size={36} color="#94A3B8" />
+                    </View>
+                    <Text style={styles.emptyTitle}>Chưa có dữ liệu</Text>
                     <Text style={styles.emptyText}>Nhập mã vận đơn để xem hành trình</Text>
                 </View>
             )}
@@ -127,132 +160,164 @@ export default function ShipperTrackingScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: 'white' },
+
+    /* ===== HEADER ===== */
     header: {
         flexDirection: 'row',
-        backgroundColor: COLORS.primary,
-        height: 90,
-        paddingTop: 40,
-        paddingHorizontal: 15,
-        alignItems: 'center',
-        justifyContent: 'space-between'
-    },
-    iconButton: { padding: 5 },
-    headerTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-    
-    searchContainer: {
-        flexDirection: 'row',
-        padding: 15,
-        backgroundColor: '#FFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
-    },
-    searchBox: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F3F4F6',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        marginRight: 10,
-    },
-    searchIcon: { marginRight: 5 },
-    searchInput: { flex: 1, height: 40, fontSize: 15 },
-    clearBtn: { padding: 5 },
-    searchBtn: {
-        backgroundColor: COLORS.secondary,
+        backgroundColor: PRIMARY,
+        paddingTop: Platform.OS === 'ios' ? 55 : 35,
         paddingHorizontal: 20,
-        justifyContent: 'center',
+        paddingBottom: 22,
         alignItems: 'center',
-        borderRadius: 8,
-    },
-    searchBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
-
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    emptyText: { color: '#999', fontSize: 15, marginTop: 10 },
-
-    statusBox: {
-        flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 15,
-        backgroundColor: '#FFF',
-        marginTop: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
+        borderBottomLeftRadius: 42,
+        borderBottomRightRadius: 42,
+        ...Platform.select({
+            ios: { shadowColor: PRIMARY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16 },
+            android: { elevation: 8 },
+        }),
     },
-    statusLabel: { fontSize: 15, color: '#666' },
-    statusValue: { fontSize: 16, fontWeight: 'bold', color: COLORS.primary },
-    
+    headerBtn: {
+        width: 38, height: 38, borderRadius: 19,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    headerCenter: { flex: 1, alignItems: 'center' },
+    headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '900' },
+
+    /* ===== SEARCH ===== */
+    searchSection: {
+        marginHorizontal: 16,
+        marginTop: 20,
+        marginBottom: 8,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 12,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    searchRow: { flexDirection: 'row', gap: 10 },
+    searchInputWrap: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        minHeight: 44,
+    },
+    searchInput: { flex: 1, fontSize: 15, color: '#0F172A', fontWeight: '600' },
+    searchBtn: {
+        backgroundColor: PRIMARY,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: 44,
+    },
+    searchBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
+
+    /* ===== STATUS CARD ===== */
+    statusCard: {
+        marginHorizontal: 16,
+        marginTop: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    statusCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    statusIconBox: {
+        width: 40, height: 40, borderRadius: 12,
+        backgroundColor: '#F0FDF4',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    statusLabel: { fontSize: 12, color: '#64748B', fontWeight: '600', marginBottom: 2 },
+    statusValue: { fontSize: 15, fontWeight: '900', color: PRIMARY },
+
+    /* ===== SECTION TITLE ===== */
     sectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-        padding: 15,
-        paddingBottom: 5,
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+        paddingHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 8,
     },
 
+    /* ===== TIMELINE ===== */
     timelineContainer: {
-        padding: 15,
-        backgroundColor: '#FFF',
+        paddingHorizontal: 16,
         paddingBottom: 40,
+        backgroundColor: '#FFFFFF',
+        marginHorizontal: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingVertical: 12,
     },
-    timelineRow: {
-        flexDirection: 'row',
-    },
+    timelineRow: { flexDirection: 'row', minHeight: 50 },
     timelineLeft: {
-        width: 60,
+        width: 64,
         alignItems: 'flex-end',
-        paddingRight: 10,
+        paddingRight: 12,
         paddingTop: 2,
     },
-    timeText: { fontSize: 14, fontWeight: 'bold', color: '#444' },
-    dateText: { fontSize: 12, color: '#888' },
-    
-    timelineCenter: {
-        width: 20,
-        alignItems: 'center',
-    },
+    timeText: { fontSize: 13, fontWeight: '800', color: '#374151' },
+    dateText: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
+    timelineCenter: { width: 20, alignItems: 'center' },
     timelineDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: '#CCC',
-        marginTop: 5,
-        zIndex: 2,
+        width: 12, height: 12, borderRadius: 6,
+        backgroundColor: '#CBD5E1',
+        marginTop: 5, zIndex: 2,
     },
     timelineDotActive: {
-        backgroundColor: COLORS.primary,
-        width: 14,
-        height: 14,
-        borderRadius: 7,
+        backgroundColor: PRIMARY,
+        width: 14, height: 14, borderRadius: 7,
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
     },
     timelineLineTop: {
-        position: 'absolute',
-        top: 0,
-        bottom: '80%',
-        width: 2,
-        backgroundColor: '#EEE',
+        position: 'absolute', top: 0, bottom: '80%',
+        width: 2, backgroundColor: '#E2E8F0',
     },
     timelineLineBottom: {
-        position: 'absolute',
-        top: 15,
-        bottom: -10,
-        width: 2,
-        backgroundColor: '#EEE',
+        position: 'absolute', top: 15, bottom: -10,
+        width: 2, backgroundColor: '#E2E8F0',
     },
+    timelineRight: { flex: 1, paddingLeft: 12, paddingBottom: 24 },
+    actionText: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 4 },
+    actionTextActive: { color: PRIMARY, fontWeight: '900' },
+    detailText: { fontSize: 12, color: '#64748B', marginBottom: 2, fontWeight: '600' },
+    noteText: { fontSize: 12, color: '#D97706', fontStyle: 'italic', marginTop: 2, fontWeight: '600' },
 
-    timelineRight: {
-        flex: 1,
-        paddingLeft: 10,
-        paddingBottom: 25,
+    /* ===== EMPTY STATE ===== */
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
+    emptyIconBox: {
+        width: 80, height: 80, borderRadius: 28,
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center', alignItems: 'center',
+        marginBottom: 4,
     },
-    actionText: { fontSize: 15, fontWeight: 'bold', color: '#444', marginBottom: 4 },
-    actionTextActive: { color: COLORS.primary },
-    detailText: { fontSize: 13, color: '#666', marginBottom: 2 },
-    noteText: { fontSize: 13, color: '#EAB308', fontStyle: 'italic', marginTop: 2 },
+    emptyTitle: { fontSize: 16, fontWeight: '800', color: '#374151' },
+    emptyText: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },
 });

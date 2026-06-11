@@ -11,9 +11,8 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { COLORS } from "../constants/colors";
+import styles from "../styles/CustomerPickupDraftsScreenStyles";
 import {
   closePickupBag,
   createCustomerPickup,
@@ -22,7 +21,6 @@ import {
 } from "../services/pickupService";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
-const SECONDARY = COLORS.secondary || "#0F766E";
 
 const buildFullAddress = (detail, ward, district, province) =>
   [detail, ward?.name, district?.name, province?.name]
@@ -102,11 +100,6 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  const blurProps = {
-    intensity: Platform.OS === "ios" ? 66 : 40,
-    tint: "light",
-  };
 
   const selectedDrafts = useMemo(
     () => drafts.filter((draft) => selectedIds.includes(draft.draft_id)),
@@ -212,25 +205,12 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.headerButtonShadow}
+      style={styles.headerButton}
       activeOpacity={0.78}
     >
-      <BlurView {...blurProps} intensity={52} style={styles.headerButton}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.36)",
-            "rgba(255,255,255,0.14)",
-            "rgba(255,255,255,0.06)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerButtonTopLine} />
+      <View style={styles.headerButtonInner}>
         <Ionicons name={icon} size={24} color="#FFFFFF" />
-      </BlurView>
+      </View>
     </TouchableOpacity>
   );
 
@@ -239,78 +219,49 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        style={styles.cardShadow}
+        style={[styles.card, checked && styles.cardChecked]}
         onPress={() => toggleDraft(item.draft_id)}
         activeOpacity={0.84}
       >
-        <BlurView
-          {...blurProps}
-          intensity={56}
-          style={[styles.card, checked && styles.cardChecked]}
-        >
-          <LinearGradient
-            pointerEvents="none"
-            colors={
-              checked
-                ? [
-                    "rgba(220,252,231,0.96)",
-                    "rgba(255,255,255,0.7)",
-                    "rgba(255,255,255,0.38)",
-                  ]
-                : [
-                    "rgba(255,255,255,0.95)",
-                    "rgba(255,255,255,0.64)",
-                    "rgba(255,255,255,0.34)",
-                  ]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-
-          <View pointerEvents="none" style={styles.cardTopLine} />
-          <View pointerEvents="none" style={styles.cardGlow} />
-
-          <View style={styles.cardHeader}>
-            <View style={styles.checkBox}>
-              <Ionicons
-                name={checked ? "checkbox" : "square-outline"}
-                size={24}
-                color={checked ? PRIMARY : "#94A3B8"}
-              />
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.title}>
-                {item.draft_title ||
-                  item.rName ||
-                  item.itemName ||
-                  "Nháp chưa đặt tên"}
-              </Text>
-
-              <Text style={styles.subText}>
-                {item.rPhone || "---"} · {item.serviceType || "STANDARD"}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => deleteDraft(item.draft_id)}
-              style={styles.deleteBtn}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="trash-outline" size={20} color="#EF4444" />
-            </TouchableOpacity>
+        <View style={styles.cardHeader}>
+          <View style={styles.checkBox}>
+            <Ionicons
+              name={checked ? "checkbox" : "square-outline"}
+              size={24}
+              color={checked ? PRIMARY : "#94A3B8"}
+            />
           </View>
 
-          <Text style={styles.meta}>Người gửi: {item.sName || "---"}</Text>
-          <Text style={styles.meta}>Người nhận: {item.rName || "---"}</Text>
-          <Text style={styles.meta}>
-            Ngày lưu:{" "}
-            {item.created_at
-              ? new Date(item.created_at).toLocaleString("vi-VN")
-              : "---"}
-          </Text>
-        </BlurView>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>
+              {item.draft_title ||
+                item.rName ||
+                item.itemName ||
+                "Nháp chưa đặt tên"}
+            </Text>
+
+            <Text style={styles.subText}>
+              {item.rPhone || "---"} · {item.serviceType || "STANDARD"}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => deleteDraft(item.draft_id)}
+            style={styles.deleteBtn}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.meta}>Người gửi: {item.sName || "---"}</Text>
+        <Text style={styles.meta}>Người nhận: {item.rName || "---"}</Text>
+        <Text style={styles.meta}>
+          Ngày lưu:{" "}
+          {item.created_at
+            ? new Date(item.created_at).toLocaleString("vi-VN")
+            : "---"}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -320,18 +271,6 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[PRIMARY, "#15803D", "#16A34A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerOrbOne} />
-        <View pointerEvents="none" style={styles.headerOrbTwo} />
-        <View pointerEvents="none" style={styles.headerGlassLine} />
-
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
 
         <View style={styles.headerCenter}>
@@ -366,19 +305,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
         />
       )}
 
-      <BlurView {...blurProps} intensity={78} style={styles.bottomBar}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.94)",
-            "rgba(255,255,255,0.68)",
-            "rgba(255,255,255,0.42)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
+      <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.secondaryBtn}
           onPress={() => navigation.navigate("CustomerCreatePickup")}
@@ -393,112 +320,59 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           disabled={submitting}
           activeOpacity={0.88}
         >
-          <LinearGradient
-            colors={[PRIMARY, "#16A34A", "#4ADE80"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.primaryBtnGradient}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.primaryBtnText}>Tạo túi từ nháp</Text>
-            )}
-          </LinearGradient>
+          {submitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryBtnText}>Tạo túi từ nháp</Text>
+          )}
         </TouchableOpacity>
-      </BlurView>
+      </View>
     </View>
   );
 }
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: "#123816",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.13,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
+/*
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F3F4F6",
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: Platform.OS === "ios" ? 52 : 40,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
     backgroundColor: PRIMARY,
-    overflow: "hidden",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
-
-  headerOrbOne: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -70,
-    right: -45,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    bottom: -70,
-    left: -38,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-
-  headerGlassLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 48 : 32,
-    left: 24,
-    right: 24,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-
-  headerButtonShadow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    ...Platform.select({
+      ios: {
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 
   headerButton: {
-    flex: 1,
-    borderRadius: 21,
-    overflow: "hidden",
-    alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    alignItems: "center",
   },
 
-  headerButtonTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 9,
-    right: 9,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.55)",
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   headerCenter: {
@@ -530,12 +404,23 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.82)",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   emptyText: {
@@ -545,51 +430,33 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    padding: 15,
+    padding: 16,
     paddingBottom: 130,
   },
 
-  cardShadow: {
-    borderRadius: 24,
-    marginBottom: 12,
-    ...glassShadow,
-  },
-
   card: {
-    borderRadius: 24,
-    padding: 14,
-    overflow: "hidden",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.84)"
-        : "rgba(255,255,255,0.36)",
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   cardChecked: {
-    borderColor: "rgba(27,94,32,0.38)",
-  },
-
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 62,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.26)",
-    transform: [{ rotate: "-18deg" }],
+    borderColor: PRIMARY,
+    backgroundColor: "#F0FDF4",
   },
 
   cardHeader: {
@@ -636,44 +503,55 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     flexDirection: "row",
-    padding: 14,
-    paddingBottom: Platform.OS === "ios" ? 24 : 18,
+    padding: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.86)",
-    overflow: "hidden",
+    borderTopColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 
   secondaryBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 18,
+    height: 48,
+    borderRadius: 12,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.72)",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(27,94,32,0.22)",
-    marginRight: 10,
+    borderColor: PRIMARY,
+    marginRight: 12,
   },
 
   secondaryBtnText: {
     color: PRIMARY,
     fontWeight: "900",
+    fontSize: 15,
   },
 
   primaryBtn: {
-    flex: 1.2,
-    borderRadius: 18,
-    overflow: "hidden",
-  },
-
-  primaryBtnGradient: {
-    minHeight: 48,
-    borderRadius: 18,
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: PRIMARY,
   },
 
   primaryBtnText: {
     color: "white",
     fontWeight: "900",
+    fontSize: 15,
   },
 });
+*/

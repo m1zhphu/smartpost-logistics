@@ -4,6 +4,8 @@ export const ADMIN_ENDPOINTS = {
   // Authentication uses the same backend login API as Customer but for internal roles
   ADMIN_LOGIN: `${API_BASE_URL}/api/auth/login`,
   GET_PROFILE_ADMIN: `${API_BASE_URL}/api/auth/me`,
+  GET_HUBS: `${API_BASE_URL}/api/hubs`,
+  GET_SHIPPERS: `${API_BASE_URL}/api/users/shippers`,
   
   // Shipper Mobile Endpoints
   GET_ASSIGNED_PICKUPS: `${API_BASE_URL}/api/delivery/mobile/shipper/pickup-requests?status=ASSIGNED_PICKUP`,
@@ -25,4 +27,20 @@ export const ADMIN_ENDPOINTS = {
   CONFIRM_DELIVERY: `${API_BASE_URL}/api/delivery/confirm-success`,
   REPORT_FAILURE: `${API_BASE_URL}/api/delivery/report-failure`,
   TRACKING_TIMELINE: (code) => `${API_BASE_URL}/api/waybills/${code}/timeline`,
+
+  // Internal pickup flow
+  // Luồng mới online: PENDING_CONFIRMATION -> confirm-hub -> RECEIVED -> assign-shipper -> ASSIGNED_PICKUP -> picked -> PICKED
+  GET_ONLINE_PICKUP_REQUESTS: `${API_BASE_URL}/api/delivery/online-pickup-requests`,
+  CONFIRM_HUB: `${API_BASE_URL}/api/delivery/online-pickup-requests/confirm-hub`,        // Xác nhận văn phòng nhận (PENDING_CONFIRMATION → RECEIVED)
+  GET_HUB_PICKUP_REQUESTS: `${API_BASE_URL}/api/delivery/hub-pickup-requests`,            // Lấy đơn RECEIVED tại hub để gán bưu tá
+  ASSIGN_PICKUP_SHIPPER: (requestCode) => `${API_BASE_URL}/api/delivery/pickup-requests/${requestCode}/assign-shipper`, // Gán bưu tá (RECEIVED → ASSIGNED_PICKUP)
+
+  // Luồng cũ offline (vẫn còn trên backend): PENDING_CONFIRMATION -> dispatch-hub -> DISPATCHED_TO_HUB -> hub accept/reject
+  DISPATCH_HUB: `${API_BASE_URL}/api/delivery/online-pickup-requests/dispatch-hub`,
+  GET_HUB_DISPATCH_REQUESTS: `${API_BASE_URL}/api/delivery/hub-dispatch-requests`,
+  ACCEPT_HUB_DISPATCH: (requestCode) => `${API_BASE_URL}/api/delivery/hub-dispatch-requests/${requestCode}/accept`,
+  REJECT_HUB_DISPATCH: (requestCode) => `${API_BASE_URL}/api/delivery/hub-dispatch-requests/${requestCode}/reject`,
+
+  // Admin tạo pickup thay khách (Luồng 2 - HOTLINE/CSKH/ADMIN)
+  ADMIN_CREATE_PICKUP: `${API_BASE_URL}/api/waybills/admin/pickups`,
 };

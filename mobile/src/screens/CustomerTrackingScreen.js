@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   ScrollView,
   FlatList,
@@ -13,12 +12,11 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { COLORS } from "../constants/colors";
 import { API_BASE_URL } from "../constants/customerEndpoints";
 import { apiClient } from "../context/UserContext";
 import dayjs from "dayjs";
+import styles from "../styles/CustomerTrackingScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 const SECONDARY = COLORS.secondary || "#0F766E";
@@ -27,11 +25,6 @@ export default function CustomerTrackingScreen({ navigation }) {
   const [trackingCode, setTrackingCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [trackingData, setTrackingData] = useState(null);
-
-  const blurProps = {
-    intensity: Platform.OS === "ios" ? 66 : 40,
-    tint: "light",
-  };
 
   const handleSearch = async () => {
     if (!trackingCode.trim()) {
@@ -66,48 +59,18 @@ export default function CustomerTrackingScreen({ navigation }) {
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.headerButtonShadow}
+      style={styles.headerButton}
       activeOpacity={0.78}
     >
-      <BlurView {...blurProps} intensity={52} style={styles.headerButton}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.36)",
-            "rgba(255,255,255,0.14)",
-            "rgba(255,255,255,0.06)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerButtonTopLine} />
-        <Ionicons name={icon} size={24} color="#FFFFFF" />
-      </BlurView>
+      <View style={styles.headerButtonInner}>
+        <Ionicons name={icon} size={24} color={COLORS.white} />
+      </View>
     </TouchableOpacity>
   );
 
   const GlassCard = ({ children, style }) => (
-    <View style={[styles.cardShadow, style]}>
-      <BlurView {...blurProps} intensity={56} style={styles.card}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.95)",
-            "rgba(255,255,255,0.64)",
-            "rgba(255,255,255,0.34)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.cardTopLine} />
-        <View pointerEvents="none" style={styles.cardGlow} />
-
-        {children}
-      </BlurView>
+    <View style={[styles.card, style]}>
+      {children}
     </View>
   );
 
@@ -158,18 +121,6 @@ export default function CustomerTrackingScreen({ navigation }) {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[PRIMARY, "#15803D", "#16A34A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerOrbOne} />
-        <View pointerEvents="none" style={styles.headerOrbTwo} />
-        <View pointerEvents="none" style={styles.headerGlassLine} />
-
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
 
         <Text style={styles.headerTitle}>Tra cứu vận đơn</Text>
@@ -177,66 +128,45 @@ export default function CustomerTrackingScreen({ navigation }) {
         <View style={{ width: 42 }} />
       </View>
 
-      <View style={styles.searchSectionShadow}>
-        <BlurView {...blurProps} intensity={70} style={styles.searchSection}>
-          <LinearGradient
-            pointerEvents="none"
-            colors={[
-              "rgba(255,255,255,0.94)",
-              "rgba(255,255,255,0.68)",
-              "rgba(255,255,255,0.42)",
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
+      <View style={styles.searchSection}>
+        <View style={styles.searchBox}>
+          <Ionicons
+            name="search"
+            size={20}
+            color={PRIMARY}
+            style={styles.searchIcon}
           />
 
-          <View style={styles.searchBox}>
-            <Ionicons
-              name="search"
-              size={20}
-              color={PRIMARY}
-              style={styles.searchIcon}
-            />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Nhập mã vận đơn (VD: SP123456789)"
+            placeholderTextColor="rgba(71,85,105,0.5)"
+            value={trackingCode}
+            onChangeText={setTrackingCode}
+            autoCapitalize="characters"
+            onSubmitEditing={handleSearch}
+            underlineColorAndroid="transparent"
+          />
 
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Nhập mã vận đơn (VD: SP123456789)"
-              placeholderTextColor="rgba(71,85,105,0.5)"
-              value={trackingCode}
-              onChangeText={setTrackingCode}
-              autoCapitalize="characters"
-              onSubmitEditing={handleSearch}
-              underlineColorAndroid="transparent"
-            />
+          {trackingCode.length > 0 && (
+            <TouchableOpacity onPress={() => setTrackingCode("")}>
+              <Ionicons name="close-circle" size={20} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
 
-            {trackingCode.length > 0 && (
-              <TouchableOpacity onPress={() => setTrackingCode("")}>
-                <Ionicons name="close-circle" size={20} color="#94A3B8" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.searchBtn, loading && { opacity: 0.72 }]}
-            onPress={handleSearch}
-            disabled={loading}
-            activeOpacity={0.88}
-          >
-            <LinearGradient
-              colors={[PRIMARY, "#16A34A", "#4ADE80"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.searchBtnGradient}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.searchBtnText}>Tra cứu</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </BlurView>
+        <TouchableOpacity
+          style={[styles.searchBtn, loading && { opacity: 0.72 }]}
+          onPress={handleSearch}
+          disabled={loading}
+          activeOpacity={0.88}
+        >
+          {loading ? (
+              <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <Text style={styles.searchBtnText}>Tra cứu</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -296,94 +226,47 @@ export default function CustomerTrackingScreen({ navigation }) {
   );
 }
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: "#123816",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.13,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
-const styles = StyleSheet.create({
+/* const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F3F4F6",
   },
 
   header: {
     flexDirection: "row",
     backgroundColor: PRIMARY,
-    height: 96,
-    paddingTop: Platform.OS === "ios" ? 46 : 36,
-    paddingHorizontal: 15,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
     alignItems: "center",
     justifyContent: "space-between",
-    overflow: "hidden",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
-
-  headerOrbOne: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -70,
-    right: -45,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    bottom: -70,
-    left: -38,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-
-  headerGlassLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 42 : 30,
-    left: 24,
-    right: 24,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-
-  headerButtonShadow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    ...Platform.select({
+      ios: {
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 
   headerButton: {
-    flex: 1,
-    borderRadius: 21,
-    overflow: "hidden",
-    alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    alignItems: "center",
   },
 
-  headerButtonTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 9,
-    right: 9,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.55)",
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   headerTitle: {
@@ -392,30 +275,36 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 
-  searchSectionShadow: {
-    margin: 15,
-    borderRadius: 24,
-    ...glassShadow,
-  },
-
   searchSection: {
-    borderRadius: 24,
-    padding: 15,
-    overflow: "hidden",
+    margin: 16,
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(248,250,252,0.76)",
-    borderRadius: 18,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
     paddingHorizontal: 12,
     minHeight: 52,
-    marginBottom: 10,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
+    borderColor: "#E2E8F0",
   },
 
   searchIcon: {
@@ -430,13 +319,9 @@ const styles = StyleSheet.create({
   },
 
   searchBtn: {
-    borderRadius: 18,
-    overflow: "hidden",
-  },
-
-  searchBtnGradient: {
+    backgroundColor: PRIMARY,
     height: 48,
-    borderRadius: 18,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -477,47 +362,28 @@ const styles = StyleSheet.create({
   },
 
   resultContainer: {
-    padding: 15,
+    padding: 16,
     paddingBottom: 50,
   },
 
-  cardShadow: {
-    borderRadius: 24,
-    marginBottom: 15,
-    ...glassShadow,
-  },
-
   card: {
-    borderRadius: 24,
-    padding: 15,
-    overflow: "hidden",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.84)"
-        : "rgba(255,255,255,0.36)",
-  },
-
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 62,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.26)",
-    transform: [{ rotate: "-18deg" }],
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   sectionTitle: {
@@ -526,7 +392,7 @@ const styles = StyleSheet.create({
     color: SECONDARY,
     marginBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.18)",
+    borderBottomColor: "#F1F5F9",
     paddingBottom: 7,
   },
 
@@ -594,7 +460,7 @@ const styles = StyleSheet.create({
   timelineLine: {
     width: 2,
     flex: 1,
-    backgroundColor: "rgba(148,163,184,0.3)",
+    backgroundColor: "#E2E8F0",
     marginVertical: -4,
     zIndex: 1,
   },
@@ -607,7 +473,7 @@ const styles = StyleSheet.create({
   logStatus: {
     fontSize: 15,
     fontWeight: "900",
-    color: "#1E293B",
+    color: "#0F172A",
   },
 
   logTime: {
@@ -631,4 +497,4 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     fontWeight: "700",
   },
-});
+}); */

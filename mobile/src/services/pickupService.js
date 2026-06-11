@@ -222,3 +222,167 @@ export const simulatePrice = async (payload) => {
         return { success: false, message: getErrorMessage(error) };
     }
 };
+
+// Internal admin pickup flow APIs
+export const getOnlinePickupRequests = async (status) => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.GET_ONLINE_PICKUP_REQUESTS, {
+            params: { status }
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+/**
+ * Luồng chính (web frontend đang dùng):
+ * Admin chọn nhiều đơn PENDING_CONFIRMATION -> gọi dispatch-hub -> đơn thành DISPATCHED_TO_HUB
+ * Sau đó hub sẽ accept/reject.
+ */
+export const dispatchOnlinePickupRequests = async (requestIds, hubId, note) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.DISPATCH_HUB, {
+            request_ids: requestIds,
+            hub_id: hubId,
+            note: note || ''
+        }, {
+            headers: buildIdempotencyHeaders('mobile-dispatch-hub')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+/**
+ * Luồng rút gọn (không qua bước hub accept/reject):
+ * Admin xác nhận văn phòng nhận trực tiếp PENDING_CONFIRMATION -> RECEIVED.
+ * Dùng khi muốn bỏ qua bước hub xác nhận.
+ */
+export const confirmHubDirect = async (requestIds, hubId, note) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.CONFIRM_HUB, {
+            request_ids: requestIds,
+            hub_id: hubId,
+            note: note || ''
+        }, {
+            headers: buildIdempotencyHeaders('mobile-confirm-hub')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const getHubDispatchRequests = async (status = 'DISPATCHED_TO_HUB', hubId) => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.GET_HUB_DISPATCH_REQUESTS, {
+            params: {
+                status,
+                ...(hubId ? { hub_id: hubId } : {})
+            }
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const acceptHubDispatchRequest = async (requestCode, note) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.ACCEPT_HUB_DISPATCH(requestCode), {
+            note: note || ''
+        }, {
+            headers: buildIdempotencyHeaders('mobile-accept-hub-dispatch')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const rejectHubDispatchRequest = async (requestCode, note) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.REJECT_HUB_DISPATCH(requestCode), {
+            note: note || ''
+        }, {
+            headers: buildIdempotencyHeaders('mobile-reject-hub-dispatch')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const getHubPickupRequests = async (status = 'RECEIVED', hubId) => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.GET_HUB_PICKUP_REQUESTS, {
+            params: {
+                status,
+                ...(hubId ? { hub_id: hubId } : {})
+            }
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const getActiveHubs = async () => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.GET_HUBS);
+        const activeHubs = Array.isArray(response.data)
+            ? response.data.filter((hub) => hub.status !== false)
+            : [];
+        return { success: true, data: activeHubs };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const getAssignableShippers = async ({ hubId, isOnline = true, managedByCurrentCskh = false } = {}) => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.GET_SHIPPERS, {
+            params: {
+                ...(hubId ? { hub_id: hubId } : {}),
+                ...(typeof isOnline === 'boolean' ? { is_online: isOnline } : {}),
+                ...(managedByCurrentCskh ? { managed_by_current_cskh: true } : {})
+            }
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const assignPickupShipper = async (requestCode, shipperId, note) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.ASSIGN_PICKUP_SHIPPER(requestCode), {
+            shipper_id: shipperId,
+            note: note || ''
+        }, {
+            headers: buildIdempotencyHeaders('mobile-assign-pickup-shipper')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+/**
+ * Luồng 2: Admin/CSKH/Hotline tạo pickup thay khách hàng.
+ * POST /api/waybills/admin/pickups
+ * Nếu có target_hub_id -> pickup_status = RECEIVED (đã xác nhận văn phòng).
+ * Nếu không có target_hub_id -> pickup_status = PENDING_CONFIRMATION.
+ */
+export const createAdminPickup = async (data) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.ADMIN_CREATE_PICKUP, data, {
+            headers: buildIdempotencyHeaders('mobile-admin-pickup')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};

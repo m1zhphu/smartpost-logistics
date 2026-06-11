@@ -372,6 +372,7 @@ export const UserProvider = ({ children }) => {
             if (userType === 'customer' || userType === 'admin') {
                 const profileUrl = userType === 'customer' ? CUSTOMER_ENDPOINTS.GET_PROFILE_CUSTOMER : ADMIN_ENDPOINTS.GET_PROFILE_ADMIN;
                 try {
+                    const decoded = jwtDecode(currentToken);
                     const response = await apiClient.get(profileUrl, {
                         headers: { Authorization: `Bearer ${currentToken}` }
                     });
@@ -379,6 +380,8 @@ export const UserProvider = ({ children }) => {
                     const data = response.data;
                     const profileData = {
                         id: data.user_id || data.id,
+                        user_id: data.user_id || data.id,
+                        role_id: data.role_id || decoded?.role_id,
                         username: data.username,
                         customer_id: data.customer_id,
                         full_name: data.full_name || data.name || data.representative_name || (userType === 'customer' ? 'Khách hàng' : 'Nhân viên'),
@@ -392,13 +395,15 @@ export const UserProvider = ({ children }) => {
                         province_id: data.province_id,
                         district_id: data.district_id,
                         ward_id: data.ward_id,
-                        is_online: data.is_online
+                        is_online: data.is_online,
+                        primary_hub_id: data.primary_hub_id || null,
+                        primary_hub_name: data.primary_hub_name || null,
+                        accessible_hub_ids: data.accessible_hub_ids || []
                     };
                     
                     setUser(profileData);
                     
                     // Giữ lại roles và permissions từ JWT
-                    const decoded = jwtDecode(currentToken);
                     const perms = [];
                     if (decoded.permissions) {
                         Object.keys(decoded.permissions).forEach(key => {
@@ -415,9 +420,13 @@ export const UserProvider = ({ children }) => {
                     const decoded = jwtDecode(currentToken);
                     const mockProfileData = {
                         id: decoded.user_id,
+                        user_id: decoded.user_id,
+                        role_id: decoded.role_id,
                         username: decoded.sub,
                         customer_id: decoded.customer_id,
-                        full_name: userType === 'customer' ? 'Khách hàng' : 'Nhân viên', 
+                        full_name: userType === 'customer' ? 'Khách hàng' : 'Nhân viên',
+                        primary_hub_id: decoded.primary_hub_id || null,
+                        accessible_hub_ids: decoded.accessible_hub_ids || [],
                     };
                     setUser(mockProfileData);
                     return mockProfileData;

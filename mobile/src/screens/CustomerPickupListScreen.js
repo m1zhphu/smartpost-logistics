@@ -10,13 +10,13 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { COLORS } from "../constants/colors";
 import { getCustomerPickups } from "../services/pickupService";
+import styles from "../styles/CustomerPickupListScreenStyles";
 import {
   formatCurrency,
   formatDateTime,
+  getOfficeStatusLabel,
   getPickupStatusColor,
   getPickupStatusLabel,
   getWaybillStatusLabel,
@@ -29,11 +29,6 @@ const SECONDARY = COLORS.secondary || "#0F766E";
 export default function CustomerPickupListScreen({ navigation }) {
   const [pickups, setPickups] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const blurProps = {
-    intensity: Platform.OS === "ios" ? 66 : 40,
-    tint: "light",
-  };
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -58,26 +53,12 @@ export default function CustomerPickupListScreen({ navigation }) {
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.headerButtonShadow}
+      style={styles.headerButton}
       activeOpacity={0.78}
     >
-      <BlurView {...blurProps} intensity={52} style={styles.headerButton}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.36)",
-            "rgba(255,255,255,0.14)",
-            "rgba(255,255,255,0.06)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerButtonTopLine} />
-
+      <View style={styles.headerButtonInner}>
         <Ionicons name={icon} size={24} color="#FFFFFF" />
-      </BlurView>
+      </View>
     </TouchableOpacity>
   );
 
@@ -92,19 +73,7 @@ export default function CustomerPickupListScreen({ navigation }) {
   );
 
   const PricePill = ({ label, value, success, danger }) => (
-    <BlurView {...blurProps} intensity={40} style={styles.pricePill}>
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          "rgba(255,255,255,0.9)",
-          "rgba(255,255,255,0.48)",
-          "rgba(255,255,255,0.24)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
+    <View style={styles.pricePill}>
       <Text style={styles.pricePillLabel}>{label}</Text>
       <Text
         style={[
@@ -115,7 +84,7 @@ export default function CustomerPickupListScreen({ navigation }) {
       >
         {value}
       </Text>
-    </BlurView>
+    </View>
   );
 
   const renderItem = ({ item }) => {
@@ -125,7 +94,7 @@ export default function CustomerPickupListScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        style={styles.cardShadow}
+        style={styles.card}
         onPress={() =>
           navigation.navigate("CustomerPickupDetail", {
             waybillCode: item.waybill_code,
@@ -133,80 +102,63 @@ export default function CustomerPickupListScreen({ navigation }) {
         }
         activeOpacity={0.84}
       >
-        <BlurView {...blurProps} intensity={56} style={styles.card}>
-          <LinearGradient
-            pointerEvents="none"
-            colors={[
-              "rgba(255,255,255,0.95)",
-              "rgba(255,255,255,0.64)",
-              "rgba(255,255,255,0.34)",
+        <View style={styles.cardHeader}>
+          <View style={styles.codeBlock}>
+            <Text style={styles.waybillCode}>{item.waybill_code}</Text>
+            <Text style={styles.requestCode}>YC: {item.request_code}</Text>
+          </View>
+
+          <View
+            style={[
+              styles.statusPill,
+              {
+                borderColor: `${statusColor}33`,
+                backgroundColor: `${statusColor}10`,
+              },
             ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
+          >
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {getPickupStatusLabel(item.pickup_status)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.cardBody}>
+          <InfoLine icon="cube-outline">
+            Trạng thái vận đơn: {getWaybillStatusLabel(item.waybill_status)}
+          </InfoLine>
+
+          <InfoLine icon="business-outline">
+            Văn phòng: {getOfficeStatusLabel(item.office_status)}
+          </InfoLine>
+
+          <InfoLine icon="bicycle-outline">
+            Bưu tá: {item.assigned_shipper_name || "Chưa phân công"}
+          </InfoLine>
+
+          <InfoLine icon="time-outline">
+            Ngày tạo: {formatDateTime(item.created_at)}
+          </InfoLine>
+        </View>
+
+        <View style={styles.priceSection}>
+          <PricePill
+            label="Cước dự kiến"
+            value={formatCurrency(item.estimated_total_amount)}
           />
 
-          <View pointerEvents="none" style={styles.cardTopLine} />
-          <View pointerEvents="none" style={styles.cardGlow} />
-
-          <View style={styles.cardHeader}>
-            <View style={styles.codeBlock}>
-              <Text style={styles.waybillCode}>{item.waybill_code}</Text>
-              <Text style={styles.requestCode}>YC: {item.request_code}</Text>
-            </View>
-
-            <View
-              style={[
-                styles.statusPill,
-                {
-                  borderColor: `${statusColor}33`,
-                  backgroundColor: `${statusColor}10`,
-                },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: statusColor }]}>
-                {getPickupStatusLabel(item.pickup_status)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.cardBody}>
-            <InfoLine icon="cube-outline">
-              Trạng thái vận đơn: {getWaybillStatusLabel(item.waybill_status)}
-            </InfoLine>
-
-            <InfoLine icon="business-outline">
-              Văn phòng: {item.office_status || "Đang xử lý"}
-            </InfoLine>
-
-            <InfoLine icon="bicycle-outline">
-              Bưu tá: {item.assigned_shipper_name || "Chưa phân công"}
-            </InfoLine>
-
-            <InfoLine icon="time-outline">
-              Ngày tạo: {formatDateTime(item.created_at)}
-            </InfoLine>
-          </View>
-
-          <View style={styles.priceSection}>
+          {showFinal ? (
             <PricePill
-              label="Cước dự kiến"
-              value={formatCurrency(item.estimated_total_amount)}
+              label="Cước thật"
+              value={formatCurrency(item.final_total_amount)}
+              success
             />
-
-            {showFinal ? (
-              <PricePill
-                label="Cước thật"
-                value={formatCurrency(item.final_total_amount)}
-                success
-              />
-            ) : (
-              <View style={styles.priceHintBox}>
-                <Text style={styles.priceHint}>Đang dùng cước dự kiến</Text>
-              </View>
-            )}
-          </View>
-        </BlurView>
+          ) : (
+            <View style={styles.priceHintBox}>
+              <Text style={styles.priceHint}>Đang dùng cước dự kiến</Text>
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -216,18 +168,6 @@ export default function CustomerPickupListScreen({ navigation }) {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[PRIMARY, "#15803D", "#16A34A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerOrbOne} />
-        <View pointerEvents="none" style={styles.headerOrbTwo} />
-        <View pointerEvents="none" style={styles.headerGlassLine} />
-
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
 
         <Text style={styles.headerTitle}>Đơn lấy hàng của tôi</Text>
@@ -252,81 +192,40 @@ export default function CustomerPickupListScreen({ navigation }) {
       ) : (
         <FlatList
           data={pickups}
-          keyExtractor={(item) => item.waybill_code}
+          keyExtractor={(item) => item.request_code}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
       )}
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate("CustomerCreatePickup")}
-        activeOpacity={0.86}
-      >
-        <LinearGradient
-          colors={[PRIMARY, "#16A34A", "#4ADE80"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabGradient}
-        >
-          <LinearGradient
-            pointerEvents="none"
-            colors={[
-              "rgba(255,255,255,0.5)",
-              "rgba(255,255,255,0.12)",
-              "rgba(255,255,255,0)",
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.fabGloss}
-          />
-
-          <Ionicons name="add" size={30} color="white" />
-        </LinearGradient>
-      </TouchableOpacity>
     </View>
   );
 }
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: "#123816",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.13,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
+/*
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F3F4F6",
   },
 
   header: {
     flexDirection: "row",
     backgroundColor: PRIMARY,
-    height: 96,
-    paddingTop: Platform.OS === "ios" ? 46 : 36,
-    paddingHorizontal: 15,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
     alignItems: "center",
     justifyContent: "space-between",
-    overflow: "hidden",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
 
     ...Platform.select({
       ios: {
         shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 10 },
+        shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
-        shadowRadius: 18,
+        shadowRadius: 16,
       },
       android: {
         elevation: 8,
@@ -334,82 +233,24 @@ const styles = StyleSheet.create({
     }),
   },
 
-  headerOrbOne: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -70,
-    right: -45,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    bottom: -70,
-    left: -38,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-
-  headerGlassLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 42 : 30,
-    left: 24,
-    right: 24,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-
-  headerButtonShadow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-
   headerButton: {
-    flex: 1,
-    borderRadius: 21,
-    overflow: "hidden",
-    alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    alignItems: "center",
   },
 
-  headerButtonTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 9,
-    right: 9,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.55)",
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   headerTitle: {
-    color: "white",
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "900",
-    flex: 1,
-    textAlign: "center",
-    paddingHorizontal: 10,
   },
 
   center: {
@@ -422,22 +263,22 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.82)",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: "#E2E8F0",
 
     ...Platform.select({
       ios: {
-        shadowColor: "#123816",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 14,
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
     }),
   },
@@ -451,53 +292,36 @@ const styles = StyleSheet.create({
 
   listContent: {
     padding: 15,
-    paddingBottom: 100,
-  },
-
-  cardShadow: {
-    borderRadius: 24,
-    marginBottom: 15,
-    ...glassShadow,
+    paddingBottom: 26,
   },
 
   card: {
-    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     padding: 15,
-    overflow: "hidden",
+    marginBottom: 15,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.84)"
-        : "rgba(255,255,255,0.36)",
-  },
+    borderColor: "#E2E8F0",
 
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 62,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.26)",
-    transform: [{ rotate: "-18deg" }],
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.18)",
+    borderBottomColor: "#F1F5F9",
     paddingBottom: 12,
     marginBottom: 12,
   },
@@ -530,7 +354,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontWeight: "900",
     fontSize: 12,
-    maxWidth: 120,
+    maxWidth: 110,
     textAlign: "right",
   },
 
@@ -545,36 +369,37 @@ const styles = StyleSheet.create({
   infoIconBox: {
     width: 24,
     height: 24,
-    borderRadius: 9,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
-    backgroundColor: "rgba(27,94,32,0.08)",
   },
 
   infoText: {
     fontSize: 14,
     color: "#334155",
     flex: 1,
+    marginBottom: 2,
     fontWeight: "600",
     lineHeight: 21,
   },
 
   priceSection: {
     flexDirection: "row",
-    marginTop: 10,
+    justifyContent: "space-between",
+    marginTop: 12,
+    gap: 8,
   },
 
   pricePill: {
     flex: 1,
-    borderRadius: 16,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 10,
-    overflow: "hidden",
+    paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.82)",
-    backgroundColor: "rgba(248,250,252,0.72)",
-    marginRight: 8,
+    borderColor: "#E2E8F0",
   },
 
   pricePillLabel: {
@@ -586,12 +411,12 @@ const styles = StyleSheet.create({
 
   pricePillValue: {
     fontSize: 13,
-    color: "#0F172A",
     fontWeight: "900",
+    color: "#0F172A",
   },
 
   priceSuccess: {
-    color: "#059669",
+    color: "#16A34A",
   },
 
   priceDanger: {
@@ -600,59 +425,20 @@ const styles = StyleSheet.create({
 
   priceHintBox: {
     flex: 1,
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    backgroundColor: "rgba(241,245,249,0.72)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.82)",
     justifyContent: "center",
+    alignItems: "center",
+    padding: 8,
+    backgroundColor: "#FEF9C3",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FEF08A",
   },
 
   priceHint: {
-    fontSize: 13,
-    color: "#64748B",
-    fontWeight: "700",
-  },
-
-  fab: {
-    position: "absolute",
-    bottom: 30,
-    right: 30,
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    overflow: "hidden",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.34,
-        shadowRadius: 14,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-
-  fabGradient: {
-    flex: 1,
-    borderRadius: 31,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.42)",
-    overflow: "hidden",
-  },
-
-  fabGloss: {
-    position: "absolute",
-    top: 4,
-    left: 10,
-    right: 10,
-    height: 24,
-    borderRadius: 999,
+    fontSize: 11,
+    color: "#854D0E",
+    fontWeight: "600",
+    textAlign: "center",
   },
 });
+*/

@@ -14,11 +14,8 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
-
 import { Ionicons } from "@expo/vector-icons";
 import { CommonActions } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import Toast from "react-native-toast-message";
 import { requestRegisterOTP, verifyRegisterOTP } from "../services/authService";
 import { useUser } from "../context/UserContext";
@@ -27,7 +24,7 @@ import { checkNetworkConnection } from "../utils/networkUtils";
 import styles from "../styles/LoginStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const PRIMARY = COLORS.primaryColorAuth || "#1b5e20";
+const PRIMARY = COLORS.primaryColorAuth || "#1B5E20";
 
 const USER_TYPES = [
   {
@@ -44,13 +41,7 @@ const USER_TYPES = [
   },
 ];
 
-const blurProps = {
-  intensity: Platform.OS === "ios" ? 62 : 38,
-  tint: "light",
-  blurReductionFactor: Platform.OS === "android" ? 3 : undefined,
-};
-
-const GlassInput = ({
+const Input = ({
   icon,
   placeholder,
   value,
@@ -66,189 +57,90 @@ const GlassInput = ({
   showPassword,
   onToggleEye,
 }) => (
-  <View
-    style={[
-      glassStyles.inputShadow,
-      multiline && glassStyles.inputShadowMultiline,
-    ]}
-  >
-    <BlurView
-      {...blurProps}
-      intensity={Platform.OS === "ios" ? 58 : 34}
-      style={[
-        glassStyles.inputWrapper,
-        multiline && glassStyles.inputWrapperMultiline,
-      ]}
-    >
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          "rgba(255,255,255,0.88)",
-          "rgba(255,255,255,0.46)",
-          "rgba(255,255,255,0.24)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+  <View style={localStyles.inputWrapper}>
+    <Ionicons
+      name={icon}
+      size={20}
+      color={PRIMARY}
+      style={localStyles.icon}
+    />
 
-      <View pointerEvents="none" style={glassStyles.inputTopLine} />
-      <View pointerEvents="none" style={glassStyles.inputBottomGlow} />
+    <TextInput
+      style={[localStyles.input, multiline && localStyles.inputMultiline]}
+      placeholder={placeholder}
+      placeholderTextColor="#94A3B8"
+      value={value}
+      onChangeText={onChangeText}
+      secureTextEntry={secureTextEntry}
+      keyboardType={keyboardType}
+      autoCapitalize={autoCapitalize}
+      maxLength={maxLength}
+      multiline={multiline}
+      numberOfLines={numberOfLines}
+      textAlignVertical={multiline ? "top" : "center"}
+      returnKeyType={returnKeyType}
+      blurOnSubmit={!multiline}
+      keyboardAppearance="light"
+      underlineColorAndroid="transparent"
+    />
 
-      <Ionicons
-        name={icon}
-        size={20}
-        color={PRIMARY}
-        style={[glassStyles.icon, multiline && glassStyles.iconMultiline]}
-      />
-
-      <TextInput
-        style={[glassStyles.input, multiline && glassStyles.inputMultiline]}
-        placeholder={placeholder}
-        placeholderTextColor="rgba(36,76,42,0.46)"
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        maxLength={maxLength}
-        multiline={multiline}
-        numberOfLines={numberOfLines}
-        textAlignVertical={multiline ? "top" : "center"}
-        returnKeyType={returnKeyType}
-        blurOnSubmit={!multiline}
-        keyboardAppearance="light"
-        underlineColorAndroid="transparent"
-      />
-
-      {showEye && (
-        <TouchableOpacity
-          onPress={onToggleEye}
-          style={glassStyles.eyeIcon}
-          activeOpacity={0.72}
-        >
-          <Ionicons
-            name={showPassword ? "eye-outline" : "eye-off-outline"}
-            size={20}
-            color={PRIMARY}
-          />
-        </TouchableOpacity>
-      )}
-    </BlurView>
+    {showEye && (
+      <TouchableOpacity
+        onPress={onToggleEye}
+        style={localStyles.eyeIcon}
+        activeOpacity={0.72}
+      >
+        <Ionicons
+          name={showPassword ? "eye-outline" : "eye-off-outline"}
+          size={20}
+          color={PRIMARY}
+        />
+      </TouchableOpacity>
+    )}
   </View>
 );
 
-const LiquidButton = ({ title, onPress, disabled, loading }) => (
+const SolidButton = ({ title, onPress, disabled, loading }) => (
   <TouchableOpacity
-    style={[styles.loginBtn, glassStyles.primaryButtonWrap]}
+    style={[styles.loginBtn, localStyles.primaryButton]}
     onPress={onPress}
     disabled={disabled}
     activeOpacity={0.88}
   >
-    <LinearGradient
-      colors={[
-        "rgba(27,94,32,0.98)",
-        "rgba(67,160,71,0.95)",
-        "rgba(129,199,132,0.9)",
-      ]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={glassStyles.primaryButton}
-    >
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          "rgba(255,255,255,0.5)",
-          "rgba(255,255,255,0.12)",
-          "rgba(255,255,255,0)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={glassStyles.buttonGloss}
-      />
-
-      <View pointerEvents="none" style={glassStyles.buttonInnerLine} />
-
       {loading ? (
         <ActivityIndicator color="#ffffff" />
       ) : (
-        <Text style={glassStyles.primaryButtonText}>{title}</Text>
+        <Text style={localStyles.primaryButtonText}>{title}</Text>
       )}
-    </LinearGradient>
   </TouchableOpacity>
 );
 
-const LiquidToggle = ({ userType, onChangeUserType }) => (
-  <View style={glassStyles.toggleShadowWrap}>
-    <BlurView
-      {...blurProps}
-      intensity={Platform.OS === "ios" ? 68 : 42}
-      style={glassStyles.toggleContainer}
-    >
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          "rgba(255,255,255,0.82)",
-          "rgba(255,255,255,0.42)",
-          "rgba(255,255,255,0.2)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+const Toggle = ({ userType, onChangeUserType }) => (
+  <View style={localStyles.toggleContainer}>
+    {USER_TYPES.map((item) => {
+      const active = userType === item.key;
 
-      <View pointerEvents="none" style={glassStyles.toggleTopLine} />
-      <View pointerEvents="none" style={glassStyles.toggleBottomGlow} />
-
-      {USER_TYPES.map((item) => {
-        const active = userType === item.key;
-
-        return (
-          <TouchableOpacity
-            key={item.key}
+      return (
+        <TouchableOpacity
+          key={item.key}
+          style={[
+            localStyles.toggleButton,
+            active && localStyles.toggleButtonActive,
+          ]}
+          onPress={() => onChangeUserType(item.key)}
+          activeOpacity={0.86}
+        >
+          <Text
             style={[
-              glassStyles.toggleButton,
-              active && glassStyles.toggleButtonActive,
+              localStyles.toggleText,
+              active && localStyles.toggleTextActive,
             ]}
-            onPress={() => onChangeUserType(item.key)}
-            activeOpacity={0.86}
           >
-            <View style={[StyleSheet.absoluteFill, { opacity: active ? 1 : 0 }]} pointerEvents="none">
-              <LinearGradient
-                colors={[
-                  "rgba(255,255,255,0.98)",
-                  "rgba(236,255,239,0.8)",
-                  "rgba(180,238,187,0.58)",
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
-
-              <LinearGradient
-                colors={[
-                  "rgba(255,255,255,0.96)",
-                  "rgba(255,255,255,0.2)",
-                  "rgba(255,255,255,0)",
-                ]}
-                start={{ x: 0.08, y: 0 }}
-                end={{ x: 0.88, y: 1 }}
-                style={glassStyles.toggleActiveGloss}
-              />
-            </View>
-
-            <Text
-              style={[
-                glassStyles.toggleText,
-                active && glassStyles.toggleTextActive,
-              ]}
-            >
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </BlurView>
+            {item.label}
+          </Text>
+        </TouchableOpacity>
+      );
+    })}
   </View>
 );
 
@@ -535,7 +427,7 @@ export default function LoginScreen({ navigation }) {
             : "Đăng nhập Khách hàng"}
       </Text>
 
-      <GlassInput
+      <Input
         icon="person-outline"
         placeholder="Tài khoản"
         value={username}
@@ -544,7 +436,7 @@ export default function LoginScreen({ navigation }) {
         returnKeyType="next"
       />
 
-      <GlassInput
+      <Input
         icon="lock-closed-outline"
         placeholder="Mật khẩu"
         value={password}
@@ -561,13 +453,13 @@ export default function LoginScreen({ navigation }) {
           onPress={() => navigation.navigate("ForgotPassword")}
           activeOpacity={0.75}
         >
-          <Text style={{ color: COLORS.primaryColorAuth, fontWeight: "600" }}>
+          <Text style={{ color: COLORS.primaryColorAuth, fontWeight: "700" }}>
             Quên mật khẩu?
           </Text>
         </TouchableOpacity>
       )}
 
-      <LiquidButton
+      <SolidButton
         title="ĐĂNG NHẬP"
         onPress={handleLogin}
         disabled={loading}
@@ -599,7 +491,7 @@ export default function LoginScreen({ navigation }) {
     <View style={styles.formSection}>
       <Text style={styles.loginTitle}>Đăng ký Khách hàng</Text>
 
-      <GlassInput
+      <Input
         icon="person-outline"
         placeholder="Tên đăng nhập"
         value={regUsername}
@@ -608,7 +500,7 @@ export default function LoginScreen({ navigation }) {
         returnKeyType="next"
       />
 
-      <GlassInput
+      <Input
         icon="lock-closed-outline"
         placeholder="Mật khẩu (ít nhất 6 ký tự)"
         value={regPassword}
@@ -619,7 +511,7 @@ export default function LoginScreen({ navigation }) {
         onToggleEye={() => setShowPassword(!showPassword)}
       />
 
-      <GlassInput
+      <Input
         icon="lock-closed-outline"
         placeholder="Nhập lại mật khẩu"
         value={regConfirmPassword}
@@ -630,7 +522,7 @@ export default function LoginScreen({ navigation }) {
         onToggleEye={() => setShowPassword(!showPassword)}
       />
 
-      <GlassInput
+      <Input
         icon="person-circle-outline"
         placeholder="Họ và tên"
         value={regFullName}
@@ -638,7 +530,7 @@ export default function LoginScreen({ navigation }) {
         returnKeyType="next"
       />
 
-      <GlassInput
+      <Input
         icon="mail-outline"
         placeholder="Email"
         value={regEmail}
@@ -648,7 +540,7 @@ export default function LoginScreen({ navigation }) {
         returnKeyType="next"
       />
 
-      <GlassInput
+      <Input
         icon="call-outline"
         placeholder="Số điện thoại"
         value={regPhone}
@@ -656,7 +548,7 @@ export default function LoginScreen({ navigation }) {
         keyboardType="phone-pad"
       />
 
-      <LiquidButton
+      <SolidButton
         title="TIẾP TỤC"
         onPress={handleRegisterRequest}
         disabled={loading}
@@ -683,15 +575,11 @@ export default function LoginScreen({ navigation }) {
   );
 
   return (
-    <ImageBackground
-      source={require("../../assets/DongSon2.png")}
-      style={styles.backgroundImage}
-      imageStyle={{ opacity: 0.08, resizeMode: "cover" }}
-    >
+    <View style={styles.backgroundImage}>
       <StatusBar style="dark" />
 
       <KeyboardAvoidingView
-        style={glassStyles.keyboardAvoidingRoot}
+        style={localStyles.keyboardAvoidingRoot}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
@@ -718,7 +606,7 @@ export default function LoginScreen({ navigation }) {
             />
           </View>
 
-          <LiquidToggle userType={userType} onChangeUserType={handleChangeUserType} />
+          <Toggle userType={userType} onChangeUserType={handleChangeUserType} />
 
           {isRegistering && userType === "customer"
             ? renderRegisterForm()
@@ -745,7 +633,7 @@ export default function LoginScreen({ navigation }) {
       {/* OTP Modal */}
       <Modal visible={showOtpModal} transparent={true} animationType="fade">
         <KeyboardAvoidingView
-          style={glassStyles.keyboardAvoidingRoot}
+          style={localStyles.keyboardAvoidingRoot}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
         >
@@ -766,87 +654,44 @@ export default function LoginScreen({ navigation }) {
                   Mã OTP đã được gửi đến email {regEmail}
                 </Text>
 
-                <View style={glassStyles.otpInputShadow}>
-                  <BlurView
-                    {...blurProps}
-                    intensity={Platform.OS === "ios" ? 56 : 34}
-                    style={glassStyles.otpBlur}
-                  >
-                    <LinearGradient
-                      pointerEvents="none"
-                      colors={[
-                        "rgba(255,255,255,0.88)",
-                        "rgba(255,255,255,0.42)",
-                        "rgba(255,255,255,0.22)",
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-
-                    <TextInput
-                      style={glassStyles.otpInput}
-                      placeholder="--- ---"
-                      placeholderTextColor="rgba(38,78,45,0.35)"
-                      value={otpCode}
-                      onChangeText={setOtpCode}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      multiline={false}
-                      numberOfLines={1}
-                      textAlignVertical="center"
-                      keyboardAppearance="light"
-                      underlineColorAndroid="transparent"
-                    />
-                  </BlurView>
-                </View>
+                <TextInput
+                    style={localStyles.otpInput}
+                    placeholder="--- ---"
+                    placeholderTextColor="#CBD5E1"
+                    value={otpCode}
+                    onChangeText={setOtpCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    multiline={false}
+                    numberOfLines={1}
+                    textAlignVertical="center"
+                    keyboardAppearance="light"
+                    underlineColorAndroid="transparent"
+                />
 
                 <View style={styles.modalBtnContainer}>
                   <TouchableOpacity
-                    style={[styles.modalBtn, glassStyles.modalCancelBtn]}
+                    style={[styles.modalBtn, localStyles.modalCancelBtn]}
                     onPress={() => setShowOtpModal(false)}
                     disabled={loading}
                     activeOpacity={0.82}
                   >
-                    <Text style={glassStyles.modalCancelText}>Hủy</Text>
+                    <Text style={localStyles.modalCancelText}>Hủy</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.modalBtn, glassStyles.modalSubmitBtn]}
+                    style={[styles.modalBtn, localStyles.modalSubmitBtn]}
                     onPress={handleVerifyOTP}
                     disabled={loading}
                     activeOpacity={0.88}
                   >
-                    <LinearGradient
-                      colors={[
-                        "rgba(27,94,32,0.98)",
-                        "rgba(67,160,71,0.95)",
-                        "rgba(129,199,132,0.88)",
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={glassStyles.modalSubmitGradient}
-                    >
-                      <LinearGradient
-                        pointerEvents="none"
-                        colors={[
-                          "rgba(255,255,255,0.46)",
-                          "rgba(255,255,255,0.1)",
-                          "rgba(255,255,255,0)",
-                        ]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={glassStyles.modalSubmitGloss}
-                      />
-
                       {loading ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text style={glassStyles.modalSubmitText}>
+                        <Text style={localStyles.modalSubmitText}>
                           Xác thực
                         </Text>
                       )}
-                    </LinearGradient>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -854,366 +699,120 @@ export default function LoginScreen({ navigation }) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </ImageBackground>
+    </View>
   );
 }
 
-const glassStyles = StyleSheet.create({
+const localStyles = StyleSheet.create({
   keyboardAvoidingRoot: {
     flex: 1,
   },
-
-  toggleShadowWrap: {
-    width: "100%",
-    alignSelf: "center",
-    marginBottom: 22,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.18)",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#123816",
-        shadowOpacity: 0.18,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: 12 },
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-
   toggleContainer: {
-    minHeight: 58,
+    minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
-    padding: 6,
-    borderRadius: 999,
-    overflow: "hidden",
+    padding: 4,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.78)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.76)"
-        : "rgba(255,255,255,0.28)",
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+    marginBottom: 24,
+    width: "100%",
   },
-
-  toggleTopLine: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    top: 1,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.95)",
-  },
-
-  toggleBottomGlow: {
-    position: "absolute",
-    left: 18,
-    right: 18,
-    bottom: 2,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(27,94,32,0.1)",
-  },
-
   toggleButton: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: 999,
+    minHeight: 44,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "transparent",
   },
-
   toggleButtonActive: {
-    borderColor: "rgba(255,255,255,0.92)",
-    backgroundColor: "rgba(255,255,255,0.68)",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#1B5E20",
-        shadowOpacity: 0.22,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 7 },
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    backgroundColor: "#F1F5F9",
   },
-
-  toggleActiveGloss: {
-    position: "absolute",
-    top: 2,
-    left: 8,
-    right: 8,
-    height: 18,
-    borderRadius: 999,
-  },
-
   toggleText: {
-    color: "rgba(20,55,24,0.62)",
+    color: "#64748B",
     fontSize: 14,
     fontWeight: "700",
-    letterSpacing: 0.15,
   },
-
   toggleTextActive: {
     color: PRIMARY,
     fontWeight: "900",
   },
-
-  inputShadow: {
-    width: "100%",
-    marginBottom: 14,
-    borderRadius: 22,
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#1B5E20",
-        shadowOpacity: 0.12,
-        shadowRadius: 15,
-        shadowOffset: { width: 0, height: 8 },
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-
-  inputShadowMultiline: {
-    borderRadius: 24,
-  },
-
   inputWrapper: {
     minHeight: 56,
-    borderRadius: 22,
-    overflow: "hidden",
+    width: "100%",
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
+    borderColor: "#E2E8F0",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.78)"
-        : "rgba(255,255,255,0.3)",
+    backgroundColor: "#FFFFFF",
+    marginBottom: 16,
   },
-
-  inputWrapperMultiline: {
-    minHeight: 96,
-    alignItems: "flex-start",
-    borderRadius: 24,
-  },
-
-  inputTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.95)",
-  },
-
-  inputBottomGlow: {
-    position: "absolute",
-    left: 18,
-    right: 18,
-    bottom: 1,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(27,94,32,0.08)",
-  },
-
   icon: {
-    marginLeft: 18,
+    marginLeft: 16,
     marginRight: 10,
   },
-
-  iconMultiline: {
-    marginTop: 18,
-  },
-
   input: {
     flex: 1,
     height: 56,
-    color: "#123816",
+    color: "#0F172A",
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
     paddingRight: 12,
     paddingVertical: 0,
   },
-
   inputMultiline: {
     height: 96,
     paddingTop: 16,
     paddingBottom: 14,
-    lineHeight: 21,
   },
-
   eyeIcon: {
-    width: 46,
+    width: 48,
     height: 56,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  primaryButtonWrap: {
-    borderRadius: 24,
-    overflow: "hidden",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#1B5E20",
-        shadowOpacity: 0.3,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: 10 },
-      },
-      android: {
-        elevation: 7,
-      },
-    }),
-  },
-
   primaryButton: {
     minHeight: 56,
-    borderRadius: 24,
-    overflow: "hidden",
+    borderRadius: 14,
+    backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.46)",
   },
-
-  buttonGloss: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    top: 2,
-    height: 24,
-    borderRadius: 999,
-  },
-
-  buttonInnerLine: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    top: 1,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.52)",
-  },
-
   primaryButtonText: {
     color: "#ffffff",
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "900",
-    letterSpacing: 1,
   },
-
-  otpInputShadow: {
-    marginTop: 16,
-    borderRadius: 22,
-    overflow: "hidden",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#1B5E20",
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 7 },
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-
-  otpBlur: {
-    height: 58,
-    borderRadius: 22,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.82)"
-        : "rgba(255,255,255,0.62)",
-  },
-
   otpInput: {
-    height: 58,
-    borderRadius: 22,
+    height: 60,
+    width: "100%",
+    borderRadius: 14,
     textAlign: "center",
     fontSize: 24,
     fontWeight: "900",
     letterSpacing: 8,
-    color: "#123816",
-    paddingVertical: 0,
-  },
-
-  modalCancelBtn: {
-    backgroundColor: "rgba(255,255,255,0.72)",
+    color: "#0F172A",
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.92)",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#1B5E20",
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 5 },
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    borderColor: "#E2E8F0",
   },
-
+  modalCancelBtn: {
+    backgroundColor: "#F1F5F9",
+  },
   modalCancelText: {
-    color: "rgba(18,56,22,0.72)",
-    fontWeight: "900",
+    color: "#475569",
+    fontWeight: "800",
+    fontSize: 15
   },
-
   modalSubmitBtn: {
-    overflow: "hidden",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#1B5E20",
-        shadowOpacity: 0.26,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 8 },
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
+    backgroundColor: PRIMARY,
+    justifyContent: "center"
   },
-
-  modalSubmitGradient: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-
-  modalSubmitGloss: {
-    position: "absolute",
-    left: 8,
-    right: 8,
-    top: 2,
-    height: 18,
-    borderRadius: 999,
-  },
-
   modalSubmitText: {
     color: "#ffffff",
     fontWeight: "900",
+    fontSize: 15
   },
 });

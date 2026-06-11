@@ -17,8 +17,6 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
@@ -57,11 +55,6 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   );
 
   const [showBillModal, setShowBillModal] = useState(false);
-
-  const blurProps = {
-    intensity: Platform.OS === "ios" ? 66 : 42,
-    tint: "light",
-  };
 
   useEffect(() => {
     fetchDetail();
@@ -302,48 +295,17 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.headerButtonShadow}
+      style={styles.headerButton}
       activeOpacity={0.78}
     >
-      <BlurView {...blurProps} intensity={52} style={styles.headerButton}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.36)",
-            "rgba(255,255,255,0.14)",
-            "rgba(255,255,255,0.06)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
+      <View style={styles.headerButtonInner}>
         <Ionicons name={icon} size={24} color="#FFF" />
-      </BlurView>
+      </View>
     </TouchableOpacity>
   );
 
   const GlassCard = ({ children }) => (
-    <View style={styles.cardShadow}>
-      <BlurView {...blurProps} intensity={56} style={styles.card}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.94)",
-            "rgba(255,255,255,0.62)",
-            "rgba(255,255,255,0.34)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.cardTopLine} />
-        <View pointerEvents="none" style={styles.cardGlow} />
-
-        {children}
-      </BlurView>
-    </View>
+    <View style={styles.card}>{children}</View>
   );
 
   const Row = ({ label, value, bold, color }) => (
@@ -366,32 +328,20 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
 
   const PrimaryButton = ({ icon, text, colors, onPress, disabled, style }) => (
     <TouchableOpacity
-      style={[styles.primaryButtonWrap, style, disabled && styles.disabledBtn]}
+      style={[
+        styles.primaryButtonWrap,
+        style,
+        { backgroundColor: colors[0] },
+        disabled && styles.disabledBtn,
+      ]}
       disabled={disabled}
       onPress={onPress}
       activeOpacity={0.86}
     >
-      <LinearGradient
-        colors={colors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.primaryButton}
-      >
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.44)",
-            "rgba(255,255,255,0.1)",
-            "rgba(255,255,255,0)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.buttonGloss}
-        />
-
+      <View style={styles.primaryButtonInner}>
         <Ionicons name={icon} size={19} color="#FFF" />
         <Text style={styles.primaryButtonText}>{text}</Text>
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
   );
 
@@ -406,18 +356,10 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       onPress={onPress}
       activeOpacity={0.84}
     >
-      <BlurView {...blurProps} intensity={44} style={styles.secondaryButton}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={["rgba(255,255,255,0.86)", "rgba(255,255,255,0.42)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
+      <View style={styles.secondaryButtonInner}>
         <Ionicons name={icon} size={18} color={PRIMARY} />
         <Text style={styles.secondaryButtonText}>{text}</Text>
-      </BlurView>
+      </View>
     </TouchableOpacity>
   );
 
@@ -450,18 +392,6 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[PRIMARY, "#15803D", "#16A34A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerOrbOne} />
-        <View pointerEvents="none" style={styles.headerOrbTwo} />
-        <View pointerEvents="none" style={styles.headerLine} />
-
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
 
         <Text style={styles.headerTitle}>Chi tiết lấy hàng</Text>
@@ -605,37 +535,19 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               </View>
             )}
 
-            <View style={styles.noteInputShadow}>
-              <BlurView
-                {...blurProps}
-                intensity={48}
-                style={styles.noteInputGlass}
-              >
-                <LinearGradient
-                  pointerEvents="none"
-                  colors={[
-                    "rgba(255,255,255,0.88)",
-                    "rgba(255,255,255,0.44)",
-                    "rgba(255,255,255,0.22)",
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-
-                <TextInput
-                  style={styles.noteInput}
-                  value={pickedNote}
-                  onChangeText={setPickedNote}
-                  placeholder="Ghi chú xác nhận đã lấy hàng"
-                  placeholderTextColor="rgba(36,76,42,0.42)"
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                  underlineColorAndroid="transparent"
-                  keyboardAppearance="light"
-                />
-              </BlurView>
+            <View style={styles.noteInputContainer}>
+              <TextInput
+                style={styles.noteInput}
+                value={pickedNote}
+                onChangeText={setPickedNote}
+                placeholder="Ghi chú xác nhận đã lấy hàng"
+                placeholderTextColor="#94A3B8"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                underlineColorAndroid="transparent"
+                keyboardAppearance="light"
+              />
             </View>
 
             {uploadingImage ? (
@@ -659,81 +571,51 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           onPress={() => setShowBillModal(false)}
         >
           <Pressable
-            style={styles.billMenuShadow}
+            style={styles.billMenuContainer}
             onPress={(event) => event.stopPropagation()}
           >
-            <BlurView
-              {...blurProps}
-              intensity={78}
-              style={styles.billMenuContainer}
+            <TouchableOpacity
+              style={styles.billMenuItem}
+              onPress={() => handleCreateBill("Tạo bill tổng")}
+              activeOpacity={0.78}
             >
-              <LinearGradient
-                pointerEvents="none"
-                colors={[
-                  "rgba(255,255,255,0.94)",
-                  "rgba(255,255,255,0.66)",
-                  "rgba(255,255,255,0.4)",
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
+              <Text style={styles.billMenuText}>Tạo bill tổng</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.billMenuItem}
-                onPress={() => handleCreateBill("Tạo bill tổng")}
-                activeOpacity={0.78}
-              >
-                <Text style={styles.billMenuText}>Tạo bill tổng</Text>
-              </TouchableOpacity>
+            <View style={styles.divider} />
 
-              <View style={styles.divider} />
+            <TouchableOpacity
+              style={styles.billMenuItem}
+              onPress={() => handleCreateBill("Tạo bill lẻ")}
+              activeOpacity={0.78}
+            >
+              <Text style={styles.billMenuText}>Tạo bill lẻ</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.billMenuItem}
-                onPress={() => handleCreateBill("Tạo bill lẻ")}
-                activeOpacity={0.78}
-              >
-                <Text style={styles.billMenuText}>Tạo bill lẻ</Text>
-              </TouchableOpacity>
+            <View style={styles.divider} />
 
-              <View style={styles.divider} />
+            <TouchableOpacity
+              style={styles.billMenuItem}
+              onPress={() => handleCreateBill("Tạo bill đầy đủ")}
+              activeOpacity={0.78}
+            >
+              <Text style={styles.billMenuText}>Tạo bill đầy đủ</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.billMenuItem}
-                onPress={() => handleCreateBill("Tạo bill đầy đủ")}
-                activeOpacity={0.78}
-              >
-                <Text style={styles.billMenuText}>Tạo bill đầy đủ</Text>
-              </TouchableOpacity>
+            <View style={styles.divider} />
 
-              <View style={styles.divider} />
-
-              <TouchableOpacity
-                style={styles.billMenuItemCancel}
-                onPress={() => setShowBillModal(false)}
-                activeOpacity={0.78}
-              >
-                <Text style={styles.billMenuTextCancel}>Huỷ</Text>
-              </TouchableOpacity>
-            </BlurView>
+            <TouchableOpacity
+              style={styles.billMenuItemCancel}
+              onPress={() => setShowBillModal(false)}
+              activeOpacity={0.78}
+            >
+              <Text style={styles.billMenuTextCancel}>Huỷ</Text>
+            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
 
-      <BlurView {...blurProps} intensity={78} style={styles.bottomDock}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.94)",
-            "rgba(255,255,255,0.66)",
-            "rgba(255,255,255,0.38)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
+      <View style={styles.bottomDock}>
         <View style={styles.actionGrid}>
           <TouchableOpacity
             style={styles.actionGridBtn}
@@ -795,29 +677,15 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
             </Text>
           </TouchableOpacity>
         </View>
-      </BlurView>
+      </View>
     </View>
   );
 }
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: "#123816",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.13,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F3F4F6",
   },
 
   header: {
@@ -828,10 +696,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     alignItems: "center",
     justifyContent: "space-between",
-    overflow: "hidden",
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
-
     ...Platform.select({
       ios: {
         shadowColor: PRIMARY,
@@ -845,62 +711,18 @@ const styles = StyleSheet.create({
     }),
   },
 
-  headerOrbOne: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -70,
-    right: -45,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    bottom: -70,
-    left: -38,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-
-  headerLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 42 : 30,
-    left: 24,
-    right: 24,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-
-  headerButtonShadow: {
+  headerButton: {
     width: 42,
     height: 42,
     borderRadius: 21,
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
-  headerButton: {
-    flex: 1,
-    borderRadius: 21,
-    overflow: "hidden",
-    alignItems: "center",
+  headerButtonInner: {
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    alignItems: "center",
   },
 
   headerTitle: {
@@ -926,7 +748,7 @@ const styles = StyleSheet.create({
     backgroundColor: PRIMARY,
     paddingHorizontal: 16,
     paddingVertical: 11,
-    borderRadius: 16,
+    borderRadius: 12,
   },
 
   backButtonText: {
@@ -939,42 +761,24 @@ const styles = StyleSheet.create({
     paddingBottom: 150,
   },
 
-  cardShadow: {
-    borderRadius: 24,
-    marginBottom: 15,
-    ...glassShadow,
-  },
-
   card: {
-    borderRadius: 24,
-    padding: 15,
-    overflow: "hidden",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.82)"
-        : "rgba(255,255,255,0.36)",
-  },
-
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 62,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.26)",
-    transform: [{ rotate: "-18deg" }],
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   sectionTitle: {
@@ -983,7 +787,7 @@ const styles = StyleSheet.create({
     color: SECONDARY,
     marginBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.18)",
+    borderBottomColor: "#F1F5F9",
     paddingBottom: 7,
   },
 
@@ -1033,7 +837,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 15,
     borderTopWidth: 1,
-    borderTopColor: "rgba(148,163,184,0.18)",
+    borderTopColor: "#F1F5F9",
     paddingTop: 15,
   },
 
@@ -1043,28 +847,15 @@ const styles = StyleSheet.create({
 
   primaryButtonWrap: {
     flex: 1,
-    borderRadius: 18,
-    overflow: "hidden",
+    borderRadius: 12,
   },
 
-  primaryButton: {
+  primaryButtonInner: {
     minHeight: 46,
-    borderRadius: 18,
+    borderRadius: 12,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.38)",
-  },
-
-  buttonGloss: {
-    position: "absolute",
-    top: 2,
-    left: 8,
-    right: 8,
-    height: 18,
-    borderRadius: 999,
   },
 
   primaryButtonText: {
@@ -1081,24 +872,22 @@ const styles = StyleSheet.create({
 
   secondaryButtonWrap: {
     flex: 1,
-    borderRadius: 18,
-    overflow: "hidden",
+    borderRadius: 12,
   },
 
   secondaryButtonSpacer: {
     marginRight: 10,
   },
 
-  secondaryButton: {
+  secondaryButtonInner: {
     minHeight: 46,
-    borderRadius: 18,
-    overflow: "hidden",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
+    borderColor: "#E2E8F0",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(248,250,252,0.72)",
+    backgroundColor: "#F8FAFC",
   },
 
   secondaryButtonText: {
@@ -1109,13 +898,13 @@ const styles = StyleSheet.create({
 
   placeholderBox: {
     height: 180,
-    borderRadius: 22,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.36)",
+    borderColor: "#CBD5E1",
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(248,250,252,0.72)",
+    backgroundColor: "#F8FAFC",
   },
 
   placeholderText: {
@@ -1127,26 +916,16 @@ const styles = StyleSheet.create({
   previewImage: {
     width: "100%",
     height: 220,
-    borderRadius: 22,
+    borderRadius: 16,
     backgroundColor: "#E5E7EB",
   },
 
-  noteInputShadow: {
+  noteInputContainer: {
     marginTop: 12,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-
-  noteInputGlass: {
-    minHeight: 90,
-    borderRadius: 20,
-    overflow: "hidden",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.82)"
-        : "rgba(255,255,255,0.36)",
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
   },
 
   noteInput: {
@@ -1178,13 +957,20 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 10,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.86)",
+    borderTopColor: "#E2E8F0",
     paddingBottom: Platform.OS === "ios" ? 25 : 10,
-    overflow: "hidden",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.9)"
-        : "rgba(255,255,255,0.42)",
+    backgroundColor: "#FFFFFF",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 
   actionGrid: {
@@ -1212,16 +998,18 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15,23,42,0.38)",
+    backgroundColor: "rgba(15,23,42,0.5)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
   },
 
-  billMenuShadow: {
+  billMenuContainer: {
     width: "80%",
-    borderRadius: 24,
-
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -1235,18 +1023,6 @@ const styles = StyleSheet.create({
     }),
   },
 
-  billMenuContainer: {
-    width: "100%",
-    borderRadius: 24,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.92)"
-        : "rgba(255,255,255,0.44)",
-  },
-
   billMenuItem: {
     paddingVertical: 18,
     alignItems: "center",
@@ -1255,7 +1031,9 @@ const styles = StyleSheet.create({
   billMenuItemCancel: {
     paddingVertical: 18,
     alignItems: "center",
-    backgroundColor: "rgba(248,250,252,0.62)",
+    backgroundColor: "#F1F5F9",
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
 
   billMenuText: {
@@ -1272,6 +1050,6 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: "rgba(148,163,184,0.18)",
+    backgroundColor: "#E2E8F0",
   },
 });

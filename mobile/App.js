@@ -36,6 +36,7 @@ import ShipperDeliveryListScreen from './src/screens/ShipperDeliveryListScreen';
 import ShipperDeliveryDetailScreen from './src/screens/ShipperDeliveryDetailScreen';
 import ShipperReportIncidentScreen from './src/screens/ShipperReportIncidentScreen';
 import ShipperTrackingScreen from './src/screens/ShipperTrackingScreen';
+import AdminPickupFlowScreen from './src/screens/AdminPickupFlowScreen';
 
 import { QueueProvider } from './src/context/QueueContext';
 import { UserProvider, navigationRef } from './src/context/UserContext';
@@ -130,6 +131,7 @@ export default function App() {
             <Stack.Screen name="ShipperDeliveryDetail" component={ShipperDeliveryDetailScreen} />
             <Stack.Screen name="ShipperReportIncident" component={ShipperReportIncidentScreen} />
             <Stack.Screen name="ShipperTracking" component={ShipperTrackingScreen} />
+            <Stack.Screen name="AdminPickupFlow" component={AdminPickupFlowScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         <Toast config={toastConfig} />

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   Platform,
   ScrollView,
@@ -10,22 +9,15 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
+import styles from "../styles/CustomerProfileScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
-const SECONDARY = COLORS.secondary || "#0F766E";
 
 export default function CustomerProfileScreen({ navigation }) {
   const { user, refreshProfile } = useUser();
   const [loading, setLoading] = useState(false);
-
-  const blurProps = {
-    intensity: Platform.OS === "ios" ? 66 : 40,
-    tint: "light",
-  };
 
   useEffect(() => {
     const load = async () => {
@@ -40,55 +32,26 @@ export default function CustomerProfileScreen({ navigation }) {
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.headerButtonShadow}
+      style={styles.headerButton}
       activeOpacity={0.78}
     >
-      <BlurView {...blurProps} intensity={52} style={styles.headerButton}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.36)",
-            "rgba(255,255,255,0.14)",
-            "rgba(255,255,255,0.06)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerButtonTopLine} />
-        <Ionicons name={icon} size={24} color="#FFF" />
-      </BlurView>
+      <View style={styles.headerButtonInner}>
+        <Ionicons name={icon} size={24} color={COLORS.white} />
+      </View>
     </TouchableOpacity>
   );
 
   const PrimaryButton = ({ icon, text, onPress, dark }) => (
     <TouchableOpacity
-      style={styles.editBtnWrap}
+      style={[
+        styles.editBtn,
+        dark ? { backgroundColor: "#334155" } : { backgroundColor: PRIMARY },
+      ]}
       onPress={onPress}
       activeOpacity={0.86}
     >
-      <LinearGradient
-        colors={dark ? ["#334155", "#64748B"] : [PRIMARY, "#16A34A", "#4ADE80"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.editBtn}
-      >
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.44)",
-            "rgba(255,255,255,0.1)",
-            "rgba(255,255,255,0)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.buttonGloss}
-        />
-
-        <Ionicons name={icon} size={16} color="#FFF" />
-        <Text style={styles.editBtnText}>{text}</Text>
-      </LinearGradient>
+      <Ionicons name={icon} size={16} color={COLORS.white} />
+      <Text style={styles.editBtnText}>{text}</Text>
     </TouchableOpacity>
   );
 
@@ -110,22 +73,8 @@ export default function CustomerProfileScreen({ navigation }) {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[PRIMARY, "#15803D", "#16A34A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerOrbOne} />
-        <View pointerEvents="none" style={styles.headerOrbTwo} />
-        <View pointerEvents="none" style={styles.headerGlassLine} />
-
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
-
         <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
-
         <View style={{ width: 42 }} />
       </View>
 
@@ -142,108 +91,60 @@ export default function CustomerProfileScreen({ navigation }) {
           />
         ) : (
           <>
-            <View style={styles.profileCardShadow}>
-              <BlurView
-                {...blurProps}
-                intensity={58}
-                style={styles.profileCard}
-              >
-                <LinearGradient
-                  pointerEvents="none"
-                  colors={[
-                    "rgba(255,255,255,0.95)",
-                    "rgba(255,255,255,0.64)",
-                    "rgba(255,255,255,0.34)",
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-
-                <View pointerEvents="none" style={styles.cardTopLine} />
-                <View pointerEvents="none" style={styles.cardGlow} />
-
-                <View style={styles.avatarPlaceholder}>
-                  <LinearGradient
-                    colors={["rgba(27,94,32,0.18)", "rgba(34,197,94,0.12)"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-
-                  <Text style={styles.avatarText}>
-                    {(user?.full_name || user?.username || "K")
-                      .charAt(0)
-                      .toUpperCase()}
-                  </Text>
-                </View>
-
-                <Text style={styles.userName}>
-                  {user?.full_name || "Chưa cập nhật tên"}
+            <View style={styles.profileCard}>
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarText}>
+                  {(user?.full_name || user?.username || "K")
+                    .charAt(0)
+                    .toUpperCase()}
                 </Text>
+              </View>
 
-                <Text style={styles.userRole}>Khách hàng thành viên</Text>
+              <Text style={styles.userName}>
+                {user?.full_name || "Chưa cập nhật tên"}
+              </Text>
 
-                <PrimaryButton
-                  icon="pencil"
-                  text="Cập nhật thông tin"
-                  onPress={() => navigation.navigate("CustomerUpdateProfile")}
-                />
+              <Text style={styles.userRole}>Khách hàng thành viên</Text>
 
-                <View style={{ height: 10 }} />
+              <PrimaryButton
+                icon="pencil"
+                text="Cập nhật thông tin"
+                onPress={() => navigation.navigate("CustomerUpdateProfile")}
+              />
 
-                <PrimaryButton
-                  icon="lock-closed"
-                  text="Đổi mật khẩu"
-                  dark
-                  onPress={() => navigation.navigate("ChangePassword")}
-                />
-              </BlurView>
+              <View style={{ height: 10 }} />
+
+              <PrimaryButton
+                icon="lock-closed"
+                text="Đổi mật khẩu"
+                dark
+                onPress={() => navigation.navigate("ChangePassword")}
+              />
             </View>
 
-            <View style={styles.infoSectionShadow}>
-              <BlurView
-                {...blurProps}
-                intensity={58}
-                style={styles.infoSection}
-              >
-                <LinearGradient
-                  pointerEvents="none"
-                  colors={[
-                    "rgba(255,255,255,0.95)",
-                    "rgba(255,255,255,0.64)",
-                    "rgba(255,255,255,0.34)",
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
+            <View style={styles.infoSection}>
+              <Text style={styles.sectionTitle}>Thông tin liên hệ</Text>
 
-                <View pointerEvents="none" style={styles.cardTopLine} />
-
-                <Text style={styles.sectionTitle}>Thông tin liên hệ</Text>
-
-                <InfoRow
-                  icon="person-outline"
-                  label="Tên đăng nhập"
-                  value={user?.username}
-                />
-                <InfoRow
-                  icon="call-outline"
-                  label="Số điện thoại"
-                  value={user?.phone_number}
-                />
-                <InfoRow
-                  icon="mail-outline"
-                  label="Email"
-                  value={user?.email}
-                />
-                <InfoRow
-                  icon="location-outline"
-                  label="Địa chỉ"
-                  value={user?.address}
-                />
-              </BlurView>
+              <InfoRow
+                icon="person-outline"
+                label="Tên đăng nhập"
+                value={user?.username}
+              />
+              <InfoRow
+                icon="call-outline"
+                label="Số điện thoại"
+                value={user?.phone_number}
+              />
+              <InfoRow
+                icon="mail-outline"
+                label="Email"
+                value={user?.email}
+              />
+              <InfoRow
+                icon="location-outline"
+                label="Địa chỉ"
+                value={user?.address}
+              />
             </View>
           </>
         )}
@@ -252,94 +153,48 @@ export default function CustomerProfileScreen({ navigation }) {
   );
 }
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: "#123816",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.13,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
+/*
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F3F4F6",
   },
 
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: Platform.OS === "ios" ? 55 : 36,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
     backgroundColor: PRIMARY,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: "hidden",
-  },
-
-  headerOrbOne: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -70,
-    right: -45,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    bottom: -70,
-    left: -38,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-
-  headerGlassLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 48 : 30,
-    left: 24,
-    right: 24,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-
-  headerButtonShadow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    ...Platform.select({
+      ios: {
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 
   headerButton: {
-    flex: 1,
-    borderRadius: 21,
-    overflow: "hidden",
-    alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    alignItems: "center",
   },
 
-  headerButtonTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 9,
-    right: 9,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.55)",
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   headerTitle: {
@@ -356,44 +211,25 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
 
-  profileCardShadow: {
-    margin: 16,
-    borderRadius: 28,
-    ...glassShadow,
-  },
-
   profileCard: {
+    margin: 16,
     padding: 20,
-    borderRadius: 28,
+    borderRadius: 16,
     alignItems: "center",
-    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.84)"
-        : "rgba(255,255,255,0.36)",
-  },
-
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 62,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.26)",
-    transform: [{ rotate: "-18deg" }],
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   avatarPlaceholder: {
@@ -403,9 +239,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
-    overflow: "hidden",
+    backgroundColor: "#F0FDF4",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.88)",
+    borderColor: "#E2E8F0",
   },
 
   avatarText: {
@@ -417,40 +253,27 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 20,
     fontWeight: "900",
-    color: "#1F2937",
+    color: "#0F172A",
     marginBottom: 4,
     textAlign: "center",
   },
 
   userRole: {
     fontSize: 14,
-    color: "#6B7280",
+    color: "#64748B",
     marginBottom: 16,
     fontWeight: "700",
-  },
-
-  editBtnWrap: {
-    borderRadius: 999,
-    overflow: "hidden",
   },
 
   editBtn: {
     minHeight: 42,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 999,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
-    overflow: "hidden",
-  },
-
-  buttonGloss: {
-    position: "absolute",
-    top: 2,
-    left: 10,
-    right: 10,
-    height: 18,
-    borderRadius: 999,
+    justifyContent: "center",
+    width: "100%",
   },
 
   editBtnText: {
@@ -459,29 +282,31 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  infoSectionShadow: {
+  infoSection: {
     marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 24,
-    ...glassShadow,
-  },
-
-  infoSection: {
     padding: 16,
-    borderRadius: 24,
-    overflow: "hidden",
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.84)"
-        : "rgba(255,255,255,0.36)",
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   sectionTitle: {
     fontSize: 16,
     fontWeight: "900",
-    color: "#1F2937",
+    color: "#0F172A",
     marginBottom: 16,
   },
 
@@ -494,13 +319,11 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 42,
     height: 42,
-    borderRadius: 16,
-    backgroundColor: "rgba(27,94,32,0.08)",
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
   },
 
   infoContent: {
@@ -509,14 +332,15 @@ const styles = StyleSheet.create({
 
   infoLabel: {
     fontSize: 12,
-    color: "#6B7280",
+    color: "#64748B",
     marginBottom: 2,
     fontWeight: "700",
   },
 
   infoValue: {
     fontSize: 14,
-    color: "#1F2937",
+    color: "#0F172A",
     fontWeight: "800",
   },
 });
+*/

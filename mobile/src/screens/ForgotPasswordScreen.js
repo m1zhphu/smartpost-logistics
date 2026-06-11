@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
   Platform,
   ActivityIndicator,
@@ -13,8 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
+import styles from "../styles/ForgotPasswordScreenStyles";
 import {
   requestForgotPasswordOtp,
   resetPasswordWithOtp,
@@ -22,38 +20,20 @@ import {
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
-const blurProps = {
-    intensity: Platform.OS === "ios" ? 66 : 40,
-    tint: "light",
-  };
-
 const HeaderButton = ({ icon, onPress, disabled }) => (
   <TouchableOpacity
     onPress={onPress}
     disabled={disabled}
-    style={styles.headerButtonShadow}
+    style={styles.headerButton}
     activeOpacity={0.78}
   >
-    <BlurView {...blurProps} intensity={52} style={styles.headerButton}>
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          "rgba(255,255,255,0.36)",
-          "rgba(255,255,255,0.14)",
-          "rgba(255,255,255,0.06)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      <View pointerEvents="none" style={styles.headerButtonTopLine} />
-      <Ionicons name={icon} size={24} color="#FFF" />
-    </BlurView>
+    <View style={styles.headerButtonInner}>
+        <Ionicons name={icon} size={24} color={COLORS.white} />
+    </View>
   </TouchableOpacity>
 );
 
-const GlassInput = ({
+const Input = ({
   icon,
   value,
   onChangeText,
@@ -66,23 +46,7 @@ const GlassInput = ({
   eyeActive,
 }) => (
   <View style={styles.inputGroup}>
-    <BlurView
-      {...blurProps}
-      intensity={Platform.OS === "ios" ? 56 : 34}
-      style={styles.inputWrapper}
-    >
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          "rgba(255,255,255,0.9)",
-          "rgba(255,255,255,0.48)",
-          "rgba(255,255,255,0.24)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
+    <View style={styles.inputWrapper}>
       <Ionicons
         name={icon}
         size={20}
@@ -95,7 +59,7 @@ const GlassInput = ({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="rgba(71,85,105,0.52)"
+        placeholderTextColor="#94A3B8"
         keyboardType={keyboardType}
         secureTextEntry={secureTextEntry}
         maxLength={maxLength}
@@ -112,7 +76,7 @@ const GlassInput = ({
           />
         </TouchableOpacity>
       )}
-    </BlurView>
+    </View>
   </View>
 );
 
@@ -127,7 +91,6 @@ export default function ForgotPasswordScreen({ route, navigation }) {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  
   const handleRequestOtp = async () => {
     if (!email.trim()) {
       Toast.show({
@@ -241,34 +204,18 @@ export default function ForgotPasswordScreen({ route, navigation }) {
     }
   };
 
-
-
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[PRIMARY, "#15803D", "#16A34A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerOrbOne} />
-        <View pointerEvents="none" style={styles.headerOrbTwo} />
-        <View pointerEvents="none" style={styles.headerGlassLine} />
-
         <HeaderButton
           icon="arrow-back"
           onPress={() => navigation.goBack()}
           disabled={loading}
         />
-
         <Text style={styles.headerTitle}>Quên mật khẩu</Text>
-
-        <View style={{ width: 42 }} />
+        <View style={{ width: 38 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -276,144 +223,113 @@ export default function ForgotPasswordScreen({ route, navigation }) {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={styles.content}>
-          <View style={styles.formCardShadow}>
-            <BlurView {...blurProps} intensity={58} style={styles.formCard}>
-              <LinearGradient
-                pointerEvents="none"
-                colors={[
-                  "rgba(255,255,255,0.95)",
-                  "rgba(255,255,255,0.64)",
-                  "rgba(255,255,255,0.34)",
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
+          <View style={styles.formCard}>
+            <View style={styles.stepIconBox}>
+              <Ionicons
+                name={step === 1 ? "mail-outline" : "keypad-outline"}
+                size={32}
+                color={PRIMARY}
               />
+            </View>
 
-              <View pointerEvents="none" style={styles.cardTopLine} />
-              <View pointerEvents="none" style={styles.cardGlow} />
+            {step === 1 ? (
+              <>
+                <Text style={styles.instruction}>
+                  Vui lòng nhập địa chỉ email đã đăng ký tài khoản. Chúng tôi
+                  sẽ gửi mã OTP gồm 6 chữ số để đặt lại mật khẩu.
+                </Text>
 
-              <View style={styles.stepIconBox}>
-                <Ionicons
-                  name={step === 1 ? "mail-outline" : "keypad-outline"}
-                  size={32}
-                  color={PRIMARY}
+                <Text style={styles.label}>Email</Text>
+
+                <Input
+                  icon="mail-outline"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Nhập email của bạn"
+                  keyboardType="email-address"
                 />
-              </View>
 
-              {step === 1 ? (
-                <>
-                  <Text style={styles.instruction}>
-                    Vui lòng nhập địa chỉ email đã đăng ký tài khoản. Chúng tôi
-                    sẽ gửi mã OTP gồm 6 chữ số để đặt lại mật khẩu.
-                  </Text>
+                <TouchableOpacity
+                  style={[styles.saveBtn, loading && { opacity: 0.72 }]}
+                  onPress={handleRequestOtp}
+                  disabled={loading}
+                  activeOpacity={0.88}
+                >
+                    {loading ? (
+                      <ActivityIndicator color={COLORS.white} />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Gửi mã OTP</Text>
+                    )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.instruction}>
+                  Mã OTP đã được gửi đến email{" "}
+                  <Text style={styles.instructionBold}>{email}</Text>. Vui
+                  lòng kiểm tra hộp thư hoặc thư rác.
+                </Text>
 
-                  <Text style={styles.label}>Email</Text>
+                <Text style={styles.label}>Mã OTP</Text>
 
-                  <GlassInput
-                    icon="mail-outline"
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Nhập email của bạn"
-                    keyboardType="email-address"
-                  />
+                <Input
+                  icon="keypad-outline"
+                  value={otp}
+                  onChangeText={setOtp}
+                  placeholder="Nhập mã OTP 6 chữ số"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                />
 
-                  <TouchableOpacity
-                    style={[styles.saveBtn, loading && { opacity: 0.72 }]}
-                    onPress={handleRequestOtp}
-                    disabled={loading}
-                    activeOpacity={0.88}
-                  >
-                    <LinearGradient
-                      colors={[PRIMARY, "#16A34A", "#4ADE80"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.saveGradient}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#FFF" />
-                      ) : (
-                        <Text style={styles.saveBtnText}>Gửi mã OTP</Text>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.instruction}>
-                    Mã OTP đã được gửi đến email{" "}
-                    <Text style={styles.instructionBold}>{email}</Text>. Vui
-                    lòng kiểm tra hộp thư hoặc thư rác.
-                  </Text>
+                <Text style={styles.label}>Mật khẩu mới</Text>
 
-                  <Text style={styles.label}>Mã OTP</Text>
+                <Input
+                  icon="lock-closed-outline"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Nhập mật khẩu mới"
+                  secureTextEntry={!showNew}
+                  showEye
+                  eyeActive={showNew}
+                  onEyePress={() => setShowNew(!showNew)}
+                />
 
-                  <GlassInput
-                    icon="keypad-outline"
-                    value={otp}
-                    onChangeText={setOtp}
-                    placeholder="Nhập mã OTP 6 chữ số"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                  />
+                <Text style={styles.label}>Nhập lại mật khẩu mới</Text>
 
-                  <Text style={styles.label}>Mật khẩu mới</Text>
+                <Input
+                  icon="lock-closed-outline"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Xác nhận mật khẩu mới"
+                  secureTextEntry={!showConfirm}
+                  showEye
+                  eyeActive={showConfirm}
+                  onEyePress={() => setShowConfirm(!showConfirm)}
+                />
 
-                  <GlassInput
-                    icon="lock-closed-outline"
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    placeholder="Nhập mật khẩu mới"
-                    secureTextEntry={!showNew}
-                    showEye
-                    eyeActive={showNew}
-                    onEyePress={() => setShowNew(!showNew)}
-                  />
+                <TouchableOpacity
+                  style={[styles.saveBtn, loading && { opacity: 0.72 }]}
+                  onPress={handleResetPassword}
+                  disabled={loading}
+                  activeOpacity={0.88}
+                >
+                    {loading ? (
+                      <ActivityIndicator color={COLORS.white} />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Đặt lại mật khẩu</Text>
+                    )}
+                </TouchableOpacity>
 
-                  <Text style={styles.label}>Nhập lại mật khẩu mới</Text>
-
-                  <GlassInput
-                    icon="lock-closed-outline"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    placeholder="Xác nhận mật khẩu mới"
-                    secureTextEntry={!showConfirm}
-                    showEye
-                    eyeActive={showConfirm}
-                    onEyePress={() => setShowConfirm(!showConfirm)}
-                  />
-
-                  <TouchableOpacity
-                    style={[styles.saveBtn, loading && { opacity: 0.72 }]}
-                    onPress={handleResetPassword}
-                    disabled={loading}
-                    activeOpacity={0.88}
-                  >
-                    <LinearGradient
-                      colors={[PRIMARY, "#16A34A", "#4ADE80"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.saveGradient}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#FFF" />
-                      ) : (
-                        <Text style={styles.saveBtnText}>Đặt lại mật khẩu</Text>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.resendBtn}
-                    onPress={handleRequestOtp}
-                    disabled={loading}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={styles.resendText}>Gửi lại mã OTP</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </BlurView>
+                <TouchableOpacity
+                  style={styles.resendBtn}
+                  onPress={handleRequestOtp}
+                  disabled={loading}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.resendText}>Gửi lại mã OTP</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -421,248 +337,144 @@ export default function ForgotPasswordScreen({ route, navigation }) {
   );
 }
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: "#123816",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.13,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
+/*
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F3F4F6",
   },
-
   keyboardRoot: {
     flex: 1,
   },
-
   header: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: Platform.OS === "ios" ? 55 : 36,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
     backgroundColor: PRIMARY,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: "hidden",
+    ...Platform.select({
+        ios: { shadowColor: PRIMARY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16 },
+        android: { elevation: 8 }
+    }),
   },
-
-  headerOrbOne: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -70,
-    right: -45,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    bottom: -70,
-    left: -38,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-
-  headerGlassLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 48 : 30,
-    left: 24,
-    right: 24,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-
-  headerButtonShadow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-  },
-
   headerButton: {
-    flex: 1,
-    borderRadius: 21,
-    overflow: "hidden",
-    alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    alignItems: "center",
   },
-
-  headerButtonTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 9,
-    right: 9,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.55)",
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
   },
-
   headerTitle: {
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "900",
-    color: "#FFF",
   },
-
   content: {
     flex: 1,
-    padding: 16,
+    padding: 20,
+    justifyContent: 'center'
   },
-
-  formCardShadow: {
-    borderRadius: 28,
-    ...glassShadow,
-  },
-
   formCard: {
     padding: 20,
-    borderRadius: 28,
-    overflow: "hidden",
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.84)"
-        : "rgba(255,255,255,0.36)",
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
+      android: { elevation: 4 }
+    })
   },
-
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 62,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.26)",
-    transform: [{ rotate: "-18deg" }],
-  },
-
   stepIconBox: {
-    width: 70,
-    height: 70,
-    borderRadius: 26,
-    backgroundColor: "rgba(27,94,32,0.08)",
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: "#F0FDF4",
     alignSelf: "center",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.82)",
+    borderColor: "#DCFCE7",
   },
-
   instruction: {
     fontSize: 14,
-    color: "#4B5563",
+    color: "#475569",
     marginBottom: 20,
     lineHeight: 21,
     textAlign: "center",
     fontWeight: "600",
   },
-
   instructionBold: {
     fontWeight: "900",
-    color: "#1F2937",
+    color: "#0F172A",
   },
-
   label: {
-    fontSize: 14,
-    color: "#4B5563",
+    fontSize: 13,
+    color: "#475569",
     marginBottom: 8,
-    fontWeight: "800",
+    fontWeight: "700",
   },
-
   inputGroup: {
     marginBottom: 16,
   },
-
   inputWrapper: {
-    minHeight: 54,
-    borderRadius: 18,
-    overflow: "hidden",
+    minHeight: 52,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
+    borderColor: "#E2E8F0",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.84)"
-        : "rgba(255,255,255,0.34)",
+    backgroundColor: "#F8FAFC",
   },
-
   inputIcon: {
     marginLeft: 14,
     marginRight: 8,
   },
-
   input: {
     flex: 1,
-    minHeight: 54,
+    minHeight: 52,
     paddingVertical: 0,
     fontSize: 15,
-    color: "#1F2937",
-    fontWeight: "700",
+    color: "#0F172A",
+    fontWeight: "600",
   },
-
   eyeIcon: {
     width: 46,
-    height: 54,
+    height: 52,
     justifyContent: "center",
     alignItems: "center",
   },
-
   saveBtn: {
-    borderRadius: 20,
-    overflow: "hidden",
+    borderRadius: 12,
     marginTop: 10,
-  },
-
-  saveGradient: {
-    minHeight: 54,
-    borderRadius: 20,
+    minHeight: 52,
+    backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
   },
-
   saveBtnText: {
     color: "#FFF",
     fontSize: 16,
     fontWeight: "900",
   },
-
   resendBtn: {
     alignItems: "center",
-    marginTop: 16,
+    marginTop: 20,
   },
-
   resendText: {
     color: PRIMARY,
     fontWeight: "800",
+    fontSize: 15
   },
 });
+*/

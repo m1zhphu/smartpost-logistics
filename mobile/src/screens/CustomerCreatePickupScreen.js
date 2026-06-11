@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   TextInput,
-  StyleSheet,
   Alert,
   Modal,
   FlatList,
@@ -15,18 +14,21 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 import Toast from "react-native-toast-message";
 import { COLORS } from "../constants/colors";
 import { useUser } from "../context/UserContext";
+import styles from "../styles/CustomerCreatePickupScreenStyles";
 import {
   clearPickupDraft,
   createCustomerPickup,
   getPickupDraft,
   savePickupDraft,
+  upsertPickupDraft,
   fetchExtraServices,
   simulatePrice,
 } from "../services/pickupService";
+
+const PRIMARY = COLORS.primary || "#1B5E20";
 
 const normalizeText = (value) =>
   String(value || "")
@@ -57,9 +59,9 @@ const AutocompleteInput = ({
   );
 
   return (
-    <View style={{ position: "relative", zIndex, marginBottom: 15 }}>
+    <View style={{ position: "relative", zIndex, marginBottom: 16 }}>
       <TextInput
-        style={[styles.glassInput, { marginBottom: 0 }, disabled && { opacity: 0.5, backgroundColor: 'rgba(230,230,230,0.5)' }]}
+        style={[styles.input, { marginBottom: 0 }, disabled && { opacity: 0.5, backgroundColor: COLORS.surfaceMuted }]}
         value={value}
         onChangeText={(text) => {
           onChangeText(text);
@@ -72,7 +74,7 @@ const AutocompleteInput = ({
           setTimeout(() => setShowDropdown(false), 200);
         }}
         placeholder={placeholder}
-        placeholderTextColor="#64748b"
+        placeholderTextColor="#94A3B8"
         editable={!disabled}
       />
       {showDropdown && filtered.length > 0 && !disabled && (
@@ -96,7 +98,6 @@ const AutocompleteInput = ({
           ))}
         </View>
       )}
-      <View style={{ marginBottom: 15 }} />
     </View>
   );
 };
@@ -131,7 +132,7 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose}>
-              <Ionicons name="close-circle" size={28} color="#94a3b8" />
+              <Ionicons name="close-circle" size={28} color="#94A3B8" />
             </TouchableOpacity>
           </View>
           <FlatList
@@ -148,7 +149,7 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
                 }}
               >
                 <Text style={styles.modalItemText}>{item.name}</Text>
-                <Ionicons name="chevron-forward" size={16} color="#cbd5e1" />
+                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
               </TouchableOpacity>
             )}
           />
@@ -157,6 +158,18 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
     </Modal>
   );
 };
+
+const HeaderButton = ({ icon, onPress }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        style={styles.headerButton}
+        activeOpacity={0.78}
+    >
+        <View style={styles.headerButtonInner}>
+            <Ionicons name={icon} size={24} color={COLORS.white} />
+        </View>
+    </TouchableOpacity>
+);
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function CustomerCreatePickupScreen({ navigation }) {
@@ -506,14 +519,27 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     save_as_draft: saveAsDraft,
   });
 
+  const buildDraftSnapshot = () => ({
+    sName, sPhone, sAddressDetail,
+    sProvince, sDistrict, sWard,
+    sProvinceQuery, sDistrictQuery, sWardQuery,
+    rName, rPhone, rAddressDetail,
+    rProvince, rDistrict, rWard,
+    rProvinceQuery, rDistrictQuery, rWardQuery,
+    itemName, itemWeight, itemQuantity, codAmount, note, packageType,
+    length, width, height, paymentMethod, serviceType, extraServices,
+    created_at: new Date().toISOString(),
+    draft_title: rName || itemName || "Nháp pickup",
+  });
+
   const handleSaveDraft = async () => {
     setLoading(true);
-    const result = await createCustomerPickup(buildPayload(true));
+    const result = await upsertPickupDraft(buildDraftSnapshot());
     setLoading(false);
     if (result.success) {
       await clearPickupDraft();
-      Toast.show({ type: "success", text1: "Đã lưu nháp lên hệ thống" });
-      navigation.goBack();
+      Toast.show({ type: "success", text1: "Đã lưu nháp trên thiết bị" });
+      navigation.navigate("CustomerPickupDrafts");
     } else {
       Toast.show({
         type: "error",
@@ -643,26 +669,17 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Modern Gradient Background */}
-      <View style={styles.bgOrb1} />
-      <View style={styles.bgOrb2} />
-
       {/* Header */}
       <View style={styles.header}>
-        <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
-        <View style={styles.headerInner}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconBtn}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Tạo lấy hàng</Text>
-            <Text style={styles.headerSubtitle}>Điền thông tin đơn mới</Text>
-          </View>
-          <TouchableOpacity onPress={handleSaveDraft} style={styles.draftPill}>
-            <Ionicons name="save-outline" size={16} color="white" style={{ marginRight: 4 }} />
-            <Text style={styles.draftText}>Lưu nháp</Text>
-          </TouchableOpacity>
+        <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Tạo lấy hàng</Text>
+          <Text style={styles.headerSubtitle}>Điền thông tin đơn mới</Text>
         </View>
+        <TouchableOpacity onPress={handleSaveDraft} style={styles.draftPill}>
+          <Ionicons name="save-outline" size={16} color="white" style={{ marginRight: 4 }} />
+          <Text style={styles.draftText}>Lưu nháp</Text>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAwareScrollView
@@ -674,23 +691,23 @@ export default function CustomerCreatePickupScreen({ navigation }) {
         style={{ flex: 1 }}
       >
         <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>1. NGƯỜI GỬI</Text>
-        <View style={[styles.glassCard, { zIndex: 30 }]}>
+        <View style={[styles.card, { zIndex: 30 }]}>
           <Text style={styles.inputLabel}>Họ tên người gửi</Text>
           <TextInput
-            style={styles.glassInput}
+            style={styles.input}
             value={sName}
             onChangeText={setSName}
             placeholder="Nhập họ tên"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#94A3B8"
           />
           <Text style={styles.inputLabel}>Số điện thoại</Text>
           <TextInput
-            style={styles.glassInput}
+            style={styles.input}
             value={sPhone}
             onChangeText={setSPhone}
             placeholder="Nhập số điện thoại"
             keyboardType="phone-pad"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#94A3B8"
           />
           <Text style={styles.inputLabel}>Tỉnh / Thành phố</Text>
           <AutocompleteInput
@@ -723,34 +740,34 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           />
           <Text style={styles.inputLabel}>Địa chỉ chi tiết (Số nhà, đường...)</Text>
           <TextInput
-            style={[styles.glassInput, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]}
+            style={[styles.input, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]}
             value={sAddressDetail}
             onChangeText={setSAddressDetail}
             placeholder="Nhập địa chỉ chi tiết"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#94A3B8"
             multiline
             numberOfLines={3}
           />
         </View>
 
         <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>2. NGƯỜI NHẬN</Text>
-        <View style={[styles.glassCard, { zIndex: 20 }]}>
+        <View style={[styles.card, { zIndex: 20 }]}>
           <Text style={styles.inputLabel}>Họ tên người nhận *</Text>
           <TextInput
-            style={styles.glassInput}
+            style={styles.input}
             value={rName}
             onChangeText={setRName}
             placeholder="Nhập họ tên"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#94A3B8"
           />
           <Text style={styles.inputLabel}>Số điện thoại *</Text>
           <TextInput
-            style={styles.glassInput}
+            style={styles.input}
             value={rPhone}
             onChangeText={setRPhone}
             placeholder="Nhập số điện thoại"
             keyboardType="phone-pad"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#94A3B8"
           />
           <Text style={styles.inputLabel}>Tỉnh / Thành phố *</Text>
           <AutocompleteInput
@@ -783,18 +800,18 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           />
           <Text style={styles.inputLabel}>Địa chỉ chi tiết *</Text>
           <TextInput
-            style={[styles.glassInput, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]}
+            style={[styles.input, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]}
             value={rAddressDetail}
             onChangeText={setRAddressDetail}
             placeholder="Nhập địa chỉ chi tiết"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#94A3B8"
             multiline
             numberOfLines={3}
           />
         </View>
 
         <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>3. HÀNG HÓA & THANH TOÁN</Text>
-        <View style={[styles.glassCard, { zIndex: 10 }]}>
+        <View style={[styles.card, { zIndex: 10 }]}>
           <Text style={styles.inputLabel}>Loại hàng hóa</Text>
           <View style={styles.radioGroup}>
             <TouchableOpacity
@@ -814,20 +831,20 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           {packageType === "goods" ? (
             <>
               <Text style={styles.inputLabel}>Tên hàng hóa</Text>
-              <TextInput style={styles.glassInput} value={itemName} onChangeText={setItemName} placeholder="Ví dụ: Quần áo, sách..." placeholderTextColor="#94a3b8" />
+              <TextInput style={styles.input} value={itemName} onChangeText={setItemName} placeholder="Ví dụ: Quần áo, sách..." placeholderTextColor="#94A3B8" />
               <Text style={styles.inputLabel}>Trọng lượng (kg)</Text>
-              <TextInput style={styles.glassInput} value={itemWeight} onChangeText={setItemWeight} placeholder="Ví dụ: 0.5" keyboardType="decimal-pad" placeholderTextColor="#94a3b8" />
+              <TextInput style={styles.input} value={itemWeight} onChangeText={setItemWeight} placeholder="Ví dụ: 0.5" keyboardType="decimal-pad" placeholderTextColor="#94A3B8" />
               <Text style={styles.inputLabel}>Số lượng</Text>
-              <TextInput style={styles.glassInput} value={itemQuantity} onChangeText={setItemQuantity} placeholder="Ví dụ: 1" keyboardType="number-pad" placeholderTextColor="#94a3b8" />
+              <TextInput style={styles.input} value={itemQuantity} onChangeText={setItemQuantity} placeholder="Ví dụ: 1" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
               <Text style={styles.inputLabel}>Kích thước (cm)</Text>
               <View style={styles.rowInputs}>
-                <TextInput style={[styles.glassInput, styles.flexInput, styles.spacedInput]} value={length} onChangeText={setLength} placeholder="Dài" keyboardType="number-pad" placeholderTextColor="#94a3b8" />
-                <TextInput style={[styles.glassInput, styles.flexInput, styles.spacedInput]} value={width} onChangeText={setWidth} placeholder="Rộng" keyboardType="number-pad" placeholderTextColor="#94a3b8" />
-                <TextInput style={[styles.glassInput, styles.flexInput]} value={height} onChangeText={setHeight} placeholder="Cao" keyboardType="number-pad" placeholderTextColor="#94a3b8" />
+                <TextInput style={[styles.input, styles.flexInput, styles.spacedInput]} value={length} onChangeText={setLength} placeholder="Dài" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
+                <TextInput style={[styles.input, styles.flexInput, styles.spacedInput]} value={width} onChangeText={setWidth} placeholder="Rộng" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
+                <TextInput style={[styles.input, styles.flexInput]} value={height} onChangeText={setHeight} placeholder="Cao" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
               </View>
             </>
           ) : (
-            <Text style={{ fontSize: 13, color: "#94a3b8", marginBottom: 15, fontStyle: "italic" }}>
+            <Text style={{ fontSize: 13, color: "#94A3B8", marginBottom: 15, fontStyle: "italic" }}>
               Tài liệu mặc định là 0.1kg và không cần kích thước.
             </Text>
           )}
@@ -837,22 +854,22 @@ export default function CustomerCreatePickupScreen({ navigation }) {
             <Text style={styles.selectionText}>
               {serviceType === "STANDARD" ? "Tiêu chuẩn (STANDARD)" : serviceType === "CPN" ? "Chuyển phát nhanh (CPN)" : "Hỏa tốc (HT)"}
             </Text>
-            <Ionicons name="chevron-down" size={18} color="#94a3b8" />
+            <Ionicons name="chevron-down" size={18} color="#94A3B8" />
           </TouchableOpacity>
 
           <Text style={styles.inputLabel}>Tiền thu hộ (COD)</Text>
-          <TextInput style={styles.glassInput} value={codAmount} onChangeText={setCodAmount} placeholder="Nhập số tiền (VNĐ)" keyboardType="number-pad" placeholderTextColor="#94a3b8" />
+          <TextInput style={styles.input} value={codAmount} onChangeText={setCodAmount} placeholder="Nhập số tiền (VNĐ)" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
 
           <Text style={styles.inputLabel}>Thanh toán cước phí</Text>
           <TouchableOpacity style={styles.selectionBox} onPress={() => openModal("paymentMethod")}>
             <Text style={styles.selectionText}>
               {paymentMethod === "SENDER_DEBT" ? "Shop trả cước cuối tháng" : paymentMethod === "SENDER_PAY" ? "Shop trả ngay khi gửi" : "Người nhận trả cước"}
             </Text>
-            <Ionicons name="chevron-down" size={18} color="#94a3b8" />
+            <Ionicons name="chevron-down" size={18} color="#94A3B8" />
           </TouchableOpacity>
           
           <Text style={styles.inputLabel}>Ghi chú</Text>
-          <TextInput style={[styles.glassInput, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]} value={note} onChangeText={setNote} placeholder="Ghi chú thêm..." placeholderTextColor="#94a3b8" multiline numberOfLines={3} />
+          <TextInput style={[styles.input, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]} value={note} onChangeText={setNote} placeholder="Ghi chú thêm..." placeholderTextColor="#94A3B8" multiline numberOfLines={3} />
           
           {availableServices.length > 0 && (
             <View style={{ marginTop: 15 }}>
@@ -869,10 +886,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
                     <Ionicons 
                       name={isSelected ? "checkbox" : "square-outline"} 
                       size={20} 
-                      color={isSelected ? COLORS.primary : "#94a3b8"} 
+                      color={isSelected ? COLORS.primary : "#94A3B8"} 
                     />
                     <Text style={[styles.checkboxLabel, isSelected && { color: COLORS.primary }]}>
-                      {svc.service_name} <Text style={{ color: isSelected ? COLORS.primary : "#64748b", fontWeight: "bold" }}>({priceText})</Text>
+                      {svc.service_name} <Text style={{ color: isSelected ? COLORS.primary : "#64748B", fontWeight: "bold" }}>({priceText})</Text>
                     </Text>
                   </TouchableOpacity>
                 )
@@ -883,13 +900,13 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
         {/* Cước phí dự kiến */}
         <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>4. ƯỚC TÍNH CƯỚC PHÍ</Text>
-        <View style={[styles.glassCard, { zIndex: 5 }]}>
+        <View style={[styles.card, { zIndex: 5 }]}>
           {simulateLoading ? (
-            <Text style={{ textAlign: "center", color: "#64748b", padding: 15 }}>Đang tính cước phí...</Text>
+            <Text style={{ textAlign: "center", color: "#64748B", padding: 15, fontWeight: "700" }}>Đang tính cước phí...</Text>
           ) : simulateError ? (
             <View style={{ padding: 10, alignItems: "center" }}>
-              <Ionicons name="warning" size={28} color="#e6a23c" style={{ marginBottom: 5 }} />
-              <Text style={{ color: "#e6a23c", fontWeight: "600", textAlign: "center", fontSize: 14 }}>{simulateError}</Text>
+              <Ionicons name="warning" size={28} color="#EAB308" style={{ marginBottom: 5 }} />
+              <Text style={{ color: "#EAB308", fontWeight: "700", textAlign: "center", fontSize: 14 }}>{simulateError}</Text>
             </View>
           ) : simulateResult ? (
             <View>
@@ -905,17 +922,17 @@ export default function CustomerCreatePickupScreen({ navigation }) {
                 <Text style={styles.billingLabel}>Thuế VAT (8%):</Text>
                 <Text style={styles.billingValue}>{simulateResult.vat_8?.toLocaleString()} đ</Text>
               </View>
-              <View style={{ height: 1, backgroundColor: "#e2e8f0", marginVertical: 10 }} />
+              <View style={{ height: 1, backgroundColor: "#E2E8F0", marginVertical: 12 }} />
               <View style={styles.billingRow}>
-                <Text style={[styles.billingLabel, { fontWeight: "bold", color: "#0f172a" }]}>TỔNG CỘNG TẠM TÍNH:</Text>
-                <Text style={[styles.billingValue, { fontWeight: "bold", color: COLORS.primary, fontSize: 16 }]}>{simulateResult.grand_total?.toLocaleString()} đ</Text>
+                <Text style={[styles.billingLabel, { fontWeight: "900", color: COLORS.textPrimary }]}>TỔNG CỘNG TẠM TÍNH:</Text>
+                <Text style={[styles.billingValue, { fontWeight: "900", color: COLORS.primary, fontSize: 16 }]}>{simulateResult.grand_total?.toLocaleString()} đ</Text>
               </View>
-              <Text style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", marginTop: 10 }}>* Cước phí thực tế sẽ được cập nhật sau khi bưu cục cân đo hàng hóa.</Text>
+              <Text style={{ fontSize: 11, color: "#64748B", textAlign: "center", marginTop: 12, fontWeight: "700" }}>* Cước phí thực tế sẽ được cập nhật sau khi bưu cục cân đo hàng hóa.</Text>
             </View>
           ) : (
             <View style={{ padding: 10, alignItems: "center" }}>
-              <Ionicons name="information-circle-outline" size={28} color="#94a3b8" style={{ marginBottom: 5 }} />
-              <Text style={{ color: "#64748b", textAlign: "center", fontSize: 13 }}>Vui lòng điền địa chỉ người gửi, người nhận và khối lượng để xem cước phí dự kiến.</Text>
+              <Ionicons name="information-circle-outline" size={28} color="#94A3B8" style={{ marginBottom: 5 }} />
+              <Text style={{ color: "#64748B", textAlign: "center", fontSize: 13, fontWeight: "700" }}>Vui lòng điền địa chỉ người gửi, người nhận và khối lượng để xem cước phí dự kiến.</Text>
             </View>
           )}
         </View>
@@ -942,236 +959,233 @@ export default function CustomerCreatePickupScreen({ navigation }) {
   );
 }
 
+/*
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f1f5f9" },
-  bgOrb1: {
-    position: "absolute",
-    top: -100,
-    right: -50,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: "rgba(59,130,246,0.15)",
-  },
-  bgOrb2: {
-    position: "absolute",
-    bottom: -100,
-    left: -50,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: "rgba(16,185,129,0.12)",
-  },
+  container: { flex: 1, backgroundColor: "#F3F4F6" },
   header: {
-    paddingTop: 50,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
-    overflow: "hidden",
-  },
-  headerInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 15,
-    zIndex: 2,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    backgroundColor: PRIMARY,
+    ...Platform.select({
+        ios: { shadowColor: PRIMARY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16 },
+        android: { elevation: 8 }
+    }),
   },
-  headerIconBtn: { padding: 5 },
-  headerCenter: { alignItems: "center" },
-  headerTitle: { color: "white", fontSize: 18, fontWeight: "bold" },
-  headerSubtitle: { color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 },
+  headerButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerCenter: { alignItems: "center", flex: 1, paddingHorizontal: 10 },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
+  headerSubtitle: { color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 2, fontWeight: "700" },
   draftPill: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 12,
   },
-  draftText: { color: "white", fontSize: 13, fontWeight: "600" },
-  scrollContent: { padding: 15, paddingBottom: 120 },
+  draftText: { color: "white", fontSize: 13, fontWeight: "800" },
+  scrollContent: { padding: 16, paddingBottom: 140 },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: "bold",
+    fontWeight: "900",
     color: COLORS.primary,
-    marginBottom: 10,
+    marginBottom: 12,
     marginTop: 20,
     marginLeft: 4,
-    textTransform: "uppercase",
   },
   inputLabel: {
     fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.primary,
-    marginBottom: 6,
-    marginLeft: 4,
+    fontWeight: "700",
+    color: "#475569",
+    marginBottom: 8,
   },
-  glassCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+  card: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 15,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 1)",
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.12,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    marginBottom: 10,
-  },
-  glassInput: {
-    backgroundColor: "rgba(248, 250, 252, 0.9)",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#0f172a",
+    padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 1)",
-    marginBottom: 15,
+    borderColor: "#E2E8F0",
+    marginBottom: 10,
+    ...Platform.select({
+      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 2 }
+    })
+  },
+  input: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 52,
+    fontSize: 15,
+    color: "#0F172A",
+    fontWeight: "600",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 16,
   },
   selectionBox: {
-    backgroundColor: "rgba(248, 250, 252, 0.9)",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 52,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 1)",
-    marginBottom: 15,
+    borderColor: "#E2E8F0",
+    marginBottom: 16,
   },
-  selectionText: { color: "#0f172a", fontSize: 15 },
+  selectionText: { color: "#0F172A", fontSize: 15, fontWeight: "600" },
   dropdownContainer: {
     position: "absolute",
-    top: 50,
+    top: 56,
     left: 0,
     right: 0,
-    backgroundColor: "#fff",
-    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8 },
+      android: { elevation: 4 }
+    }),
     zIndex: 100,
   },
   dropdownItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 15,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#F1F5F9",
   },
-  dropdownItemText: { fontSize: 15, color: "#334155" },
+  dropdownItemText: { fontSize: 15, color: "#0F172A", fontWeight: "600" },
   rowInputs: { flexDirection: "row", justifyContent: "space-between" },
   flexInput: { flex: 1 },
-  spacedInput: { marginRight: 10 },
+  spacedInput: { marginRight: 12 },
   radioGroup: {
     flexDirection: "row",
-    marginBottom: 15,
-    backgroundColor: "#f1f5f9",
-    borderRadius: 10,
+    marginBottom: 16,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
     padding: 4,
   },
-  radioBtn: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 8 },
+  radioBtn: { flex: 1, paddingVertical: 12, alignItems: "center", borderRadius: 10 },
   radioBtnActive: {
-    backgroundColor: "white",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: "#FFFFFF",
+    ...Platform.select({
+      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4 },
+      android: { elevation: 2 }
+    })
   },
-  radioText: { color: "#64748b", fontSize: 14, fontWeight: "500" },
-  radioTextActive: { color: COLORS.primary, fontWeight: "bold" },
+  radioText: { color: "#64748B", fontSize: 14, fontWeight: "700" },
+  radioTextActive: { color: PRIMARY, fontWeight: "900" },
   checkboxRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   checkboxLabel: {
-    marginLeft: 8,
+    marginLeft: 10,
     fontSize: 14,
-    color: "#334155"
+    color: "#0F172A",
+    fontWeight: "600"
   },
   billingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   billingLabel: {
-    color: "#64748b",
+    color: "#64748B",
     fontSize: 14,
+    fontWeight: "700"
   },
   billingValue: {
-    color: "#0f172a",
+    color: "#0F172A",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "700",
   },
   bottomDock: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    padding: 15,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 15,
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
     borderTopWidth: 1,
-    borderTopColor: "rgba(226, 232, 240, 1)",
+    borderTopColor: "#E2E8F0",
+    ...Platform.select({
+      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 8 }
+    })
   },
   confirmBtn: {
     backgroundColor: COLORS.primary,
-    padding: 16,
+    minHeight: 52,
     borderRadius: 12,
     alignItems: "center",
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    justifyContent: "center",
   },
-  confirmBtnText: { color: "white", fontSize: 16, fontWeight: "bold" },
+  confirmBtnText: { color: "white", fontSize: 16, fontWeight: "900" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.4)",
+    backgroundColor: "rgba(15, 23, 42, 0.5)",
     justifyContent: "flex-end",
   },
   modalSheet: {
-    backgroundColor: "white",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: "75%",
     padding: 20,
-    overflow: "hidden",
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20 },
+      android: { elevation: 20 }
+    })
   },
   modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#cbd5e1",
-    borderRadius: 2,
+    width: 42,
+    height: 5,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 999,
     alignSelf: "center",
-    marginBottom: 15,
+    marginBottom: 16,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 15,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-    marginBottom: 10,
+    borderBottomColor: "#F1F5F9",
+    marginBottom: 12,
   },
-  modalTitle: { fontSize: 18, fontWeight: "bold", color: "#0f172a" },
+  modalTitle: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
   modalItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#F1F5F9",
   },
-  modalItemText: { fontSize: 16, color: "#334155" },
+  modalItemText: { fontSize: 16, color: "#0F172A", fontWeight: "600" },
 });
+*/

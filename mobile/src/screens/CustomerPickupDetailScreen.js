@@ -10,13 +10,13 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { COLORS } from "../constants/colors";
 import { getCustomerPickupDetail } from "../services/pickupService";
+import styles from "../styles/CustomerPickupDetailScreenStyles";
 import {
   formatCurrency,
   formatDateTime,
+  getOfficeStatusLabel,
   getPickupStatusColor,
   getPickupStatusLabel,
   getPriceStatusLabel,
@@ -31,11 +31,6 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
   const { waybillCode } = route.params;
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const blurProps = {
-    intensity: Platform.OS === "ios" ? 66 : 40,
-    tint: "light",
-  };
 
   useEffect(() => {
     fetchDetail();
@@ -56,50 +51,17 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.headerButtonShadow}
+      style={styles.headerButton}
       activeOpacity={0.78}
     >
-      <BlurView {...blurProps} intensity={52} style={styles.headerButton}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.36)",
-            "rgba(255,255,255,0.14)",
-            "rgba(255,255,255,0.06)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerButtonTopLine} />
-
+      <View style={styles.headerButtonInner}>
         <Ionicons name={icon} size={24} color="#FFFFFF" />
-      </BlurView>
+      </View>
     </TouchableOpacity>
   );
 
   const GlassCard = ({ children }) => (
-    <View style={styles.cardShadow}>
-      <BlurView {...blurProps} intensity={56} style={styles.card}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.95)",
-            "rgba(255,255,255,0.64)",
-            "rgba(255,255,255,0.34)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.cardTopLine} />
-        <View pointerEvents="none" style={styles.cardGlow} />
-
-        {children}
-      </BlurView>
-    </View>
+    <View style={styles.card}>{children}</View>
   );
 
   const Row = ({ label, value, bold, color }) => (
@@ -158,18 +120,6 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[PRIMARY, "#15803D", "#16A34A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerOrbOne} />
-        <View pointerEvents="none" style={styles.headerOrbTwo} />
-        <View pointerEvents="none" style={styles.headerGlassLine} />
-
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
 
         <Text style={styles.headerTitle} numberOfLines={1}>
@@ -208,7 +158,7 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
 
           <Row
             label="Văn phòng nhận:"
-            value={detail.office_status || "Đang xử lý"}
+            value={getOfficeStatusLabel(detail.office_status)}
           />
 
           <Row
@@ -273,24 +223,11 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
   );
 }
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: "#123816",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.13,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
+/*
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F3F4F6",
   },
 
   header: {
@@ -301,10 +238,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     alignItems: "center",
     justifyContent: "space-between",
-    overflow: "hidden",
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
-
     ...Platform.select({
       ios: {
         shadowColor: PRIMARY,
@@ -318,73 +253,18 @@ const styles = StyleSheet.create({
     }),
   },
 
-  headerOrbOne: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -70,
-    right: -45,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    bottom: -70,
-    left: -38,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-
-  headerGlassLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 42 : 30,
-    left: 24,
-    right: 24,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-
-  headerButtonShadow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-
   headerButton: {
-    flex: 1,
-    borderRadius: 21,
-    overflow: "hidden",
-    alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    alignItems: "center",
   },
 
-  headerButtonTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 9,
-    right: 9,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.55)",
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   headerTitle: {
@@ -411,12 +291,12 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.82)",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: "#E2E8F0",
   },
 
   errorText: {
@@ -430,7 +310,7 @@ const styles = StyleSheet.create({
     backgroundColor: PRIMARY,
     paddingHorizontal: 18,
     paddingVertical: 11,
-    borderRadius: 18,
+    borderRadius: 12,
   },
 
   backBtnText: {
@@ -438,43 +318,24 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 
-  cardShadow: {
-    borderRadius: 24,
-    marginBottom: 15,
-    ...glassShadow,
-  },
-
   card: {
-    borderRadius: 24,
-    padding: 15,
-    overflow: "hidden",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.84)"
-        : "rgba(255,255,255,0.36)",
-  },
-
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 62,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.26)",
-    transform: [{ rotate: "-18deg" }],
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   sectionTitle: {
@@ -483,7 +344,7 @@ const styles = StyleSheet.create({
     color: SECONDARY,
     marginBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.18)",
+    borderBottomColor: "#F1F5F9",
     paddingBottom: 7,
   },
 
@@ -495,14 +356,14 @@ const styles = StyleSheet.create({
 
   label: {
     color: "#64748B",
-    fontSize: 15,
+    fontSize: 14,
     flex: 1,
     fontWeight: "700",
   },
 
   value: {
     color: "#1E293B",
-    fontSize: 15,
+    fontSize: 14,
     flex: 1,
     textAlign: "right",
     fontWeight: "700",
@@ -510,7 +371,7 @@ const styles = StyleSheet.create({
 
   valueBold: {
     color: PRIMARY,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "900",
     flex: 1,
     textAlign: "right",
@@ -519,12 +380,12 @@ const styles = StyleSheet.create({
   hintBox: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "rgba(241,245,249,0.72)",
-    borderRadius: 16,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
     padding: 12,
     marginTop: 4,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.82)",
+    borderColor: "#E2E8F0",
   },
 
   hintText: {
@@ -535,3 +396,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+*/

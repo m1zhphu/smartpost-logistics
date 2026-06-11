@@ -4,7 +4,6 @@ import {
     ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image, ImageBackground
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Toast from 'react-native-toast-message';
 import { registerUser } from '../services/authService';
 import styles from '../styles/RegisterStyles';
@@ -75,7 +74,7 @@ export default function RegisterScreen({ navigation }) {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Tên tài khoản mới"
-                                placeholderTextColor="#999"
+                                placeholderTextColor="#94A3B8"
                                 value={username}
                                 onChangeText={setUsername}
                                 autoCapitalize="none"
@@ -87,7 +86,7 @@ export default function RegisterScreen({ navigation }) {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Mật khẩu"
-                                placeholderTextColor="#999"
+                                placeholderTextColor="#94A3B8"
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={!showPassword}
@@ -102,7 +101,7 @@ export default function RegisterScreen({ navigation }) {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Nhập lại mật khẩu"
-                                placeholderTextColor="#999"
+                                placeholderTextColor="#94A3B8"
                                 value={confirmPassword}
                                 onChangeText={setConfirmPassword}
                                 secureTextEntry={!showPassword}
@@ -112,19 +111,12 @@ export default function RegisterScreen({ navigation }) {
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={loading}>
-                            <LinearGradient
-                                colors={['#1b5e20', '#43a047']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.gradientBtn}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color={COLORS.background} />
-                                ) : (
-                                    <Text style={styles.registerText}>ĐĂNG KÝ NGAY</Text>
-                                )}
-                            </LinearGradient>
+                        <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={loading} activeOpacity={0.88}>
+                            {loading ? (
+                                <ActivityIndicator color="#ffffff" />
+                            ) : (
+                                <Text style={styles.registerText}>ĐĂNG KÝ NGAY</Text>
+                            )}
                         </TouchableOpacity>
 
                         <View style={styles.loginRow}>

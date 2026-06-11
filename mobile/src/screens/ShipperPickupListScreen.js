@@ -12,8 +12,6 @@ import {
 import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { COLORS } from "../constants/colors";
 import { getShipperAssignedPickups } from "../services/pickupService";
 import {
@@ -30,11 +28,6 @@ const SECONDARY = COLORS.secondary || "#0F766E";
 export default function ShipperPickupListScreen({ navigation }) {
   const [pickups, setPickups] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const blurProps = {
-    intensity: Platform.OS === "ios" ? 66 : 42,
-    tint: "light",
-  };
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -77,46 +70,20 @@ export default function ShipperPickupListScreen({ navigation }) {
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.headerButtonShadow}
+      style={styles.headerButton}
       activeOpacity={0.78}
     >
-      <BlurView {...blurProps} intensity={52} style={styles.headerButton}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            "rgba(255,255,255,0.36)",
-            "rgba(255,255,255,0.14)",
-            "rgba(255,255,255,0.06)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerButtonTopLine} />
-
+      <View style={styles.headerButtonInner}>
         <Ionicons name={icon} size={24} color="#FFF" />
-      </BlurView>
+      </View>
     </TouchableOpacity>
   );
 
   const MetaPill = ({ label, value }) => (
-    <BlurView {...blurProps} intensity={40} style={styles.metaPill}>
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          "rgba(255,255,255,0.86)",
-          "rgba(255,255,255,0.42)",
-          "rgba(255,255,255,0.22)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
+    <View style={styles.metaPill}>
       <Text style={styles.metaLabel}>{label}</Text>
       <Text style={styles.metaValue}>{value}</Text>
-    </BlurView>
+    </View>
   );
 
   const InfoRow = ({ icon, children, numberOfLines }) => (
@@ -136,7 +103,7 @@ export default function ShipperPickupListScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        style={styles.cardShadow}
+        style={styles.card}
         onPress={() =>
           navigation.navigate("ShipperPickupDetail", {
             requestCode: item.request_code,
@@ -144,71 +111,54 @@ export default function ShipperPickupListScreen({ navigation }) {
         }
         activeOpacity={0.84}
       >
-        <BlurView {...blurProps} intensity={56} style={styles.card}>
-          <LinearGradient
-            pointerEvents="none"
-            colors={[
-              "rgba(255,255,255,0.94)",
-              "rgba(255,255,255,0.62)",
-              "rgba(255,255,255,0.34)",
+        <View style={styles.cardHeader}>
+          <View style={styles.codeBlock}>
+            <Text style={styles.requestCode}>{item.request_code}</Text>
+
+            <Text style={styles.waybillCode}>
+              {item.waybill_code || "Chưa có mã vận đơn"}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.statusPill,
+              {
+                borderColor: `${statusColor}33`,
+                backgroundColor: `${statusColor}10`,
+              },
             ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
+          >
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {getPickupStatusLabel(item.pickup_status)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.cardBody}>
+          <InfoRow icon="person">{item.sender_name || "---"}</InfoRow>
+
+          <InfoRow icon="call">{item.sender_phone || "---"}</InfoRow>
+
+          <InfoRow icon="location" numberOfLines={2}>
+            {item.pickup_address || "---"}
+          </InfoRow>
+
+          <InfoRow icon="time-outline">
+            Hẹn lấy: {formatDateTime(item.requested_pickup_time)}
+          </InfoRow>
+        </View>
+
+        <View style={styles.metaRow}>
+          <MetaPill label="Số kiện" value={item.est_quantity || 0} />
+
+          <MetaPill
+            label="KL ước tính"
+            value={formatWeight(item.est_weight)}
           />
 
-          <View pointerEvents="none" style={styles.cardTopLine} />
-          <View pointerEvents="none" style={styles.cardGlow} />
-
-          <View style={styles.cardHeader}>
-            <View style={styles.codeBlock}>
-              <Text style={styles.requestCode}>{item.request_code}</Text>
-
-              <Text style={styles.waybillCode}>
-                {item.waybill_code || "Chưa có mã vận đơn"}
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.statusPill,
-                {
-                  borderColor: `${statusColor}33`,
-                  backgroundColor: `${statusColor}10`,
-                },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: statusColor }]}>
-                {getPickupStatusLabel(item.pickup_status)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.cardBody}>
-            <InfoRow icon="person">{item.sender_name || "---"}</InfoRow>
-
-            <InfoRow icon="call">{item.sender_phone || "---"}</InfoRow>
-
-            <InfoRow icon="location" numberOfLines={2}>
-              {item.pickup_address || "---"}
-            </InfoRow>
-
-            <InfoRow icon="time-outline">
-              Hẹn lấy: {formatDateTime(item.requested_pickup_time)}
-            </InfoRow>
-          </View>
-
-          <View style={styles.metaRow}>
-            <MetaPill label="Số kiện" value={item.est_quantity || 0} />
-
-            <MetaPill
-              label="KL ước tính"
-              value={formatWeight(item.est_weight)}
-            />
-
-            <MetaPill label="COD" value={formatCurrency(item.cod_amount)} />
-          </View>
-        </BlurView>
+          <MetaPill label="COD" value={formatCurrency(item.cod_amount)} />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -218,18 +168,6 @@ export default function ShipperPickupListScreen({ navigation }) {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[PRIMARY, "#15803D", "#16A34A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View pointerEvents="none" style={styles.headerOrbOne} />
-        <View pointerEvents="none" style={styles.headerOrbTwo} />
-        <View pointerEvents="none" style={styles.headerGlassLine} />
-
         {navigation.canGoBack() ? (
           <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
         ) : (
@@ -271,44 +209,29 @@ export default function ShipperPickupListScreen({ navigation }) {
   );
 }
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: "#123816",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.13,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F3F4F6",
   },
 
   header: {
     flexDirection: "row",
     backgroundColor: PRIMARY,
-    height: 96,
-    paddingTop: Platform.OS === "ios" ? 46 : 36,
-    paddingHorizontal: 15,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
     alignItems: "center",
     justifyContent: "space-between",
-    overflow: "hidden",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
 
     ...Platform.select({
       ios: {
         shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 10 },
+        shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
-        shadowRadius: 18,
+        shadowRadius: 16,
       },
       android: {
         elevation: 8,
@@ -316,73 +239,18 @@ const styles = StyleSheet.create({
     }),
   },
 
-  headerOrbOne: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -70,
-    right: -45,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    bottom: -70,
-    left: -38,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-
-  headerGlassLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 42 : 30,
-    left: 24,
-    right: 24,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-
-  headerButtonShadow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-
   headerButton: {
-    flex: 1,
-    borderRadius: 21,
-    overflow: "hidden",
-    alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    alignItems: "center",
   },
 
-  headerButtonTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 9,
-    right: 9,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.55)",
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   headerTitle: {
@@ -401,22 +269,22 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.82)",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: "#E2E8F0",
 
     ...Platform.select({
       ios: {
-        shadowColor: "#123816",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 14,
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
     }),
   },
@@ -433,43 +301,25 @@ const styles = StyleSheet.create({
     paddingBottom: 26,
   },
 
-  cardShadow: {
-    borderRadius: 24,
-    marginBottom: 15,
-    ...glassShadow,
-  },
-
   card: {
-    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     padding: 15,
-    overflow: "hidden",
+    marginBottom: 15,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor:
-      Platform.OS === "android"
-        ? "rgba(255,255,255,0.82)"
-        : "rgba(255,255,255,0.36)",
-  },
+    borderColor: "#E2E8F0",
 
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 62,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.26)",
-    transform: [{ rotate: "-18deg" }],
+    ...Platform.select({
+      ios: {
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
   cardHeader: {
@@ -477,7 +327,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.18)",
+    borderBottomColor: "#F1F5F9",
     paddingBottom: 12,
     marginBottom: 12,
   },
@@ -525,15 +375,15 @@ const styles = StyleSheet.create({
   infoIconBox: {
     width: 24,
     height: 24,
-    borderRadius: 9,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
-    backgroundColor: "rgba(27,94,32,0.08)",
   },
 
   infoText: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#334155",
     flex: 1,
     marginBottom: 2,
@@ -550,13 +400,12 @@ const styles = StyleSheet.create({
 
   metaPill: {
     flex: 1,
-    borderRadius: 16,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 8,
-    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.82)",
-    backgroundColor: "rgba(248,250,252,0.72)",
+    borderColor: "#E2E8F0",
   },
 
   metaLabel: {
