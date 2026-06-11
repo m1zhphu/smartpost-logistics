@@ -36,7 +36,7 @@
         <el-tabs v-model="activeTab" @tab-change="handleTabChange">
           
           <!-- TAB 1: CHỜ XÁC NHẬN VĂN PHÒNG -->
-          <el-tab-pane name="pending">
+          <el-tab-pane name="pending" v-if="authStore.user?.role_id === 1">
             <template #label>
               <div class="flex-center gap-2">
                 <el-badge :value="pendingRequests.length" :hidden="pendingRequests.length === 0" type="danger">
@@ -2603,6 +2603,11 @@ onMounted(async () => {
     activeTab.value = route.query.tab;
   }
 
+  // Ràng buộc quyền truy cập tab pending: Nếu không phải Admin (role_id !== 1) thì không cho vào tab pending
+  if (authStore.user?.role_id !== 1 && activeTab.value === 'pending') {
+    activeTab.value = 'dispatch-hub';
+  }
+
   const searchCode = route.query.search;
   if (searchCode) {
     const q = String(searchCode).trim();
@@ -2617,8 +2622,12 @@ onMounted(async () => {
 
     // Tự động chuyển tab tương ứng có chứa mã đơn hàng tìm kiếm (mã yêu cầu hoặc mã vận đơn)
     if (pendingRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
-      activeTab.value = 'pending';
-      searchPending.value = q;
+      if (authStore.user?.role_id === 1) {
+        activeTab.value = 'pending';
+        searchPending.value = q;
+      } else {
+        activeTab.value = 'dispatch-hub';
+      }
     } else if (dispatchRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
       activeTab.value = 'dispatch-hub';
       searchDispatch.value = q;
@@ -2629,9 +2638,14 @@ onMounted(async () => {
       activeTab.value = 'assigned';
       searchAssigned.value = q;
     } else {
-      // Fallback nếu không khớp tab nào cụ thể, đặt ở pending
-      activeTab.value = 'pending';
-      searchPending.value = q;
+      // Fallback nếu không khớp tab nào cụ thể, đặt ở pending nếu admin, ngược lại đặt ở dispatch-hub
+      if (authStore.user?.role_id === 1) {
+        activeTab.value = 'pending';
+        searchPending.value = q;
+      } else {
+        activeTab.value = 'dispatch-hub';
+        searchDispatch.value = q;
+      }
     }
   } else {
     fetchTabRequests(activeTab.value);
@@ -2642,8 +2656,12 @@ watch(
   () => route.query.tab,
   (newTab) => {
     if (newTab) {
-      activeTab.value = newTab;
-      fetchTabRequests(newTab);
+      let resolvedTab = newTab;
+      if (authStore.user?.role_id !== 1 && resolvedTab === 'pending') {
+        resolvedTab = 'dispatch-hub';
+      }
+      activeTab.value = resolvedTab;
+      fetchTabRequests(resolvedTab);
     }
   }
 );
