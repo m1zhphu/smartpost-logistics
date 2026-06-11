@@ -219,7 +219,7 @@ const menuData = computed(() => {
         ]}
       ] : [
         { title: 'LẤY HÀNG (PICKUP)', items: [
-          { label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' },
+          ...(role === 1 ? [{ label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' }] : []),
           { label: 'Chờ bưu cục xác nhận', path: '/admin/delivery/pickup-management?tab=dispatch-hub' },
           { label: 'Chờ gán bưu tá', path: '/admin/delivery/pickup-management?tab=received' },
           { label: 'Đang đi lấy', path: '/admin/delivery/pickup-management?tab=assigned' }
