@@ -8,6 +8,7 @@ from typing import Optional, List
 from schemas.waybills import WaybillFilter
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from core.product_types import get_product_type_definition, normalize_product_type
 
 
 def generate_waybill_code(db: Session) -> str:
@@ -76,6 +77,7 @@ def create_waybill_record(db: Session, data: dict, fee: float):
         'sender_name', 'sender_phone', 'sender_address', 'length', 'width', 'height'
     }
     filtered = {k: v for k, v in data.items() if k in ALLOWED_FIELDS}
+    product_group = normalize_product_type(data.get('product_group'))
     
     # Cơ chế Autofill thông minh người gửi từ bảng Customers nếu trống
     if data.get('customer_id'):
@@ -124,6 +126,20 @@ def create_waybill_record(db: Session, data: dict, fee: float):
     )
     db.add(new_waybill)
     db.flush() 
+
+    db.add(models.WaybillItems(
+        parcel_code=f"{new_waybill.waybill_code}-001",
+        waybill_id=new_waybill.waybill_id,
+        product_group=product_group,
+        product_name=data.get('product_name') or get_product_type_definition(product_group)["label"],
+        declared_value=float(data.get('declared_value') or 0),
+        actual_weight=float(data.get('actual_weight') or 0),
+        converted_weight=conv_w,
+        length=l,
+        width=w,
+        height=h,
+        quantity=1,
+    ))
     
     extra_services = data.get('extra_services', [])
     if extra_services and isinstance(extra_services, list):
@@ -176,7 +192,7 @@ def create_customer_pickup_waybill(
         sender_phone=sender.phone or customer.phone_number,
         pickup_address=sender.address or customer.address_detail,
         target_hub_id=target_hub_id if booking_status == "RECEIVED" else None,
-        product_type=first_item.product_group,
+        product_type=normalize_product_type(first_item.product_group),
         est_weight=total_weight,
         est_quantity=sum(int(item.quantity or 1) for item in items),
         is_vehicle_required=False,
@@ -268,7 +284,7 @@ def create_customer_pickup_waybill(
         db.add(models.WaybillItems(
             parcel_code=f"{waybill_code}-{index:03d}",
             waybill_id=waybill.waybill_id,
-            product_group=item.product_group,
+            product_group=normalize_product_type(item.product_group),
             product_name=item.product_name,
             description=item.description,
             declared_value=item.declared_value or 0,
@@ -331,6 +347,8 @@ def customer_pickup_payload(request: models.BookingRequests, waybill: models.Way
         "final_shipping_fee": float(waybill.final_shipping_fee) if waybill.final_shipping_fee is not None else None,
         "final_total_amount": float(waybill.final_total_amount) if waybill.final_total_amount is not None else None,
         "created_at": created_at,
+        "product_type": normalize_product_type(request.product_type),
+        "product_type_label": get_product_type_definition(request.product_type or "PARCEL")["label"],
     }
 
 

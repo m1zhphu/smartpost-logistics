@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional
 from datetime import datetime
+from core.product_types import get_product_type_definition, normalize_product_type
 
 class WaybillCreate(BaseModel):
     customer_id: Optional[int] = Field(default=None, description="ID của khách hàng/người gửi")
@@ -15,6 +16,8 @@ class WaybillCreate(BaseModel):
     
     # Bổ sung các trường từ UI 
     product_name: Optional[str] = None
+    product_group: str = Field(default="PARCEL")
+    declared_value: float = Field(default=0, ge=0)
     payment_method: Optional[str] = "SENDER_PAY"
     note: Optional[str] = None
     extra_services: Optional[List[str]] = []
@@ -29,6 +32,19 @@ class WaybillCreate(BaseModel):
     length: Optional[float] = Field(default=None, description="Chiều dài (cm)")
     width: Optional[float] = Field(default=None, description="Chiều rộng (cm)")
     height: Optional[float] = Field(default=None, description="Chiều cao (cm)")
+
+    @field_validator("product_group", mode="before")
+    @classmethod
+    def validate_product_group(cls, value):
+        return normalize_product_type(value)
+
+    @model_validator(mode="after")
+    def validate_product_business_rules(self):
+        definition = get_product_type_definition(self.product_group)
+        if definition["requires_declared_value"] and not float(self.declared_value or 0):
+            raise ValueError("Hàng giá trị cao bắt buộc phải có giá trị khai báo lớn hơn 0")
+        return self
+
 
 class CustomerPickupAddress(BaseModel):
     name: Optional[str] = None
@@ -52,6 +68,18 @@ class CustomerPickupItem(BaseModel):
     height: Optional[float] = Field(default=None, ge=0)
     quantity: int = Field(default=1, ge=1)
     declared_value: Optional[float] = Field(default=None, ge=0)
+
+    @field_validator("product_group", mode="before")
+    @classmethod
+    def validate_product_group(cls, value):
+        return normalize_product_type(value)
+
+    @model_validator(mode="after")
+    def validate_product_business_rules(self):
+        definition = get_product_type_definition(self.product_group)
+        if definition["requires_declared_value"] and not float(self.declared_value or 0):
+            raise ValueError("Hàng giá trị cao bắt buộc phải có giá trị khai báo lớn hơn 0")
+        return self
 
 
 class CustomerPickupDocument(BaseModel):
@@ -116,6 +144,8 @@ class CustomerPickupCreateResponse(BaseModel):
     estimated_packing_fee: Optional[float] = None
     estimated_vat_amount: Optional[float] = None
     estimated_total_amount: Optional[float] = None
+    product_type: str = "PARCEL"
+    product_type_label: Optional[str] = None
 
 
 class CustomerPickupSummary(BaseModel):
@@ -137,6 +167,8 @@ class CustomerPickupSummary(BaseModel):
     final_shipping_fee: Optional[float] = None
     final_total_amount: Optional[float] = None
     created_at: Optional[datetime] = None
+    product_type: str = "PARCEL"
+    product_type_label: Optional[str] = None
 
 
 class TrackingLogResponse(BaseModel):

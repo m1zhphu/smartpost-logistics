@@ -11,12 +11,19 @@ from core.database import get_db
 from core.security import get_current_user
 from core.pricing import calculate_shipping_fee, calculate_shipping_fee_detail, calculate_sla_status, get_waybill_current_holder, get_waybill_action_by, normalize_service_type
 from core.realtime import realtime_manager
+from core.product_types import get_product_type_catalog, get_product_type_definition, normalize_product_type
 import schemas.waybills as schema_wb
 import crud.waybills as crud_wb
 from core.permissions import PermissionChecker
 import models
 
 router = APIRouter(prefix="/api/waybills", tags=["Waybill Management"])
+
+
+@router.get("/product-types")
+def list_product_types():
+    """Danh mục loại hàng chuẩn dùng chung cho các màn hình tạo vận đơn."""
+    return {"items": get_product_type_catalog()}
 
 @router.get("/recipient-history")
 def get_recipient_history(phone: str, db: Session = Depends(get_db)):
@@ -424,6 +431,7 @@ def _find_hub_for_province(db: Session, province_id: int | None, province_name: 
 
 
 def _build_pickup_create_response(booking: models.BookingRequests, waybill: models.Waybills):
+    product_type = normalize_product_type(booking.product_type)
     return {
         "waybill_id": waybill.waybill_id,
         "waybill_code": waybill.waybill_code,
@@ -444,6 +452,8 @@ def _build_pickup_create_response(booking: models.BookingRequests, waybill: mode
         "estimated_packing_fee": 0,
         "estimated_vat_amount": float(waybill.estimated_vat_amount or waybill.vat_amount or 0),
         "estimated_total_amount": float(waybill.estimated_total_amount or 0),
+        "product_type": product_type,
+        "product_type_label": get_product_type_definition(product_type)["label"],
     }
 
 

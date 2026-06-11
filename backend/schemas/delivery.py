@@ -1,7 +1,8 @@
 # File: schemas/delivery.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from datetime import datetime
+from core.product_types import normalize_product_type
 
 class AssignShipperRequest(BaseModel):
     waybill_codes: List[str]
@@ -27,13 +28,18 @@ class BookingRequestCreate(BaseModel):
     sender_phone: Optional[str] = None
     pickup_address: Optional[str] = None
     target_hub_id: Optional[int] = None
-    product_type: Optional[str] = None
+    product_type: str = "PARCEL"
     est_weight: Optional[float] = None
     est_quantity: Optional[int] = None
     is_vehicle_required: Optional[bool] = False
     priority: str = Field(default="NORMAL", description="NORMAL, URGENT, VIP, HT")
     sla_deadline: Optional[datetime] = None
     notes: Optional[str] = None
+
+    @field_validator("product_type", mode="before")
+    @classmethod
+    def validate_product_type(cls, value):
+        return normalize_product_type(value)
 
 class BookingRequestAssignRequest(BaseModel):
     shipper_id: int
