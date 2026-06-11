@@ -216,15 +216,20 @@ const connectWebSocket = () => {
         let shouldNotify = false;
         
         if (isStaff) {
-          if (authStore.user.role_id === 5) {
-            // Hub Manager/Staff: only show notifications for their hub
+          if (data.event === 'pickup.hub_rejected') {
+            // Chỉ Admin (QTV) mới thấy thông báo bưu cục từ chối tiếp nhận
+            if (authStore.user.role_id === 1) {
+              shouldNotify = true;
+            }
+          } else if (authStore.user.role_id === 1 || authStore.user.role_id === 7) {
+            // Admin/CSKH: hiển thị tất cả thông báo khác
+            shouldNotify = true;
+          } else {
+            // Các vai trò bưu cục (Quản lý bưu cục 2, Nhân viên kho 3, Kế toán 5): chỉ hiển thị thông báo liên quan đến bưu cục của mình
             const targetHubId = data.payload?.target_hub_id || data.payload?.hub_id;
             if (!targetHubId || targetHubId === authStore.user.primary_hub_id) {
               shouldNotify = true;
             }
-          } else {
-            // Admin/CSKH: show all notifications
-            shouldNotify = true;
           }
         } else if (isCustomer) {
           // Customer: only show notifications for their own orders
