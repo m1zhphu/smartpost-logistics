@@ -59,12 +59,12 @@ def calculate_shipping_fee_detail(
         origin_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == origin_hub_id).first()
         if not origin_hub:
             raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc gui de tinh gia.")
-        origin_province_id = origin_hub.province_id
+        origin_province_id = origin_hub.province_id or origin_province_id
     if dest_hub_id:
         dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == dest_hub_id).first()
         if not dest_hub:
             raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc nhan de tinh gia.")
-        dest_province_id = dest_hub.province_id
+        dest_province_id = dest_hub.province_id or dest_province_id
 
     if not origin_province_id or not dest_province_id:
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc tinh/thanh gui hoac nhan de tinh gia.")

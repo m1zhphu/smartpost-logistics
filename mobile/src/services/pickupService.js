@@ -178,11 +178,8 @@ export const uploadPickupImage = async (file) => {
             type: file.type || 'image/jpeg'
         });
 
-        const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_PICKUP_IMAGE, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        });
+        // React Native must generate the multipart boundary automatically.
+        const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_PICKUP_IMAGE, formData);
 
         return { success: true, data: response.data };
     } catch (error) {

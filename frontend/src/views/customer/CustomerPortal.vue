@@ -783,7 +783,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
-import moment from 'moment';
+import { formatVietnamDateTime } from '@/utils/dateTime';
 import { 
   User, Service, Phone, Message, Close, 
   Search, DocumentAdd, Location, List, Edit, Lock,
@@ -1531,7 +1531,7 @@ const getDiffAlertType = (row) => {
 };
 
 const formatDate = (val) => {
-  return val ? moment(val).format('HH:mm DD/MM/YYYY') : '---';
+  return formatVietnamDateTime(val);
 };
 
 const getPickupStatusLabel = (status) => {

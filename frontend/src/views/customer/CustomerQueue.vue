@@ -49,17 +49,21 @@
                   </el-table-column>
                   <el-table-column label="Người nhận" min-width="160">
                     <template #default="{ row }">
-                      <div class="fw-bold">{{ row.receiver.name || '---' }}</div>
-                      <div class="text-xs text-muted">{{ row.receiver.phone || '---' }}</div>
+                      <el-tag v-if="row.pickup_mode === 'BULK_MAIL'" type="warning" size="small">Bổ sung sau OCR</el-tag>
+                      <template v-else>
+                        <div class="fw-bold">{{ row.receiver.name || '---' }}</div>
+                        <div class="text-xs text-muted">{{ row.receiver.phone || '---' }}</div>
+                      </template>
                     </template>
                   </el-table-column>
                   <el-table-column label="Hàng hóa" min-width="150">
                     <template #default="{ row }">
-                      <div class="text-xs">{{ row.items[0]?.product_name || '---' }}</div>
+                      <div v-if="row.pickup_mode === 'BULK_MAIL'" class="text-xs fw-bold">{{ row.bulk_estimated_quantity }} bưu gửi</div>
+                      <div v-else class="text-xs">{{ row.items[0]?.product_name || '---' }}</div>
                       <div class="text-xs text-info" style="margin-top: 2px;">
-                        <el-tag size="small" type="info">{{ getProductTypeLabel(row.items[0]?.product_group) }}</el-tag>
+                        <el-tag size="small" type="info">{{ getProductTypeLabel(row.pickup_mode === 'BULK_MAIL' ? row.bulk_product_type : row.items[0]?.product_group) }}</el-tag>
                       </div>
-                      <div class="text-xs fw-bold text-primary" style="margin-top: 4px;">{{ row.items[0]?.weight || 0 }} kg</div>
+                      <div v-if="row.pickup_mode !== 'BULK_MAIL'" class="text-xs fw-bold text-primary" style="margin-top: 4px;">{{ row.items[0]?.weight || 0 }} kg</div>
                     </template>
                   </el-table-column>
                   <el-table-column label="Trạng thái" min-width="180">
@@ -98,7 +102,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
-import moment from 'moment';
+import { formatVietnamDateTime } from '@/utils/dateTime';
 import * as XLSX from 'xlsx';
 import { 
   User, Service, Phone, Message, Close, 
@@ -440,6 +444,47 @@ const submitSelectedDrafts = async () => {
       const sDist = getDistrictName(draft.sender.province_id, draft.sender.district_id);
       const sWrd = getWardName(draft.sender.district_id, draft.sender.ward_id);
 
+      if (draft.pickup_mode === 'BULK_MAIL') {
+        const draftItems = (draft.bulk_draft_items || []).map((item, index) => ({
+          sequence_no: index + 1,
+          customer_reference_code: item.customer_reference_code || null,
+          receiver_name: item.receiver_name || null,
+          receiver_phone: item.receiver_phone || null,
+          receiver_address: item.receiver_address || null,
+          note: item.note || null
+        }));
+        const firstMail = draftItems[0] || {};
+        const hasReceiver = Number(draft.bulk_estimated_quantity) === 1 && (
+          firstMail.receiver_name || firstMail.receiver_phone || firstMail.receiver_address
+        );
+        await api.post('/api/waybills/customer/bulk-mail-pickups', {
+          product_type: draft.bulk_product_type,
+          estimated_quantity: Number(draft.bulk_estimated_quantity),
+          sender: {
+            name: draft.sender.name,
+            phone: draft.sender.phone,
+            address: [draft.sender.address_detail, sWrd, sDist, sName].filter(Boolean).join(', '),
+            province_id: Number(draft.sender.province_id),
+            district_id: Number(draft.sender.district_id),
+            ward_id: draft.sender.ward_id ? Number(draft.sender.ward_id) : null,
+            province_name: sName,
+            district_name: sDist,
+            ward_name: sWrd
+          },
+          receiver: hasReceiver ? {
+            name: firstMail.receiver_name || null,
+            phone: firstMail.receiver_phone || null,
+            address: firstMail.receiver_address || '',
+          } : null,
+          draft_items: draftItems,
+          target_hub_id: draft.target_hub_id || null,
+          note: draft.note || null
+        });
+        successCount++;
+        successIds.push(draft.draft_id);
+        continue;
+      }
+
       const rName = getProvinceName(draft.receiver.province_id);
       const rDist = getDistrictName(draft.receiver.province_id, draft.receiver.district_id);
       const rWrd = getWardName(draft.receiver.district_id, draft.receiver.ward_id);
@@ -551,7 +596,7 @@ const submitSelectedDrafts = async () => {
 };
 
 const formatDate = (val) => {
-  return val ? moment(val).format('HH:mm DD/MM/YYYY') : '---';
+  return formatVietnamDateTime(val);
 };
 
 const fetchAvailableServices = async () => {

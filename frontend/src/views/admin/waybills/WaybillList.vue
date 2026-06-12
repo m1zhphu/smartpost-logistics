@@ -399,6 +399,17 @@
               <div class="timeline-card" :class="{'latest': index === 0}">
                 <h4 class="status-title">{{ activity.status_id }}</h4>
                 <p class="status-note">{{ activity.note }}</p>
+                <div v-if="activity.pickup_image_url" class="pickup-proof">
+                  <span class="pickup-proof-label">Ảnh xác nhận pickup</span>
+                  <el-image
+                    class="pickup-proof-image"
+                    :src="getMediaUrl(activity.pickup_image_url)"
+                    :preview-src-list="[getMediaUrl(activity.pickup_image_url)]"
+                    :initial-index="0"
+                    fit="cover"
+                    preview-teleported
+                  />
+                </div>
                 <div v-if="activity.hub_name" class="status-location">
                    <el-icon><LocationInformation /></el-icon>
                    <span>{{ activity.hub_name }}</span>
@@ -1026,6 +1037,13 @@ const viewTracking = async (code) => {
   } finally {
     trackingLoading.value = false;
   }
+};
+
+const getMediaUrl = (path) => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
 };
 
 const handlePrint = (code) => {

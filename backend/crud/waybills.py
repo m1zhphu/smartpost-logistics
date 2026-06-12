@@ -39,6 +39,7 @@ def get_or_create_open_pickup_bag(db: Session, customer: models.Customers, creat
     bag = db.query(models.Bags).filter(
         models.Bags.customer_id == customer.customer_id,
         models.Bags.bag_type == "PICKUP",
+        models.Bags.booking_request_id.is_(None),
         models.Bags.status.in_(["OPEN", "CREATED"]),
     ).order_by(models.Bags.bag_id.desc()).first()
     if bag:
@@ -57,6 +58,139 @@ def get_or_create_open_pickup_bag(db: Session, customer: models.Customers, creat
     db.add(bag)
     db.flush()
     return bag
+
+
+def create_bulk_mail_pickup(
+    db: Session,
+    customer: models.Customers,
+    data,
+    creator_id: int,
+    target_hub_id: int | None,
+):
+    product_type = normalize_product_type(data.product_type)
+    if product_type not in {"DOCUMENT", "PARCEL"}:
+        raise ValueError("Pickup hàng loạt chỉ hỗ trợ thư từ/tài liệu hoặc bưu phẩm, bưu kiện")
+
+    request = models.BookingRequests(
+        request_code=generate_waybill_code(db),
+        source="PORTAL",
+        customer_id=customer.customer_id,
+        sender_phone=data.sender.phone or customer.phone_number,
+        pickup_address=data.sender.address or customer.address_detail,
+        target_hub_id=target_hub_id,
+        product_type=product_type,
+        est_quantity=data.estimated_quantity,
+        actual_quantity=0,
+        pickup_mode="BULK_MAIL",
+        materialization_status="PENDING",
+        status="PENDING_CONFIRMATION",
+        requested_pickup_time=data.pickup_time,
+        pickup_method="OUR_STAFF_PICKUP",
+        priority="NORMAL",
+        notes=data.note,
+    )
+    db.add(request)
+    db.flush()
+
+    if data.estimated_quantity == 1:
+        request.actual_quantity = 1
+        receiver = data.receiver
+        waybill = models.Waybills(
+            waybill_code=generate_waybill_code(db),
+            request_id=request.request_id,
+            customer_id=customer.customer_id,
+            receiver_name=receiver.name if receiver else None,
+            receiver_phone=receiver.phone if receiver else None,
+            receiver_address=receiver.address if receiver else None,
+            receiver_province_id=receiver.province_id if receiver else None,
+            receiver_district_id=receiver.district_id if receiver else None,
+            receiver_ward_id=receiver.ward_id if receiver else None,
+            receiver_province_name=receiver.province_name if receiver else None,
+            receiver_district_name=receiver.district_name if receiver else None,
+            receiver_ward_name=receiver.ward_name if receiver else None,
+            origin_hub_id=target_hub_id,
+            holding_hub_id=target_hub_id,
+            service_type="STANDARD",
+            actual_weight=0,
+            cod_amount=0,
+            shipping_fee=0,
+            extra_services_fee=0,
+            vat_amount=0,
+            total_amount_to_collect=0,
+            price_status="PENDING_OCR",
+            status=WaybillStatus.CREATED,
+            product_name=get_product_type_definition(product_type)["label"],
+            sender_name=data.sender.name or customer.representative_name or customer.company_name,
+            sender_phone=data.sender.phone or customer.phone_number,
+            sender_address=data.sender.address or customer.address_detail,
+            sender_province_id=data.sender.province_id or customer.province_id,
+            sender_district_id=data.sender.district_id or customer.district_id,
+            sender_ward_id=data.sender.ward_id or customer.ward_id,
+            sender_province_name=data.sender.province_name or customer.province_name,
+            sender_district_name=data.sender.district_name,
+            sender_ward_name=data.sender.ward_name or customer.ward_name,
+            pickup_method="OUR_STAFF_PICKUP",
+            requested_pickup_time=data.pickup_time,
+            ocr_status="PENDING",
+            verify_status="PENDING",
+            version=1,
+        )
+        request.materialization_status = "PENDING_OCR"
+        db.add(waybill)
+        db.flush()
+        db.add(models.WaybillItems(
+            parcel_code=f"{waybill.waybill_code}-001",
+            waybill_id=waybill.waybill_id,
+            product_group=product_type,
+            product_name=get_product_type_definition(product_type)["label"],
+            declared_value=0,
+            actual_weight=0,
+            converted_weight=0,
+            quantity=1,
+        ))
+        create_initial_log(db, waybill.waybill_id, target_hub_id, creator_id)
+        db.add(models.BookingRequestLogs(
+            request_id=request.request_id,
+            user_id=creator_id,
+            action="Tạo pickup một thư/bưu phẩm",
+            note=f"Vận đơn {waybill.waybill_code}, chờ OCR bổ sung thông tin",
+        ))
+        return request, None, waybill
+
+    bag = models.Bags(
+        bag_code=generate_pickup_bag_code(db, customer.customer_code),
+        bag_type="PICKUP",
+        customer_id=customer.customer_id,
+        booking_request_id=request.request_id,
+        product_type=product_type,
+        status="CREATED",
+        est_quantity=data.estimated_quantity,
+        actual_quantity=0,
+        materialization_status="PENDING",
+        created_by=creator_id,
+        pickup_time=data.pickup_time or datetime.utcnow(),
+    )
+    db.add(bag)
+    db.flush()
+    for draft_item in data.draft_items:
+        db.add(models.BulkMailDraftItems(
+            request_id=request.request_id,
+            bag_id=bag.bag_id,
+            sequence_no=draft_item.sequence_no,
+            customer_reference_code=draft_item.customer_reference_code,
+            receiver_name=draft_item.receiver_name,
+            receiver_phone=draft_item.receiver_phone,
+            receiver_address=draft_item.receiver_address,
+            note=draft_item.note,
+            status="PENDING_OCR",
+        ))
+    db.add(models.BookingRequestLogs(
+        request_id=request.request_id,
+        user_id=creator_id,
+        action="Tạo yêu cầu pickup thư/bưu phẩm hàng loạt",
+        note=f"Túi {bag.bag_code}, số lượng dự kiến {data.estimated_quantity}",
+    ))
+    return request, bag, None
 
 def get_waybill_by_code(db: Session, code: str):
     return db.query(models.Waybills).filter(

@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.product_types import get_product_type_catalog, normalize_product_type
-from schemas.waybills import CustomerPickupItem, WaybillCreate
+from schemas.waybills import BulkMailPickupCreate, CustomerPickupAddress, CustomerPickupItem, WaybillCreate
 
 
 def test_catalog_contains_seven_supported_types():
@@ -42,3 +42,12 @@ def test_legacy_waybill_accepts_product_group_and_declared_value():
         declared_value=1_000_000,
     )
     assert data.product_group == "HIGH_VALUE"
+
+
+def test_bulk_mail_pickup_only_accepts_document_or_parcel():
+    sender = CustomerPickupAddress(address="Pickup address")
+    request = BulkMailPickupCreate(product_type="Thư từ/Tài liệu", estimated_quantity=20, sender=sender)
+    assert request.product_type == "DOCUMENT"
+
+    with pytest.raises(ValidationError):
+        BulkMailPickupCreate(product_type="GENERAL", estimated_quantity=20, sender=sender)

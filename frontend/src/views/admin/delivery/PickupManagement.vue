@@ -1289,7 +1289,7 @@ import { useRoute } from 'vue-router';
 import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check, Close, User, Box, DocumentAdd, List } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
-import moment from 'moment';
+import { formatVietnamDateTime } from '@/utils/dateTime';
 import * as XLSX from 'xlsx';
 import { useAuthStore } from '@/stores/auth';
 
@@ -2502,7 +2502,7 @@ const handleExcelUpload = async (event) => {
 
 // Formatting utilities
 const formatDate = (val) => {
-  return val ? moment(val).format('HH:mm DD/MM/YYYY') : '---';
+  return formatVietnamDateTime(val);
 };
 
 const getPriorityType = (priority) => {

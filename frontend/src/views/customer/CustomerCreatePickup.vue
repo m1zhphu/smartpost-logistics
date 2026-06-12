@@ -43,11 +43,22 @@
               <!-- Left side of form: Input fields -->
               <el-col :xs="24" :sm="24" :md="16">
                 <el-form :model="form" label-position="top">
+                  <div class="pickup-mode-bar mb-4">
+                    <div>
+                      <div class="pickup-mode-title">Hình thức gửi hàng</div>
+                      <div class="pickup-mode-hint">Chọn gửi một đơn hàng đầy đủ hoặc tạo một túi gồm nhiều thư/bưu phẩm.</div>
+                    </div>
+                    <el-radio-group v-model="form.pickup_mode">
+                      <el-radio-button v-for="option in pickupModeOptions" :key="option.value" :label="option.value">
+                        {{ option.label }}
+                      </el-radio-button>
+                    </el-radio-group>
+                  </div>
                   
                   <!-- SENDER & RECEIVER INFO -->
                   <el-row :gutter="20">
                     <!-- SENDER CARD -->
-                    <el-col :xs="24" :sm="12">
+                    <el-col :xs="24" :sm="isBulkMail ? 24 : 12">
                       <el-card class="form-section-card sender-card mb-4" shadow="never">
                         <template #header>
                           <div class="form-card-title text-primary">
@@ -82,14 +93,15 @@
                     </el-col>
 
                     <!-- RECEIVER CARD -->
-                    <el-col :xs="24" :sm="12">
+                    <el-col v-if="!isBulkMail" :xs="24" :sm="12">
                       <el-card class="form-section-card receiver-card mb-4" shadow="never">
                         <template #header>
                           <div class="form-card-title text-success">
-                            <el-icon><User /></el-icon><span>Thông tin Người nhận</span>
+                            <el-icon><User /></el-icon>
+                            <span>Thông tin Người nhận{{ isBulkMail ? ' (Không bắt buộc)' : '' }}</span>
                           </div>
                         </template>
-                        <el-form-item label="Họ tên người nhận" required>
+                        <el-form-item label="Họ tên người nhận" :required="!isBulkMail">
                           <el-autocomplete
                             ref="nameAutocomplete"
                             v-model="form.receiver.name"
@@ -111,7 +123,7 @@
                             </template>
                           </el-autocomplete>
                         </el-form-item>
-                        <el-form-item label="Số điện thoại" required>
+                        <el-form-item label="Số điện thoại" :required="!isBulkMail">
                           <el-autocomplete
                             ref="phoneAutocomplete"
                             v-model="form.receiver.phone"
@@ -133,12 +145,12 @@
                             </template>
                           </el-autocomplete>
                         </el-form-item>
-                        <el-form-item label="Tỉnh/Thành" required>
+                        <el-form-item label="Tỉnh/Thành" :required="!isBulkMail">
                           <el-select v-model="form.receiver.province_id" placeholder="Chọn tỉnh" @change="handleReceiverProvinceChange" filterable style="width: 100%;">
                             <el-option v-for="p in provinces" :key="p.id" :label="p.name" :value="p.id" />
                           </el-select>
                         </el-form-item>
-                        <el-form-item label="Quận/Huyện" required>
+                        <el-form-item label="Quận/Huyện" :required="!isBulkMail">
                           <el-select v-model="form.receiver.district_id" placeholder="Chọn huyện" @change="handleReceiverDistrictChange" :disabled="!form.receiver.province_id" filterable style="width: 100%;">
                             <el-option v-for="d in receiverDistricts" :key="d.id" :label="d.name" :value="d.id" />
                           </el-select>
@@ -156,7 +168,7 @@
                   </el-row>
 
                   <!-- ITEMS DETAILS -->
-                  <el-card class="form-section-card items-card mb-4" shadow="never">
+                  <el-card v-if="!isBulkMail" class="form-section-card items-card mb-4" shadow="never">
                     <template #header>
                       <div class="form-card-title text-warning">
                         <el-icon><Box /></el-icon><span>Thông tin Hàng hóa</span>
@@ -237,6 +249,59 @@
                     </div>
                   </el-card>
 
+                  <el-card v-else class="form-section-card items-card bulk-mail-card mb-4" shadow="never">
+                    <template #header>
+                      <div class="form-card-title text-warning">
+                        <el-icon><DocumentAdd /></el-icon><span>Thông tin túi thư/bưu phẩm</span>
+                      </div>
+                    </template>
+                    <el-alert
+                      :title="bulkMailInstruction"
+                      type="info"
+                      show-icon
+                      :closable="false"
+                      class="mb-4"
+                    />
+                    <el-row :gutter="16">
+                      <el-col :xs="24" :sm="12">
+                        <el-form-item label="Loại bưu gửi" required>
+                          <el-radio-group v-model="form.bulk_product_type">
+                            <el-radio-button label="DOCUMENT">Thư từ/Tài liệu</el-radio-button>
+                            <el-radio-button label="PARCEL">Bưu phẩm/Bưu kiện</el-radio-button>
+                          </el-radio-group>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :xs="24" :sm="12">
+                        <el-form-item label="Số lượng dự kiến" required>
+                          <el-input-number v-model="form.bulk_estimated_quantity" :min="1" :max="10000" controls-position="right" class="w-full" />
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <div class="bulk-recipient-list">
+                      <div v-for="(mail, index) in form.bulk_draft_items" :key="mail.local_id" class="bulk-recipient-row">
+                        <div class="bulk-recipient-header">
+                          <strong>{{ form.bulk_product_type === 'DOCUMENT' ? 'Thư' : 'Bưu phẩm' }} {{ index + 1 }}</strong>
+                          <el-button v-if="form.bulk_draft_items.length > 1" text type="danger" @click="removeBulkDraftItem(index)">Xóa</el-button>
+                        </div>
+                        <el-row :gutter="12">
+                          <el-col :xs="24" :sm="8">
+                            <el-input v-model="mail.receiver_name" placeholder="Tên người nhận (nếu biết)" />
+                          </el-col>
+                          <el-col :xs="24" :sm="8">
+                            <el-input v-model="mail.receiver_phone" placeholder="Số điện thoại (nếu biết)" />
+                          </el-col>
+                          <el-col :xs="24" :sm="8">
+                            <el-input v-model="mail.customer_reference_code" placeholder="Mã riêng của khách (không bắt buộc)" />
+                          </el-col>
+                          <el-col :span="24" class="mt-2">
+                            <el-input v-model="mail.receiver_address" placeholder="Địa chỉ người nhận chưa đầy đủ cũng được" />
+                          </el-col>
+                        </el-row>
+                      </div>
+                      <el-button plain type="primary" class="mt-3" @click="addBulkDraftItem">+ Thêm {{ form.bulk_product_type === 'DOCUMENT' ? 'thư' : 'bưu phẩm' }}</el-button>
+                    </div>
+                  </el-card>
+
                   <!-- SETTINGS & EXTRA SERVICES -->
                   <el-card class="form-section-card settings-card mb-4" shadow="never">
                     <template #header>
@@ -262,7 +327,7 @@
                       </el-select>
                     </el-form-item>
                     <el-form-item label="Dịch vụ vận chuyển" required>
-                      <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
+                      <el-radio-group v-if="!isBulkMail" v-model="form.service_type" class="shipping-service-group" :class="{ 'is-express': isExpressService }" @change="debouncedSimulate">
                         <el-radio-button label="TK">Tiết kiệm (TK)</el-radio-button>
                         <el-radio-button label="CPN">Chuyển phát nhanh (CPN)</el-radio-button>
                         <el-radio-button label="HT">Hỏa tốc (HT)</el-radio-button>
@@ -309,7 +374,7 @@
                     </el-row>
                   </el-card>
 
-                  <el-card class="form-section-card extra-services-card mb-4" shadow="never">
+                  <el-card v-if="!isBulkMail" class="form-section-card extra-services-card mb-4" shadow="never">
                     <template #header>
                       <div class="form-card-title text-primary">
                         <el-icon><CircleCheck /></el-icon><span>Dịch vụ gia tăng</span>
@@ -347,7 +412,12 @@
                       ƯỚC TÍNH CƯỚC PHÍ
                     </div>
                   </template>
-                  <div class="billing-details" v-if="simulateResult">
+                  <div v-if="isBulkMail" class="bulk-mail-summary">
+                    <el-icon><InfoFilled /></el-icon>
+                    <strong>Chưa tính cước ở bước tạo yêu cầu</strong>
+                    <p>Hệ thống sẽ tạo một mã túi gắn với khách hàng. Cước từng bưu gửi được xác định sau khi hoàn tất nhận dạng và cân đo tại bưu cục.</p>
+                  </div>
+                  <div class="billing-details" v-else-if="simulateResult">
                     <div class="billing-line">
                       <span>Cước chính:</span>
                       <span class="price-val">{{ (simulateResult.main_fee || 0).toLocaleString() }} đ</span>
@@ -517,9 +587,19 @@ const savedDraftsList = ref([]);
 
 // Available Extra Services List
 const availableServices = ref([]);
+const pickupModeOptions = [
+  { label: 'Hàng hóa', value: 'SINGLE_WAYBILL' },
+  { label: 'Thư từ/Bưu phẩm hàng loạt', value: 'BULK_MAIL' }
+];
 
 // Form model
 const form = reactive({
+  pickup_mode: 'SINGLE_WAYBILL',
+  bulk_product_type: 'DOCUMENT',
+  bulk_estimated_quantity: 1,
+  bulk_draft_items: [
+    { local_id: Date.now(), receiver_name: '', receiver_phone: '', receiver_address: '', customer_reference_code: '', note: '' }
+  ],
   sender: {
     name: '',
     phone: '',
@@ -560,6 +640,51 @@ const form = reactive({
 });
 
 const hubsList = ref([]);
+const isBulkMail = computed(() => form.pickup_mode === 'BULK_MAIL');
+const isSingleBulkMail = computed(() => isBulkMail.value && Number(form.bulk_estimated_quantity) === 1);
+const bulkMailInstruction = computed(() => isSingleBulkMail.value
+  ? 'Bạn có thể nhập trước thông tin người nhận hoặc để trống để hệ thống OCR bổ sung sau.'
+  : 'Từ 2 bưu gửi trở lên, hệ thống tạo một túi thư cha. Mã vận đơn và thông tin người nhận từng bưu gửi sẽ được mobile/OCR bổ sung sau.'
+);
+
+const createBulkDraftItem = () => ({
+  local_id: `${Date.now()}-${Math.random()}`,
+  receiver_name: '',
+  receiver_phone: '',
+  receiver_address: '',
+  customer_reference_code: '',
+  note: ''
+});
+
+const syncBulkDraftItems = (quantity) => {
+  const target = Math.max(1, Number(quantity || 1));
+  if (!Array.isArray(form.bulk_draft_items)) form.bulk_draft_items = [];
+  while (form.bulk_draft_items.length < target) form.bulk_draft_items.push(createBulkDraftItem());
+  if (form.bulk_draft_items.length > target) form.bulk_draft_items.splice(target);
+};
+
+const addBulkDraftItem = () => {
+  if (form.bulk_draft_items.length >= 10000) return;
+  form.bulk_draft_items.push(createBulkDraftItem());
+  form.bulk_estimated_quantity = form.bulk_draft_items.length;
+};
+
+const removeBulkDraftItem = (index) => {
+  form.bulk_draft_items.splice(index, 1);
+  form.bulk_estimated_quantity = Math.max(1, form.bulk_draft_items.length);
+};
+
+watch(() => form.bulk_estimated_quantity, syncBulkDraftItems);
+const isExpressService = computed(() => ['HT', 'EXPRESS'].includes(form.service_type));
+
+watch(isBulkMail, (bulk) => {
+  if (bulk) {
+    simulateResult.value = null;
+    simulateError.value = '';
+  } else {
+    debouncedSimulate();
+  }
+});
 
 // Simulation price result
 const simulateResult = ref(null);
@@ -661,6 +786,11 @@ const debouncedSimulate = () => {
 };
 
 const triggerSimulation = async () => {
+  if (isBulkMail.value) {
+    simulateResult.value = null;
+    simulateError.value = '';
+    return;
+  }
   if (!form.sender.province_id || !form.receiver.province_id) {
     simulateResult.value = null;
     return;
@@ -783,18 +913,27 @@ const addToQueue = () => {
     return;
   }
   
-  if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id ||
+  if (isBulkMail.value) {
+    if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id) {
+      ElMessage.warning('Vui lòng điền đủ thông tin lấy hàng.');
+      return;
+    }
+    if (!['DOCUMENT', 'PARCEL'].includes(form.bulk_product_type) || Number(form.bulk_estimated_quantity) < 1) {
+      ElMessage.warning('Vui lòng chọn loại bưu gửi và nhập số lượng dự kiến.');
+      return;
+    }
+  } else if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id ||
       !form.receiver.name || !form.receiver.phone || !form.receiver.province_id || !form.receiver.district_id) {
     ElMessage.warning('Vui lòng điền đủ thông tin người gửi và người nhận trước khi đưa vào hàng chờ.');
     return;
   }
-  if (!form.items[0].product_name) {
+  if (!isBulkMail.value && !form.items[0].product_name) {
     ElMessage.warning('Vui lòng điền đủ thông tin cơ bản trước khi đưa vào hàng chờ.');
     return;
   }
 
   // Validate items
-  for (let i = 0; i < form.items.length; i++) {
+  for (let i = 0; !isBulkMail.value && i < form.items.length; i++) {
     const item = form.items[i];
     if (!item.product_group) {
       ElMessage.warning(`Vui lòng chọn loại hàng cho sản phẩm thứ ${i + 1}.`);
@@ -1166,6 +1305,7 @@ onMounted(async () => {
     }
     if (found) {
       Object.assign(form, JSON.parse(JSON.stringify(found)));
+      syncBulkDraftItems(form.bulk_estimated_quantity || 1);
       if (form.sender.province_id) senderDistricts.value = await fetchDistrictsForProvince(form.sender.province_id);
       if (form.sender.district_id) senderWards.value = await fetchWardsForDistrict(form.sender.district_id);
       if (form.receiver.province_id) receiverDistricts.value = await fetchDistrictsForProvince(form.receiver.province_id);

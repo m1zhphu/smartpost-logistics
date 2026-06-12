@@ -17,6 +17,11 @@ import jwt
 from core.security import SECRET_KEY, ALGORITHM
 from core.realtime import realtime_manager
 
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_ROOT = os.path.join(BACKEND_DIR, "uploads")
+os.makedirs(os.path.join(UPLOAD_ROOT, "pod"), exist_ok=True)
+os.makedirs(os.path.join(UPLOAD_ROOT, "bills"), exist_ok=True)
+
 # Tạo các bảng mới nếu chưa tồn tại
 if os.getenv("AUTO_CREATE_TABLES", "false").lower() == "true":
     models.Base.metadata.create_all(bind=engine)
@@ -45,7 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/uploads", StaticFiles(directory=UPLOAD_ROOT), name="uploads")
 
 # Đăng ký các Router (Kết nối các bộ phận vào tổng đài)
 app.include_router(auth.router)
@@ -111,4 +116,4 @@ async def startup_event():
     # Chạy tác vụ quét quá hạn ngay khi server lên
     realtime_manager.set_loop(asyncio.get_running_loop())
     asyncio.create_task(schedule_overdue_check())
-    os.makedirs("uploads/pod", exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_ROOT, "pod"), exist_ok=True)

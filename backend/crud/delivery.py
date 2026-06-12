@@ -283,6 +283,7 @@ def get_open_customer_pickup_bag(db: Session, customer_id: int):
     return db.query(models.Bags).filter(
         models.Bags.customer_id == customer_id,
         models.Bags.bag_type == "PICKUP",
+        models.Bags.booking_request_id.is_(None),
         models.Bags.status.in_(["OPEN", "CREATED"]),
     ).order_by(models.Bags.bag_id.desc()).first()
 
@@ -359,6 +360,9 @@ def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
         "requested_pickup_time": db_req.requested_pickup_time,
         "pickup_assigned_at": db_req.pickup_assigned_at,
         "created_at": created_at,
+        "pickup_mode": db_req.pickup_mode or "SINGLE_WAYBILL",
+        "bag_code": db_req.bag_code,
+        "materialization_status": db_req.materialization_status,
     }
 
 
@@ -545,6 +549,8 @@ def assign_shipper_to_online_pickup(db: Session, db_req: models.BookingRequests,
     db_req.assigned_shipper_id = shipper_id
     db_req.pickup_assigned_by_user_id = user_id
     db_req.pickup_assigned_at = now
+    if db_req.pickup_bag:
+        db_req.pickup_bag.status = "ASSIGNED"
 
     if waybill:
         waybill.holding_shipper_id = shipper_id
@@ -572,6 +578,9 @@ def mark_online_pickup_picked(db: Session, db_req: models.BookingRequests, user_
     now = datetime.utcnow()
     waybill = get_request_waybill(db, db_req.request_id)
     db_req.status = "PICKED"
+    if db_req.pickup_bag:
+        db_req.pickup_bag.status = "PICKED"
+        db_req.pickup_bag.pickup_time = now
 
     if waybill:
         waybill.status = WaybillStatus.PICKED_PENDING_VERIFY

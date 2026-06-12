@@ -122,6 +122,9 @@ class MobilePickupTaskResponse(BaseModel):
     requested_pickup_time: Optional[datetime] = None
     pickup_assigned_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    pickup_mode: str = "SINGLE_WAYBILL"
+    bag_code: Optional[str] = None
+    materialization_status: Optional[str] = None
 
 class BookingRequestLogResponse(BaseModel):
     log_id: int
@@ -205,6 +208,9 @@ class BookingRequestResponse(BaseModel):
     bag_item_count: Optional[int] = None
     total_estimated_weight: Optional[float] = None
     latest_request_at: Optional[datetime] = None
+    pickup_mode: str = "SINGLE_WAYBILL"
+    actual_quantity: int = 0
+    materialization_status: Optional[str] = None
 
     class Config:
         from_attributes = True

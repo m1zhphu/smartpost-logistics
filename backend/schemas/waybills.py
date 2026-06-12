@@ -123,6 +123,62 @@ class AdminPickupCreate(CustomerPickupCreate):
     source: str = Field(default="HOTLINE", description="HOTLINE, CSKH, ADMIN")
 
 
+class BulkMailDraftItemCreate(BaseModel):
+    sequence_no: int = Field(ge=1)
+    customer_reference_code: Optional[str] = None
+    receiver_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
+    receiver_address: Optional[str] = None
+    note: Optional[str] = None
+
+
+class BulkMailPickupCreate(BaseModel):
+    product_type: str
+    estimated_quantity: int = Field(ge=1, le=10000)
+    sender: CustomerPickupAddress
+    receiver: Optional[CustomerPickupAddress] = None
+    draft_items: List[BulkMailDraftItemCreate] = Field(default_factory=list)
+    pickup_time: Optional[datetime] = None
+    target_hub_id: Optional[int] = None
+    note: Optional[str] = None
+
+    @field_validator("product_type", mode="before")
+    @classmethod
+    def validate_bulk_product_type(cls, value):
+        normalized = normalize_product_type(value)
+        if normalized not in {"DOCUMENT", "PARCEL"}:
+            raise ValueError("Pickup hàng loạt chỉ hỗ trợ thư từ/tài liệu hoặc bưu phẩm, bưu kiện")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_draft_items(self):
+        if len(self.draft_items) > self.estimated_quantity:
+            raise ValueError("Số dòng thông tin thư không được lớn hơn số lượng dự kiến")
+        sequence_numbers = [item.sequence_no for item in self.draft_items]
+        if len(sequence_numbers) != len(set(sequence_numbers)):
+            raise ValueError("Số thứ tự thư không được trùng nhau")
+        return self
+
+
+class BulkMailPickupResponse(BaseModel):
+    request_id: int
+    request_code: str
+    bag_id: Optional[int] = None
+    bag_code: Optional[str] = None
+    waybill_id: Optional[int] = None
+    waybill_code: Optional[str] = None
+    customer_id: int
+    customer_code: str
+    product_type: str
+    product_type_label: str
+    estimated_quantity: int
+    actual_quantity: int = 0
+    pickup_status: str
+    bag_status: Optional[str] = None
+    materialization_status: str
+    created_at: Optional[datetime] = None
+
+
 class CustomerPickupCreateResponse(BaseModel):
     waybill_id: int
     waybill_code: str

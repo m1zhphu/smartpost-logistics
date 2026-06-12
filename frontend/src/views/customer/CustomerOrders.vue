@@ -22,9 +22,9 @@
                     <span class="code-badge warning">{{ row.request_code }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="waybill_code" label="Mã Vận Đơn" width="130">
+                <el-table-column label="Mã Vận Đơn / Túi" width="170">
                   <template #default="{ row }">
-                    <span class="code-badge success">{{ row.waybill_code || '---' }}</span>
+                    <span class="code-badge success">{{ row.waybill_code || row.bag_code || '---' }}</span>
                   </template>
                 </el-table-column>
                 <el-table-column label="Ngày tạo" width="150">
@@ -46,7 +46,11 @@
                 </el-table-column>
                 <el-table-column label="Cước phí" width="140" align="right">
                   <template #default="{ row }">
-                    <div v-if="row.price_status === 'FINALIZED' || row.price_status === 'ADJUSTED'">
+                    <div v-if="row.pickup_mode === 'BULK_MAIL' && !row.waybill_code">
+                      <div class="fw-bold text-warning">Chờ xử lý</div>
+                      <span class="text-xs text-muted">OCR/cân đo</span>
+                    </div>
+                    <div v-else-if="row.price_status === 'FINALIZED' || row.price_status === 'ADJUSTED'">
                       <div class="fw-bold text-success">{{ (row.final_total_amount || 0).toLocaleString() }}đ</div>
                       <span class="text-xs text-muted">(Đã cân đo)</span>
                     </div>
@@ -93,6 +97,14 @@
                   <span class="label">Mã vận đơn:</span>
                   <span class="value fw-bold text-success">{{ selectedPickup.waybill_code || '---' }}</span>
                 </div>
+                <div v-if="selectedPickup.bag_code" class="detail-grid-item">
+                  <span class="label">Mã túi thư:</span>
+                  <span class="value fw-bold text-success">{{ selectedPickup.bag_code }}</span>
+                </div>
+                <div v-if="selectedPickup.pickup_mode === 'BULK_MAIL'" class="detail-grid-item">
+                  <span class="label">Số lượng bưu gửi:</span>
+                  <span class="value fw-bold">{{ selectedPickup.estimated_quantity || 0 }}</span>
+                </div>
                 <div class="detail-grid-item">
                   <span class="label">Ngày tạo:</span>
                   <span class="value">{{ formatDate(selectedPickup.created_at) }}</span>
@@ -103,7 +115,9 @@
                 </div>
                 <div class="detail-grid-item">
                   <span class="label">Dịch vụ vận chuyển:</span>
-                  <span class="value fw-bold">{{ getServiceTypeLabel(selectedPickup.service_type) }}</span>
+                  <span class="value fw-bold" :class="{ 'express-service-text': ['HT', 'EXPRESS'].includes(selectedPickup.service_type) }">
+                    {{ getServiceTypeLabel(selectedPickup.service_type) }}
+                  </span>
                 </div>
                 <div class="detail-grid-item">
                   <span class="label">Phương thức thanh toán:</span>
@@ -319,7 +333,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
-import moment from 'moment';
+import { formatVietnamDateTime } from '@/utils/dateTime';
 import { 
   User, Service, Phone, Message, Close, 
   Search, DocumentAdd, Location, List, Edit, Lock,
@@ -992,8 +1006,26 @@ const submitAllDrafts = async () => {
 const fetchPickupsList = async () => {
   listLoading.value = true;
   try {
-    const res = await api.get('/api/waybills/customer/pickups');
-    pickupsList.value = res.data || [];
+    const [waybillRes, bulkRes] = await Promise.all([
+      api.get('/api/waybills/customer/pickups'),
+      api.get('/api/waybills/customer/bulk-mail-pickups')
+    ]);
+    const regularRows = (waybillRes.data || []).map(row => ({ ...row, pickup_mode: row.pickup_mode || 'SINGLE_WAYBILL' }));
+    const existingRequestIds = new Set(regularRows.map(row => row.request_id));
+    const bulkRows = (bulkRes.data || [])
+      .filter(row => !existingRequestIds.has(row.request_id))
+      .map(row => ({
+        ...row,
+        pickup_mode: 'BULK_MAIL',
+        hub_name: row.hub_name || 'Đang xử lý...',
+        price_status: 'PENDING_OCR',
+        estimated_total_amount: 0,
+        final_total_amount: null,
+        waybill_status: row.waybill_code ? 'CREATED' : null
+      }));
+    pickupsList.value = [...regularRows, ...bulkRows].sort((a, b) => {
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
   } catch (err) {
     console.error('Error loading pickups list:', err);
   } finally {
@@ -1052,7 +1084,7 @@ const getDiffAlertType = (row) => {
 };
 
 const formatDate = (val) => {
-  return val ? moment(val).format('HH:mm DD/MM/YYYY') : '---';
+  return formatVietnamDateTime(val);
 };
 
 const getPickupStatusLabel = (status) => {

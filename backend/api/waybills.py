@@ -557,6 +557,116 @@ def create_customer_pickup_waybill(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/customer/bulk-mail-pickups", response_model=schema_wb.BulkMailPickupResponse)
+def create_customer_bulk_mail_pickup(
+    data: schema_wb.BulkMailPickupCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Tạo một yêu cầu và một túi cha cho nhiều thư/bưu phẩm chưa có đủ dữ liệu vận đơn."""
+    _require_customer_account(current_user)
+    customer = db.query(models.Customers).filter(
+        models.Customers.customer_id == current_user.get("customer_id"),
+        models.Customers.status == "ACTIVE",
+    ).first()
+    if not customer:
+        raise HTTPException(status_code=403, detail="Hồ sơ khách hàng không còn hoạt động")
+
+    target_hub = None
+    if data.target_hub_id:
+        target_hub = db.query(models.Hubs).filter(
+            models.Hubs.hub_id == data.target_hub_id,
+            models.Hubs.status == True,
+        ).first()
+    if not target_hub:
+        target_hub = _find_hub_for_province(
+            db,
+            data.sender.province_id or customer.province_id,
+            data.sender.province_name or customer.province_name,
+        )
+    if not target_hub:
+        target_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == current_user.get("primary_hub_id")).first()
+    if not target_hub:
+        raise HTTPException(status_code=400, detail="Không xác định được bưu cục lấy hàng")
+
+    try:
+        request, bag, waybill = crud_wb.create_bulk_mail_pickup(
+            db, customer, data, current_user["user_id"], target_hub.hub_id
+        )
+        db.commit()
+        definition = get_product_type_definition(data.product_type)
+        realtime_manager.publish(["admin", f"hub:{target_hub.hub_id}", f"customer:{customer.customer_id}"], "pickup.bulk_mail_created", {
+            "request_code": request.request_code,
+            "bag_code": bag.bag_code if bag else None,
+            "waybill_code": waybill.waybill_code if waybill else None,
+            "customer_id": customer.customer_id,
+            "estimated_quantity": data.estimated_quantity,
+            "product_type": data.product_type,
+        })
+        return {
+            "request_id": request.request_id,
+            "request_code": request.request_code,
+            "bag_id": bag.bag_id if bag else None,
+            "bag_code": bag.bag_code if bag else None,
+            "waybill_id": waybill.waybill_id if waybill else None,
+            "waybill_code": waybill.waybill_code if waybill else None,
+            "customer_id": customer.customer_id,
+            "customer_code": customer.customer_code,
+            "product_type": data.product_type,
+            "product_type_label": definition["label"],
+            "estimated_quantity": data.estimated_quantity,
+            "actual_quantity": 1 if waybill else 0,
+            "pickup_status": request.status,
+            "bag_status": bag.status if bag else None,
+            "materialization_status": bag.materialization_status if bag else request.materialization_status,
+            "created_at": bag.pickup_time if bag else data.pickup_time,
+        }
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/customer/bulk-mail-pickups", response_model=List[schema_wb.BulkMailPickupResponse])
+def list_customer_bulk_mail_pickups(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    _require_customer_account(current_user)
+    rows = (
+        db.query(models.BookingRequests, models.Bags, models.Waybills, models.Customers)
+        .outerjoin(models.Bags, models.Bags.booking_request_id == models.BookingRequests.request_id)
+        .outerjoin(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)
+        .join(models.Customers, models.Customers.customer_id == models.BookingRequests.customer_id)
+        .filter(
+            models.BookingRequests.customer_id == current_user.get("customer_id"),
+            models.BookingRequests.pickup_mode == "BULK_MAIL",
+        )
+        .order_by(models.BookingRequests.request_id.desc())
+        .all()
+    )
+    return [{
+        "request_id": request.request_id,
+        "request_code": request.request_code,
+        "bag_id": bag.bag_id if bag else None,
+        "bag_code": bag.bag_code if bag else None,
+        "waybill_id": waybill.waybill_id if waybill else None,
+        "waybill_code": waybill.waybill_code if waybill else None,
+        "customer_id": customer.customer_id,
+        "customer_code": customer.customer_code,
+        "product_type": request.product_type,
+        "product_type_label": get_product_type_definition(request.product_type)["label"],
+        "estimated_quantity": request.est_quantity or 0,
+        "actual_quantity": bag.actual_quantity or 0 if bag else request.actual_quantity or 0,
+        "pickup_status": request.status,
+        "bag_status": bag.status if bag else None,
+        "materialization_status": bag.materialization_status if bag else request.materialization_status,
+        "created_at": bag.pickup_time if bag else waybill.requested_pickup_time if waybill else None,
+    } for request, bag, waybill, customer in rows]
+
+
 @router.post("/admin/pickups", response_model=schema_wb.CustomerPickupCreateResponse)
 def create_admin_pickup_waybill(
     data: schema_wb.AdminPickupCreate,
@@ -837,9 +947,22 @@ def get_waybill_tracking(code: str, db: Session = Depends(get_db)):
     if not waybill:
         raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
     logs = crud_wb.get_tracking_logs(db, waybill.waybill_id)
+    pickup_statuses = {"PICKED", "PICKED_PENDING_VERIFY"}
     return {
         "waybill_id": waybill.waybill_id,
-        "history": [{"status_id": l.status_id, "note": l.note, "time": l.system_time} for l in logs],
+        "history": [
+            {
+                "status_id": log.status_id,
+                "note": log.note,
+                "time": log.system_time,
+                "pickup_image_url": (
+                    waybill.pickup_image_url
+                    if log.status_id in pickup_statuses
+                    else None
+                ),
+            }
+            for log in logs
+        ],
     }
 
 @router.delete("/{code}")

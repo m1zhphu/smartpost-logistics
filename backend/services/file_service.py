@@ -4,9 +4,12 @@ import uuid
 from datetime import datetime
 from fastapi import UploadFile, HTTPException
 
-# Đảm bảo thư mục uploads tồn tại khi hệ thống khởi động
-UPLOAD_DIR = "uploads/pod"
-BILL_UPLOAD_DIR = "uploads/bills"
+# Always store media under backend/uploads regardless of the process working
+# directory used to start Uvicorn.
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_ROOT = os.path.join(BACKEND_DIR, "uploads")
+UPLOAD_DIR = os.path.join(UPLOAD_ROOT, "pod")
+BILL_UPLOAD_DIR = os.path.join(UPLOAD_ROOT, "bills")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(BILL_UPLOAD_DIR, exist_ok=True)
 
@@ -14,6 +17,8 @@ def save_pod_image(file: UploadFile) -> str:
     """Xử lý lưu file ảnh vào ổ cứng và trả về đường dẫn URL"""
     # 1. Kiểm tra định dạng file
     allowed_extensions = ["jpg", "jpeg", "png"]
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Tệp tải lên không có tên")
     file_ext = file.filename.split(".")[-1].lower()
     
     if file_ext not in allowed_extensions:
@@ -27,6 +32,9 @@ def save_pod_image(file: UploadFile) -> str:
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        if os.path.getsize(file_path) == 0:
+            os.remove(file_path)
+            raise HTTPException(status_code=400, detail="Tệp ảnh tải lên không có dữ liệu")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi lưu file: {str(e)}")
 

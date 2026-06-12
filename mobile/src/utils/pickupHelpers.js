@@ -83,12 +83,15 @@ export function formatDateTime(value) {
     return '---';
   }
 
-  const date = new Date(value);
+  const hasTimezone = /(Z|[+-]\d{2}:?\d{2})$/i.test(String(value));
+  const isApiDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(value));
+  const date = new Date(isApiDateTime && !hasTimezone ? `${value}Z` : value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
   return date.toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',

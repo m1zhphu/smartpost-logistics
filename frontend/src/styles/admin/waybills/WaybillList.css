@@ -196,6 +196,9 @@
 .timeline-card.latest { background: var(--sp-surface); backdrop-filter: blur(12px); border-color: var(--sp-primary); box-shadow: 0 4px 15px rgba(67, 24, 255, 0.1); }
 .status-title { margin: 0 0 6px; font-size: 14px; font-weight: 800; color: var(--sp-text-main); }
 .status-note { margin: 0 0 8px; font-size: 13px; color: var(--sp-text-muted); line-height: 1.5; }
+.pickup-proof { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 12px 0; }
+.pickup-proof-label { font-size: 12px; font-weight: 700; color: var(--sp-text-main); }
+.pickup-proof-image { width: 136px; height: 96px; border: 1px solid var(--sp-border, #e2e8f0); border-radius: 6px; cursor: zoom-in; overflow: hidden; }
 .status-location { display: inline-flex; align-items: center; gap: 6px; background: rgba(67, 24, 255, 0.05); color: var(--sp-primary); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
 
 /* Dropdown */

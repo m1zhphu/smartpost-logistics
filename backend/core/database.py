@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 try:
     from dotenv import load_dotenv
@@ -18,6 +18,15 @@ if not SQLALCHEMY_DATABASE_URL:
 
 # Tạo engine kết nối
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
+# Store server-generated timestamps consistently in UTC. API clients convert
+# these values to the display timezone (Asia/Ho_Chi_Minh).
+if SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
+    @event.listens_for(engine, "connect")
+    def set_postgres_timezone(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET TIME ZONE 'UTC'")
+        cursor.close()
 
 # Tạo SessionLocal dùng để tương tác với DB trong mỗi API
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

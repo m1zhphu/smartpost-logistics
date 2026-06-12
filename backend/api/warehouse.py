@@ -112,6 +112,9 @@ async def update_actual_weight(
     if waybill.status == "CREATED":
         raise HTTPException(status_code=400, detail="Đơn chưa nhập kho. Vui lòng quét nhập kho trước khi cân.")
 
+    if data.actual_weight <= 0:
+        raise HTTPException(status_code=400, detail="Khối lượng thực tế phải lớn hơn 0 kg")
+
     if not waybill.converted_weight or waybill.converted_weight == 0:
         waybill.converted_weight = waybill.actual_weight
 
@@ -123,6 +126,8 @@ async def update_actual_weight(
         db,
         origin_hub_id=waybill.origin_hub_id,
         dest_hub_id=waybill.dest_hub_id,
+        origin_province_id=waybill.sender_province_id,
+        dest_province_id=waybill.receiver_province_id,
         weight=charge_weight,
         service_type=waybill.service_type or "STANDARD",
         customer_id=waybill.customer_id,

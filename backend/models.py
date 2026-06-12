@@ -244,6 +244,7 @@ class Bags(Base):
         ForeignKeyConstraint(['created_by'], ['users.user_id'], name='bags_created_by_fkey'),
         ForeignKeyConstraint(['dest_hub_id'], ['hubs.hub_id'], name='bags_dest_hub_id_fkey'),
         ForeignKeyConstraint(['customer_id'], ['customers.customer_id'], name='bags_customer_id_fkey'),
+        ForeignKeyConstraint(['booking_request_id'], ['booking_requests.request_id'], name='bags_booking_request_id_fkey'),
         PrimaryKeyConstraint('bag_id', name='bags_pkey'),
         UniqueConstraint('bag_code', name='bags_bag_code_key')
     )
@@ -261,10 +262,18 @@ class Bags(Base):
     est_quantity: Mapped[Optional[int]] = mapped_column(Integer)
     pickup_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
     customer_id: Mapped[Optional[int]] = mapped_column(Integer)
+    booking_request_id: Mapped[Optional[int]] = mapped_column(Integer, unique=True)
+    product_type: Mapped[Optional[str]] = mapped_column(String(50))
+    actual_quantity: Mapped[Optional[int]] = mapped_column(Integer, server_default=text('0'))
+    materialization_status: Mapped[Optional[str]] = mapped_column(String(30), server_default=text("'PENDING'"))
+    received_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    opened_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     users: Mapped[Optional['Users']] = relationship('Users', back_populates='bags')
     dest_hub: Mapped[Optional['Hubs']] = relationship('Hubs', back_populates='bags')
     customer: Mapped[Optional['Customers']] = relationship('Customers')
+    booking_request: Mapped[Optional['BookingRequests']] = relationship('BookingRequests', back_populates='pickup_bag')
     bag_items: Mapped[list['BagItems']] = relationship('BagItems', back_populates='bag')
 
     manifest_details: Mapped[list['ManifestDetails']] = relationship('ManifestDetails', back_populates='bag')
@@ -496,12 +505,16 @@ class BookingRequests(Base):
     priority: Mapped[Optional[str]] = mapped_column(String(20), server_default=text("'NORMAL'")) # NORMAL, URGENT, VIP, HT
     sla_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime)
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    pickup_mode: Mapped[Optional[str]] = mapped_column(String(30), server_default=text("'SINGLE_WAYBILL'"))
+    actual_quantity: Mapped[Optional[int]] = mapped_column(Integer, server_default=text('0'))
+    materialization_status: Mapped[Optional[str]] = mapped_column(String(30), server_default=text("'NOT_REQUIRED'"))
 
     assigned_shipper: Mapped[Optional['Users']] = relationship('Users', back_populates='booking_requests')
     customer: Mapped[Optional['Customers']] = relationship('Customers', back_populates='booking_requests')
     target_hub: Mapped[Optional['Hubs']] = relationship('Hubs', back_populates='booking_requests')
     waybills: Mapped[list['Waybills']] = relationship('Waybills', back_populates='request')
     logs: Mapped[list['BookingRequestLogs']] = relationship('BookingRequestLogs', back_populates='request')
+    pickup_bag: Mapped[Optional['Bags']] = relationship('Bags', back_populates='booking_request', uselist=False)
 
     @property
     def customer_code(self):
@@ -517,6 +530,8 @@ class BookingRequests(Base):
 
     @property
     def bag_code(self):
+        if self.pickup_bag:
+            return self.pickup_bag.bag_code
         if not self.waybills or not self.waybills[0].bag_items:
             return None
         bag = self.waybills[0].bag_items[0].bag
@@ -524,6 +539,8 @@ class BookingRequests(Base):
 
     @property
     def bag_item_count(self):
+        if self.pickup_bag:
+            return len(self.pickup_bag.bag_items)
         if not self.waybills or not self.waybills[0].bag_items:
             return None
         bag = self.waybills[0].bag_items[0].bag
@@ -531,6 +548,8 @@ class BookingRequests(Base):
 
     @property
     def total_estimated_weight(self):
+        if self.pickup_mode == "BULK_MAIL":
+            return None
         if not self.waybills or not self.waybills[0].bag_items:
             return None
         bag = self.waybills[0].bag_items[0].bag
@@ -562,6 +581,31 @@ class BookingRequestLogs(Base):
 
     request: Mapped['BookingRequests'] = relationship('BookingRequests', back_populates='logs')
     user: Mapped[Optional['Users']] = relationship('Users')
+
+
+class BulkMailDraftItems(Base):
+    __tablename__ = 'bulk_mail_draft_items'
+    __table_args__ = (
+        ForeignKeyConstraint(['request_id'], ['booking_requests.request_id'], name='bulk_mail_draft_items_request_id_fkey'),
+        ForeignKeyConstraint(['bag_id'], ['bags.bag_id'], name='bulk_mail_draft_items_bag_id_fkey'),
+        ForeignKeyConstraint(['waybill_id'], ['waybills.waybill_id'], name='bulk_mail_draft_items_waybill_id_fkey'),
+        PrimaryKeyConstraint('draft_item_id', name='bulk_mail_draft_items_pkey'),
+        UniqueConstraint('request_id', 'sequence_no', name='bulk_mail_draft_items_request_sequence_key'),
+    )
+
+    draft_item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    request_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    bag_id: Mapped[Optional[int]] = mapped_column(Integer)
+    waybill_id: Mapped[Optional[int]] = mapped_column(Integer)
+    sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    customer_reference_code: Mapped[Optional[str]] = mapped_column(String(100))
+    receiver_name: Mapped[Optional[str]] = mapped_column(String(100))
+    receiver_phone: Mapped[Optional[str]] = mapped_column(String(20))
+    receiver_address: Mapped[Optional[str]] = mapped_column(String(255))
+    note: Mapped[Optional[str]] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), server_default=text("'PENDING_OCR'"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class CustomerPriceMapping(Base):
