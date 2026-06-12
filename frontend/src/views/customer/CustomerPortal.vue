@@ -302,6 +302,13 @@
                         <span class="fw-bold">{{ srv.service_name }}</span>
                         <span class="text-xs text-muted block">
                           Phí: {{ srv.fee_type === 'FIXED' ? srv.fee_value.toLocaleString() + 'đ' : srv.fee_value + '%' }}
+                          ({{ 
+                            srv.calculation_base === 'DECLARED_VALUE' ? 'Theo giá trị đơn hàng' :
+                            srv.calculation_base === 'MAIN_FEE' ? 'Theo cước chính' :
+                            srv.calculation_base === 'COD_AMOUNT' ? 'Theo tiền thu hộ COD' :
+                            srv.calculation_base === 'QUANTITY' ? 'Theo số lượng sản phẩm' :
+                            'Theo bill'
+                          }})
                         </span>
                       </el-checkbox>
                     </el-checkbox-group>
@@ -1114,9 +1121,9 @@ const fetchHubs = async () => {
 };
 
 const startCreatePickup = async () => {
-  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
+  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id) {
     ElMessageBox.confirm(
-      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng (Tỉnh/Thành, Quận/Huyện, Địa chỉ chi tiết). Vui lòng cập nhật đầy đủ thông tin trong mục "Thông tin tài khoản" trước khi tạo đơn.',
+      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng (Tỉnh/Thành, Quận/Huyện). Vui lòng cập nhật đầy đủ thông tin trong mục "Thông tin tài khoản" trước khi tạo đơn.',
       'Cập nhật địa chỉ lấy hàng',
       {
         confirmButtonText: 'Cập nhật ngay',
@@ -1272,11 +1279,11 @@ const cancelCreate = () => {
 
 // SUBMIT REQUEST TO BACKEND
 const submitPickupRequest = async () => {
-  if (!form.sender.name || !form.sender.phone || !form.sender.address_detail || !form.sender.province_id) {
+  if (!form.sender.name || !form.sender.phone || !form.sender.province_id) {
     ElMessage.warning('Vui lòng điền đầy đủ thông tin người gửi');
     return;
   }
-  if (!form.receiver.name || !form.receiver.phone || !form.receiver.address_detail || !form.receiver.province_id || !form.receiver.district_id) {
+  if (!form.receiver.name || !form.receiver.phone || !form.receiver.province_id || !form.receiver.district_id) {
     ElMessage.warning('Vui lòng điền đầy đủ thông tin người nhận (bao gồm Tỉnh/Huyện)');
     return;
   }

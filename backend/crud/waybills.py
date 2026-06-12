@@ -328,6 +328,17 @@ def customer_pickup_payload(request: models.BookingRequests, waybill: models.Way
     created_at = None
     if request.logs:
         created_at = min((log.created_at for log in request.logs if log.created_at), default=None)
+        
+    items = []
+    if waybill.waybill_items:
+        for item in waybill.waybill_items:
+            items.append({
+                "product_name": item.product_name,
+                "quantity": item.quantity or 1,
+                "weight": float(item.actual_weight or 0),
+                "declared_value": float(item.declared_value or 0)
+            })
+            
     return {
         "request_id": request.request_id,
         "request_code": request.request_code,
@@ -349,12 +360,54 @@ def customer_pickup_payload(request: models.BookingRequests, waybill: models.Way
         "created_at": created_at,
         "product_type": normalize_product_type(request.product_type),
         "product_type_label": get_product_type_definition(request.product_type or "PARCEL")["label"],
+        
+        # Sender Info
+        "sender_name": waybill.sender_name,
+        "sender_phone": waybill.sender_phone,
+        "sender_address": waybill.sender_address,
+        "sender_province_name": waybill.sender_province_name,
+        "sender_district_name": waybill.sender_district_name,
+        "sender_ward_name": waybill.sender_ward_name,
+
+        # Receiver Info
+        "receiver_name": waybill.receiver_name,
+        "receiver_phone": waybill.receiver_phone,
+        "receiver_address": waybill.receiver_address,
+        "receiver_province_name": waybill.receiver_province_name,
+        "receiver_district_name": waybill.receiver_district_name,
+        "receiver_ward_name": waybill.receiver_ward_name,
+
+        # Service & Payment Options
+        "service_type": waybill.service_type,
+        "payment_method": waybill.payment_method,
+        "cod_amount": float(waybill.cod_amount or 0),
+        "note": waybill.note,
+        "shop_order_code": waybill.shop_order_code,
+
+        # Additional Fees
+        "estimated_extra_services_fee": float(waybill.estimated_extra_services_fee or 0),
+        "estimated_vat_amount": float(waybill.estimated_vat_amount or 0),
+        "final_extra_services_fee": float(waybill.final_extra_services_fee) if waybill.final_extra_services_fee is not None else None,
+        "final_vat_amount": float(waybill.final_vat_amount) if waybill.final_vat_amount is not None else None,
+
+        # Weights
+        "estimated_weight": float(waybill.estimated_weight or 0),
+        "actual_weight": float(waybill.actual_weight) if waybill.actual_weight is not None else None,
+
+        # Items List
+        "items": items,
     }
 
 
 def get_customer_pickup_waybills(db: Session, customer_id: int):
     rows = (
         db.query(models.BookingRequests, models.Waybills)
+        .options(
+            joinedload(models.BookingRequests.target_hub),
+            joinedload(models.BookingRequests.assigned_shipper),
+            joinedload(models.BookingRequests.logs),
+            joinedload(models.Waybills.waybill_items)
+        )
         .join(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)
         .filter(
             models.BookingRequests.customer_id == customer_id,
@@ -370,6 +423,12 @@ def get_customer_pickup_waybills(db: Session, customer_id: int):
 def get_customer_pickup_waybill_by_code(db: Session, customer_id: int, waybill_code: str):
     row = (
         db.query(models.BookingRequests, models.Waybills)
+        .options(
+            joinedload(models.BookingRequests.target_hub),
+            joinedload(models.BookingRequests.assigned_shipper),
+            joinedload(models.BookingRequests.logs),
+            joinedload(models.Waybills.waybill_items)
+        )
         .join(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)
         .filter(
             models.BookingRequests.customer_id == customer_id,

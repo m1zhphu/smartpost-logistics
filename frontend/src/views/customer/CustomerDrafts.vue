@@ -3,66 +3,9 @@
     <div class="portal-container">
       <el-row :gutter="24" class="portal-content">
         <el-col :span="24">
-          <div >
-            <!-- QUEUE CARD -->
-            <el-card v-if="draftsList.length > 0" class="recent-waybills-card mt-20 animate-fade-in border-warning" shadow="hover">
-              <template #header>
-                <div class="flex-between">
-                  <div class="card-header-title text-warning" style="color: #eab308;">
-                    <el-icon><FolderOpened /></el-icon><span>Hàng Chờ Tạo Đơn ({{ draftsList.length }})</span>
-                  </div>
-                  <div class="flex-center gap-2">
-                    <el-button type="warning" plain @click="triggerExcelImport">
-                      <el-icon class="mr-1"><DocumentAdd /></el-icon>Nhập từ Excel
-                    </el-button>
-                    <el-button type="success" @click="submitAllDrafts" :loading="submitLoading">
-                      <el-icon class="mr-1"><Upload /></el-icon>Gửi tất cả (Tạo túi thư)
-                    </el-button>
-                  </div>
-                </div>
-              </template>
-              
-              <el-alert
-                title="Hướng dẫn: Vui lòng cho tất cả hàng hóa của các đơn vào 1 túi thư/bao chung (nếu có nhiều đơn) để bưu tá qua lấy hàng một lần thuận tiện nhất."
-                type="warning"
-                show-icon
-                :closable="false"
-                class="mb-4"
-              />
-              
-              <el-table :data="draftsList" stripe class="modern-table">
-                <el-table-column label="Thời gian lưu" width="160">
-                  <template #default="{ row }">
-                    <span class="text-xs fw-bold">{{ formatDate(row.created_at) }}</span>
-                  </template>
-                </el-table-column>
-                <el-table-column label="Người nhận" min-width="160">
-                  <template #default="{ row }">
-                    <div class="fw-bold">{{ row.receiver.name || '---' }}</div>
-                    <div class="text-xs text-muted">{{ row.receiver.phone || '---' }}</div>
-                  </template>
-                </el-table-column>
-                <el-table-column label="Hàng hóa" min-width="150">
-                  <template #default="{ row }">
-                    <div class="text-xs">{{ row.items[0]?.product_name || '---' }}</div>
-                    <div class="text-xs fw-bold text-primary">{{ row.items[0]?.weight || 0 }} kg</div>
-                  </template>
-                </el-table-column>
-                <el-table-column label="Thao tác" width="180" align="center" fixed="right">
-                  <template #default="{ row }">
-                    <el-button type="primary" size="small" plain @click="resumeDraft(row)">
-                      Tiếp tục
-                    </el-button>
-                    <el-button type="danger" size="small" plain @click="deleteDraft(row.draft_id)">
-                      Xóa
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
-
+          <div>
             <!-- DRAFTS CARD -->
-            <el-card v-if="savedDraftsList.length > 0" class="recent-waybills-card mt-20 animate-fade-in border-info" shadow="hover">
+            <el-card class="recent-waybills-card mt-20 animate-fade-in border-info" shadow="hover">
               <template #header>
                 <div class="flex-between">
                   <div class="card-header-title text-info" style="color: #3b82f6;">
@@ -71,7 +14,13 @@
                 </div>
               </template>
               
-              <el-table :data="savedDraftsList" stripe class="modern-table">
+              <div v-if="savedDraftsList.length === 0" class="text-center py-5 text-muted">
+                <el-icon class="large-icon mb-2" style="font-size: 32px; color: #909399;"><InfoFilled /></el-icon>
+                <p>Bạn hiện không có bản nháp nào được lưu.</p>
+                <el-button type="primary" class="mt-3" @click="router.push('/customer/create')">Tạo đơn mới</el-button>
+              </div>
+
+              <el-table v-else :data="savedDraftsList" stripe class="modern-table">
                 <el-table-column label="Thời gian lưu" width="160">
                   <template #default="{ row }">
                     <span class="text-xs fw-bold">{{ formatDate(row.created_at) }}</span>
@@ -104,7 +53,6 @@
           </div>
         </el-col>
       </el-row>
-      <input type="file" ref="excelInput" style="display: none;" accept=".xlsx, .xls" @change="handleExcelUpload" />
     </div>
   </div>
 </template>
@@ -652,7 +600,7 @@ const submitPickupRequest = async () => {
         ward_name: rWrd
       },
       items: form.items.map(i => ({
-        product_group: 'PARCEL',
+        product_group: i.product_group || 'PARCEL',
         product_name: i.product_name,
         weight: Number(i.weight),
         length: Number(i.length || 0),
@@ -737,7 +685,7 @@ const submitAllDrafts = async () => {
           ward_name: rWrd
         },
         items: draft.items.map(i => ({
-          product_group: 'PARCEL',
+          product_group: i.product_group || 'PARCEL',
           product_name: i.product_name,
           weight: Number(i.weight),
           length: Number(i.length || 0),
@@ -761,6 +709,7 @@ const submitAllDrafts = async () => {
 
       await api.post('/api/waybills/customer/pickups', payload);
       successCount++;
+      saveToAddressBook(draft.receiver);
     } catch (err) {
       console.error('Lỗi khi gửi đơn nháp:', err);
       failedDrafts.push(draft);
@@ -844,6 +793,41 @@ const getDiffMessage = (row) => {
 const getDiffAlertType = (row) => {
   const diff = (row.final_total_amount || 0) - (row.estimated_total_amount || 0);
   return diff > 0 ? 'warning' : 'success';
+};
+
+const storageKey = computed(() => 'customer_recipients_' + (authStore.user?.id || authStore.user?.username || 'global'));
+
+const saveToAddressBook = (receiver) => {
+  if (!receiver.name || !receiver.phone || !receiver.province_id) return;
+  try {
+    const raw = localStorage.getItem(storageKey.value);
+    const list = raw ? JSON.parse(raw) : [];
+    const index = list.findIndex(item => item.phone === receiver.phone);
+    if (index >= 0) {
+      list[index] = {
+        ...list[index],
+        name: receiver.name,
+        province_id: receiver.province_id,
+        district_id: receiver.district_id,
+        ward_id: receiver.ward_id,
+        address_detail: receiver.address_detail
+      };
+    } else {
+      list.push({
+        id: Date.now().toString(),
+        name: receiver.name,
+        phone: receiver.phone,
+        province_id: receiver.province_id,
+        district_id: receiver.district_id,
+        ward_id: receiver.ward_id,
+        address_detail: receiver.address_detail,
+        created_at: new Date().toISOString()
+      });
+    }
+    localStorage.setItem(storageKey.value, JSON.stringify(list));
+  } catch (e) {
+    console.error('Error saving to recipient book', e);
+  }
 };
 
 const formatDate = (val) => {

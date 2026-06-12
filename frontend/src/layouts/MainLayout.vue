@@ -258,8 +258,10 @@ const menuData = computed(() => {
         ]},
         { title: 'VẬN ĐƠN', items: [
           { label: 'Tạo yêu cầu lấy hàng', path: '/customer/create' },
-          { label: 'Bản nháp & Hàng chờ', path: '/customer/drafts' },
+          { label: 'Bản nháp', path: '/customer/drafts' },
+          { label: 'Hàng chờ tạo đơn', path: '/customer/queue' },
           { label: 'Yêu cầu của tôi', path: '/customer/orders' },
+          { label: 'Sổ địa chỉ người nhận', path: '/customer/recipients' },
         ]},
         { title: 'TÀI KHOẢN', items: [
           { label: 'Thông tin cá nhân', path: '/customer/profile' },

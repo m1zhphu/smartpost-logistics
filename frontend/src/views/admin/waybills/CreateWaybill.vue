@@ -162,11 +162,21 @@
               </div>
               
               <div class="form-item mb-12">
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;">LOẠI HÀNG HÓA</label>
-                <el-radio-group v-model="packageType" class="w-full custom-radio-group">
-                  <el-radio-button value="goods">Hàng hóa</el-radio-button>
-                  <el-radio-button value="letter">Thư từ (Bưu phẩm)</el-radio-button>
-                </el-radio-group>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;">NHÓM SẢN PHẨM</label>
+                <el-select v-model="waybillForm.product_group" placeholder="Chọn loại hàng..." class="w-full">
+                  <el-option v-for="pt in productTypes" :key="pt.code" :label="pt.label" :value="pt.code" />
+                </el-select>
+              </div>
+
+              <!-- Warning & Special handling info -->
+              <div v-if="getProductTypeInfo(waybillForm.product_group)?.special_handling" class="special-handling-note mb-12" style="font-size: 12px; display: flex; align-items: flex-start; gap: 6px; padding: 6px 10px; background-color: #fdf6ec; border-radius: 6px; border-left: 4px solid #e6a23c; line-height: 1.4; color: #d97706;">
+                <el-icon class="mt-2" style="font-size: 14px;"><Warning /></el-icon>
+                <div>
+                  <strong>{{ getProductTypeInfo(waybillForm.product_group)?.label }}:</strong> {{ getProductTypeInfo(waybillForm.product_group)?.handling_note }}
+                  <span v-if="getProductTypeInfo(waybillForm.product_group)?.packing_recommended" style="color: #2563eb; font-weight: bold; margin-left: 4px;">
+                    (Khuyến nghị đóng bọc chống va đập/đổ vỡ)
+                  </span>
+                </div>
               </div>
               
               <el-row :gutter="16">
@@ -189,7 +199,7 @@
                 </el-col>
               </el-row>
 
-              <el-row :gutter="16" v-if="packageType === 'goods'">
+              <el-row :gutter="16" v-if="waybillForm.product_group !== 'DOCUMENT'">
                 <el-col :span="8">
                   <el-form-item label="Dài (cm)" prop="length" class="mb-12">
                     <el-input-number v-model="waybillForm.length" :min="0" :step="1" :controls="false" class="w-full modern-input-number" />
@@ -208,16 +218,32 @@
               </el-row>
 
               <el-row :gutter="16">
-                <el-col :span="14">
+                <el-col :span="12">
                   <el-form-item label="Tên sản phẩm" prop="product_name" class="mb-12">
                     <el-input v-model="waybillForm.product_name" placeholder="Quần áo, điện tử..." clearable />
                   </el-form-item>
                 </el-col>
-                <el-col :span="10">
+                <el-col :span="12">
+                  <el-form-item :label="waybillForm.product_group === 'HIGH_VALUE' ? 'Khai giá (đ) *' : 'Khai giá (đ)'" prop="declared_value" class="mb-12" :required="waybillForm.product_group === 'HIGH_VALUE'">
+                    <el-input-number 
+                      v-model="waybillForm.declared_value" 
+                      :min="0" :step="1000" 
+                      class="w-full modern-price-input" 
+                      :controls="false"
+                      :formatter="(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
+                      :parser="(value) => value.replace(/\$\s?|(\.*)/g, '')"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-row :gutter="16">
+                <el-col :span="24">
                   <el-form-item label="Người trả phí" prop="payment_method" class="mb-12">
                     <el-select v-model="waybillForm.payment_method" class="w-full">
-                      <el-option label="Người gửi trả" value="SENDER_PAY" />
-                      <el-option label="Người nhận trả" value="RECEIVER_PAY" />
+                      <el-option label="Người gửi trả (Shop nợ cước)" value="SENDER_DEBT" />
+                      <el-option label="Người gửi trả ngay" value="SENDER_PAY" />
+                      <el-option label="Người nhận trả cước" value="RECEIVER_PAY" />
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -313,10 +339,33 @@ const router = useRouter();
 const formRef = ref(null);
 const phoneInputRef = ref(null); 
 const loading = ref(false);
-const packageType = ref('goods');
+const productTypes = ref([
+  { code: 'DOCUMENT', label: 'Thư từ/Tài liệu', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Dùng cho thư từ, hồ sơ và tài liệu giấy.' },
+  { code: 'PARCEL', label: 'Bưu phẩm, bưu kiện', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Dùng cho bưu phẩm và bưu kiện thông thường.' },
+  { code: 'GENERAL', label: 'Hàng hóa thông thường', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Hàng hóa không thuộc nhóm cần xử lý đặc biệt.' },
+  { code: 'LIQUID', label: 'Chất lỏng', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần bao gói chống rò rỉ và kiểm tra điều kiện vận chuyển.' },
+  { code: 'ELECTRONIC', label: 'Điện tử', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần chống va đập; khai báo pin hoặc linh kiện hạn chế nếu có.' },
+  { code: 'FOOD', label: 'Thực phẩm', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần khai báo điều kiện bảo quản và hạn sử dụng phù hợp.' },
+  { code: 'HIGH_VALUE', label: 'Giá trị cao', special_handling: true, requires_declared_value: true, packing_recommended: true, handling_note: 'Bắt buộc khai giá lớn hơn 0 để kiểm soát và bảo hiểm hàng hóa.' }
+]);
 
-watch(packageType, (newVal) => {
-  if (newVal === 'letter') {
+const fetchProductTypes = async () => {
+  try {
+    const res = await api.get('/api/waybills/product-types');
+    if (res.data && res.data.items) {
+      productTypes.value = res.data.items;
+    }
+  } catch (err) {
+    console.error('Không thể tải danh sách loại hàng', err);
+  }
+};
+
+const getProductTypeInfo = (code) => {
+  return productTypes.value.find(pt => pt.code === code) || null;
+};
+
+watch(() => waybillForm.product_group, (newVal) => {
+  if (newVal === 'DOCUMENT') {
     waybillForm.length = 0;
     waybillForm.width = 0;
     waybillForm.height = 0;
@@ -341,6 +390,8 @@ const initialFormState = {
   width: 0,
   height: 0,
   product_name: '',
+  product_group: 'PARCEL',
+  declared_value: 0,
   payment_method: 'SENDER_PAY',
   cod_amount: 0,
   note: '',
@@ -364,7 +415,19 @@ const rules = {
     { pattern: /^[0-9]{10}$/, message: 'SĐT gồm 10 chữ số', trigger: 'blur' }
   ],
   receiver_address: [{ required: true, message: 'Nhập địa chỉ', trigger: 'blur' }],
-  actual_weight: [{ required: true, message: 'Nhập khối lượng', trigger: 'blur' }]
+  actual_weight: [{ required: true, message: 'Nhập khối lượng', trigger: 'blur' }],
+  declared_value: [
+    {
+      validator: (rule, value, callback) => {
+        if (waybillForm.product_group === 'HIGH_VALUE' && (!value || Number(value) <= 0)) {
+          callback(new Error('Hàng giá trị cao bắt buộc phải khai giá > 0'));
+        } else {
+          callback();
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
 };
 
 const feeLoading = ref(false);
@@ -559,6 +622,7 @@ const saveWaybill = async (andPrint) => {
 };
 
 onMounted(async () => {
+  await fetchProductTypes();
   try {
     const [resCustomers, resHubs] = await Promise.all([
       api.get('/api/customers').catch(()=>({data:[]})),

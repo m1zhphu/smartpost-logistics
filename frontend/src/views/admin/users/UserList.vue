@@ -33,7 +33,7 @@
           class="mb-12"
         />
         <el-row :gutter="20" class="filter-row">
-          <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
+          <el-col :xs="24" :sm="12" :lg="4" class="filter-col">
             <div class="filter-label">Tìm kiếm trực tiếp</div>
             <el-input 
               v-model="filter.query" 
@@ -45,7 +45,7 @@
             </el-input>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
+          <el-col :xs="24" :sm="12" :lg="4" class="filter-col">
             <div class="filter-label">Chức vụ</div>
             <el-select v-model="filter.role_id" placeholder="Tất cả chức vụ" clearable class="w-full modern-select">
               <el-option label="Quản trị hệ thống" :value="1" />
@@ -57,14 +57,22 @@
             </el-select>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
+          <el-col :xs="24" :sm="12" :lg="4" class="filter-col">
             <div class="filter-label">Bưu cục trực thuộc</div>
             <el-select v-model="filter.hub_id" placeholder="Tất cả bưu cục" clearable class="w-full modern-select">
               <el-option v-for="hub in hubs" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
             </el-select>
           </el-col>
+
+          <el-col :xs="24" :sm="12" :lg="4" class="filter-col">
+            <div class="filter-label">Trạng thái Shipper</div>
+            <el-select v-model="filter.is_online" placeholder="Tất cả trạng thái" clearable class="w-full modern-select" :disabled="filter.role_id !== 4">
+              <el-option label="Đang hoạt động" :value="true" />
+              <el-option label="Ngoại tuyến" :value="false" />
+            </el-select>
+          </el-col>
           
-          <el-col :xs="24" :sm="12" :lg="6" class="filter-action-col">
+          <el-col :xs="24" :sm="24" :lg="8" class="filter-action-col">
              <button class="btn-secondary w-full" @click="resetFilters">
                <el-icon><RefreshRight /></el-icon> Xóa bộ lọc
              </button>
@@ -92,7 +100,15 @@
                   {{ getInitials(row.full_name) }}
                 </div>
                 <div class="user-details">
-                  <span class="fw-bold text-dark">{{ row.full_name }}</span>
+                  <div class="flex-align-center">
+                    <span class="fw-bold text-dark">{{ row.full_name }}</span>
+                    <span 
+                      v-if="row.role_id === 4" 
+                      class="status-dot ml-8" 
+                      :class="row.is_online ? 'online' : 'offline'"
+                      :title="row.is_online ? 'Bưu tá đang Hoạt động' : 'Bưu tá đang Ngoại tuyến'"
+                    ></span>
+                  </div>
                   <span class="text-xs text-muted">
                     <el-icon class="mr-1"><Message /></el-icon>{{ row.email || 'Chưa cập nhật email' }}
                   </span>
@@ -191,7 +207,15 @@
               {{ getInitials(user.full_name) }}
             </div>
             <div class="muc-identity">
-              <span class="fw-bold text-dark muc-name">{{ user.full_name }}</span>
+              <div class="flex-align-center">
+                <span class="fw-bold text-dark muc-name">{{ user.full_name }}</span>
+                <span 
+                  v-if="user.role_id === 4" 
+                  class="status-dot ml-8" 
+                  :class="user.is_online ? 'online' : 'offline'"
+                  :title="user.is_online ? 'Bưu tá đang Hoạt động' : 'Bưu tá đang Ngoại tuyến'"
+                ></span>
+              </div>
               <div class="modern-tag" :class="'tag-' + getRoleType(user.role_id)" style="width:fit-content;margin-top:4px;">
                 <span class="dot"></span>
                 {{ getRoleName(user.role_id) }}
@@ -529,7 +553,8 @@ const cskhOptions = computed(() => allUsers.value.filter(user => user.role_id ==
 const filter = reactive({
   query: '',
   role_id: null,
-  hub_id: null
+  hub_id: null,
+  is_online: null
 });
 
 const currentPage = ref(1);
@@ -573,7 +598,13 @@ const filteredUsers = computed(() => {
       matchHub = userHubId === filter.hub_id || accessibleHubIds.includes(filter.hub_id);
     }
     
-    return matchQuery && matchRole && matchHub;
+    // 4. Kiểm tra Trạng thái online/offline
+    let matchOnline = true;
+    if (filter.is_online !== null) {
+      matchOnline = user.is_online === filter.is_online;
+    }
+    
+    return matchQuery && matchRole && matchHub && matchOnline;
   });
 });
 
@@ -657,6 +688,7 @@ const resetFilters = () => {
   filter.query = '';
   filter.role_id = null;
   filter.hub_id = null;
+  filter.is_online = null;
   // Bỏ fetchData() ở đây vì filteredUsers sẽ tự phản ứng tức thời
 };
 
@@ -829,6 +861,12 @@ const getRoleName = (id) => {
 
 onMounted(fetchData);
 
+watch(() => filter.role_id, (newVal) => {
+  if (newVal !== 4) {
+    filter.is_online = null;
+  }
+});
+
 watch(() => route.query.my_shippers, () => {
   fetchData();
 });
@@ -842,3 +880,27 @@ watch(() => userForm.role_id, (roleId) => {
 </script>
 
 <style scoped src="@/styles/admin/users/UserList.css"></style>
+
+<style scoped>
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-dot.online {
+  background-color: #67c23a;
+  box-shadow: 0 0 0 2px rgba(103, 194, 58, 0.2);
+}
+.status-dot.offline {
+  background-color: #909399;
+  box-shadow: 0 0 0 2px rgba(144, 147, 153, 0.2);
+}
+.ml-8 {
+  margin-left: 8px;
+}
+.flex-align-center {
+  display: inline-flex;
+  align-items: center;
+}
+</style>

@@ -3,7 +3,7 @@
     <div class="portal-container">
       <el-row :gutter="24" class="portal-content">
         <el-col :span="24">
-          <div  class="create-pickup-form-wrapper animate-fade-in-up">
+          <div class="create-pickup-form-wrapper animate-fade-in-up">
             <div class="form-header mb-4">
               <div class="flex-center gap-3">
                 <el-button circle @click="cancelCreate">
@@ -15,17 +15,26 @@
                 </div>
               </div>
               <div class="form-header-actions">
-                <el-button @click="triggerExcelImport" type="success" plain>
-                  <el-icon class="mr-1"><DocumentAdd /></el-icon>Nhập từ Excel
-                </el-button>
+                <el-dropdown trigger="click">
+                  <el-button type="success" plain>
+                    <el-icon class="mr-1"><DocumentAdd /></el-icon>Excel <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="triggerExcelImport">
+                        <el-icon><DocumentAdd /></el-icon>Nhập từ Excel
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="downloadTemplate">
+                        <el-icon><Download /></el-icon>Tải mẫu Excel
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
                 <el-button @click="saveDraft" type="info" plain>
                   <el-icon class="mr-1"><EditPen /></el-icon>Lưu nháp
                 </el-button>
                 <el-button @click="addToQueue" type="warning" plain>
                   <el-icon class="mr-1"><FolderAdd /></el-icon>Đưa vào hàng chờ
-                </el-button>
-                <el-button type="primary" @click="submitPickupRequest" :loading="submitLoading">
-                  <el-icon class="mr-1"><Upload /></el-icon>Gửi yêu cầu ngay
                 </el-button>
               </div>
             </div>
@@ -51,12 +60,12 @@
                         <el-form-item label="Số điện thoại" required>
                           <el-input v-model="form.sender.phone" placeholder="Số điện thoại liên hệ" />
                         </el-form-item>
-                        <el-form-item label="Tỉnh/Thành">
+                        <el-form-item label="Tỉnh/Thành" required>
                           <el-select v-model="form.sender.province_id" placeholder="Chọn tỉnh" @change="handleSenderProvinceChange" filterable style="width: 100%;">
                             <el-option v-for="p in provinces" :key="p.id" :label="p.name" :value="p.id" />
                           </el-select>
                         </el-form-item>
-                        <el-form-item label="Quận/Huyện">
+                        <el-form-item label="Quận/Huyện" required>
                           <el-select v-model="form.sender.district_id" placeholder="Chọn huyện" @change="handleSenderDistrictChange" :disabled="!form.sender.province_id" filterable style="width: 100%;">
                             <el-option v-for="d in senderDistricts" :key="d.id" :label="d.name" :value="d.id" />
                           </el-select>
@@ -81,10 +90,48 @@
                           </div>
                         </template>
                         <el-form-item label="Họ tên người nhận" required>
-                          <el-input v-model="form.receiver.name" placeholder="Tên người nhận hàng" />
+                          <el-autocomplete
+                            ref="nameAutocomplete"
+                            v-model="form.receiver.name"
+                            :fetch-suggestions="queryReceiverByName"
+                            clearable
+                            placeholder="Tên người nhận hàng"
+                            @select="handleSelectReceiver"
+                            style="width: 100%;"
+                            trigger-on-focus
+                          >
+                            <template #suffix>
+                              <el-icon style="cursor: pointer;" @click="handleTriggerName"><ArrowDown /></el-icon>
+                            </template>
+                            <template #default="{ item }">
+                              <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="fw-bold">{{ item.name }}</span>
+                                <span style="font-size: 12px; color: var(--sp-text-muted);">{{ item.phone }}</span>
+                              </div>
+                            </template>
+                          </el-autocomplete>
                         </el-form-item>
                         <el-form-item label="Số điện thoại" required>
-                          <el-input v-model="form.receiver.phone" placeholder="Số điện thoại liên hệ" />
+                          <el-autocomplete
+                            ref="phoneAutocomplete"
+                            v-model="form.receiver.phone"
+                            :fetch-suggestions="queryReceiverByPhone"
+                            clearable
+                            placeholder="Số điện thoại liên hệ"
+                            @select="handleSelectReceiver"
+                            style="width: 100%;"
+                            trigger-on-focus
+                          >
+                            <template #suffix>
+                              <el-icon style="cursor: pointer;" @click="handleTriggerPhone"><ArrowDown /></el-icon>
+                            </template>
+                            <template #default="{ item }">
+                              <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="fw-bold text-success">{{ item.phone }}</span>
+                                <span style="font-size: 12px; color: var(--sp-text-muted);">{{ item.name }}</span>
+                              </div>
+                            </template>
+                          </el-autocomplete>
                         </el-form-item>
                         <el-form-item label="Tỉnh/Thành" required>
                           <el-select v-model="form.receiver.province_id" placeholder="Chọn tỉnh" @change="handleReceiverProvinceChange" filterable style="width: 100%;">
@@ -117,19 +164,31 @@
                     </template>
                     <div v-for="(item, index) in form.items" :key="index" class="item-input-row">
                       <el-row :gutter="16">
-                        <el-col :xs="24" :sm="10">
+                        <el-col :xs="24" :sm="8">
                           <el-form-item label="Tên sản phẩm" required>
                             <el-input v-model="item.product_name" placeholder="Ví dụ: Quần áo, mỹ phẩm..." @input="debouncedSimulate" />
                           </el-form-item>
                         </el-col>
-                        <el-col :xs="12" :sm="7">
+                        <el-col :xs="24" :sm="6">
+                          <el-form-item label="Loại hàng" required>
+                            <el-select v-model="item.product_group" placeholder="Chọn loại hàng" class="w-full" @change="debouncedSimulate">
+                              <el-option
+                                v-for="pt in productTypes"
+                                :key="pt.code"
+                                :label="pt.label"
+                                :value="pt.code"
+                              />
+                            </el-select>
+                          </el-form-item>
+                        </el-col>
+                        <el-col :xs="12" :sm="5">
                           <el-form-item label="Khối lượng (kg)">
                             <el-input v-model.number="item.weight" type="number" step="0.01" min="0.01" placeholder="0.05" class="w-full" @input="debouncedSimulate">
                               <template #append>kg</template>
                             </el-input>
                           </el-form-item>
                         </el-col>
-                        <el-col :xs="12" :sm="7">
+                        <el-col :xs="12" :sm="5">
                           <el-form-item label="Số lượng">
                             <el-input v-model.number="item.quantity" type="number" min="1" placeholder="1" class="w-full" @input="debouncedSimulate">
                               <template #append>cái</template>
@@ -157,13 +216,24 @@
                           </el-form-item>
                         </el-col>
                         <el-col :xs="24" :sm="10">
-                          <el-form-item label="Khai giá (đ)">
+                          <el-form-item :label="item.product_group === 'HIGH_VALUE' ? 'Khai giá (đ) *' : 'Khai giá (đ)'" :required="item.product_group === 'HIGH_VALUE'">
                             <el-input v-model.number="item.declared_value" type="number" min="0" placeholder="0" class="w-full" @input="debouncedSimulate">
                               <template #append>đ</template>
                             </el-input>
                           </el-form-item>
                         </el-col>
                       </el-row>
+
+                      <!-- Warning & Special handling info -->
+                      <div v-if="getProductTypeInfo(item.product_group)?.special_handling" class="special-handling-note mt-2 text-warning" style="font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 8px 12px; background-color: #fdf6ec; border-radius: 6px; border-left: 4px solid #e6a23c; margin-bottom: 12px; line-height: 1.4;">
+                        <el-icon><Warning /></el-icon>
+                        <div>
+                          <strong>{{ getProductTypeInfo(item.product_group)?.label }}:</strong> {{ getProductTypeInfo(item.product_group)?.handling_note }}
+                          <span v-if="getProductTypeInfo(item.product_group)?.packing_recommended" style="color: #409eff; font-weight: bold; margin-left: 8px;">
+                            (Khuyến nghị: Quý khách nên chọn dịch vụ Đóng kiện để đảm bảo an toàn.)
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </el-card>
 
@@ -254,6 +324,13 @@
                         <span class="fw-bold">{{ srv.service_name }}</span>
                         <span class="text-xs text-muted block">
                           Phí: {{ srv.fee_type === 'FIXED' ? srv.fee_value.toLocaleString() + 'đ' : srv.fee_value + '%' }}
+                          ({{ 
+                            srv.calculation_base === 'DECLARED_VALUE' ? 'Theo giá trị đơn hàng' :
+                            srv.calculation_base === 'MAIN_FEE' ? 'Theo cước chính' :
+                            srv.calculation_base === 'COD_AMOUNT' ? 'Theo tiền thu hộ COD' :
+                            srv.calculation_base === 'QUANTITY' ? 'Theo số lượng sản phẩm' :
+                            'Theo bill'
+                          }})
                         </span>
                       </el-checkbox>
                     </el-checkbox-group>
@@ -275,25 +352,10 @@
                       <span>Cước chính:</span>
                       <span class="price-val">{{ (simulateResult.main_fee || 0).toLocaleString() }} đ</span>
                     </div>
-<<<<<<< Updated upstream
                     <div class="billing-line" v-if="simulateResult.fuel_surcharge > 0">
                       <span>Phụ phí xăng dầu:</span>
                       <span class="price-val">{{ (simulateResult.fuel_surcharge || 0).toLocaleString() }} đ</span>
                     </div>
-=======
-                    <div class="billing-line" v-if="simulateResult.fuel_surcharge">
-                      <span>Phụ phí xăng dầu:</span>
-                      <span class="price-val">{{ (simulateResult.fuel_surcharge || 0).toLocaleString() }} đ</span>
-                    </div>
-                    <div class="billing-line" v-if="simulateResult.packing_fee">
-                      <span>Phí đóng gói:</span>
-                      <span class="price-val">{{ (simulateResult.packing_fee || 0).toLocaleString() }} đ</span>
-                    </div>
-                    <div class="billing-line" v-if="simulateResult.remote_fee">
-                      <span>Phụ phí vùng xa:</span>
-                      <span class="price-val">{{ (simulateResult.remote_fee || 0).toLocaleString() }} đ</span>
-                    </div>
->>>>>>> Stashed changes
                     <div class="billing-line">
                       <span>Phí dịch vụ gia tăng:</span>
                       <span class="price-val">{{ (simulateResult.extra_fee || 0).toLocaleString() }} đ</span>
@@ -332,30 +394,53 @@
               </el-col>
             </el-row>
           </div>
-
         </el-col>
       </el-row>
       <input type="file" ref="excelInput" style="display: none;" accept=".xlsx, .xls" @change="handleExcelUpload" />
     </div>
   </div>
 </template>
+
 <script setup>
-import { computed, ref, reactive, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
-import moment from 'moment';
-import * as XLSX from 'xlsx';
 import { 
-  User, Service, Phone, Message, Close, 
-  Search, DocumentAdd, Location, List, Edit, Lock,
-  Box, Setting, CircleCheck, InfoFilled, FolderOpened, Upload, ArrowLeft, Refresh, Warning
+  User, DocumentAdd, Box, Setting, CircleCheck, InfoFilled, 
+  ArrowLeft, Warning, Download, EditPen, FolderAdd, ArrowDown
 } from '@element-plus/icons-vue';
+import { parseExcelFile, processExcelRows } from '@/utils/excelParser';
 
 // ---- Dynamic Address API (provinces.open-api.vn) ----
 const ADDR_API = 'https://provinces.open-api.vn/api';
 const provinces = ref([]);
+const productTypes = ref([
+  { code: 'DOCUMENT', label: 'Thư từ/Tài liệu', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Dùng cho thư từ, hồ sơ và tài liệu giấy.' },
+  { code: 'PARCEL', label: 'Bưu phẩm, bưu kiện', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Dùng cho bưu phẩm và bưu kiện thông thường.' },
+  { code: 'GENERAL', label: 'Hàng hóa thông thường', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Hàng hóa không thuộc nhóm cần xử lý đặc biệt.' },
+  { code: 'LIQUID', label: 'Chất lỏng', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần bao gói chống rò rỉ và kiểm tra điều kiện vận chuyển.' },
+  { code: 'ELECTRONIC', label: 'Điện tử', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần chống va đập; khai báo pin hoặc linh kiện hạn chế nếu có.' },
+  { code: 'FOOD', label: 'Thực phẩm', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần khai báo điều kiện bảo quản và hạn sử dụng phù hợp.' },
+  { code: 'HIGH_VALUE', label: 'Giá trị cao', special_handling: true, requires_declared_value: true, packing_recommended: true, handling_note: 'Bắt buộc khai giá lớn hơn 0 để kiểm soát và bảo hiểm hàng hóa.' }
+]);
+
+const fetchProductTypes = async () => {
+  try {
+    const res = await api.get('/api/waybills/product-types');
+    if (res.data && res.data.items) {
+      productTypes.value = res.data.items;
+    }
+  } catch (err) {
+    console.error('Không thể tải danh sách loại hàng', err);
+  }
+};
+
+const getProductTypeInfo = (code) => {
+  return productTypes.value.find(pt => pt.code === code) || null;
+};
+
 const excelInput = ref(null);
 const districtsCache = {};
 const wardsCache = {};
@@ -364,11 +449,6 @@ const senderDistricts = ref([]);
 const senderWards = ref([]);
 const receiverDistricts = ref([]);
 const receiverWards = ref([]);
-const editDistricts = ref([]);
-const editWards = ref([]);
-
-const availableDistricts = computed(() => editDistricts.value);
-const availableWards = computed(() => editWards.value);
 
 const fetchProvinces = async () => {
   if (provinces.value.length) return;
@@ -417,8 +497,6 @@ const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
-const activeTab = computed(() => route.query.tab || 'dashboard');
-
 const customerInfo = ref({
   customer_code: '',
   phone_number: '',
@@ -431,11 +509,9 @@ const customerInfo = ref({
 });
 
 // Portal View States
-const showCreateForm = ref(false);
-const listLoading = ref(false);
+const showCreateForm = ref(true);
 const submitLoading = ref(false);
 const simulateLoading = ref(false);
-const pickupsList = ref([]);
 const draftsList = ref([]);
 const savedDraftsList = ref([]);
 
@@ -462,6 +538,7 @@ const form = reactive({
   },
   items: [
     {
+      product_group: 'PARCEL',
       product_name: '',
       weight: 0.5,
       length: 0,
@@ -479,8 +556,7 @@ const form = reactive({
   delivery_note_option: 'CHO_XEM_HANG',
   note: '',
   payment_method: 'SENDER_DEBT',
-  target_hub_id: null,
-  packing_type: null
+  target_hub_id: null
 });
 
 const hubsList = ref([]);
@@ -489,58 +565,7 @@ const hubsList = ref([]);
 const simulateResult = ref(null);
 const simulateError = ref('');
 
-// Details Dialog variables
-const detailDialogVisible = ref(false);
-const selectedPickup = ref(null);
-const activeDetailTab = ref('general');
-const pickupTimeline = ref([]);
-const timelineLoading = ref(false);
-
-const editDialogVisible = ref(false);
-const changePasswordVisible = ref(false);
-const changePasswordLoading = ref(false);
-const editForm = reactive({
-  full_name: '',
-  phone_number: '',
-  province_id: null,
-  district_id: null,
-  ward_id: null,
-  address_detail: ''
-});
-
-const changePasswordForm = reactive({
-  current_password: '',
-  new_password: '',
-  confirm_password: ''
-});
-
 const getProvinceName = (id) => provinces.value.find(p => Number(p.id) === Number(id))?.name || '';
-const getDistrictName = (provId, distId) => {
-  if (!provId || !distId) return '';
-  const cached = districtsCache[Number(provId)];
-  if (cached) {
-    return cached.find(d => Number(d.id) === Number(distId))?.name || '';
-  }
-  const activeLists = [senderDistricts.value, receiverDistricts.value, editDistricts.value];
-  for (const list of activeLists) {
-    const found = list.find(d => Number(d.id) === Number(distId));
-    if (found) return found.name;
-  }
-  return '';
-};
-const getWardName = (distId, wardId) => {
-  if (!distId || !wardId) return '';
-  const cached = wardsCache[Number(distId)];
-  if (cached) {
-    return cached.find(w => Number(w.id) === Number(wardId))?.name || '';
-  }
-  const activeLists = [senderWards.value, receiverWards.value, editWards.value];
-  for (const list of activeLists) {
-    const found = list.find(w => Number(w.id) === Number(wardId));
-    if (found) return found.name;
-  }
-  return '';
-};
 
 const normalizeAddressText = (value = '') => value
   .toString()
@@ -577,39 +602,6 @@ const syncAutoProcessingHub = () => {
 };
 
 watch(autoProcessingHub, syncAutoProcessingHub);
-
-const formattedAddress = computed(() => {
-  const c = customerInfo.value;
-  if (!c) return 'Chưa cập nhật';
-  if (c.address_detail_custom) return c.address_detail_custom;
-  
-  const pName = getProvinceName(c.province_id);
-  const dName = getDistrictName(c.province_id, c.district_id);
-  const wName = getWardName(c.district_id, c.ward_id);
-  
-  const parts = [c.address_detail, wName, dName, pName].filter(Boolean);
-  return parts.length > 0 ? parts.join(', ') : 'Chưa cập nhật';
-});
-
-const handleProvinceChange = async () => {
-  editForm.district_id = null;
-  editForm.ward_id = null;
-  editWards.value = [];
-  if (editForm.province_id) {
-    editDistricts.value = await fetchDistrictsForProvince(editForm.province_id);
-  } else {
-    editDistricts.value = [];
-  }
-};
-
-const handleDistrictChange = async () => {
-  editForm.ward_id = null;
-  if (editForm.district_id) {
-    editWards.value = await fetchWardsForDistrict(editForm.district_id);
-  } else {
-    editWards.value = [];
-  }
-};
 
 const handleSenderProvinceChange = async () => {
   form.sender.district_id = null;
@@ -749,99 +741,14 @@ const fetchHubs = async () => {
   }
 };
 
-// START CREATE REQUEST & CHECK DRAFT
-const startCreatePickup = async () => {
-  // Pre-fill sender information from user profile
-  form.sender.name = authStore.user?.full_name || '';
-  form.sender.phone = customerInfo.value.phone_number || '';
-  form.sender.province_id = customerInfo.value.province_id || null;
-  form.sender.district_id = customerInfo.value.district_id || null;
-  form.sender.ward_id = customerInfo.value.ward_id || null;
-  form.sender.address_detail = customerInfo.value.address_detail || '';
-
-  // Preload sender districts and wards
-  if (form.sender.province_id) {
-    senderDistricts.value = await fetchDistrictsForProvince(form.sender.province_id);
-  } else {
-    senderDistricts.value = [];
-  }
-  if (form.sender.district_id) {
-    senderWards.value = await fetchWardsForDistrict(form.sender.district_id);
-  } else {
-    senderWards.value = [];
-  }
-
-  // Reset receiver and items
-  form.receiver.name = '';
-  form.receiver.phone = '';
-  form.receiver.province_id = null;
-  form.receiver.district_id = null;
-  form.receiver.ward_id = null;
-  form.receiver.address_detail = '';
-  receiverDistricts.value = [];
-  receiverWards.value = [];
-
-  form.items = [{ product_name: '', weight: 0.5, length: 0, width: 0, height: 0, quantity: 1, declared_value: 0 }];
-  form.cod_amount = 0;
-  form.extra_services = [];
-  form.packing_type = null;
-  form.service_type = 'CPN';
-  form.delivery_note_option = 'CHO_XEM_HANG';
-  form.note = '';
-  form.payment_method = 'SENDER_DEBT';
-  form.target_hub_id = null;
-  simulateResult.value = null;
-
-  showCreateForm.value = true;
-  router.push({ query: { tab: 'create' } });
-};
-
-const resumeSavedDraft = async (draft) => {
-  Object.assign(form, JSON.parse(JSON.stringify(draft)));
-  
-  if (form.sender.province_id) senderDistricts.value = await fetchDistrictsForProvince(form.sender.province_id);
-  if (form.sender.district_id) senderWards.value = await fetchWardsForDistrict(form.sender.district_id);
-  if (form.receiver.province_id) receiverDistricts.value = await fetchDistrictsForProvince(form.receiver.province_id);
-  if (form.receiver.district_id) receiverWards.value = await fetchWardsForDistrict(form.receiver.district_id);
-  
-  debouncedSimulate();
-  showCreateForm.value = true;
-};
-
-const deleteSavedDraft = (draftId) => {
-  savedDraftsList.value = savedDraftsList.value.filter(d => d.draft_id !== draftId);
-  localStorage.setItem('customer_pickup_drafts', JSON.stringify(savedDraftsList.value));
-  ElMessage.success('Đã xóa bản nháp');
-};
-
-const resumeDraft = async (draft) => {
-  Object.assign(form, JSON.parse(JSON.stringify(draft)));
-  
-  // Load districts and wards
-  if (form.sender.province_id) senderDistricts.value = await fetchDistrictsForProvince(form.sender.province_id);
-  if (form.sender.district_id) senderWards.value = await fetchWardsForDistrict(form.sender.district_id);
-  if (form.receiver.province_id) receiverDistricts.value = await fetchDistrictsForProvince(form.receiver.province_id);
-  if (form.receiver.district_id) receiverWards.value = await fetchWardsForDistrict(form.receiver.district_id);
-  
-  debouncedSimulate();
-  showCreateForm.value = true;
-};
-
-const deleteDraft = (draftId) => {
-  draftsList.value = draftsList.value.filter(d => d.draft_id !== draftId);
-  localStorage.setItem('customer_pickup_queue', JSON.stringify(draftsList.value));
-  ElMessage.success('Đã xóa đơn khỏi hàng chờ');
-};
-
 const saveDraft = () => {
-  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
-    ElMessageBox.alert(
-      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng. Vui lòng cập nhật đầy đủ địa chỉ trong mục "Thông tin tài khoản" trước khi thực hiện chức năng này.',
-      'Yêu cầu cập nhật địa chỉ',
-      { confirmButtonText: 'Đồng ý', type: 'warning' }
-    );
-    return;
+  const resumeDraftId = route.query.resume_draft_id;
+  if (resumeDraftId) {
+    savedDraftsList.value = savedDraftsList.value.filter(d => d.draft_id !== resumeDraftId);
+    draftsList.value = draftsList.value.filter(d => d.draft_id !== resumeDraftId);
+    localStorage.setItem('customer_pickup_queue', JSON.stringify(draftsList.value));
   }
+
   if (savedDraftsList.value.length >= 20) {
     ElMessage.warning('Chỉ lưu tối đa 20 bản nháp! Vui lòng xóa bớt.');
     return;
@@ -857,24 +764,27 @@ const saveDraft = () => {
   savedDraftsList.value.push(newDraft);
   localStorage.setItem('customer_pickup_drafts', JSON.stringify(savedDraftsList.value));
   ElMessage.success('Đã lưu bản nháp thành công!');
+
+  if (resumeDraftId) {
+    router.replace({ query: {} });
+  }
 };
 
 const addToQueue = () => {
-  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
-    ElMessageBox.alert(
-      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng. Vui lòng cập nhật đầy đủ địa chỉ trong mục "Thông tin tài khoản" trước khi thực hiện chức năng này.',
-      'Yêu cầu cập nhật địa chỉ',
-      { confirmButtonText: 'Đồng ý', type: 'warning' }
-    );
-    return;
+  const resumeDraftId = route.query.resume_draft_id;
+  if (resumeDraftId) {
+    draftsList.value = draftsList.value.filter(d => d.draft_id !== resumeDraftId);
+    savedDraftsList.value = savedDraftsList.value.filter(d => d.draft_id !== resumeDraftId);
+    localStorage.setItem('customer_pickup_drafts', JSON.stringify(savedDraftsList.value));
   }
+
   if (draftsList.value.length >= 10) {
     ElMessage.warning('Hàng chờ chỉ lưu tối đa 10 đơn! Vui lòng xóa bớt hoặc gửi yêu cầu.');
     return;
   }
   
-  if (!form.sender.name || !form.sender.phone || !form.sender.address_detail || !form.sender.province_id || !form.sender.district_id ||
-      !form.receiver.name || !form.receiver.phone || !form.receiver.address_detail || !form.receiver.province_id || !form.receiver.district_id) {
+  if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id ||
+      !form.receiver.name || !form.receiver.phone || !form.receiver.province_id || !form.receiver.district_id) {
     ElMessage.warning('Vui lòng điền đủ thông tin người gửi và người nhận trước khi đưa vào hàng chờ.');
     return;
   }
@@ -882,6 +792,32 @@ const addToQueue = () => {
     ElMessage.warning('Vui lòng điền đủ thông tin cơ bản trước khi đưa vào hàng chờ.');
     return;
   }
+
+  // Validate items
+  for (let i = 0; i < form.items.length; i++) {
+    const item = form.items[i];
+    if (!item.product_group) {
+      ElMessage.warning(`Vui lòng chọn loại hàng cho sản phẩm thứ ${i + 1}.`);
+      return;
+    }
+    if (item.weight === undefined || item.weight === null || item.weight === '' || Number(item.weight) <= 0) {
+      ElMessage.warning(`Khối lượng sản phẩm thứ ${i + 1} phải lớn hơn 0.`);
+      return;
+    }
+    if (item.quantity === undefined || item.quantity === null || item.quantity === '' || Number(item.quantity) < 1) {
+      ElMessage.warning(`Số lượng sản phẩm thứ ${i + 1} phải lớn hơn hoặc bằng 1.`);
+      return;
+    }
+    if (item.declared_value === undefined || item.declared_value === null || item.declared_value === '' || Number(item.declared_value) < 0) {
+      ElMessage.warning(`Giá trị khai báo sản phẩm thứ ${i + 1} phải lớn hơn hoặc bằng 0.`);
+      return;
+    }
+    if (item.product_group === 'HIGH_VALUE' && (!item.declared_value || Number(item.declared_value) <= 0)) {
+      ElMessage.warning('Hàng giá trị cao bắt buộc phải có giá trị khai báo lớn hơn 0.');
+      return;
+    }
+  }
+
   syncAutoProcessingHub();
 
   const newDraft = {
@@ -892,11 +828,13 @@ const addToQueue = () => {
 
   draftsList.value.push(newDraft);
   localStorage.setItem('customer_pickup_queue', JSON.stringify(draftsList.value));
-  localStorage.removeItem('customer_pickup_draft'); // Clear single draft if any
+  localStorage.removeItem('customer_pickup_draft');
   
   ElMessage.success(`Đã đưa vào hàng chờ đơn thứ ${draftsList.value.length}. Bạn có thể tiếp tục tạo đơn mới.`);
+
+  // Auto save to recipient book
+  saveToAddressBook(form.receiver);
   
-  // Clear receiver and items to allow quick entry of next draft
   form.receiver.name = '';
   form.receiver.phone = '';
   form.receiver.province_id = null;
@@ -906,460 +844,12 @@ const addToQueue = () => {
   receiverDistricts.value = [];
   receiverWards.value = [];
 
-  form.items = [{ product_name: '', weight: 0.5, length: 0, width: 0, height: 0, quantity: 1, declared_value: 0 }];
+  form.items = [{ product_group: 'PARCEL', product_name: '', weight: 0.5, length: 0, width: 0, height: 0, quantity: 1, declared_value: 0 }];
   form.cod_amount = 0;
   form.note = '';
-};
 
-const cancelCreate = () => {
-  showCreateForm.value = false;
-  router.push({ query: { tab: 'dashboard' } });
-};
-
-// SUBMIT REQUEST TO BACKEND
-const submitPickupRequest = async () => {
-  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
-    ElMessageBox.alert(
-      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng. Vui lòng cập nhật đầy đủ địa chỉ trong mục "Thông tin tài khoản" trước khi tạo đơn.',
-      'Yêu cầu cập nhật địa chỉ',
-      { confirmButtonText: 'Đồng ý', type: 'warning' }
-    );
-    return;
-  }
-  if (!form.sender.name || !form.sender.phone || !form.sender.address_detail || !form.sender.province_id || !form.sender.district_id) {
-    ElMessage.warning('Vui lòng điền đầy đủ thông tin người gửi (bao gồm Tỉnh/Huyện và Địa chỉ chi tiết)');
-    return;
-  }
-  if (!form.receiver.name || !form.receiver.phone || !form.receiver.address_detail || !form.receiver.province_id || !form.receiver.district_id) {
-    ElMessage.warning('Vui lòng điền đầy đủ thông tin người nhận (bao gồm Tỉnh/Huyện và Địa chỉ chi tiết)');
-    return;
-  }
-  if (!form.items[0].product_name) {
-    ElMessage.warning('Vui lòng nhập tên sản phẩm');
-    return;
-  }
-
-  submitLoading.value = true;
-  try {
-    syncAutoProcessingHub();
-    const sName = getProvinceName(form.sender.province_id);
-    const sDist = getDistrictName(form.sender.province_id, form.sender.district_id);
-    const sWrd = getWardName(form.sender.district_id, form.sender.ward_id);
-
-    const rName = getProvinceName(form.receiver.province_id);
-    const rDist = getDistrictName(form.receiver.province_id, form.receiver.district_id);
-    const rWrd = getWardName(form.receiver.district_id, form.receiver.ward_id);
-
-    const mappedExtra = form.extra_services.map(code => {
-      const srv = availableServices.value.find(s => s.service_code === code);
-      return {
-        service_code: code,
-        service_name: srv ? srv.service_name : '',
-        service_fee: srv ? (srv.fee_type === 'FIXED' ? srv.fee_value : 0) : 0
-      };
-    });
-
-    const mappedSender = mapStandardProvinceToHubProvince(form.sender.province_id, form.target_hub_id);
-    const mappedReceiver = mapStandardProvinceToHubProvince(form.receiver.province_id);
-
-    const payload = {
-      order_type: 'DOMESTIC',
-      sender: {
-        name: form.sender.name,
-        phone: form.sender.phone,
-        address: [form.sender.address_detail, sWrd, sDist, sName].filter(Boolean).join(', '),
-        province_id: Number(mappedSender.province_id),
-        district_id: Number(form.sender.district_id),
-        ward_id: Number(form.sender.ward_id),
-        province_name: mappedSender.province_name,
-        district_name: sDist,
-        ward_name: sWrd
-      },
-      receiver: {
-        name: form.receiver.name,
-        phone: form.receiver.phone,
-        address: [form.receiver.address_detail, rWrd, rDist, rName].filter(Boolean).join(', '),
-        province_id: Number(mappedReceiver.province_id),
-        district_id: Number(form.receiver.district_id),
-        ward_id: Number(form.receiver.ward_id),
-        province_name: mappedReceiver.province_name,
-        district_name: rDist,
-        ward_name: rWrd
-      },
-      items: form.items.map(i => ({
-        product_group: 'PARCEL',
-        product_name: i.product_name,
-        weight: Number(i.weight),
-        length: Number(i.length || 0),
-        width: Number(i.width || 0),
-        height: Number(i.height || 0),
-        quantity: Number(i.quantity || 1),
-        declared_value: Number(i.declared_value || 0)
-      })),
-      cod_amount: Number(form.cod_amount || 0),
-      cod_receiver_pays_fee: form.cod_receiver_pays_fee,
-      service_type: form.service_type,
-      extra_services: mappedExtra,
-      packing_type: form.packing_type || null,
-      delivery_note_option: form.delivery_note_option,
-      note: form.note,
-      payment_method: form.payment_method,
-      pickup_method: 'OUR_STAFF_PICKUP',
-      delivery_method: 'OUR_STAFF_DELIVERY',
-      target_hub_id: form.target_hub_id || null,
-      save_as_draft: false
-    };
-
-    const res = await api.post('/api/waybills/customer/pickups', payload);
-    
-    ElMessage.success(`Tạo yêu cầu thành công! Mã vận đơn: ${res.data.waybill_code}`);
-    showCreateForm.value = false;
-    fetchPickupsList();
-  } catch (err) {
-    ElMessage.error(err.response?.data?.detail || 'Có lỗi xảy ra khi tạo yêu cầu lấy hàng');
-  } finally {
-    submitLoading.value = false;
-  }
-};
-
-const submitAllDrafts = async () => {
-  if (draftsList.value.length === 0) return;
-
-  submitLoading.value = true;
-  let successCount = 0;
-  const failedDrafts = [];
-
-  for (const draft of draftsList.value) {
-    try {
-      const sName = getProvinceName(draft.sender.province_id);
-      const sDist = getDistrictName(draft.sender.province_id, draft.sender.district_id);
-      const sWrd = getWardName(draft.sender.district_id, draft.sender.ward_id);
-
-      const rName = getProvinceName(draft.receiver.province_id);
-      const rDist = getDistrictName(draft.receiver.province_id, draft.receiver.district_id);
-      const rWrd = getWardName(draft.receiver.district_id, draft.receiver.ward_id);
-
-      const mappedExtra = draft.extra_services.map(code => {
-        const srv = availableServices.value.find(s => s.service_code === code);
-        return {
-          service_code: code,
-          service_name: srv ? srv.service_name : '',
-          service_fee: srv ? (srv.fee_type === 'FIXED' ? srv.fee_value : 0) : 0
-        };
-      });
-
-      const mappedSender = mapStandardProvinceToHubProvince(draft.sender.province_id, draft.target_hub_id);
-      const mappedReceiver = mapStandardProvinceToHubProvince(draft.receiver.province_id);
-
-      const payload = {
-        order_type: 'DOMESTIC',
-        sender: {
-          name: draft.sender.name,
-          phone: draft.sender.phone,
-          address: [draft.sender.address_detail, sWrd, sDist, sName].filter(Boolean).join(', '),
-          province_id: Number(mappedSender.province_id),
-          district_id: Number(draft.sender.district_id),
-          ward_id: Number(draft.sender.ward_id),
-          province_name: mappedSender.province_name,
-          district_name: sDist,
-          ward_name: sWrd
-        },
-        receiver: {
-          name: draft.receiver.name,
-          phone: draft.receiver.phone,
-          address: [draft.receiver.address_detail, rWrd, rDist, rName].filter(Boolean).join(', '),
-          province_id: Number(mappedReceiver.province_id),
-          district_id: Number(draft.receiver.district_id),
-          ward_id: Number(draft.receiver.ward_id),
-          province_name: mappedReceiver.province_name,
-          district_name: rDist,
-          ward_name: rWrd
-        },
-        items: draft.items.map(i => ({
-          product_group: 'PARCEL',
-          product_name: i.product_name,
-          weight: Number(i.weight),
-          length: Number(i.length || 0),
-          width: Number(i.width || 0),
-          height: Number(i.height || 0),
-          quantity: Number(i.quantity || 1),
-          declared_value: Number(i.declared_value || 0)
-        })),
-        cod_amount: Number(draft.cod_amount || 0),
-        cod_receiver_pays_fee: draft.cod_receiver_pays_fee,
-        service_type: draft.service_type,
-        extra_services: mappedExtra,
-        packing_type: draft.packing_type || null,
-        delivery_note_option: draft.delivery_note_option,
-        note: draft.note,
-        payment_method: draft.payment_method,
-        pickup_method: 'OUR_STAFF_PICKUP',
-        delivery_method: 'OUR_STAFF_DELIVERY',
-        target_hub_id: draft.target_hub_id || null,
-        save_as_draft: false
-      };
-
-      await api.post('/api/waybills/customer/pickups', payload);
-      successCount++;
-    } catch (err) {
-      console.error('Lỗi khi gửi đơn nháp:', err);
-      failedDrafts.push(draft);
-    }
-  }
-
-  submitLoading.value = false;
-  draftsList.value = failedDrafts;
-  localStorage.setItem('customer_pickup_queue', JSON.stringify(failedDrafts));
-
-  if (successCount > 0) {
-    if (failedDrafts.length === 0) {
-      ElMessage.success(`Tạo thành công ${successCount} đơn hàng! Vui lòng gom chung vào túi thư để bưu tá lấy.`);
-    } else {
-      ElMessage.warning(`Tạo thành công ${successCount} đơn. ${failedDrafts.length} đơn lỗi vẫn nằm trong hàng chờ.`);
-    }
-    fetchPickupsList();
-  } else {
-    ElMessage.error('Không thể tạo đơn hàng từ hàng chờ. Vui lòng kiểm tra lại thông tin.');
-  }
-};
-
-// LOAD PICKUPS LIST
-const fetchPickupsList = async () => {
-  listLoading.value = true;
-  try {
-    const res = await api.get('/api/waybills/customer/pickups');
-    pickupsList.value = res.data || [];
-  } catch (err) {
-    console.error('Error loading pickups list:', err);
-  } finally {
-    listLoading.value = false;
-  }
-};
-
-// DETAIL & TIMELINE DIALOG
-const openDetail = async (row) => {
-  activeDetailTab.value = 'general';
-  detailDialogVisible.value = true;
-  
-  if (row.waybill_code) {
-    timelineLoading.value = true;
-    pickupTimeline.value = [];
-    try {
-      const detailRes = await api.get(`/api/waybills/customer/pickups/${row.waybill_code}`);
-      selectedPickup.value = detailRes.data;
-      
-      const idx = pickupsList.value.findIndex(item => item.waybill_code === row.waybill_code);
-      if (idx !== -1) {
-        pickupsList.value[idx] = detailRes.data;
-      }
-    } catch (err) {
-      console.error('Error fetching pickup detail:', err);
-      selectedPickup.value = row;
-    }
-
-    try {
-      const res = await api.get(`/api/waybills/${row.waybill_code}/timeline`);
-      pickupTimeline.value = res.data?.timeline || [];
-    } catch (err) {
-      console.error('Error fetching timeline:', err);
-    } finally {
-      timelineLoading.value = false;
-    }
-  } else {
-    selectedPickup.value = row;
-    pickupTimeline.value = [];
-  }
-};
-
-const getDiffMessage = (row) => {
-  const diff = (row.final_total_amount || 0) - (row.estimated_total_amount || 0);
-  if (diff > 0) {
-    return `Tổng cước sau cân đo tăng thêm ${diff.toLocaleString()}đ so với tạm tính ban đầu do chênh lệch trọng lượng thực tế.`;
-  } else if (diff < 0) {
-    return `Tổng cước sau cân đo giảm đi ${Math.abs(diff).toLocaleString()}đ so với tạm tính ban đầu do chênh lệch trọng lượng thực tế.`;
-  }
-  return 'Tổng cước sau cân đo không đổi.';
-};
-
-const getDiffAlertType = (row) => {
-  const diff = (row.final_total_amount || 0) - (row.estimated_total_amount || 0);
-  return diff > 0 ? 'warning' : 'success';
-};
-
-const formatDate = (val) => {
-  return val ? moment(val).format('HH:mm DD/MM/YYYY') : '---';
-};
-
-const getPickupStatusLabel = (status) => {
-  switch (status) {
-    case 'PENDING_CONFIRMATION': return 'Chờ điều phối';
-    case 'HUB_REJECTED': return 'Chờ điều phối (Bị từ chối)';
-    case 'DISPATCHED_TO_HUB': return 'Chưa xác nhận văn phòng';
-    case 'RECEIVED': return 'Văn phòng đã tiếp nhận';
-    case 'ASSIGNED_PICKUP': return 'Đã gán bưu tá';
-    case 'PICKED': return 'Bưu tá đã lấy hàng';
-    default: return status || 'Chờ xử lý';
-  }
-};
-
-const getPickupStatusType = (status) => {
-  switch (status) {
-    case 'PENDING_CONFIRMATION': return 'warning';
-    case 'HUB_REJECTED': return 'danger';
-    case 'DISPATCHED_TO_HUB': return 'info';
-    case 'RECEIVED': return 'primary';
-    case 'ASSIGNED_PICKUP': return 'warning';
-    case 'PICKED': return 'success';
-    default: return 'info';
-  }
-};
-
-const getWaybillStatusLabel = (status) => {
-  switch (status) {
-    case 'CREATED': return 'Vừa tạo';
-    case 'PICKED_PENDING_VERIFY': return 'Chờ nhập kho';
-    case 'IN_HUB': return 'Đã nhập kho';
-    case 'PENDING_CONFIRMATION': return 'Chờ duyệt';
-    case 'PENDING_PICKUP': return 'Chờ lấy hàng';
-    case 'IN_TRANSIT': return 'Đang luân chuyển';
-    case 'DELIVERING': return 'Đang giao hàng';
-    case 'DELIVERED': return 'Giao thành công';
-    case 'RETURNED': return 'Đã chuyển hoàn';
-    default: return status || 'Chờ xử lý';
-  }
-};
-
-const getWaybillStatusType = (status) => {
-  switch (status) {
-    case 'CREATED': return 'info';
-    case 'PICKED_PENDING_VERIFY': return 'warning';
-    case 'IN_HUB': return 'success';
-    case 'PENDING_CONFIRMATION': return 'warning';
-    case 'PENDING_PICKUP': return 'info';
-    case 'DELIVERING': return 'primary';
-    case 'DELIVERED': return 'success';
-    case 'RETURNED': return 'danger';
-    default: return 'info';
-  }
-};
-
-const openChangePasswordDialog = () => {
-  changePasswordForm.current_password = '';
-  changePasswordForm.new_password = '';
-  changePasswordForm.confirm_password = '';
-  changePasswordVisible.value = true;
-};
-
-const changePassword = async () => {
-  if (!changePasswordForm.current_password) {
-    ElMessage.warning('Vui lòng nhập mật khẩu hiện tại');
-    return;
-  }
-  if (!changePasswordForm.new_password || changePasswordForm.new_password.length < 6) {
-    ElMessage.warning('Mật khẩu mới phải có ít nhất 6 ký tự');
-    return;
-  }
-  if (changePasswordForm.new_password !== changePasswordForm.confirm_password) {
-    ElMessage.warning('Mật khẩu nhập lại không khớp');
-    return;
-  }
-
-  changePasswordLoading.value = true;
-  try {
-    const res = await api.post('/api/auth/change-password', {
-      current_password: changePasswordForm.current_password,
-      new_password: changePasswordForm.new_password
-    });
-    ElMessage.success(res.data?.message || 'Đổi mật khẩu thành công');
-    changePasswordVisible.value = false;
-  } catch (err) {
-    ElMessage.error(err.response?.data?.detail || 'Không thể đổi mật khẩu');
-  } finally {
-    changePasswordLoading.value = false;
-  }
-};
-
-const handleLogout = () => {
-  authStore.logout();
-  ElMessage.success('Đã đăng xuất tài khoản!');
-  router.push('/login');
-};
-
-const goToTracking = () => {
-  router.push('/tracking');
-};
-
-const openEditDialog = async () => {
-  editForm.full_name = authStore.user?.full_name || customerInfo.value.transaction_name || '';
-  editForm.phone_number = customerInfo.value.phone_number || '';
-  editForm.province_id = customerInfo.value.province_id || null;
-  editForm.district_id = customerInfo.value.district_id || null;
-  editForm.ward_id = customerInfo.value.ward_id || null;
-  editForm.address_detail = customerInfo.value.address_detail || '';
-
-  // Preload editDistricts and editWards
-  if (editForm.province_id) {
-    editDistricts.value = await fetchDistrictsForProvince(editForm.province_id);
-  } else {
-    editDistricts.value = [];
-  }
-  if (editForm.district_id) {
-    editWards.value = await fetchWardsForDistrict(editForm.district_id);
-  } else {
-    editWards.value = [];
-  }
-
-  editDialogVisible.value = true;
-};
-
-const handleSaveProfile = async () => {
-  if (!editForm.full_name.trim()) {
-    ElMessage.warning('Vui lòng điền tên đại diện Shop');
-    return;
-  }
-  if (!editForm.phone_number.trim()) {
-    ElMessage.warning('Vui lòng điền số điện thoại liên hệ');
-    return;
-  }
-
-  const pName = getProvinceName(editForm.province_id);
-  const dName = getDistrictName(editForm.province_id, editForm.district_id);
-  const wName = getWardName(editForm.district_id, editForm.ward_id);
-
-  try {
-    const res = await api.patch('/api/customers/me', {
-      full_name: editForm.full_name,
-      phone_number: editForm.phone_number,
-      province_id: editForm.province_id,
-      district_id: editForm.district_id,
-      ward_id: editForm.ward_id,
-      province: pName,
-      ward: wName,
-      address_detail: editForm.address_detail
-    });
-
-    const updated = res.data?.customer || {};
-    customerInfo.value = {
-      ...customerInfo.value,
-      ...updated,
-      phone_number: updated.phone_number || updated.phone || editForm.phone_number,
-      province_id: updated.province_id || editForm.province_id,
-      district_id: updated.district_id || editForm.district_id,
-      ward_id: updated.ward_id || editForm.ward_id,
-      address_detail: updated.address_detail || editForm.address_detail,
-      address_detail_custom: [editForm.address_detail, wName, dName, pName].filter(Boolean).join(', ')
-    };
-
-    if (authStore.user) {
-      authStore.user.full_name = editForm.full_name;
-      authStore.user.phone_number = editForm.phone_number;
-      localStorage.setItem('user', JSON.stringify(authStore.user));
-    }
-
-    ElMessage.success(res.data?.message || 'Cập nhật thông tin cá nhân thành công!');
-    editDialogVisible.value = false;
-  } catch (err) {
-    ElMessage.error(err.response?.data?.detail || 'Không thể cập nhật hồ sơ khách hàng');
+  if (resumeDraftId) {
+    router.replace({ query: {} });
   }
 };
 
@@ -1383,317 +873,284 @@ const loadDrafts = () => {
   }
 };
 
-const COLUMN_MAPPING = {
-  shop_order_code: ['ma don hang shop', 'mã đơn hàng shop', 'ma don hang', 'mã đơn hàng'],
-  sender_name: ['ten nguoi gui', 'tên người gửi', 'nguoi gui', 'người gửi'],
-  sender_phone: ['so dien thoai nguoi gui', 'số điện thoại người gửi', 'sdt nguoi gui', 'sđt người gửi'],
-  sender_address: ['dia chi nguoi gui', 'địa chỉ người gửi'],
-  sender_province: ['tinh gui', 'tỉnh gửi'],
-  service_type: ['dich vu', 'dịch vụ'],
-  extra_services: ['dich vu cong them', 'dịch vụ cộng thêm', 'dvct'],
-  receiver_name: ['ho ten nguoi nhan', 'họ tên người nhận', 'ten nguoi nhan', 'tên người nhận', 'nguoi nhan', 'người nhận'],
-  receiver_phone: ['so dien thoai nguoi nhan', 'số điện thoại người nhận', 'sdt nguoi nhan', 'sđt người nhận'],
-  receiver_address: ['dia chi giao hang', 'địa chỉ giao hàng', 'dia chi nguoi nhan', 'địa chỉ người nhận'],
-  receiver_province: ['tinh den', 'tỉnh đến', 'tinh nhan', 'tỉnh nhận'],
-  product_group: ['nhom hang hoa', 'nhóm hàng hóa'],
-  product_name: ['ten hang hoa', 'tên hàng hóa', 'ten san pham', 'tên sản phẩm'],
-  declared_value: ['gia tri hang hoa', 'giá trị hàng hóa', 'gía trị hàng hóa', 'khai gia', 'khai giá'],
-  weight: ['khoi luong [kg]', 'khối lượng [kg]', 'khoi luong', 'khối lượng'],
-  length: ['dai [cm]', 'dài [cm]', 'dai', 'dài'],
-  width: ['rong [cm]', 'rộng [cm]', 'rong', 'rộng'],
-  height: ['cao [cm]', 'cao [cm]', 'cao', 'cao'],
-  quantity: ['so luong', 'số lượng'],
-  payment_method: ['hinh thuc thanh toan', 'hình thức thanh toán'],
-  cod_amount: ['tien thu ho cod', 'tiền thu hộ cod', 'thu ho cod', 'thu hộ cod', 'cod']
-};
-
 const triggerExcelImport = () => {
   excelInput.value.click();
-};
-
-const parseVietnameseAddress = (addressStr, fallbackProvinceName) => {
-  let provinceName = '';
-  let districtName = '';
-  let wardName = '';
-  let addressDetail = addressStr || '';
-
-  if (addressStr) {
-    const parts = addressStr.split(',').map(p => p.trim());
-    if (parts.length >= 4) {
-      provinceName = parts[parts.length - 1];
-      districtName = parts[parts.length - 2];
-      wardName = parts[parts.length - 3];
-      addressDetail = parts.slice(0, parts.length - 3).join(', ');
-    } else if (parts.length === 3) {
-      provinceName = parts[parts.length - 1];
-      districtName = parts[parts.length - 2];
-      addressDetail = parts.slice(0, parts.length - 2).join(', ');
-    } else if (parts.length === 2) {
-      provinceName = parts[parts.length - 1];
-      addressDetail = parts[0];
-    }
-  }
-
-  if (!provinceName && fallbackProvinceName) {
-    provinceName = fallbackProvinceName;
-  }
-
-  return {
-    province_name: provinceName,
-    district_name: districtName,
-    ward_name: wardName,
-    address_detail: addressDetail
-  };
 };
 
 const handleExcelUpload = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const rawRows = XLSX.utils.sheet_to_json(worksheet);
-
-      if (rawRows.length === 0) {
-        ElMessage.warning('File Excel không có dữ liệu.');
-        return;
-      }
-
-      ElMessage.info(`Đang phân tích ${rawRows.length} dòng dữ liệu...`);
-
-      // Ensure provinces are loaded
-      if (provinces.value.length === 0) {
-        await fetchProvinces();
-      }
-
-      const getValueByMapping = (rowObj, fieldKey) => {
-        const possibleHeaders = COLUMN_MAPPING[fieldKey] || [];
-        const rowKeys = Object.keys(rowObj);
-        for (const key of rowKeys) {
-          const normalizedKey = key.trim().toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            .replace(/\s+/g, ' ');
-          for (const header of possibleHeaders) {
-            const normalizedHeader = header.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-              .replace(/\s+/g, ' ');
-            if (normalizedKey === normalizedHeader) {
-              return rowObj[key];
-            }
-          }
-        }
-        return null;
-      };
-
-      const norm = (str) => {
-        if (!str) return '';
-        return str.toString()
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/^(tinh|thanh pho|tp\.|tp|huyen|quan|phuong|xa)\s+/i, '')
-          .replace(/\s+/g, ' ')
-          .trim();
-      };
-
-      const findProvinceId = (name) => {
-        if (!name) return null;
-        const nName = norm(name);
-        const found = provinces.value.find(p => norm(p.name) === nName);
-        return found ? found.id : null;
-      };
-
-      const mapServiceType = (val) => {
-        if (!val) return 'CPN';
-        const s = val.toString().trim().toLowerCase();
-        if (s.includes('tiet kiem') || s.includes('tiết kiệm') || s.includes('standard') || s.includes('economy') || s.includes('tk')) return 'TK';
-        if (s.includes('hoa toc') || s.includes('hỏa tốc') || s.includes('express') || s.includes('ht')) return 'HT';
-        if (s.includes('nhanh') || s.includes('fast') || s.includes('cpn')) return 'CPN';
-        return 'CPN';
-      };
-
-      const parseExtraServices = (val) => {
-        if (!val) return [];
-        return val.toString().split(',').map(s => s.trim()).filter(Boolean);
-      };
-
-      const mapPaymentMethod = (val) => {
-        if (!val) return 'SENDER_DEBT';
-        const s = val.toString().trim().toLowerCase();
-        if (s.includes('gui') || s.includes('người gửi') || s.includes('pay')) return 'SENDER_PAY';
-        if (s.includes('nhan') || s.includes('người nhận') || s.includes('thu')) return 'RECEIVER_PAY';
-        return 'SENDER_DEBT';
-      };
-
-      const parsedRows = [];
-      for (const row of rawRows) {
-        const senderAddrRaw = getValueByMapping(row, 'sender_address');
-        const senderProvRaw = getValueByMapping(row, 'sender_province');
-        const parsedSender = parseVietnameseAddress(senderAddrRaw, senderProvRaw);
-
-        const receiverAddrRaw = getValueByMapping(row, 'receiver_address');
-        const receiverProvRaw = getValueByMapping(row, 'receiver_province');
-        const parsedReceiver = parseVietnameseAddress(receiverAddrRaw, receiverProvRaw);
-
-        parsedRows.push({
-          shop_order_code: getValueByMapping(row, 'shop_order_code') || '',
-          sender_name: getValueByMapping(row, 'sender_name') || '',
-          sender_phone: getValueByMapping(row, 'sender_phone') || '',
-          sender_address_detail: parsedSender.address_detail,
-          sender_province_name: parsedSender.province_name,
-          sender_district_name: parsedSender.district_name,
-          sender_ward_name: parsedSender.ward_name,
-          senderProvinceId: findProvinceId(parsedSender.province_name),
-          senderDistrictId: null,
-          senderWardId: null,
-
-          receiver_name: getValueByMapping(row, 'receiver_name') || '',
-          receiver_phone: getValueByMapping(row, 'receiver_phone') || '',
-          receiver_address_detail: parsedReceiver.address_detail,
-          receiver_province_name: parsedReceiver.province_name,
-          receiver_district_name: parsedReceiver.district_name,
-          receiver_ward_name: parsedReceiver.ward_name,
-          receiverProvinceId: findProvinceId(parsedReceiver.province_name),
-          receiverDistrictId: null,
-          receiverWardId: null,
-
-          product_group: getValueByMapping(row, 'product_group') || 'PARCEL',
-          product_name: getValueByMapping(row, 'product_name') || 'Hàng hóa',
-          declared_value: Number(getValueByMapping(row, 'declared_value') || 0),
-          weight: Number(getValueByMapping(row, 'weight') || 0.5),
-          length: Number(getValueByMapping(row, 'length') || 0),
-          width: Number(getValueByMapping(row, 'width') || 0),
-          height: Number(getValueByMapping(row, 'height') || 0),
-          quantity: Number(getValueByMapping(row, 'quantity') || 1),
-          payment_method: getValueByMapping(row, 'payment_method') || '',
-          cod_amount: Number(getValueByMapping(row, 'cod_amount') || 0),
-          service_type: getValueByMapping(row, 'service_type') || '',
-          extra_services: getValueByMapping(row, 'extra_services') || ''
-        });
-      }
-
-      // Preload districts and wards in batch
-      const uniqueProvinceIds = [
-        ...new Set([
-          ...parsedRows.map(r => r.senderProvinceId),
-          ...parsedRows.map(r => r.receiverProvinceId)
-        ].filter(Boolean))
-      ];
-
-      for (const pId of uniqueProvinceIds) {
-        districtsCache[pId] = await fetchDistrictsForProvince(pId);
-      }
-
-      for (const row of parsedRows) {
-        if (row.senderProvinceId && row.sender_district_name) {
-          const dists = districtsCache[row.senderProvinceId] || [];
-          const match = dists.find(d => norm(d.name) === norm(row.sender_district_name));
-          if (match) row.senderDistrictId = match.id;
-        }
-        if (row.receiverProvinceId && row.receiver_district_name) {
-          const dists = districtsCache[row.receiverProvinceId] || [];
-          const match = dists.find(d => norm(d.name) === norm(row.receiver_district_name));
-          if (match) row.receiverDistrictId = match.id;
-        }
-      }
-
-      const uniqueDistrictIds = [
-        ...new Set([
-          ...parsedRows.map(r => r.senderDistrictId),
-          ...parsedRows.map(r => r.receiverDistrictId)
-        ].filter(Boolean))
-      ];
-
-      for (const dId of uniqueDistrictIds) {
-        wardsCache[dId] = await fetchWardsForDistrict(dId);
-      }
-
-      for (const row of parsedRows) {
-        if (row.senderDistrictId && row.sender_ward_name) {
-          const wrds = wardsCache[row.senderDistrictId] || [];
-          const match = wrds.find(w => norm(w.name) === norm(row.sender_ward_name));
-          if (match) row.senderWardId = match.id;
-        }
-        if (row.receiverDistrictId && row.receiver_ward_name) {
-          const wrds = wardsCache[row.receiverDistrictId] || [];
-          const match = wrds.find(w => norm(w.name) === norm(row.receiver_ward_name));
-          if (match) row.receiverWardId = match.id;
-        }
-      }
-
-      // Build drafts
-      const importedDrafts = parsedRows.map((row, index) => {
-        return {
-          sender: {
-            name: row.sender_name || form.sender?.name || authStore.user?.full_name || customerInfo.value?.transaction_name || '',
-            phone: row.sender_phone || form.sender?.phone || customerInfo.value?.phone_number || '',
-            province_id: row.senderProvinceId || form.sender?.province_id || customerInfo.value?.province_id || null,
-            district_id: row.senderDistrictId || form.sender?.district_id || customerInfo.value?.district_id || null,
-            ward_id: row.senderWardId || form.sender?.ward_id || customerInfo.value?.ward_id || null,
-            address_detail: row.sender_address_detail || form.sender?.address_detail || customerInfo.value?.address_detail || ''
-          },
-          receiver: {
-            name: row.receiver_name || '',
-            phone: row.receiver_phone || '',
-            province_id: row.receiverProvinceId || null,
-            district_id: row.receiverDistrictId || null,
-            ward_id: row.receiverWardId || null,
-            address_detail: row.receiver_address_detail || ''
-          },
-          items: [
-            {
-              product_group: row.product_group || 'PARCEL',
-              product_name: row.product_name || 'Hàng hóa',
-              weight: Number(row.weight || 0.5),
-              length: Number(row.length || 0),
-              width: Number(row.width || 0),
-              height: Number(row.height || 0),
-              quantity: Number(row.quantity || 1),
-              declared_value: Number(row.declared_value || 0)
-            }
-          ],
-          cod_amount: Number(row.cod_amount || 0),
-          cod_receiver_pays_fee: false,
-          service_type: mapServiceType(row.service_type),
-          extra_services: parseExtraServices(row.extra_services),
-          delivery_note_option: 'CHO_XEM_HANG',
-          note: '',
-          payment_method: mapPaymentMethod(row.payment_method),
-          target_hub_id: form.target_hub_id || null,
-          draft_id: (Date.now() + index).toString(),
-          created_at: new Date().toISOString()
-        };
-      });
-
-      draftsList.value.push(...importedDrafts);
-      localStorage.setItem('customer_pickup_queue', JSON.stringify(draftsList.value));
-
-      ElMessage.success(`Nhập thành công ${importedDrafts.length} đơn vào hàng chờ.`);
-      event.target.value = '';
-
-      // Redirect to drafts page to view imports
-      router.push('/customer/drafts');
-    } catch (err) {
-      console.error(err);
-      ElMessage.error('Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại cấu trúc file.');
+  try {
+    if (provinces.value.length === 0) {
+      await fetchProvinces();
     }
-  };
-  reader.readAsArrayBuffer(file);
+
+    ElMessage.info('Đang đọc file Excel...');
+    const rawRows = await parseExcelFile(file);
+
+    if (rawRows.length === 0) {
+      ElMessage.warning('File Excel không có dữ liệu.');
+      return;
+    }
+
+    ElMessage.info(`Đang phân tích ${rawRows.length} dòng dữ liệu...`);
+
+    const defaultSender = {
+      name: form.sender?.name || authStore.user?.full_name || customerInfo.value?.transaction_name || '',
+      phone: form.sender?.phone || customerInfo.value?.phone_number || '',
+      province_id: form.sender?.province_id || customerInfo.value?.province_id || null,
+      district_id: form.sender?.district_id || customerInfo.value?.district_id || null,
+      ward_id: form.sender?.ward_id || customerInfo.value?.ward_id || null,
+      address_detail: form.sender?.address_detail || customerInfo.value?.address_detail || ''
+    };
+
+    const importedDrafts = await processExcelRows({
+      rawRows,
+      provincesList: provinces.value,
+      fetchDistricts: fetchDistrictsForProvince,
+      fetchWards: fetchWardsForDistrict,
+      districtsCache,
+      wardsCache,
+      defaultSender,
+      targetHubId: form.target_hub_id
+    });
+
+    if (importedDrafts.length === 0) {
+      ElMessage.warning('Không phân tích được đơn hàng hợp lệ nào từ file Excel.');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      await ElMessageBox.confirm(
+        `Hệ thống đã đọc và phân tích thành công ${importedDrafts.length} đơn hàng hợp lệ từ file Excel. Bạn có muốn đưa ${importedDrafts.length} đơn hàng này vào hàng chờ không?`,
+        'Xác nhận nhập dữ liệu',
+        {
+          confirmButtonText: 'Đồng ý',
+          cancelButtonText: 'Hủy',
+          type: 'success'
+        }
+      );
+    } catch (e) {
+      ElMessage.info('Đã hủy nhập dữ liệu từ Excel');
+      event.target.value = '';
+      return;
+    }
+
+    draftsList.value.push(...importedDrafts);
+    localStorage.setItem('customer_pickup_queue', JSON.stringify(draftsList.value));
+
+    ElMessage.success(`Nhập thành công ${importedDrafts.length} đơn vào hàng chờ.`);
+    event.target.value = '';
+
+    router.push('/customer/queue');
+  } catch (err) {
+    console.error(err);
+    ElMessage.error('Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại cấu trúc file.');
+  }
+};
+
+const downloadTemplate = () => {
+  const link = document.createElement('a');
+  link.href = '/template-import.xlsx';
+  link.download = 'template-import.xlsx';
+  link.click();
+};
+
+// ---- Local Storage Address Book Suggestions ----
+const nameAutocomplete = ref(null);
+const phoneAutocomplete = ref(null);
+
+const handleTriggerName = () => {
+  if (nameAutocomplete.value) {
+    // Force open suggestion box by focusing it
+    nameAutocomplete.value.focus();
+  }
+};
+
+const handleTriggerPhone = () => {
+  if (phoneAutocomplete.value) {
+    // Force open suggestion box by focusing it
+    phoneAutocomplete.value.focus();
+  }
+};
+
+const storageKey = computed(() => 'customer_recipients_' + (authStore.user?.id || authStore.user?.username || 'global'));
+
+const getSavedRecipients = () => {
+  try {
+    const raw = localStorage.getItem(storageKey.value);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Error reading recipients from local storage', e);
+    return [];
+  }
+};
+
+const queryReceiverByName = (queryString, cb) => {
+  const list = getSavedRecipients();
+  const results = queryString
+    ? list.filter(item => item.name && item.name.toLowerCase().includes(queryString.toLowerCase()))
+    : list;
+  cb(results);
+};
+
+const queryReceiverByPhone = (queryString, cb) => {
+  const list = getSavedRecipients();
+  const results = queryString
+    ? list.filter(item => item.phone && item.phone.includes(queryString))
+    : list;
+  cb(results);
+};
+
+const handleSelectReceiver = async (item) => {
+  form.receiver.name = item.name || '';
+  form.receiver.phone = item.phone || '';
+  form.receiver.province_id = item.province_id || null;
+  
+  if (item.province_id) {
+    receiverDistricts.value = await fetchDistrictsForProvince(item.province_id);
+    form.receiver.district_id = item.district_id || null;
+  } else {
+    receiverDistricts.value = [];
+    form.receiver.district_id = null;
+  }
+  
+  if (item.district_id) {
+    receiverWards.value = await fetchWardsForDistrict(item.district_id);
+    form.receiver.ward_id = item.ward_id || null;
+  } else {
+    receiverWards.value = [];
+    form.receiver.ward_id = null;
+  }
+  
+  form.receiver.address_detail = item.address_detail || '';
+  
+  debouncedSimulate();
+};
+
+const saveToAddressBook = (receiver) => {
+  if (!receiver.name || !receiver.phone || !receiver.province_id) return;
+  const list = getSavedRecipients();
+  const index = list.findIndex(item => item.phone === receiver.phone);
+  if (index >= 0) {
+    list[index] = {
+      ...list[index],
+      name: receiver.name,
+      province_id: receiver.province_id,
+      district_id: receiver.district_id,
+      ward_id: receiver.ward_id,
+      address_detail: receiver.address_detail
+    };
+  } else {
+    list.push({
+      id: Date.now().toString(),
+      name: receiver.name,
+      phone: receiver.phone,
+      province_id: receiver.province_id,
+      district_id: receiver.district_id,
+      ward_id: receiver.ward_id,
+      address_detail: receiver.address_detail,
+      created_at: new Date().toISOString()
+    });
+  }
+  localStorage.setItem(storageKey.value, JSON.stringify(list));
+};
+
+const hasUnsavedData = () => {
+  if (!showCreateForm.value) return false;
+  
+  const hasReceiverInfo = !!(
+    form.receiver.name ||
+    form.receiver.phone ||
+    form.receiver.province_id ||
+    form.receiver.district_id ||
+    form.receiver.ward_id ||
+    form.receiver.address_detail
+  );
+  
+  const hasItemsInfo = form.items.some(item => 
+    item.product_name || 
+    (item.weight !== 0.5 && item.weight !== 0) || 
+    item.length > 0 || 
+    item.width > 0 || 
+    item.height > 0 || 
+    item.quantity > 1 || 
+    item.declared_value > 0
+  );
+  
+  const hasOtherInfo = form.cod_amount > 0 || form.note || form.extra_services.length > 0;
+  
+  return hasReceiverInfo || hasItemsInfo || hasOtherInfo;
+};
+
+const promptSaveDraft = () => {
+  return new Promise((resolve) => {
+    if (!hasUnsavedData()) {
+      resolve(true);
+      return;
+    }
+
+    ElMessageBox.confirm(
+      'Nếu bạn rời khỏi thì dữ liệu nhập hiện tại sẽ mất, bạn có muốn lưu nháp không?',
+      'Cảnh báo mất dữ liệu',
+      {
+        confirmButtonText: 'Lưu nháp',
+        cancelButtonText: 'Không lưu',
+        type: 'warning',
+        distinguishCancelAndClose: true,
+        showClose: true,
+      }
+    )
+      .then(() => {
+        saveDraft();
+        resolve(true);
+      })
+      .catch((action) => {
+        if (action === 'cancel') {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
+  });
+};
+
+const cancelCreate = async () => {
+  const allow = await promptSaveDraft();
+  if (allow) {
+    showCreateForm.value = false;
+    router.push({ query: { tab: 'dashboard' } });
+  }
+};
+
+onBeforeRouteLeave(async (to, from, next) => {
+  const allow = await promptSaveDraft();
+  if (allow) {
+    next();
+  } else {
+    next(false);
+  }
+});
+
+const handleBeforeUnload = (event) => {
+  if (hasUnsavedData()) {
+    event.preventDefault();
+    event.returnValue = 'Nếu bạn rời khỏi thì dữ liệu nhập hiện tại sẽ mất.';
+    return event.returnValue;
+  }
 };
 
 onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload);
   if (!authStore.user) return;
 
   loadDrafts();
 
-  // 1. Fetch provinces first
   await fetchProvinces();
+  await fetchProductTypes();
 
-  // Check if resuming a draft via query param
   const resumeDraftId = route.query.resume_draft_id;
   if (resumeDraftId) {
     const storedQueue = localStorage.getItem('customer_pickup_queue');
@@ -1715,8 +1172,7 @@ onMounted(async () => {
       if (form.receiver.district_id) receiverWards.value = await fetchWardsForDistrict(form.receiver.district_id);
       debouncedSimulate();
       showCreateForm.value = true;
-
-      fetchPickupsList();
+      
       fetchAvailableServices();
       fetchHubs();
       return;
@@ -1747,40 +1203,21 @@ onMounted(async () => {
       email: res.data.email || activeUser.email || ''
     };
 
-    // 2. Preload districts and wards for the customer's registered address
     if (customerInfo.value.province_id) {
       const dists = await fetchDistrictsForProvince(customerInfo.value.province_id);
       senderDistricts.value = dists;
-      editDistricts.value = dists;
     }
     if (customerInfo.value.district_id) {
       const wrds = await fetchWardsForDistrict(customerInfo.value.district_id);
       senderWards.value = wrds;
-      editWards.value = wrds;
     }
 
-    // Tự động điền thông tin người gửi từ hồ sơ đăng ký của khách hàng
     form.sender.name = activeUser.full_name || customerInfo.value.transaction_name || '';
     form.sender.phone = customerInfo.value.phone_number || '';
     form.sender.province_id = customerInfo.value.province_id || null;
     form.sender.district_id = customerInfo.value.district_id || null;
     form.sender.ward_id = customerInfo.value.ward_id || null;
     form.sender.address_detail = customerInfo.value.address_detail || '';
-
-    // RÀNG BUỘC ĐỊA CHỈ: Kiểm tra nếu chưa cập nhật địa chỉ lấy hàng
-    if (!customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
-      ElMessageBox.confirm(
-        'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng (Tỉnh/Thành, Quận/Huyện, Địa chỉ chi tiết). Vui lòng cập nhật đầy đủ thông tin để hệ thống xác định cước phí và bưu cục lấy hàng.',
-        'Cảnh báo: Chưa cập nhật địa chỉ lấy hàng',
-        {
-          confirmButtonText: 'Cập nhật ngay',
-          cancelButtonText: 'Để sau',
-          type: 'warning'
-        }
-      ).then(() => {
-        router.push('/customer/profile');
-      }).catch(() => {});
-    }
   } catch (err) {
     console.error('Không thể tải thông tin hồ sơ khách hàng', err);
     customerInfo.value = {
@@ -1794,11 +1231,12 @@ onMounted(async () => {
     };
   }
 
-  fetchPickupsList();
   fetchAvailableServices();
   fetchHubs();
 });
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+});
 </script>
 <style scoped src="./CustomerPortal.css"></style>
-
-

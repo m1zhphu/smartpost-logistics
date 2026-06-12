@@ -160,11 +160,6 @@ const addNotification = (event, payload) => {
   
   // Play sound
   playTingTing();
-  
-  // Auto dismiss after 10 seconds
-  setTimeout(() => {
-    removeNotification(id);
-  }, 10000);
 };
 
 const removeNotification = (id) => {
@@ -173,6 +168,7 @@ const removeNotification = (id) => {
 
 const connectWebSocket = () => {
   if (ws) {
+    ws.onclose = null;
     ws.close();
   }
   

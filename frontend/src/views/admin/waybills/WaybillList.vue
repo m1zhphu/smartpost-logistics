@@ -461,18 +461,50 @@
           <div class="form-section no-border mb-0">
             <div class="section-header">
               <el-icon><Money /></el-icon>
-              <span>Thông tin Thu hộ</span>
+              <span>Thông tin Thu hộ & Loại hàng</span>
             </div>
-            <el-form-item label="Số tiền thu hộ (COD - VNĐ)">
-              <el-input-number 
-                v-model="editForm.cod_amount" 
-                :min="0" :step="10000" 
-                class="w-full modern-price-input"
-                :controls="false"
-                :formatter="(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
-                :parser="(value) => value.replace(/\$\s?|(\.*)/g, '')"
-              />
+            <el-row :gutter="24">
+              <el-col :span="12">
+                <el-form-item label="Số tiền thu hộ (COD - VNĐ)">
+                  <el-input-number 
+                    v-model="editForm.cod_amount" 
+                    :min="0" :step="10000" 
+                    class="w-full modern-price-input"
+                    :controls="false"
+                    :formatter="(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
+                    :parser="(value) => value.replace(/\$\s?|(\.*)/g, '')"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item :label="editForm.product_group === 'HIGH_VALUE' ? 'Giá trị khai giá (đ) *' : 'Giá trị khai giá (đ)'" :required="editForm.product_group === 'HIGH_VALUE'">
+                  <el-input-number 
+                    v-model="editForm.declared_value" 
+                    :min="0" :step="10000" 
+                    class="w-full modern-price-input"
+                    :controls="false"
+                    :formatter="(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')"
+                    :parser="(value) => value.replace(/\$\s?|(\.*)/g, '')"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item label="Nhóm sản phẩm" class="mb-12">
+              <el-select v-model="editForm.product_group" placeholder="Chọn loại hàng..." class="w-full">
+                <el-option v-for="pt in productTypes" :key="pt.code" :label="pt.label" :value="pt.code" />
+              </el-select>
             </el-form-item>
+
+            <!-- Warning & Special handling info -->
+            <div v-if="getProductTypeInfo(editForm.product_group)?.special_handling" class="special-handling-note mb-12" style="font-size: 12px; display: flex; align-items: flex-start; gap: 6px; padding: 6px 10px; background-color: #fdf6ec; border-radius: 6px; border-left: 4px solid #e6a23c; line-height: 1.4; color: #d97706; margin-top: 8px;">
+              <el-icon class="mt-2" style="font-size: 14px;"><Warning /></el-icon>
+              <div>
+                <strong>{{ getProductTypeInfo(editForm.product_group)?.label }}:</strong> {{ getProductTypeInfo(editForm.product_group)?.handling_note }}
+                <span v-if="getProductTypeInfo(editForm.product_group)?.packing_recommended" style="color: #2563eb; font-weight: bold; margin-left: 4px;">
+                  (Khuyến nghị đóng bọc chống va đập/đổ vỡ)
+                </span>
+              </div>
+            </div>
           </div>
         </el-form>
         
@@ -720,6 +752,31 @@ const transferDialogVisible = ref(false);
 const transferSubmitting = ref(false);
 const transferForm = ref({ waybill_code: '', target_type: 'HUB', target_id: null, reason: '' });
 
+const productTypes = ref([
+  { code: 'DOCUMENT', label: 'Thư từ/Tài liệu', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Dùng cho thư từ, hồ sơ và tài liệu giấy.' },
+  { code: 'PARCEL', label: 'Bưu phẩm, bưu kiện', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Dùng cho bưu phẩm và bưu kiện thông thường.' },
+  { code: 'GENERAL', label: 'Hàng hóa thông thường', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Hàng hóa không thuộc nhóm cần xử lý đặc biệt.' },
+  { code: 'LIQUID', label: 'Chất lỏng', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần bao gói chống rò rỉ và kiểm tra điều kiện vận chuyển.' },
+  { code: 'ELECTRONIC', label: 'Điện tử', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần chống va đập; khai báo pin hoặc linh kiện hạn chế nếu có.' },
+  { code: 'FOOD', label: 'Thực phẩm', special_handling: true, requires_declared_value: false, packing_recommended: true, handling_note: 'Cần khai báo điều kiện bảo quản và hạn sử dụng phù hợp.' },
+  { code: 'HIGH_VALUE', label: 'Giá trị cao', special_handling: true, requires_declared_value: true, packing_recommended: true, handling_note: 'Bắt buộc khai giá lớn hơn 0 để kiểm soát và bảo hiểm hàng hóa.' }
+]);
+
+const fetchProductTypes = async () => {
+  try {
+    const res = await api.get('/api/waybills/product-types');
+    if (res.data && res.data.items) {
+      productTypes.value = res.data.items;
+    }
+  } catch (err) {
+    console.error('Không thể tải danh sách loại hàng', err);
+  }
+};
+
+const getProductTypeInfo = (code) => {
+  return productTypes.value.find(pt => pt.code === code) || null;
+};
+
 // --- IMPORT EXCEL STATE ---
 const importDialogVisible = ref(false);
 const importSubmitting = ref(false);
@@ -833,7 +890,9 @@ const editForm = ref({
   receiver_name: '',
   receiver_phone: '',
   receiver_address: '',
-  cod_amount: 0
+  cod_amount: 0,
+  product_group: 'PARCEL',
+  declared_value: 0
 });
 
 // --- OVERRIDE PRICE STATE ---
@@ -980,12 +1039,19 @@ const openEditDialog = (row) => {
     receiver_name: row.receiver_name,
     receiver_phone: row.receiver_phone,
     receiver_address: row.receiver_address,
-    cod_amount: row.cod_amount
+    cod_amount: row.cod_amount,
+    product_group: row.product_group || 'PARCEL',
+    declared_value: row.declared_value || 0
   };
   editDialogVisible.value = true;
 };
 
 const submitEdit = async () => {
+  if (editForm.value.product_group === 'HIGH_VALUE' && Number(editForm.value.declared_value || 0) <= 0) {
+    ElMessage.warning('Hàng giá trị cao bắt buộc phải khai giá > 0');
+    return;
+  }
+
   editSubmitting.value = true;
   try {
     await api.put(`/api/waybills/${editForm.value.waybill_code}`, editForm.value);
@@ -993,7 +1059,7 @@ const submitEdit = async () => {
     editDialogVisible.value = false;
     handleSearch();
   } catch (error) {
-    ElMessage.error('Lỗi khi lưu thông tin');
+    ElMessage.error(error.response?.data?.detail || 'Lỗi khi lưu thông tin');
   } finally {
     editSubmitting.value = false;
   }
@@ -1199,6 +1265,7 @@ onMounted(() => {
   handleSearch();
   fetchSLAStats();
   fetchHubsAndShippers();
+  fetchProductTypes();
 });
 </script>
 

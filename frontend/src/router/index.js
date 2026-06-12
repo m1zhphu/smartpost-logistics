@@ -204,13 +204,25 @@ const customerRoutes = [
         path: 'drafts',
         name: 'CustomerDrafts',
         component: () => import('../views/customer/CustomerDrafts.vue'),
-        meta: { title: 'Bản nháp & Hàng chờ' }
+        meta: { title: 'Bản nháp' }
+      },
+      {
+        path: 'queue',
+        name: 'CustomerQueue',
+        component: () => import('../views/customer/CustomerQueue.vue'),
+        meta: { title: 'Hàng chờ tạo đơn' }
       },
       {
         path: 'orders',
         name: 'CustomerOrders',
         component: () => import('../views/customer/CustomerOrders.vue'),
         meta: { title: 'Yêu cầu của tôi' }
+      },
+      {
+        path: 'recipients',
+        name: 'CustomerRecipients',
+        component: () => import('../views/customer/CustomerRecipients.vue'),
+        meta: { title: 'Sổ địa chỉ người nhận' }
       },
       {
         path: 'profile',

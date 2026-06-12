@@ -47,8 +47,8 @@
       </div>
 
       <div style="text-align: center; margin-top: 16px; padding-top: 16px; border-top: 1px dashed #e2e8f0;">
-        <span style="color: #64748b; font-size: 13px;">Bạn là nhân viên nội bộ? </span>
-        <router-link to="/admin/login" style="color: #4318ff; font-weight: 700; font-size: 13px; text-decoration: none;">Đăng nhập dành cho Cán bộ / Nhân viên</router-link>
+        <span style="color: #64748b; font-size: 13px;">Bạn là nhân viên? </span>
+        <router-link to="/admin/login" style="color: #4318ff; font-weight: 700; font-size: 13px; text-decoration: none;">Chuyển trang đăng nhập</router-link>
       </div>
       
       <div class="login-logo-bottom">

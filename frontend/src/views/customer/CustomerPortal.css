@@ -330,7 +330,8 @@
   border-radius: 16px;
   border: 1px solid var(--sp-border, #e2e8f0) !important;
   box-shadow: 0px 4px 18px rgba(0, 0, 0, 0.01) !important;
-  transition: all 0.3s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  will-change: transform;
   overflow: hidden;
 }
 
@@ -389,7 +390,7 @@
   border: 1px solid #E2E8F0 !important;
   box-shadow: none !important;
   padding: 8px 12px !important;
-  transition: all 0.2s ease !important;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 :deep(.el-input__wrapper:hover), :deep(.el-textarea__inner:hover) {
@@ -829,3 +830,76 @@
     margin-top: 10vh !important;
   }
 }
+
+/* === Order Detail Dialog - Address Cards === */
+.address-card {
+  background: #F8FAFC;
+  border-radius: 12px;
+  border: 1px solid var(--sp-border, #e2e8f0);
+  padding: 14px;
+  height: 100%;
+}
+.address-card.sender-card {
+  border-left: 4px solid var(--sp-primary, #4318FF);
+}
+.address-card.receiver-card {
+  border-left: 4px solid #10B981;
+}
+.address-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--sp-text-muted, #a3b1cc);
+  margin-bottom: 10px;
+}
+.address-line {
+  font-size: 13px;
+  color: var(--sp-text-main, #1b2559);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+/* === Info Chip for weight === */
+.info-chip {
+  background: #F1F5FF;
+  border-radius: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(67, 24, 255, 0.12);
+}
+.info-chip.success {
+  background: #F0FDF8;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+.chip-label {
+  font-size: 11px;
+  color: var(--sp-text-muted, #a3b1cc);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+.chip-value {
+  font-size: 14px;
+  color: var(--sp-text-main, #1b2559);
+  font-weight: 700;
+}
+
+/* === COD Banner === */
+.cod-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #B45309;
+}
+.cod-banner .el-icon {
+  font-size: 18px;
+  color: #D97706;
+}
+

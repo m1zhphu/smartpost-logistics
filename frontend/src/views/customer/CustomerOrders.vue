@@ -75,8 +75,9 @@
       <el-dialog 
         v-model="detailDialogVisible" 
         title="Chi tiết yêu cầu & Vận đơn" 
-        width="650px"
+        width="780px"
         destroy-on-close
+        top="5vh"
       >
         <div v-if="selectedPickup" class="detail-dialog-content">
           <el-tabs v-model="activeDetailTab">
@@ -91,6 +92,22 @@
                 <div class="detail-grid-item">
                   <span class="label">Mã vận đơn:</span>
                   <span class="value fw-bold text-success">{{ selectedPickup.waybill_code || '---' }}</span>
+                </div>
+                <div class="detail-grid-item">
+                  <span class="label">Ngày tạo:</span>
+                  <span class="value">{{ formatDate(selectedPickup.created_at) }}</span>
+                </div>
+                <div class="detail-grid-item">
+                  <span class="label">Loại hàng hóa:</span>
+                  <span class="value">{{ selectedPickup.product_type_label || selectedPickup.product_type || '---' }}</span>
+                </div>
+                <div class="detail-grid-item">
+                  <span class="label">Dịch vụ vận chuyển:</span>
+                  <span class="value fw-bold">{{ getServiceTypeLabel(selectedPickup.service_type) }}</span>
+                </div>
+                <div class="detail-grid-item">
+                  <span class="label">Phương thức thanh toán:</span>
+                  <span class="value">{{ getPaymentMethodLabel(selectedPickup.payment_method) }}</span>
                 </div>
                 <div class="detail-grid-item">
                   <span class="label">Trạng thái lấy hàng:</span>
@@ -108,10 +125,6 @@
                     </el-tag>
                   </span>
                 </div>
-                <div class="detail-grid-item full-width">
-                  <span class="label">Địa chỉ lấy hàng:</span>
-                  <span class="value text-dark">{{ selectedPickup.pickup_address || '---' }}</span>
-                </div>
                 <div class="detail-grid-item">
                   <span class="label">Văn phòng tiếp nhận:</span>
                   <span class="value text-primary fw-bold">{{ selectedPickup.hub_name || 'Đang xử lý...' }}</span>
@@ -122,11 +135,86 @@
                     {{ selectedPickup.assigned_shipper_name || 'Chưa phân công' }}
                   </span>
                 </div>
+                <div v-if="selectedPickup.shop_order_code" class="detail-grid-item">
+                  <span class="label">Mã đơn hàng Shop:</span>
+                  <span class="value">{{ selectedPickup.shop_order_code }}</span>
+                </div>
+                <div v-if="selectedPickup.note" class="detail-grid-item full-width">
+                  <span class="label">Ghi chú:</span>
+                  <span class="value text-dark">{{ selectedPickup.note }}</span>
+                </div>
               </div>
+
+              <!-- Sender & Receiver Section -->
+              <el-divider content-position="left"><el-icon><Location /></el-icon> Thông tin lấy & giao hàng</el-divider>
+              <el-row :gutter="16">
+                <el-col :span="12">
+                  <div class="address-card sender-card">
+                    <div class="address-card-title"><el-icon><User /></el-icon> Người gửi (lấy hàng)</div>
+                    <div class="address-line fw-bold">{{ selectedPickup.sender_name || '---' }}</div>
+                    <div class="address-line">📞 {{ selectedPickup.sender_phone || '---' }}</div>
+                    <div class="address-line text-muted text-xs">
+                      {{ [selectedPickup.sender_address, selectedPickup.sender_ward_name, selectedPickup.sender_district_name, selectedPickup.sender_province_name].filter(Boolean).join(', ') || '---' }}
+                    </div>
+                  </div>
+                </el-col>
+                <el-col :span="12">
+                  <div class="address-card receiver-card">
+                    <div class="address-card-title"><el-icon><Location /></el-icon> Người nhận (giao hàng)</div>
+                    <div class="address-line fw-bold">{{ selectedPickup.receiver_name || '---' }}</div>
+                    <div class="address-line">📞 {{ selectedPickup.receiver_phone || '---' }}</div>
+                    <div class="address-line text-muted text-xs">
+                      {{ [selectedPickup.receiver_address, selectedPickup.receiver_ward_name, selectedPickup.receiver_district_name, selectedPickup.receiver_province_name].filter(Boolean).join(', ') || '---' }}
+                    </div>
+                  </div>
+                </el-col>
+              </el-row>
+
+              <!-- Items Section -->
+              <el-divider content-position="left"><el-icon><Box /></el-icon> Hàng hóa</el-divider>
+              <div v-if="selectedPickup.items && selectedPickup.items.length > 0">
+                <el-table :data="selectedPickup.items" size="small" stripe>
+                  <el-table-column label="Tên hàng hóa" prop="product_name" min-width="140">
+                    <template #default="{ row }">
+                      <span class="fw-bold">{{ row.product_name || '---' }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Số lượng" prop="quantity" width="80" align="center" />
+                  <el-table-column label="Khối lượng" width="100" align="right">
+                    <template #default="{ row }">{{ row.weight }} kg</template>
+                  </el-table-column>
+                  <el-table-column label="Giá trị" width="120" align="right">
+                    <template #default="{ row }">{{ (row.declared_value || 0).toLocaleString() }}đ</template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <div v-else class="text-muted text-xs text-center py-2">Chưa có thông tin hàng hóa chi tiết.</div>
+
+              <!-- Weight info -->
+              <el-row :gutter="16" class="mt-3">
+                <el-col :span="12" v-if="selectedPickup.estimated_weight">
+                  <div class="info-chip">
+                    <span class="chip-label">Khối lượng ước tính:</span>
+                    <span class="chip-value">{{ selectedPickup.estimated_weight }} kg</span>
+                  </div>
+                </el-col>
+                <el-col :span="12" v-if="selectedPickup.actual_weight">
+                  <div class="info-chip success">
+                    <span class="chip-label">Khối lượng thực tế (sau cân):</span>
+                    <span class="chip-value fw-bold text-success">{{ selectedPickup.actual_weight }} kg</span>
+                  </div>
+                </el-col>
+              </el-row>
             </el-tab-pane>
 
             <!-- Tab 2: Billing Breakdown -->
             <el-tab-pane label="Cước phí & Thanh toán" name="billing">
+              <!-- COD Info -->
+              <div v-if="selectedPickup.cod_amount > 0" class="cod-banner mb-3">
+                <el-icon><Money /></el-icon>
+                <span>COD (Thu hộ): <strong>{{ (selectedPickup.cod_amount || 0).toLocaleString() }}đ</strong></span>
+              </div>
+
               <div class="billing-comparison">
                 <el-row :gutter="20">
                   <el-col :span="12">
@@ -135,6 +223,14 @@
                       <div class="price-row">
                         <span>Cước phí chính:</span>
                         <span>{{ (selectedPickup.estimated_shipping_fee || 0).toLocaleString() }}đ</span>
+                      </div>
+                      <div class="price-row" v-if="selectedPickup.estimated_extra_services_fee > 0">
+                        <span>Phí dịch vụ cộng thêm:</span>
+                        <span>{{ (selectedPickup.estimated_extra_services_fee || 0).toLocaleString() }}đ</span>
+                      </div>
+                      <div class="price-row" v-if="selectedPickup.estimated_vat_amount > 0">
+                        <span>VAT:</span>
+                        <span>{{ (selectedPickup.estimated_vat_amount || 0).toLocaleString() }}đ</span>
                       </div>
                       <el-divider class="my-2" />
                       <div class="price-row total">
@@ -150,6 +246,14 @@
                         <div class="price-row">
                           <span>Cước phí chính:</span>
                           <span>{{ (selectedPickup.final_shipping_fee || 0).toLocaleString() }}đ</span>
+                        </div>
+                        <div class="price-row" v-if="selectedPickup.final_extra_services_fee > 0">
+                          <span>Phí dịch vụ cộng thêm:</span>
+                          <span>{{ (selectedPickup.final_extra_services_fee || 0).toLocaleString() }}đ</span>
+                        </div>
+                        <div class="price-row" v-if="selectedPickup.final_vat_amount > 0">
+                          <span>VAT:</span>
+                          <span>{{ (selectedPickup.final_vat_amount || 0).toLocaleString() }}đ</span>
                         </div>
                         <el-divider class="my-2" />
                         <div class="price-row total">
@@ -219,7 +323,7 @@ import moment from 'moment';
 import { 
   User, Service, Phone, Message, Close, 
   Search, DocumentAdd, Location, List, Edit, Lock,
-  Box, Setting, CircleCheck, InfoFilled, FolderOpened, Upload, ArrowLeft, Refresh, Warning
+  Box, Setting, CircleCheck, InfoFilled, FolderOpened, Upload, ArrowLeft, Refresh, Warning, Money
 } from '@element-plus/icons-vue';
 
 // ---- Dynamic Address API (provinces.open-api.vn) ----
@@ -553,21 +657,6 @@ const fetchHubs = async () => {
 };
 
 const startCreatePickup = async () => {
-  if (!customerInfo.value || !customerInfo.value.province_id || !customerInfo.value.district_id || !customerInfo.value.address_detail) {
-    ElMessageBox.confirm(
-      'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng (Tỉnh/Thành, Quận/Huyện, Địa chỉ chi tiết). Vui lòng cập nhật đầy đủ thông tin trong mục "Thông tin tài khoản" trước khi tạo đơn.',
-      'Cập nhật địa chỉ lấy hàng',
-      {
-        confirmButtonText: 'Cập nhật ngay',
-        cancelButtonText: 'Đóng',
-        type: 'warning'
-      }
-    ).then(() => {
-      router.push('/customer/profile');
-    }).catch(() => {});
-    return;
-  }
-
   // Pre-fill sender information from user profile
   form.sender.name = authStore.user?.full_name || '';
   form.sender.phone = customerInfo.value.phone_number || '';
@@ -711,12 +800,12 @@ const cancelCreate = () => {
 
 // SUBMIT REQUEST TO BACKEND
 const submitPickupRequest = async () => {
-  if (!form.sender.name || !form.sender.phone || !form.sender.address_detail || !form.sender.province_id) {
-    ElMessage.warning('Vui lòng điền đầy đủ thông tin người gửi');
+  if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id) {
+    ElMessage.warning('Vui lòng điền đầy đủ thông tin người gửi (bao gồm Tỉnh/Thành và Quận/Huyện)');
     return;
   }
-  if (!form.receiver.name || !form.receiver.phone || !form.receiver.address_detail || !form.receiver.province_id || !form.receiver.district_id) {
-    ElMessage.warning('Vui lòng điền đầy đủ thông tin người nhận (bao gồm Tỉnh/Huyện)');
+  if (!form.receiver.name || !form.receiver.phone || !form.receiver.province_id || !form.receiver.district_id) {
+    ElMessage.warning('Vui lòng điền đầy đủ thông tin người nhận (bao gồm Tỉnh/Thành và Quận/Huyện)');
     return;
   }
   if (!form.items[0].product_name) {
@@ -987,6 +1076,26 @@ const getPickupStatusType = (status) => {
     case 'ASSIGNED_PICKUP': return 'warning';
     case 'PICKED': return 'success';
     default: return 'info';
+  }
+};
+
+const getServiceTypeLabel = (serviceType) => {
+  switch ((serviceType || '').toUpperCase()) {
+    case 'STANDARD': case 'TK': return 'Tiết kiệm (Tiêu chuẩn)';
+    case 'ECONOMY': return 'Tiết kiệm';
+    case 'FAST': case 'CPN': return 'Chuyển phát nhanh';
+    case 'EXPRESS': case 'HT': return 'Hỏa tốc';
+    case 'EXPRESS_STANDARD': return 'Nhanh tiêu chuẩn';
+    default: return serviceType || '---';
+  }
+};
+
+const getPaymentMethodLabel = (method) => {
+  switch ((method || '').toUpperCase()) {
+    case 'SENDER_DEBT': return 'Người gửi trả (Công nợ)';
+    case 'RECEIVER_PAYS': return 'Người nhận trả';
+    case 'COD_DEDUCT': return 'Trừ vào tiền COD';
+    default: return method || '---';
   }
 };
 

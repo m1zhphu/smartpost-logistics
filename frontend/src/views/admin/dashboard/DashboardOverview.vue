@@ -171,7 +171,7 @@
 import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/api/axios';
-import { ElMessage, ElNotification } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { 
   Refresh, Box, Money, Check, Top, Warning, 
   CircleCheck, Plus, List, Van, Wallet, Timer, TrendCharts, User, CaretBottom, CaretTop, Calendar
@@ -261,46 +261,9 @@ const saveActivities = () => {
   localStorage.setItem('dashboard_activities', JSON.stringify(activities.value));
 };
 
-let socket = null;
-
-const connectWebSocket = () => {
-  const token = authStore.token;
-  if (!token) return;
-
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  let wsUrl = '';
-  const apiURL = import.meta.env.VITE_API_URL || '';
-  if (apiURL) {
-    wsUrl = apiURL.replace(/^http/, 'ws') + `/ws/realtime?token=${token}`;
-  } else {
-    // Kết nối trực tiếp đến cổng 8000 của backend trên 127.0.0.1 (tránh lỗi IPv6 loopback của localhost trên Windows)
-    // Và không cần sửa config backend hay khởi động lại Vite dev server
-    wsUrl = `${protocol}//127.0.0.1:8000/ws/realtime?token=${token}`;
-  }
-
-  socket = new WebSocket(wsUrl);
-
-  socket.onopen = () => {
-    console.log('Dashboard WebSocket connected successfully');
-  };
-
-  socket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      handleWsEvent(data);
-    } catch (e) {
-      console.error('Error parsing WS message:', e);
-    }
-  };
-
-  socket.onclose = (event) => {
-    console.log(`Dashboard WebSocket closed. Code: ${event.code}, Reason: ${event.reason}. Reconnecting...`);
-    setTimeout(connectWebSocket, 5000);
-  };
-
-  socket.onerror = (err) => {
-    console.error('Dashboard WebSocket error:', err);
-  };
+const handleRealtimeEvent = (e) => {
+  const { event, payload } = e.detail;
+  handleWsEvent({ event, payload });
 };
 
 const goToActivityDetails = (act) => {
@@ -402,18 +365,7 @@ const handleWsEvent = (data) => {
   
   saveActivities();
   
-  // Show premium notification with click-to-navigate action
-  ElNotification({
-    title: 'Cập nhật đơn hàng',
-    message: message,
-    dangerouslyUseHTMLString: true,
-    type: type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'info'),
-    duration: 8000,
-    position: 'bottom-right',
-    onClick: () => {
-      goToActivityDetails({ event, payload });
-    }
-  });
+  refreshData();
 };
 
 const refreshData = async () => {
@@ -432,14 +384,11 @@ const refreshData = async () => {
 
 onMounted(() => {
   refreshData();
-  connectWebSocket();
+  window.addEventListener('realtime-pickup-event', handleRealtimeEvent);
 });
 
 onUnmounted(() => {
-  if (socket) {
-    socket.onclose = null;
-    socket.close();
-  }
+  window.removeEventListener('realtime-pickup-event', handleRealtimeEvent);
 });
 </script>
 

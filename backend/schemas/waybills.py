@@ -148,6 +148,13 @@ class CustomerPickupCreateResponse(BaseModel):
     product_type_label: Optional[str] = None
 
 
+class CustomerPickupSummaryItem(BaseModel):
+    product_name: Optional[str] = None
+    quantity: int = 1
+    weight: float = 0
+    declared_value: Optional[float] = 0
+
+
 class CustomerPickupSummary(BaseModel):
     request_id: int
     request_code: str
@@ -169,6 +176,40 @@ class CustomerPickupSummary(BaseModel):
     created_at: Optional[datetime] = None
     product_type: str = "PARCEL"
     product_type_label: Optional[str] = None
+
+    # Sender & Receiver Info
+    sender_name: Optional[str] = None
+    sender_phone: Optional[str] = None
+    sender_address: Optional[str] = None
+    sender_province_name: Optional[str] = None
+    sender_district_name: Optional[str] = None
+    sender_ward_name: Optional[str] = None
+    receiver_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
+    receiver_address: Optional[str] = None
+    receiver_province_name: Optional[str] = None
+    receiver_district_name: Optional[str] = None
+    receiver_ward_name: Optional[str] = None
+
+    # Service & Payment Options
+    service_type: Optional[str] = None
+    payment_method: Optional[str] = None
+    cod_amount: float = 0
+    note: Optional[str] = None
+    shop_order_code: Optional[str] = None
+
+    # Additional Fees
+    estimated_extra_services_fee: Optional[float] = None
+    estimated_vat_amount: Optional[float] = None
+    final_extra_services_fee: Optional[float] = None
+    final_vat_amount: Optional[float] = None
+
+    # Weights
+    estimated_weight: Optional[float] = None
+    actual_weight: Optional[float] = None
+
+    # Items list
+    items: List[CustomerPickupSummaryItem] = []
 
 
 class TrackingLogResponse(BaseModel):
