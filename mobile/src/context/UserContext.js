@@ -441,6 +441,20 @@ export const UserProvider = ({ children }) => {
 
             const data = response.data;
 
+            let isOnline = false;
+            if (data.is_shipper) {
+                try {
+                    const statusRes = await apiClient.get(ADMIN_ENDPOINTS.TOGGLE_AVAILABILITY, {
+                        headers: { Authorization: `Bearer ${currentToken}` }
+                    });
+                    if (statusRes.data && statusRes.data.success) {
+                        isOnline = statusRes.data.is_online;
+                    }
+                } catch (e) {
+                    console.log("Could not fetch shipper online status", e);
+                }
+            }
+
             setUser({
                 id: data.id,
                 username: data.username,
@@ -448,7 +462,8 @@ export const UserProvider = ({ children }) => {
                 ma_kho_spl: data.ma_kho_spl,
                 bien_so_xe: data.bien_so_xe,
                 is_shipper: data.is_shipper,
-                is_chat_banned: data.is_chat_banned
+                is_chat_banned: data.is_chat_banned,
+                is_online: isOnline
             });
             setRoles(data.roles || []);
 

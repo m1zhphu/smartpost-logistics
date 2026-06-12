@@ -8,6 +8,7 @@ import {
   ScrollView,
   FlatList,
   Platform,
+  Image,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -101,7 +102,7 @@ export default function CustomerTrackingScreen({ navigation }) {
           </Text>
 
           <Text style={styles.logTime}>
-            {dayjs(item.system_time).format("DD/MM/YYYY HH:mm:ss")}
+            {dayjs(item.time || item.system_time).format("DD/MM/YYYY HH:mm:ss")}
           </Text>
 
           {item.location ? (
@@ -111,6 +112,12 @@ export default function CustomerTrackingScreen({ navigation }) {
           ) : null}
 
           {item.note ? <Text style={styles.logNote}>{item.note}</Text> : null}
+          {item.pickup_image_url ? (
+            <Image 
+              source={{ uri: item.pickup_image_url }} 
+              style={{ width: '100%', height: 150, borderRadius: 8, marginTop: 10, resizeMode: 'cover' }} 
+            />
+          ) : null}
         </View>
       </View>
     );

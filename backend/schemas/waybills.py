@@ -4,6 +4,8 @@ from datetime import datetime
 from core.product_types import get_product_type_definition, normalize_product_type
 
 class WaybillCreate(BaseModel):
+    waybill_code: Optional[str] = Field(default=None, description="Mã vận đơn do Frontend/OCR truyền lên, nếu không có sẽ tự sinh")
+    bag_code: Optional[str] = Field(default=None, description="Mã túi thư chứa vận đơn (nếu có)")
     customer_id: Optional[int] = Field(default=None, description="ID của khách hàng/người gửi")
     receiver_name: str
     receiver_phone: str

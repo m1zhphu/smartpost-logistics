@@ -3,7 +3,8 @@ import { apiClient } from '../context/UserContext';
 
 export const submitShipment = async (payload) => {
     try {
-        const response = await apiClient.post(CUSTOMER_ENDPOINTS.SUBMIT, payload);
+        // Updated to use the new OCR Upsert endpoint for Shipper
+        const response = await apiClient.post('/api/waybills/ocr-pickup', payload);
         return { success: true, data: response.data };
     } catch (error) {
         if (error.response?.status === 409) {

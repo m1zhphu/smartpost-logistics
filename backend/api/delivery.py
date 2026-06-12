@@ -533,6 +533,29 @@ def get_mobile_shipper_pickup_request_detail(
     return task
 
 
+@router.get("/mobile/shipper/availability", response_model=schema_delivery.ShipperAvailabilityResponse)
+def get_mobile_shipper_availability(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role_id") != 4:
+        raise HTTPException(status_code=403, detail="Chi buu ta moi duoc xem trang thai online")
+    shipper = db.query(models.Users).filter(
+        models.Users.user_id == current_user["user_id"],
+        models.Users.role_id == 4,
+        models.Users.is_active == True,
+        models.Users.is_deleted == False,
+    ).first()
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Khong tim thay buu ta hoat dong")
+    
+    return schema_delivery.ShipperAvailabilityResponse(
+        success=True,
+        is_online=bool(shipper.is_online),
+        message="Thanh cong"
+    )
+
+
 @router.post("/mobile/shipper/availability", response_model=schema_delivery.ShipperAvailabilityResponse)
 def update_mobile_shipper_availability(
     data: schema_delivery.ShipperAvailabilityRequest,

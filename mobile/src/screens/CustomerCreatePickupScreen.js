@@ -26,6 +26,7 @@ import {
   upsertPickupDraft,
   fetchExtraServices,
   simulatePrice,
+  saveToRecipientBook,
 } from "../services/pickupService";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
@@ -243,6 +244,31 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     loadDraft();
     loadExtraServices();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      const hasMeaningfulContent = rName || rPhone || rAddressDetail || itemName;
+      if (!hasMeaningfulContent) {
+        return;
+      }
+      
+      e.preventDefault();
+
+      Alert.alert(
+        "Cảnh báo thoát",
+        "Bạn đang tạo đơn hàng. Bạn có chắc chắn muốn thoát? Các dữ liệu chưa lưu sẽ bị mất.",
+        [
+          { text: "Hủy", style: "cancel", onPress: () => {} },
+          {
+            text: "Thoát",
+            style: "destructive",
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    });
+    return unsubscribe;
+  }, [navigation, rName, rPhone, rAddressDetail, itemName]);
 
   const loadExtraServices = async () => {
     const res = await fetchExtraServices();
@@ -559,9 +585,25 @@ export default function CustomerCreatePickupScreen({ navigation }) {
       return;
     }
     setLoading(true);
-    const result = await createCustomerPickup(buildPayload(false));
+    const payload = buildPayload(false);
+    const result = await createCustomerPickup(payload);
     setLoading(false);
     if (result.success) {
+      // Save recipient to book automatically
+      if (user?.user_id) {
+        saveToRecipientBook(user.user_id, {
+          name: rName,
+          phone: rPhone,
+          province_id: rProvince?.code,
+          district_id: rDistrict?.code,
+          ward_id: rWard?.code,
+          province_name: rProvince?.name,
+          district_name: rDistrict?.name,
+          ward_name: rWard?.name,
+          address_detail: rAddressDetail
+        });
+      }
+
       await clearPickupDraft();
       Toast.show({
         type: "success",
@@ -575,6 +617,41 @@ export default function CustomerCreatePickupScreen({ navigation }) {
         text1: "Lỗi tạo đơn",
         text2: result.message,
       });
+    }
+  };
+
+  const handleSelectRecipient = async (item) => {
+    setRName(item.name || "");
+    setRPhone(item.phone || "");
+    setRAddressDetail(item.address_detail || "");
+    
+    // Attempt to match the saved location names to current provincesData
+    if (item.province_name) {
+      const matchProv = provincesData.find(p => p.name === item.province_name || p.code == item.province_id);
+      if (matchProv) {
+        setRProvince(matchProv);
+        setRProvinceQuery(matchProv.name);
+        const dists = await fetchDistricts(matchProv.code);
+        setRDistrictsData(dists);
+
+        if (item.district_name) {
+          const matchDist = dists.find(d => d.name === item.district_name || d.code == item.district_id);
+          if (matchDist) {
+            setRDistrict(matchDist);
+            setRDistrictQuery(matchDist.name);
+            const wards = await fetchWards(matchDist.code);
+            setRWardsData(wards);
+
+            if (item.ward_name) {
+              const matchWard = wards.find(w => w.name === item.ward_name || w.code == item.ward_id);
+              if (matchWard) {
+                setRWard(matchWard);
+                setRWardQuery(matchWard.name);
+              }
+            }
+          }
+        }
+      }
     }
   };
 
@@ -750,7 +827,12 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           />
         </View>
 
-        <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>2. NGƯỜI NHẬN</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <Text style={[styles.sectionTitle, { color: COLORS.primary, marginBottom: 0 }]}>2. NGƯỜI NHẬN</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("CustomerRecipients", { isSelectMode: true, onSelect: handleSelectRecipient })}>
+            <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>+ Sổ địa chỉ</Text>
+          </TouchableOpacity>
+        </View>
         <View style={[styles.card, { zIndex: 20 }]}>
           <Text style={styles.inputLabel}>Họ tên người nhận *</Text>
           <TextInput

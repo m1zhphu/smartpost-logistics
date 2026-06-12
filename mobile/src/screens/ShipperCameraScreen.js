@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet, Alert, Dimensions, Modal, Linking, Animated, Easing
+    View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet, Alert, Dimensions, Modal, Linking, Animated, Easing, TextInput, ScrollView, KeyboardAvoidingView, FlatList
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { CommonActions } from '@react-navigation/native';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { customerService } from '../services/customer';
 import styles from '../styles/HomeStyles';
 import { useQueue } from '../context/QueueContext';
 import { COLORS } from '../constants/colors';
@@ -43,6 +44,82 @@ export default function ShipperCameraScreen({ route, navigation }) {
     const appVersion = Constants.expoConfig?.version || Constants.manifest?.version || '1.0.2';
     const [focusPoint, setFocusPoint] = useState(null);
     const focusAnim = useRef(new Animated.Value(0)).current;
+
+    // --- OCR CONFIG STATES ---
+    const [ocrConfig, setOcrConfig] = useState({ customer: null, bagCode: '' });
+    const [showOcrConfig, setShowOcrConfig] = useState(false);
+
+    // Customer Selection
+    const [customers, setCustomers] = useState([]);
+    const [searchCustomer, setSearchCustomer] = useState('');
+    const [showCustomerModal, setShowCustomerModal] = useState(false);
+    const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+
+    // Bag Selection
+    const [bags, setBags] = useState([]);
+    const [showBagModal, setShowBagModal] = useState(false);
+    const [isLoadingBags, setIsLoadingBags] = useState(false);
+
+    // Scanning
+    const [isScanningBag, setIsScanningBag] = useState(false);
+
+    const fetchCustomersData = async (keyword = '') => {
+        setIsLoadingCustomers(true);
+        try {
+            const res = await customerService.getCustomers(0, 100, keyword);
+            setCustomers(res.data.data);
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Lỗi tải danh sách khách hàng' });
+        } finally {
+            setIsLoadingCustomers(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!showCustomerModal) return;
+        const delayDebounceFn = setTimeout(() => {
+            fetchCustomersData(searchCustomer);
+        }, 800);
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchCustomer, showCustomerModal]);
+
+    const fetchBagsData = async (customerId) => {
+        if (!customerId) return;
+        setIsLoadingBags(true);
+        try {
+            const token = await AsyncStorage.getItem('access_token');
+            const res = await fetch(`https://api.speedlight.minhhien.click/api/warehouse/pickup-bags?status=CREATED&customer_id=${customerId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setBags(Array.isArray(data) ? data : []);
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Lỗi tải danh sách túi' });
+        } finally {
+            setIsLoadingBags(false);
+        }
+    };
+
+    const handleSelectCustomer = (customer) => {
+        setOcrConfig(prev => ({ ...prev, customer: customer, bagCode: '' }));
+        setShowCustomerModal(false);
+        setShowOcrConfig(true);
+        fetchBagsData(customer.id);
+    };
+
+    const handleSelectBag = (bagCode) => {
+        setOcrConfig(prev => ({ ...prev, bagCode: bagCode }));
+        setShowBagModal(false);
+        setShowOcrConfig(true);
+    };
+
+    const handleBarcodeScanned = ({ data }) => {
+        if (isScanningBag) {
+            setOcrConfig(prev => ({ ...prev, bagCode: data }));
+            setIsScanningBag(false);
+            setShowOcrConfig(true); 
+        }
+    };
 
     useEffect(() => {
         async function lockOrientation() {
@@ -203,7 +280,11 @@ export default function ShipperCameraScreen({ route, navigation }) {
                     { compress: 0.7, format: SaveFormat.JPEG }
                 );
 
-                addToQueue(manipResult.uri);
+                addToQueue(manipResult.uri, {
+                    customer_id: ocrConfig.customer?.id,
+                    customer_name: ocrConfig.customer?.ten_khach_hang,
+                    bag_code: ocrConfig.bagCode
+                });
             }
             else {
 
@@ -246,7 +327,11 @@ export default function ShipperCameraScreen({ route, navigation }) {
 
                 const manipResult = await manipulateAsync(currentUri, actions, { compress: 0.7, format: SaveFormat.JPEG });
 
-                const newItem = addToQueue(manipResult.uri);
+                const newItem = addToQueue(manipResult.uri, {
+                    customer_id: ocrConfig.customer?.id,
+                    customer_name: ocrConfig.customer?.ten_khach_hang,
+                    bag_code: ocrConfig.bagCode
+                });
                 // processQueueItem(newItem);
             }
             Toast.show({ type: 'success', text1: 'Đã thêm vào hàng chờ xử lý', visibilityTime: 1400 });
@@ -334,6 +419,8 @@ export default function ShipperCameraScreen({ route, navigation }) {
                     onCameraReady={() => setIsCameraReady(true)}
                     autoFocus="on"
                     flash="auto"
+                    barcodeScannerSettings={isScanningBag ? { barcodeTypes: ["qr", "ean13", "code128", "code39"] } : undefined}
+                    onBarcodeScanned={isScanningBag ? handleBarcodeScanned : undefined}
                 />
 
                 {focusPoint && (
@@ -399,17 +486,27 @@ export default function ShipperCameraScreen({ route, navigation }) {
 
                         </View>
 
-                        <TouchableOpacity
-                            onPress={() => setShowList(true)}
-                            style={[styles.listButton, { zIndex: 20 }]}
-                        >
-                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Hàng chờ</Text>
-                            {queue.length > 0 && (
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>{queue.length}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <TouchableOpacity
+                                onPress={() => setShowOcrConfig(true)}
+                                style={[styles.listButton, { zIndex: 20, marginRight: 8, backgroundColor: ocrConfig.customer || ocrConfig.bagCode ? COLORS.primary : 'rgba(255, 255, 255, 0.2)' }]}
+                            >
+                                <Ionicons name="settings-outline" size={20} color="#FFF" style={{ marginRight: 4 }} />
+                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>Cấu hình</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => setShowList(true)}
+                                style={[styles.listButton, { zIndex: 20 }]}
+                            >
+                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Hàng chờ</Text>
+                                {queue.length > 0 && (
+                                    <View style={styles.badge}>
+                                        <Text style={styles.badgeText}>{queue.length}</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <View style={styles.scanFrameContainer} pointerEvents="none">
@@ -426,17 +523,26 @@ export default function ShipperCameraScreen({ route, navigation }) {
                             <View style={[styles.maskBase, styles.maskLeft]} />
                             <View style={[styles.maskBase, styles.maskRight]} />
                         </View>
-                        <Text style={styles.scanHintText}>Căn mã vận đơn vào khung ảnh</Text>
+                        <Text style={styles.scanHintText}>{isScanningBag ? "Căn mã vạch túi thư vào khung ảnh" : "Căn mã vận đơn vào khung ảnh"}</Text>
                     </View>
 
                     <View style={styles.captureFloatingContainer}>
-                        <TouchableOpacity
-                            style={[styles.shutterBtnOuter, isCapturing && { opacity: 0.5 }]}
-                            onPress={takePicture}
-                            disabled={isCapturing}
-                        >
-                            {isCapturing ? <ActivityIndicator color={COLORS.primary} /> : <View style={styles.shutterBtnInner} />}
-                        </TouchableOpacity>
+                        {isScanningBag ? (
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25, elevation: 5 }}
+                                onPress={() => { setIsScanningBag(false); setShowOcrConfig(true); }}
+                            >
+                                <Text style={{ color: '#333', fontWeight: 'bold' }}>Hủy Quét</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.shutterBtnOuter, isCapturing && { opacity: 0.5 }]}
+                                onPress={takePicture}
+                                disabled={isCapturing}
+                            >
+                                {isCapturing ? <ActivityIndicator color={COLORS.primary} /> : <View style={styles.shutterBtnInner} />}
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </SafeAreaView>
                 {/* </View > */}
@@ -583,6 +689,137 @@ export default function ShipperCameraScreen({ route, navigation }) {
                     }}
                 />
             </Modal >
+
+            {/* Modal Config */}
+            <Modal
+                visible={showOcrConfig}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowOcrConfig(false)}
+            >
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                    <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowOcrConfig(false)}>
+                        <View style={{ backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, minHeight: 300 }} onStartShouldSetResponder={() => true}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Cấu hình chung OCR</Text>
+                                <TouchableOpacity onPress={() => setShowOcrConfig(false)}>
+                                    <Ionicons name="close" size={24} color="#333" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={{ fontSize: 14, fontWeight: '600', marginBottom: 8 }}>1. Khách hàng</Text>
+                            <TouchableOpacity 
+                                style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                                onPress={() => { setShowOcrConfig(false); setShowCustomerModal(true); fetchCustomersData(''); }}
+                            >
+                                <Text style={{ color: ocrConfig.customer ? '#333' : '#999', flex: 1 }}>
+                                    {ocrConfig.customer ? `[${ocrConfig.customer.ma_khach_hang}] ${ocrConfig.customer.ten_khach_hang}` : 'Chọn khách hàng...'}
+                                </Text>
+                                <Ionicons name="chevron-down" size={20} color="#999" />
+                            </TouchableOpacity>
+
+                            <Text style={{ fontSize: 14, fontWeight: '600', marginBottom: 8 }}>2. Túi thư (Bag Code)</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                                <TextInput
+                                    style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, backgroundColor: '#f9f9f9', marginRight: 10 }}
+                                    placeholder="Nhập mã túi..."
+                                    value={ocrConfig.bagCode}
+                                    onChangeText={(t) => setOcrConfig(prev => ({ ...prev, bagCode: t }))}
+                                />
+                                <TouchableOpacity 
+                                    style={{ backgroundColor: COLORS.primary, padding: 12, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}
+                                    onPress={() => { setShowOcrConfig(false); setIsScanningBag(true); }}
+                                >
+                                    <Ionicons name="barcode-outline" size={24} color="white" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {ocrConfig.customer && (
+                                <TouchableOpacity 
+                                    style={{ alignSelf: 'flex-start', marginBottom: 20 }}
+                                    onPress={() => { setShowOcrConfig(false); setShowBagModal(true); }}
+                                >
+                                    <Text style={{ color: COLORS.primary, fontWeight: '600' }}>+ Chọn từ danh sách túi của KH</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            <TouchableOpacity 
+                                style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 10 }}
+                                onPress={() => setShowOcrConfig(false)}
+                            >
+                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Xong</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* Modal Chọn Khách Hàng */}
+            <Modal visible={showCustomerModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowCustomerModal(false); setShowOcrConfig(true); }}>
+                <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                        <TouchableOpacity onPress={() => { setShowCustomerModal(false); setShowOcrConfig(true); }} style={{ padding: 4 }}>
+                            <Ionicons name="arrow-back" size={24} color="#333" />
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', flex: 1, textAlign: 'center', marginRight: 32 }}>Chọn Khách Hàng</Text>
+                    </View>
+                    <View style={{ padding: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#ddd' }}>
+                            <Ionicons name="search" size={20} color="#999" />
+                            <TextInput style={{ flex: 1, padding: 12 }} placeholder="Tìm tên, mã khách hàng..." value={searchCustomer} onChangeText={setSearchCustomer} />
+                        </View>
+                    </View>
+                    {isLoadingCustomers ? (
+                        <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
+                    ) : (
+                        <FlatList
+                            data={customers}
+                            keyExtractor={item => item.id.toString()}
+                            contentContainerStyle={{ padding: 16 }}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity style={{ backgroundColor: 'white', padding: 16, borderRadius: 8, marginBottom: 12 }} onPress={() => handleSelectCustomer(item)}>
+                                    <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{item.ten_khach_hang}</Text>
+                                    <Text style={{ color: '#666', marginTop: 4 }}>Mã: {item.ma_khach_hang} | SĐT: {item.sdt}</Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    )}
+                </SafeAreaView>
+            </Modal>
+
+            {/* Modal Chọn Túi */}
+            <Modal visible={showBagModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowBagModal(false); setShowOcrConfig(true); }}>
+                <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                        <TouchableOpacity onPress={() => { setShowBagModal(false); setShowOcrConfig(true); }} style={{ padding: 4 }}>
+                            <Ionicons name="arrow-back" size={24} color="#333" />
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', flex: 1, textAlign: 'center', marginRight: 32 }}>Chọn Túi</Text>
+                    </View>
+                    {isLoadingBags ? (
+                        <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
+                    ) : bags.length === 0 ? (
+                        <View style={{ padding: 20, alignItems: 'center' }}>
+                            <Text style={{ color: '#666' }}>Không có túi nào đang chờ của khách hàng này</Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={bags}
+                            keyExtractor={item => item.bag_id ? item.bag_id.toString() : item.bag_code}
+                            contentContainerStyle={{ padding: 16 }}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity style={{ backgroundColor: 'white', padding: 16, borderRadius: 8, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }} onPress={() => handleSelectBag(item.bag_code)}>
+                                    <View>
+                                        <Text style={{ fontWeight: 'bold', fontSize: 16, color: COLORS.primary }}>{item.bag_code}</Text>
+                                        <Text style={{ color: '#666', marginTop: 4 }}>Số bill hiện tại: {item.actual_quantity || 0}</Text>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                                </TouchableOpacity>
+                            )}
+                        />
+                    )}
+                </SafeAreaView>
+            </Modal>
 
             <View style={{
                 position: 'absolute',

@@ -11,6 +11,15 @@ export const shipperService = {
             throw error;
         }
     },
+    getAvailability: async () => {
+        try {
+            const { ADMIN_ENDPOINTS } = require('../constants/adminEndpoints');
+            const response = await apiClient.get(ADMIN_ENDPOINTS.TOGGLE_AVAILABILITY);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
     toggleAvailability: async (isOnline, note = "") => {
         try {
             const { ADMIN_ENDPOINTS } = require('../constants/adminEndpoints');
