@@ -435,6 +435,7 @@ const submitSelectedDrafts = async () => {
   }
 
   submitLoading.value = true;
+  await preloadCachesForDrafts();
   let successCount = 0;
   const successIds = [];
 
@@ -608,6 +609,36 @@ const fetchAvailableServices = async () => {
   }
 };
 
+const preloadCachesForDrafts = async () => {
+  if (!draftsList.value || draftsList.value.length === 0) return;
+  const provinceIds = new Set();
+  const districtIds = new Set();
+
+  for (const draft of draftsList.value) {
+    if (draft.sender) {
+      if (draft.sender.province_id) provinceIds.add(Number(draft.sender.province_id));
+      if (draft.sender.district_id) districtIds.add(Number(draft.sender.district_id));
+    }
+    if (draft.receiver) {
+      if (draft.receiver.province_id) provinceIds.add(Number(draft.receiver.province_id));
+      if (draft.receiver.district_id) districtIds.add(Number(draft.receiver.district_id));
+    }
+  }
+
+  if (provinces.value.length === 0) {
+    await fetchProvinces();
+  }
+
+  try {
+    await Promise.all([
+      ...Array.from(provinceIds).map(pid => fetchDistrictsForProvince(pid)),
+      ...Array.from(districtIds).map(did => fetchWardsForDistrict(did))
+    ]);
+  } catch (e) {
+    console.error('Error preloading address caches:', e);
+  }
+};
+
 const loadDrafts = () => {
   try {
     const storedQueue = localStorage.getItem('customer_pickup_queue');
@@ -623,6 +654,7 @@ onMounted(async () => {
   await fetchProvinces();
   await fetchProductTypes();
   loadDrafts();
+  await preloadCachesForDrafts();
   fetchAvailableServices();
 });
 </script>

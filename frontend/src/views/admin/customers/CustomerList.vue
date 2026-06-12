@@ -981,6 +981,10 @@ const onProvinceChange = async (code) => {
 };
 
 const onDistrictChange = async (code) => {
+  // Cập nhật tên quận/huyện vào form
+  const found = districts.value.find(d => d.code === code);
+  customerForm.district = found ? found.name : '';
+  
   // Reset phường/xã
   customerForm.ward = '';
   wards.value = [];
@@ -1000,9 +1004,50 @@ const onDistrictChange = async (code) => {
 // Khi dialog mở để sửa, pre-load districts/wards nếu đã có tỉnh/quận
 const preloadAddressDropdowns = async (row) => {
   await fetchProvinces();
-  if (!row) { selectedProvinceCode.value = null; selectedDistrictCode.value = null; districts.value = []; wards.value = []; return; }
-  // Tìm province code theo tên
-  const prov = provinces.value.find(p => p.name === (row.province || row.province_name));
+  if (!row) {
+    selectedProvinceCode.value = null;
+    selectedDistrictCode.value = null;
+    districts.value = [];
+    wards.value = [];
+    return;
+  }
+  
+  // 1. Ưu tiên tìm theo ID nếu có sẵn
+  if (row.province_id) {
+    const provId = Number(row.province_id);
+    selectedProvinceCode.value = provId;
+    loadingDistricts.value = true;
+    try {
+      const res = await fetch(`${ADDR_API}/p/${provId}?depth=2`);
+      const data = await res.json();
+      districts.value = data.districts || [];
+      
+      if (row.district_id) {
+        const distId = Number(row.district_id);
+        selectedDistrictCode.value = distId;
+        loadingWards.value = true;
+        try {
+          const res2 = await fetch(`${ADDR_API}/d/${distId}?depth=2`);
+          const data2 = await res2.json();
+          wards.value = data2.wards || [];
+        } finally {
+          loadingWards.value = false;
+        }
+      } else {
+        selectedDistrictCode.value = null;
+        wards.value = [];
+      }
+    } catch {
+      ElMessage.warning('Không thể tải dữ liệu địa chỉ');
+    } finally {
+      loadingDistricts.value = false;
+    }
+    return;
+  }
+
+  // 2. Fallback tìm theo Tên (từ trường address/address_detail được phân tách)
+  const searchProvinceName = row.province || row.province_name || customerForm.province;
+  const prov = provinces.value.find(p => p.name === searchProvinceName);
   if (prov) {
     selectedProvinceCode.value = prov.code;
     loadingDistricts.value = true;
@@ -1010,8 +1055,9 @@ const preloadAddressDropdowns = async (row) => {
       const res = await fetch(`${ADDR_API}/p/${prov.code}?depth=2`);
       const data = await res.json();
       districts.value = data.districts || [];
-      // Tìm district code — lưu tên quận thì phải match tên
-      const dist = districts.value.find(d => d.name === row.district);
+      
+      const searchDistrictName = row.district || customerForm.district;
+      const dist = districts.value.find(d => d.name === searchDistrictName);
       if (dist) {
         selectedDistrictCode.value = dist.code;
         loadingWards.value = true;
@@ -1019,12 +1065,23 @@ const preloadAddressDropdowns = async (row) => {
           const res2 = await fetch(`${ADDR_API}/d/${dist.code}?depth=2`);
           const data2 = await res2.json();
           wards.value = data2.wards || [];
-        } finally { loadingWards.value = false; }
-      } else { selectedDistrictCode.value = null; wards.value = []; }
-    } catch { ElMessage.warning('Không thể tải dữ liệu địa chỉ'); } 
-    finally { loadingDistricts.value = false; }
+        } finally {
+          loadingWards.value = false;
+        }
+      } else {
+        selectedDistrictCode.value = null;
+        wards.value = [];
+      }
+    } catch {
+      ElMessage.warning('Không thể tải dữ liệu địa chỉ');
+    } finally {
+      loadingDistricts.value = false;
+    }
   } else {
-    selectedProvinceCode.value = null; selectedDistrictCode.value = null; districts.value = []; wards.value = [];
+    selectedProvinceCode.value = null;
+    selectedDistrictCode.value = null;
+    districts.value = [];
+    wards.value = [];
   }
 };
 
@@ -1188,33 +1245,45 @@ const assignCustomer = async (row) => {
 
 const openDialog = async (row) => {
   if (row) {
+    let targetRow = row;
+    if (row.customer_code) {
+      try {
+        const res = await api.get(`/api/customers/code/${row.customer_code}`);
+        if (res.data) {
+          targetRow = res.data;
+        }
+      } catch (err) {
+        console.error('Lỗi khi lấy thông tin chi tiết khách hàng:', err);
+      }
+    }
+    
     Object.assign(customerForm, {
-      id: row.customer_id || row.id,
-      customer_code: row.customer_code,
-      customer_type: row.customer_type === 'SHOP' ? 'PERSONAL' : (row.customer_type || 'PERSONAL'),
-      status: row.status || 'ACTIVE',
-      staff_in_charge_id: row.staff_in_charge_id || null,
-      policy_id: row.policy_id || null,
-      name: row.transaction_name || row.name || '',
-      company_name: row.company_name || '',
-      representative_name: row.representative_name || '',
-      tax_code: row.tax_code || '',
-      phone: row.phone || '',
-      email: row.email || '',
-      address: row.address || row.address_detail || '',
-      ...parseAddressParts(row.address || row.address_detail || ''),
-      country: row.country || parseAddressParts(row.address || row.address_detail || '').country,
-      province: row.province || row.province_name || parseAddressParts(row.address || row.address_detail || '').province,
-      district: row.district || '',
-      ward: row.ward || row.ward_name || parseAddressParts(row.address || row.address_detail || '').ward,
-      street_address: row.street_address || parseAddressParts(row.address || row.address_detail || '').street_address,
-      bank_name: row.bank_name || '',
-      bank_number: row.bank_number || row.account_number || '',
-      bank_owner: row.bank_owner || row.account_name || '',
-      username: row.account_username || row.username || '',
+      id: targetRow.customer_id || targetRow.id,
+      customer_code: targetRow.customer_code,
+      customer_type: targetRow.customer_type === 'SHOP' ? 'PERSONAL' : (targetRow.customer_type || 'PERSONAL'),
+      status: targetRow.status || 'ACTIVE',
+      staff_in_charge_id: targetRow.staff_in_charge_id || null,
+      policy_id: targetRow.policy_id || null,
+      name: targetRow.transaction_name || targetRow.name || '',
+      company_name: targetRow.company_name || '',
+      representative_name: targetRow.representative_name || '',
+      tax_code: targetRow.tax_code || '',
+      phone: targetRow.phone || '',
+      email: targetRow.email || '',
+      address: targetRow.address || targetRow.address_detail || '',
+      ...parseAddressParts(targetRow.address || targetRow.address_detail || ''),
+      country: targetRow.country || parseAddressParts(targetRow.address || targetRow.address_detail || '').country,
+      province: targetRow.province || targetRow.province_name || parseAddressParts(targetRow.address || targetRow.address_detail || '').province,
+      district: targetRow.district || parseAddressParts(targetRow.address || targetRow.address_detail || '').district || '',
+      ward: targetRow.ward || targetRow.ward_name || parseAddressParts(targetRow.address || targetRow.address_detail || '').ward,
+      street_address: targetRow.street_address || parseAddressParts(targetRow.address || targetRow.address_detail || '').street_address,
+      bank_name: targetRow.bank_name || '',
+      bank_number: targetRow.bank_number || targetRow.account_number || '',
+      bank_owner: targetRow.bank_owner || targetRow.account_name || '',
+      username: targetRow.account_username || targetRow.username || '',
       password: ''
     });
-    await preloadAddressDropdowns(row);
+    await preloadAddressDropdowns(targetRow);
   } else {
     Object.assign(customerForm, {
       id: null, customer_code: '', customer_type: 'PERSONAL', status: 'ACTIVE',

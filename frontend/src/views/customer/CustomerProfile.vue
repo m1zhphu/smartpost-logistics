@@ -327,14 +327,49 @@ const handleDistrictChange = async () => {
   }
 };
 
+const matchHubAndSet = (provinceId) => {
+  if (!provinceId) {
+    form.target_hub_id = null;
+    return;
+  }
+  const pId = Number(provinceId);
+  const pName = provinces.value.find(p => Number(p.id) === pId)?.name || '';
+  
+  const normalizeText = (value = '') => value
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+
+  const normProvince = normalizeText(pName);
+  let match = hubsList.value.find(h => Number(h.province_id) === pId);
+  if (!match && normProvince) {
+    match = hubsList.value.find(h => {
+      const hubText = normalizeText(`${h.hub_name || ''} ${h.address_detail || ''}`);
+      return hubText.includes(normProvince) || normProvince.includes(hubText);
+    });
+  }
+  
+  if (match) {
+    form.target_hub_id = match.hub_id;
+  } else {
+    form.target_hub_id = null;
+  }
+};
+
 const handleSenderProvinceChange = async () => {
   form.sender.district_id = null;
   form.sender.ward_id = null;
   senderWards.value = [];
   if (form.sender.province_id) {
     senderDistricts.value = await fetchDistrictsForProvince(form.sender.province_id);
+    matchHubAndSet(form.sender.province_id);
   } else {
     senderDistricts.value = [];
+    form.target_hub_id = null;
   }
   debouncedSimulate();
 };
@@ -465,6 +500,7 @@ const startCreatePickup = async () => {
   // Preload sender districts and wards
   if (form.sender.province_id) {
     senderDistricts.value = await fetchDistrictsForProvince(form.sender.province_id);
+    matchHubAndSet(form.sender.province_id);
   } else {
     senderDistricts.value = [];
   }
@@ -996,6 +1032,7 @@ const handleSaveProfile = async () => {
       district_id: editForm.district_id,
       ward_id: editForm.ward_id,
       province: pName,
+      district: dName,
       ward: wName,
       address_detail: editForm.address_detail
     });

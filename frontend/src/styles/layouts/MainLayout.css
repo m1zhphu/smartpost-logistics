@@ -256,6 +256,7 @@
 .header-right {
   display: flex;
   align-items: center;
+  gap: 4px;
 }
 
 /* Search Input */

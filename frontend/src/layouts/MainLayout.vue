@@ -66,6 +66,9 @@
         
         <div class="header-right">
           
+          <!-- Chuông thông báo -->
+          <NotificationBell />
+
           <div class="user-profile-wrapper">
              <el-dropdown trigger="click" placement="bottom-end">
                <div class="user-profile-trigger">
@@ -120,6 +123,7 @@ import {
   Monitor, Management, Document, Box, Bicycle, Money, 
   Close, Search, HomeFilled, ArrowDown, User, Collection, Location, List, TrendCharts, Service, Fold, Expand
 } from '@element-plus/icons-vue';
+import NotificationBell from '@/components/NotificationBell.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -198,6 +202,8 @@ const menuData = computed(() => {
         ]}
       ]
     },
+    { id: 'scan-in', icon: Box, label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in', roles: [1, 2, 3] },
+    /*
     {
       id: 'warehouse', icon: Box, label: 'Kho hàng', roles: [1, 2, 3], // Admin, Manager, Kho
       children: [
@@ -211,6 +217,7 @@ const menuData = computed(() => {
         ]}
       ]
     },
+    */
     {
       id: 'delivery', icon: Location, label: 'Điều phối', roles: [1, 2, 3, 4, 7], // Admin, Manager, Kho, Shipper, CSKH
       children: role === 4 ? [
@@ -245,8 +252,8 @@ const menuData = computed(() => {
         { title: 'TRUNG TÂM CSKH', items: [
           { label: 'Khách hàng tôi quản lý', path: '/admin/customers?mine=1' },
           { label: 'Bưu tá tôi quản lý', path: '/admin/users?my_shippers=1' },
-          { label: 'Duyệt Bill & Báo giá', path: '/admin/cskh/verification' },
-          { label: 'Mô phỏng giá cước', path: '/admin/pricing/simulator' }
+          // { label: 'Duyệt Bill & Báo giá', path: '/admin/cskh/verification' },
+          // { label: 'Mô phỏng giá cước', path: '/admin/pricing/simulator' }
         ]}
       ]
     },

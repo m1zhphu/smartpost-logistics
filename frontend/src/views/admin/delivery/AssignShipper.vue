@@ -121,12 +121,18 @@
               <el-option
                 v-for="s in shippers"
                 :key="s.user_id"
-                :label="`${s.full_name} - ${s.primary_hub?.hub_name || 'Bưu cục'}`"
+                :label="`${s.full_name} - ${s.primary_hub?.hub_name || 'Bưu cục'} ${s.managed_by_cskh ? '(CSKH: ' + s.managed_by_cskh.full_name + ')' : ''}`"
                 :value="s.user_id"
               >
-                <div class="shipper-option">
-                  <span class="fw-bold">{{ s.full_name }}</span>
-                  <span class="text-xs text-muted">{{ s.primary_hub?.hub_name || 'Bưu cục' }}</span>
+                <div class="shipper-option" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                  <div>
+                    <span class="fw-bold">{{ s.full_name }}</span>
+                    <span class="text-xs text-muted" style="margin-left: 8px;">{{ s.primary_hub?.hub_name || 'Bưu cục' }}</span>
+                  </div>
+                  <el-tag v-if="s.managed_by_cskh" size="small" type="info" effect="plain">
+                    CSKH: {{ s.managed_by_cskh.full_name }}
+                  </el-tag>
+                  <span v-else class="text-xs text-muted" style="font-size: 11px;">Chưa gán CSKH</span>
                 </div>
               </el-option>
             </el-select>
@@ -296,8 +302,10 @@ const fetchData = async () => {
     const wRes = await api.get('/api/delivery/pending-assign');
     waybills.value = wRes.data.items || wRes.data || [];
 
-    const sRes = await api.get('/api/users/shippers');
-    shippers.value = Array.isArray(sRes.data) ? sRes.data : [];
+    // Lấy danh sách từ /api/users để có đầy đủ thông tin quan hệ managed_by_cskh của bưu tá
+    const uRes = await api.get('/api/users');
+    const allUsers = Array.isArray(uRes.data) ? uRes.data : [];
+    shippers.value = allUsers.filter(u => u.role_id === 4 && u.is_active);
   } catch (err) {
     ElMessage.error('Không thể tải danh sách vận đơn chờ phân công');
   } finally {

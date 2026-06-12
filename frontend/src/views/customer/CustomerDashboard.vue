@@ -71,25 +71,69 @@
             </div>
 
             <el-row :gutter="20" class="actions-grid mt-20">
-              <el-col :xs="24" :sm="12" :md="12">
+              <el-col :xs="24" :sm="12" :md="8" class="mb-20">
                 <el-card class="action-card" shadow="hover" @click="$router.push('/customer/create')">
                   <div class="action-icon bg-green">
                     <el-icon><DocumentAdd /></el-icon>
                   </div>
                   <div class="action-desc">
-                    <h4>Yêu cầu gửi hàng</h4>
-                    <p>Tạo yêu cầu lấy hàng hoặc gửi bưu kiện mới đến các bưu cục SmartPost.</p>
+                    <h4>Tạo yêu cầu lấy hàng</h4>
+                    <p>Tạo vận đơn lấy hàng hoặc gửi bưu kiện mới.</p>
                   </div>
                 </el-card>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="12">
-                <el-card class="action-card" shadow="hover" @click="goToTracking">
+              <el-col :xs="24" :sm="12" :md="8" class="mb-20">
+                <el-card class="action-card" shadow="hover" @click="$router.push('/customer/orders')">
                   <div class="action-icon bg-blue">
-                    <el-icon><Location /></el-icon>
+                    <el-icon><List /></el-icon>
                   </div>
                   <div class="action-desc">
-                    <h4>Tra cứu bưu phẩm</h4>
-                    <p>Theo dõi thời gian thực lịch trình bưu gửi và xác nhận người nhận.</p>
+                    <h4>Yêu cầu của tôi</h4>
+                    <p>Theo dõi trạng thái thời gian thực các đơn hàng.</p>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="8" class="mb-20">
+                <el-card class="action-card" shadow="hover" @click="$router.push('/customer/drafts')">
+                  <div class="action-icon bg-orange">
+                    <el-icon><Edit /></el-icon>
+                  </div>
+                  <div class="action-desc">
+                    <h4>Đơn nháp đã lưu</h4>
+                    <p>Xem các bản nháp đang lưu tạm.</p>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="8" class="mb-20">
+                <el-card class="action-card" shadow="hover" @click="$router.push('/customer/queue')">
+                  <div class="action-icon bg-cyan">
+                    <el-icon><Box /></el-icon>
+                  </div>
+                  <div class="action-desc">
+                    <h4>Hàng chờ tạo đơn</h4>
+                    <p>Danh sách đơn gom chờ gửi hàng loạt.</p>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="8" class="mb-20">
+                <el-card class="action-card" shadow="hover" @click="$router.push('/customer/recipients')">
+                  <div class="action-icon bg-purple">
+                    <el-icon><FolderOpened /></el-icon>
+                  </div>
+                  <div class="action-desc">
+                    <h4>Sổ địa chỉ người nhận</h4>
+                    <p>Quản lý danh bạ địa chỉ khách mua hàng.</p>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="8" class="mb-20">
+                <el-card class="action-card" shadow="hover" @click="$router.push('/customer/profile')">
+                  <div class="action-icon bg-teal">
+                    <el-icon><User /></el-icon>
+                  </div>
+                  <div class="action-desc">
+                    <h4>Hồ sơ & Tài khoản</h4>
+                    <p>Cập nhật thông tin shop và đổi mật khẩu.</p>
                   </div>
                 </el-card>
               </el-col>

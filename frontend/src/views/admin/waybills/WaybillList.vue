@@ -325,10 +325,6 @@
                         :disabled="row.status === 'DELIVERED' || row.status === 'SETTLED'"
                         class="text-success"
                       >
-                        <el-icon><Check /></el-icon> Hoàn tất giao hàng
-                      </el-dropdown-item>
-                      <el-dropdown-item @click="openTransferDialog(row)">
-                        <el-icon><Position /></el-icon> Điều chuyển bưu kiện
                       </el-dropdown-item>
                       <el-dropdown-item 
                         v-if="row.status !== 'DELIVERED' && row.status !== 'SETTLED' && row.status !== 'CANCELLED'"
