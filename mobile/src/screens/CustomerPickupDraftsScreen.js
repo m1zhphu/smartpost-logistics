@@ -18,7 +18,13 @@ import {
   createCustomerPickup,
   getPickupDrafts,
   removePickupDraft,
+  createCustomerBulkMailPickup,
+  upsertPickupDraft,
 } from "../services/pickupService";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
+import { parseExcelFile, processExcelRows } from "../utils/excelParser";
+import { useUser } from "../context/UserContext";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
@@ -96,6 +102,7 @@ const buildPickupPayload = (draft) => ({
 });
 
 export default function CustomerPickupDraftsScreen({ navigation }) {
+  const { user } = useUser();
   const [drafts, setDrafts] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +150,97 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
     loadDrafts();
   };
 
+  const handleExcelUpload = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"],
+        copyToCacheDirectory: true,
+      });
+
+      if (res.canceled) return;
+      
+      const fileUri = res.assets[0].uri;
+      Toast.show({ type: "info", text1: "Đang đọc file Excel..." });
+      
+      const b64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+      const rawRows = await parseExcelFile(b64);
+      
+      if (rawRows.length === 0) {
+        Toast.show({ type: "error", text1: "File Excel rỗng" });
+        return;
+      }
+
+      Toast.show({ type: "info", text1: `Đang phân tích ${rawRows.length} dòng...` });
+      
+      const provincesRes = await fetch("https://provinces.open-api.vn/api/");
+      const provinces = await provincesRes.json();
+      
+      const districtsCache = {};
+      const wardsCache = {};
+      
+      const fetchDistrictsForProvince = async (pId) => {
+        const dRes = await fetch(`https://provinces.open-api.vn/api/p/${pId}?depth=2`);
+        const data = await dRes.json();
+        return (data.districts || []).map(d => ({ id: d.code, name: d.name }));
+      };
+      
+      const fetchWardsForDistrict = async (dId) => {
+        const wRes = await fetch(`https://provinces.open-api.vn/api/d/${dId}?depth=2`);
+        const data = await wRes.json();
+        return (data.wards || []).map(w => ({ id: w.code, name: w.name }));
+      };
+
+      const defaultSender = {
+        name: user?.full_name || "",
+        phone: user?.phone_number || "",
+        province_id: user?.province_id || null,
+        district_id: user?.district_id || null,
+        ward_id: user?.ward_id || null,
+        address_detail: user?.street_address || user?.address || ""
+      };
+
+      const importedDrafts = await processExcelRows({
+        rawRows,
+        provincesList: provinces.map(p => ({ id: p.code, name: p.name })),
+        fetchDistricts: fetchDistrictsForProvince,
+        fetchWards: fetchWardsForDistrict,
+        districtsCache,
+        wardsCache,
+        defaultSender,
+      });
+
+      if (importedDrafts.length === 0) {
+        Toast.show({ type: "error", text1: "Không phân tích được đơn nào" });
+        return;
+      }
+
+      const firstRow = importedDrafts[0];
+      const bulkDraft = {
+        pickup_mode: 'BULK_MAIL',
+        bulk_draft_items: importedDrafts.map((d, index) => ({
+           sequence_no: index + 1,
+           customer_reference_code: d.shop_order_code || null,
+           receiver_name: d.receiver?.name || null,
+           receiver_phone: d.receiver?.phone || null,
+           receiver_address: d.receiver?.address_detail || null,
+           note: d.note || null
+        })),
+        bulk_product_type: firstRow.items[0]?.product_group || 'PARCEL',
+        bulk_estimated_quantity: importedDrafts.length,
+        sender: firstRow.sender,
+        draft_id: 'excel_' + Date.now().toString(),
+        created_at: new Date().toISOString(),
+        draft_title: `Lên đơn từ Excel (${importedDrafts.length} bưu gửi)`,
+      };
+
+      await upsertPickupDraft(bulkDraft);
+      Toast.show({ type: "success", text1: `Đã đưa ${importedDrafts.length} đơn vào hàng chờ` });
+      loadDrafts();
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Lỗi đọc file", text2: error.message });
+    }
+  };
+
   const submitSelected = async () => {
     if (selectedDrafts.length === 0) {
       Toast.show({
@@ -157,16 +255,43 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
     try {
       const createdCodes = [];
       let bagCode = "";
+      
+      let bagPayloads = [];
 
       for (const draft of selectedDrafts) {
-        const res = await createCustomerPickup(buildPickupPayload(draft));
-
-        if (!res.success) {
-          throw new Error(res.message || "Không tạo được đơn");
+        if (draft.pickup_mode === 'BULK_MAIL') {
+          const bulkPayload = {
+             product_type: draft.bulk_product_type,
+             estimated_quantity: draft.bulk_estimated_quantity,
+             sender: {
+               name: draft.sender.name,
+               phone: draft.sender.phone,
+               address: draft.sender.address_detail,
+               province_id: Number(draft.sender.province_id),
+               district_id: Number(draft.sender.district_id),
+               ward_id: draft.sender.ward_id ? Number(draft.sender.ward_id) : null,
+               province_name: draft.sender.province_name,
+               district_name: draft.sender.district_name,
+               ward_name: draft.sender.ward_name,
+             },
+             draft_items: draft.bulk_draft_items,
+          };
+          
+          const res = await createCustomerBulkMailPickup(bulkPayload);
+          if (!res.success) {
+            throw new Error(res.message || "Không tạo được đơn hàng loạt");
+          }
+          bagCode = res.data?.bag_code || bagCode;
+        } else {
+          const res = await createCustomerPickup(buildPickupPayload(draft));
+  
+          if (!res.success) {
+            throw new Error(res.message || "Không tạo được đơn");
+          }
+  
+          createdCodes.push(res.data?.waybill_code);
+          bagCode = res.data?.bag_code || bagCode;
         }
-
-        createdCodes.push(res.data?.waybill_code);
-        bagCode = res.data?.bag_code || bagCode;
       }
 
       if (bagCode) {
@@ -194,7 +319,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
     } catch (error) {
       Toast.show({
         type: "error",
-        text1: "Không tạo được túi",
+        text1: "Lỗi gửi yêu cầu",
         text2: error.message,
       });
     } finally {
@@ -216,6 +341,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     const checked = selectedIds.includes(item.draft_id);
+    const isBulk = item.pickup_mode === 'BULK_MAIL';
 
     return (
       <TouchableOpacity
@@ -241,7 +367,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
             </Text>
 
             <Text style={styles.subText}>
-              {item.rPhone || "---"} · {item.serviceType || "STANDARD"}
+              {isBulk ? (item.bulk_product_type === 'DOCUMENT' ? 'Thư từ/Tài liệu' : 'Bưu kiện/Bưu phẩm') : (item.rPhone || "---")} · {isBulk ? `${item.bulk_estimated_quantity} bưu gửi` : (item.serviceType || "STANDARD")}
             </Text>
           </View>
 
@@ -254,8 +380,8 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.meta}>Người gửi: {item.sName || "---"}</Text>
-        <Text style={styles.meta}>Người nhận: {item.rName || "---"}</Text>
+        <Text style={styles.meta}>Người gửi: {isBulk ? item.sender?.name : item.sName || "---"}</Text>
+        {!isBulk && <Text style={styles.meta}>Người nhận: {item.rName || "---"}</Text>}
         <Text style={styles.meta}>
           Ngày lưu:{" "}
           {item.created_at
@@ -274,7 +400,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Danh sách nháp</Text>
+          <Text style={styles.headerTitle}>Hàng chờ (Drafts)</Text>
           <Text style={styles.headerSub}>
             {selectedIds.length}/{drafts.length} đã chọn
           </Text>
@@ -294,6 +420,15 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           </View>
 
           <Text style={styles.emptyText}>Chưa có nháp nào.</Text>
+          
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { marginTop: 20, width: 200, height: 44, borderRadius: 22 }]}
+            onPress={handleExcelUpload}
+            activeOpacity={0.84}
+          >
+            <Ionicons name="document-text-outline" size={18} color={PRIMARY} style={{ marginRight: 8 }} />
+            <Text style={styles.secondaryBtnText}>Nhập từ Excel</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -302,6 +437,16 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={() => (
+             <TouchableOpacity
+               style={[styles.secondaryBtn, { marginBottom: 16, height: 44, borderRadius: 12, flexDirection: 'row', justifyContent: 'center' }]}
+               onPress={handleExcelUpload}
+               activeOpacity={0.84}
+             >
+               <Ionicons name="document-text-outline" size={18} color={PRIMARY} style={{ marginRight: 8 }} />
+               <Text style={styles.secondaryBtnText}>Nhập từ Excel</Text>
+             </TouchableOpacity>
+          )}
         />
       )}
 
@@ -311,7 +456,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           onPress={() => navigation.navigate("CustomerCreatePickup")}
           activeOpacity={0.84}
         >
-          <Text style={styles.secondaryBtnText}>Tạo nháp mới</Text>
+          <Text style={styles.secondaryBtnText}>Tạo 1 đơn</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -330,228 +475,3 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
     </View>
   );
 }
-
-/*
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-  },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: Platform.OS === "ios" ? 55 : 35,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    backgroundColor: PRIMARY,
-    borderBottomLeftRadius: 42,
-    borderBottomRightRadius: 42,
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-
-  headerButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerCenter: {
-    alignItems: "center",
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-
-  headerTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
-  headerSub: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: "700",
-  },
-
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  emptyIconBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 28,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-
-  emptyText: {
-    color: "#64748B",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  listContent: {
-    padding: 16,
-    paddingBottom: 130,
-  },
-
-  card: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-
-  cardChecked: {
-    borderColor: PRIMARY,
-    backgroundColor: "#F0FDF4",
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-
-  checkBox: {
-    marginTop: 2,
-    marginRight: 10,
-  },
-
-  title: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-
-  subText: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 2,
-    fontWeight: "700",
-  },
-
-  deleteBtn: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  meta: {
-    fontSize: 12,
-    color: "#475569",
-    marginTop: 4,
-    fontWeight: "700",
-  },
-
-  bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    padding: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-
-  secondaryBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: PRIMARY,
-    marginRight: 12,
-  },
-
-  secondaryBtnText: {
-    color: PRIMARY,
-    fontWeight: "900",
-    fontSize: 15,
-  },
-
-  primaryBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PRIMARY,
-  },
-
-  primaryBtnText: {
-    color: "white",
-    fontWeight: "900",
-    fontSize: 15,
-  },
-});
-*/

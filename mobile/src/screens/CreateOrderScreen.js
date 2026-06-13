@@ -12,9 +12,13 @@ import styles from '../styles/CreateOrderStyles';
 import { checkNetworkConnection } from '../utils/networkUtils';
 import { COLORS } from '../constants/colors';
 import { useQueue } from '../context/QueueContext';
+import { useUser } from '../context/UserContext';
+import { Alert } from 'react-native';
 
 export default function CreateOrderScreen({ route, navigation }) {
-    const { senderData, receiverData, username, trackingNumber, queueId, bankBranch, unitCode } = route.params || {};
+    const { senderData, receiverData, username, trackingNumber, queueId, bankBranch, unitCode, customer_id, customer_name, bag_code } = route.params || {};
+    const { user } = useUser();
+    const isShipper = user?.role_id === 4 || user?.is_shipper;
 
     const [rName, setRName] = useState(receiverData?.name || '');
     const [rPhone, setRPhone] = useState(receiverData?.phone || '');
@@ -91,14 +95,16 @@ export default function CreateOrderScreen({ route, navigation }) {
             return;
         }
 
-        if (!actualWeight || parseFloat(actualWeight) <= 0) {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Trọng lượng (kg) > 0' });
-            return;
-        }
+        if (isShipper) {
+            if (!actualWeight || parseFloat(actualWeight) <= 0) {
+                Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Trọng lượng (kg) > 0' });
+                return;
+            }
 
-        if (!shippingFee || parseFloat(shippingFee) <= 0) {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Phí vận chuyển (VNĐ) > 0' });
-            return;
+            if (!shippingFee || parseFloat(shippingFee) <= 0) {
+                Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Phí vận chuyển (VNĐ) > 0' });
+                return;
+            }
         }
 
         const payload = {
@@ -119,8 +125,15 @@ export default function CreateOrderScreen({ route, navigation }) {
             height: height ? parseFloat(height) : null,
             payment_method: "SENDER_PAY",
             bank_branch: bank_branch.trim(),
-            unit_code: unit_code.trim()
+            unit_code: unit_code.trim(),
+            customer_id: customer_id || null,
+            bag_code: bag_code || null
         };
+
+        if (!isShipper) {
+            Alert.alert("Tính năng đang phát triển", "Tính năng tạo đơn từ OCR dành cho Kho đang chờ cập nhật endpoint của Kho.");
+            return;
+        }
 
         setLoading(true);
         try {
@@ -236,6 +249,37 @@ export default function CreateOrderScreen({ route, navigation }) {
                         <View style={styles.dottedLine} />
                         <Ionicons name="chevron-down-circle" size={20} color={COLORS.secondary} style={styles.connectorIcon} />
                     </View>
+
+                    {/* HIỂN THỊ THÔNG TIN TÚI/KHÁCH HÀNG (Nếu có) */}
+                    {(customer_name || bag_code) && (
+                        <>
+                            <View style={[styles.card, { backgroundColor: '#eef8f5', borderColor: COLORS.primary, borderWidth: 1 }]}>
+                                <View style={styles.cardHeader}>
+                                    <Ionicons name="pricetags-outline" size={24} color={COLORS.primary} />
+                                    <Text style={[styles.cardTitle, { color: COLORS.primary }]}>CẤU HÌNH OCR</Text>
+                                </View>
+                                <View style={styles.cardBody}>
+                                    {customer_name && (
+                                        <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                                            <Ionicons name="person-outline" size={16} color="#666" style={{ marginRight: 6 }} />
+                                            <Text style={{ fontSize: 14, color: '#333' }}>Khách hàng: <Text style={{ fontWeight: 'bold' }}>{customer_name}</Text></Text>
+                                        </View>
+                                    )}
+                                    {bag_code && (
+                                        <View style={{ flexDirection: 'row' }}>
+                                            <Ionicons name="bag-handle-outline" size={16} color="#666" style={{ marginRight: 6 }} />
+                                            <Text style={{ fontSize: 14, color: '#333' }}>Túi thư: <Text style={{ fontWeight: 'bold' }}>{bag_code}</Text></Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+
+                            <View style={styles.connectorContainer}>
+                                <View style={styles.dottedLine} />
+                                <Ionicons name="chevron-down-circle" size={20} color={COLORS.secondary} style={styles.connectorIcon} />
+                            </View>
+                        </>
+                    )}
 
 
                     <View style={styles.card}>
@@ -409,19 +453,58 @@ export default function CreateOrderScreen({ route, navigation }) {
                                 />
                             </View>
 
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                <View style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}>
-                                    <Ionicons name="scale-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                    <TextInput
-                                        style={styles.input}
-                                        value={actualWeight}
-                                        onChangeText={setActualWeight}
-                                        placeholder="Trọng lượng (kg) (*)"
-                                        placeholderTextColor="#666"
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-                                <View style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}>
+                            {isShipper ? (
+                                <>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                        <View style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}>
+                                            <Ionicons name="scale-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
+                                            <TextInput
+                                                style={styles.input}
+                                                value={actualWeight}
+                                                onChangeText={setActualWeight}
+                                                placeholder="Trọng lượng (kg) (*)"
+                                                placeholderTextColor="#666"
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                        <View style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}>
+                                            <Ionicons name="cash-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
+                                            <TextInput
+                                                style={styles.input}
+                                                value={codAmount}
+                                                onChangeText={setCodAmount}
+                                                placeholder="Thu hộ COD (VNĐ)"
+                                                placeholderTextColor="#666"
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.inputWrapper}>
+                                        <Ionicons name="card-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
+                                        <TextInput
+                                            style={styles.input}
+                                            value={shippingFee}
+                                            onChangeText={setShippingFee}
+                                            placeholder="Phí vận chuyển (VNĐ) (*)"
+                                            placeholderTextColor="#666"
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+                                        <View style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}>
+                                            <TextInput style={styles.input} value={length} onChangeText={setLength} placeholder="Dài (cm)" placeholderTextColor="#666" keyboardType="numeric" />
+                                        </View>
+                                        <View style={[styles.inputWrapper, { flex: 1, marginHorizontal: 5 }]}>
+                                            <TextInput style={styles.input} value={width} onChangeText={setWidth} placeholder="Rộng (cm)" placeholderTextColor="#666" keyboardType="numeric" />
+                                        </View>
+                                        <View style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}>
+                                            <TextInput style={styles.input} value={height} onChangeText={setHeight} placeholder="Cao (cm)" placeholderTextColor="#666" keyboardType="numeric" />
+                                        </View>
+                                    </View>
+                                </>
+                            ) : (
+                                <View style={styles.inputWrapper}>
                                     <Ionicons name="cash-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
                                     <TextInput
                                         style={styles.input}
@@ -432,30 +515,7 @@ export default function CreateOrderScreen({ route, navigation }) {
                                         keyboardType="numeric"
                                     />
                                 </View>
-                            </View>
-
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="card-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                <TextInput
-                                    style={styles.input}
-                                    value={shippingFee}
-                                    onChangeText={setShippingFee}
-                                    placeholder="Phí vận chuyển (VNĐ) (*)"
-                                    placeholderTextColor="#666"
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-                                <View style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}>
-                                    <TextInput style={styles.input} value={length} onChangeText={setLength} placeholder="Dài (cm)" placeholderTextColor="#666" keyboardType="numeric" />
-                                </View>
-                                <View style={[styles.inputWrapper, { flex: 1, marginHorizontal: 5 }]}>
-                                    <TextInput style={styles.input} value={width} onChangeText={setWidth} placeholder="Rộng (cm)" placeholderTextColor="#666" keyboardType="numeric" />
-                                </View>
-                                <View style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}>
-                                    <TextInput style={styles.input} value={height} onChangeText={setHeight} placeholder="Cao (cm)" placeholderTextColor="#666" keyboardType="numeric" />
-                                </View>
-                            </View>
+                            )}
                         </View>
                     </View>
 
@@ -473,7 +533,7 @@ export default function CreateOrderScreen({ route, navigation }) {
                             <Text style={styles.confirmBtnText}>ĐANG XỬ LÝ...</Text>
                         ) : (
                             <>
-                                <Text style={styles.confirmBtnText}>XÁC NHẬN TẠO ĐƠN</Text>
+                                <Text style={styles.confirmBtnText}>LƯU & NHẬN HÀNG</Text>
                                 <Ionicons name="checkmark-circle" size={20} color="white" style={{ marginLeft: 8 }} />
                             </>
                         )}

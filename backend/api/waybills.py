@@ -383,6 +383,38 @@ async def create_waybill(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/ocr-pickup", response_model=dict)
+async def ocr_pickup_waybill(
+    data: schema_wb.WaybillCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    API dành riêng cho Shipper dùng OCR:
+    - Nếu mã vận đơn tồn tại: Cập nhật thông tin (trọng lượng, cước phí...) và chuyển trạng thái PICKED_UP.
+    - Nếu mã vận đơn chưa có: Tạo mới và chuyển trạng thái PICKED_UP.
+    """
+    if data.shipping_fee <= 0:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập Phí vận chuyển (VNĐ) > 0")
+
+    origin_id = current_user.get("primary_hub_id") if current_user.get("role_id") != 1 else (data.origin_hub_id or current_user.get("primary_hub_id"))
+    dest_id = data.dest_hub_id or origin_id
+
+    try:
+        save_data = data.model_dump()
+        save_data["origin_hub_id"] = origin_id
+        save_data["dest_hub_id"] = dest_id
+
+        waybill = crud_wb.upsert_waybill_from_ocr(db, save_data, data.shipping_fee, origin_id, current_user['user_id'])
+        
+        db.commit()
+        return {"waybill_code": waybill.waybill_code, "status": waybill.status}
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 # --- 4. CẬP NHẬT CÂN NẶNG THỰC TẾ ---
 def _require_customer_account(current_user: dict):
     if current_user.get("role_id") != 6 or not current_user.get("customer_id"):

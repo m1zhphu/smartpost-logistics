@@ -30,6 +30,54 @@ export const createCustomerPickup = async (data) => {
     }
 };
 
+export const createCustomerBulkMailPickup = async (data) => {
+    try {
+        const response = await apiClient.post(CUSTOMER_ENDPOINTS.CREATE_BULK_MAIL_PICKUP, data, {
+            headers: buildIdempotencyHeaders('mobile-customer-bulk-pickup')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+// Customer Address Book
+export const getRecipientBook = async (userId) => {
+    try {
+        const data = await AsyncStorage.getItem(`customer_recipients_${userId}`);
+        return data ? JSON.parse(data) : [];
+    } catch (e) {
+        return [];
+    }
+};
+
+export const saveToRecipientBook = async (userId, recipient) => {
+    try {
+        let current = await getRecipientBook(userId);
+        const existingIndex = current.findIndex(r => r.phone === recipient.phone && r.name === recipient.name);
+        if (existingIndex > -1) {
+            current[existingIndex] = { ...current[existingIndex], ...recipient, updated_at: new Date().toISOString() };
+        } else {
+            current.push({ ...recipient, id: Date.now().toString(), created_at: new Date().toISOString() });
+        }
+        await AsyncStorage.setItem(`customer_recipients_${userId}`, JSON.stringify(current));
+        return { success: true };
+    } catch (e) {
+        return { success: false };
+    }
+};
+
+export const removeFromRecipientBook = async (userId, id) => {
+    try {
+        let current = await getRecipientBook(userId);
+        current = current.filter(r => r.id !== id);
+        await AsyncStorage.setItem(`customer_recipients_${userId}`, JSON.stringify(current));
+        return { success: true };
+    } catch (e) {
+        return { success: false };
+    }
+};
+
 export const getCustomerPickups = async () => {
     try {
         const response = await apiClient.get(CUSTOMER_ENDPOINTS.GET_PICKUPS);

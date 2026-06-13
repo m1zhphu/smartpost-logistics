@@ -5,7 +5,7 @@ const QueueContext = createContext();
 export const QueueProvider = ({ children }) => {
     const [queue, setQueue] = useState([]);
 
-    const addToQueue = (uri) => {
+    const addToQueue = (uri, meta = {}) => {
         const newItem = {
             // SỬA ĐỔI: Cộng thêm chuỗi ngẫu nhiên vào sau Date.now() 
             // để đảm bảo ID sinh ra trong vòng lặp forEach không bao giờ bị trùng nhau
@@ -13,7 +13,8 @@ export const QueueProvider = ({ children }) => {
             uri: uri,
             status: 'loading',
             errorType: null,
-            data: null
+            data: null,
+            ...meta
             // Thuộc tính batchId sẽ được HomeScreen tự động cập nhật ngay sau khi gọi hàm này
         };
         setQueue(prev => [newItem, ...prev]);

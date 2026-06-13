@@ -36,7 +36,11 @@ export default function ProcessedListComponent({
             username: user.username,
             queueId: item.id,
             bankBranch: item.data?.bank_branch,
-            unitCode: item.data?.unit_code
+            unitCode: item.data?.unit_code,
+            // Thêm các trường metadata từ OCR Config
+            customer_id: item.customer_id,
+            customer_name: item.customer_name,
+            bag_code: item.bag_code
         });
     };
 

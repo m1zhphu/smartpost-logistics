@@ -27,6 +27,7 @@ import CustomerPickupDraftsScreen from './src/screens/CustomerPickupDraftsScreen
 import CustomerPickupListScreen from './src/screens/CustomerPickupListScreen';
 import CustomerPickupDetailScreen from './src/screens/CustomerPickupDetailScreen';
 import CustomerTrackingScreen from './src/screens/CustomerTrackingScreen';
+import CustomerRecipientsScreen from './src/screens/CustomerRecipientsScreen';
 import ShipperPickupListScreen from './src/screens/ShipperPickupListScreen';
 import ShipperPickupDetailScreen from './src/screens/ShipperPickupDetailScreen';
 import ShipperSelfAssignPickupScreen from './src/screens/ShipperSelfAssignPickupScreen';
@@ -123,6 +124,7 @@ export default function App() {
             <Stack.Screen name="CustomerPickupList" component={CustomerPickupListScreen} />
             <Stack.Screen name="CustomerPickupDetail" component={CustomerPickupDetailScreen} />
             <Stack.Screen name="CustomerTracking" component={CustomerTrackingScreen} />
+            <Stack.Screen name="CustomerRecipients" component={CustomerRecipientsScreen} />
             <Stack.Screen name="ShipperPickupList" component={ShipperPickupListScreen} />
             <Stack.Screen name="ShipperPickupDetail" component={ShipperPickupDetailScreen} />
             <Stack.Screen name="ShipperSelfAssignPickup" component={ShipperSelfAssignPickupScreen} />

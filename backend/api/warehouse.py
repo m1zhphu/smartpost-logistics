@@ -593,6 +593,7 @@ def create_pickup_bag(
 @router.get("/pickup-bags", response_model=list[schema_wh.PickupBagResponse])
 def list_pickup_bags(
     status: str = Query(None),
+    customer_id: int = Query(None),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -605,6 +606,8 @@ def list_pickup_bags(
     
     if status:
         query = query.filter(models.Bags.status == status)
+    if customer_id:
+        query = query.filter(models.Bags.customer_id == customer_id)
         
     # Phân quyền lọc dữ liệu
     if role_id == 4: # Bưu tá: chỉ xem túi của mình

@@ -205,7 +205,7 @@ def get_tracking_logs(db: Session, waybill_id: int):
 
 def create_waybill_record(db: Session, data: dict, fee: float):
     ALLOWED_FIELDS = {
-        'customer_id', 'receiver_name', 'receiver_phone', 'receiver_address',
+        'waybill_code', 'customer_id', 'receiver_name', 'receiver_phone', 'receiver_address',
         'origin_hub_id', 'dest_hub_id', 'actual_weight', 'cod_amount',
         'service_type', 'product_name', 'note', 'payment_method',
         'sender_name', 'sender_phone', 'sender_address', 'length', 'width', 'height'
@@ -245,10 +245,17 @@ def create_waybill_record(db: Session, data: dict, fee: float):
     l = data.get('length')
     w = data.get('width')
     h = data.get('height')
-    conv_w = (float(l) * float(w) * float(h)) / 5000 if l and w and h else 0.0
+    # Lấy waybill_code từ payload (nếu OCR gửi), nếu không có thì tự động sinh
+    final_waybill_code = data.get('waybill_code')
+    if not final_waybill_code or str(final_waybill_code).strip() == "":
+        final_waybill_code = generate_waybill_code(db)
+        
+    # Loại bỏ waybill_code khỏi filtered để tránh truyền trùng lặp vào models.Waybills
+    if 'waybill_code' in filtered:
+        del filtered['waybill_code']
 
     new_waybill = models.Waybills(
-        waybill_code=generate_waybill_code(db),
+        waybill_code=final_waybill_code,
         **filtered,
         shipping_fee=fee,
         total_amount_to_collect=total_collect, 
@@ -272,7 +279,6 @@ def create_waybill_record(db: Session, data: dict, fee: float):
         length=l,
         width=w,
         height=h,
-        quantity=1,
     ))
     
     extra_services = data.get('extra_services', [])
@@ -604,6 +610,131 @@ def soft_delete_waybill(db: Session, code: str):
         waybill.deleted_at = datetime.utcnow()
         db.commit()
     return waybill
+
+def upsert_waybill_from_ocr(db: Session, data: dict, fee: float, hub_id: int, user_id: int):
+    waybill_code = data.get('waybill_code')
+    bag_code = data.get('bag_code')
+    waybill = None
+    if waybill_code and str(waybill_code).strip() != "":
+        waybill = get_waybill_by_code(db, waybill_code)
+    
+    ALLOWED_FIELDS = {
+        'customer_id', 'receiver_name', 'receiver_phone', 'receiver_address',
+        'origin_hub_id', 'dest_hub_id', 'actual_weight', 'cod_amount',
+        'service_type', 'product_name', 'note', 'payment_method',
+        'sender_name', 'sender_phone', 'sender_address', 'length', 'width', 'height'
+    }
+    filtered = {k: v for k, v in data.items() if k in ALLOWED_FIELDS}
+
+    from core.constants import WaybillStatus
+    
+    if waybill:
+        # UPSERT: Update existing waybill
+        for key, value in filtered.items():
+            if key in ['payment_method', 'service_type']:
+                continue # Don't overwrite existing payment_method or service_type via OCR since Shipper app doesn't specify them
+            if value is not None:
+                setattr(waybill, key, value)
+        
+        waybill.shipping_fee = fee
+        
+        l = data.get('length')
+        w = data.get('width')
+        h = data.get('height')
+        conv_w = (float(l) * float(w) * float(h)) / 5000 if l and w and h else 0.0
+        waybill.converted_weight = conv_w
+        
+        # Calculate total_amount_to_collect if RECEIVER_PAY
+        total_collect = float(data.get('cod_amount') or waybill.cod_amount or 0)
+        if data.get('payment_method') == 'RECEIVER_PAY' or waybill.payment_method == 'RECEIVER_PAY':
+            total_collect += float(fee)
+        waybill.total_amount_to_collect = total_collect
+
+        waybill.version += 1
+        
+        # Change status to PICKED_UP if not already delivered/cancelled
+        if waybill.status not in [WaybillStatus.DELIVERED, WaybillStatus.CANCELLED]:
+            waybill.status = WaybillStatus.PICKED_UP
+            
+        db.flush()
+        
+        # Update WaybillItems
+        waybill_item = db.query(models.WaybillItems).filter(models.WaybillItems.waybill_id == waybill.waybill_id).first()
+        product_group = normalize_product_type(data.get('product_group', 'PARCEL'))
+        if waybill_item:
+            if data.get('product_name') is not None:
+                waybill_item.product_name = data.get('product_name')
+            if data.get('actual_weight') is not None:
+                waybill_item.actual_weight = float(data.get('actual_weight') or 0)
+            if l is not None: waybill_item.length = float(l)
+            if w is not None: waybill_item.width = float(w)
+            if h is not None: waybill_item.height = float(h)
+        else:
+            db.add(models.WaybillItems(
+                parcel_code=f"{waybill.waybill_code}-001",
+                waybill_id=waybill.waybill_id,
+                product_group=product_group,
+                product_name=data.get('product_name') or get_product_type_definition(product_group)["label"],
+                declared_value=float(data.get('declared_value') or 0),
+                actual_weight=float(data.get('actual_weight') or 0),
+                length=float(l) if l else None,
+                width=float(w) if w else None,
+                height=float(h) if h else None,
+            ))
+        db.flush()
+        
+        # Log pickup action
+        new_log = models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id=WaybillStatus.PICKED_UP,
+            hub_id=hub_id,
+            user_id=user_id,
+            system_time=datetime.utcnow(),
+            action_time=datetime.utcnow(),
+            note=f"Cập nhật thông tin qua OCR và đã Lấy hàng. Cước phí: {fee:,.0f} VNĐ"
+        )
+        db.add(new_log)
+        db.flush()
+        
+        target_waybill = waybill
+    else:
+        # UPSERT: Create new waybill
+        new_waybill = create_waybill_record(db, data, fee)
+        
+        # Also mark as picked up
+        new_waybill.status = WaybillStatus.PICKED_UP
+        db.flush()
+        
+        # Log creation
+        create_initial_log(db, new_waybill.waybill_id, hub_id, user_id)
+        
+        # Log pickup
+        pickup_log = models.TrackingLogs(
+            waybill_id=new_waybill.waybill_id,
+            status_id=WaybillStatus.PICKED_UP,
+            hub_id=hub_id,
+            user_id=user_id,
+            system_time=datetime.utcnow(),
+            action_time=datetime.utcnow(),
+            note="Đã Lấy hàng (Tạo mới qua OCR)"
+        )
+        db.add(pickup_log)
+        db.flush()
+        
+        target_waybill = new_waybill
+
+    if bag_code:
+        bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code).first()
+        if bag:
+            existing_bag_item = db.query(models.BagItems).filter(
+                models.BagItems.bag_id == bag.bag_id,
+                models.BagItems.waybill_id == target_waybill.waybill_id
+            ).first()
+            if not existing_bag_item:
+                db.add(models.BagItems(bag_id=bag.bag_id, waybill_id=target_waybill.waybill_id))
+                db.flush()
+                
+    return target_waybill
 
 def update_waybill(db: Session, code: str, update_data: dict):
     waybill = get_waybill_by_code(db, code)
