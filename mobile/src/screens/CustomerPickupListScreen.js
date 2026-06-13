@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -45,6 +45,35 @@ export default function CustomerPickupListScreen({ navigation }) {
     setLoading(false);
   };
 
+  const groupedPickups = useMemo(() => {
+    const map = new Map();
+    pickups.forEach((item) => {
+      const key = item.request_code || item.bag_code || item.waybill_code;
+      if (!key) return;
+      const current = map.get(key) || {
+        ...item,
+        waybills: [],
+      };
+      const nested =
+        Array.isArray(item.waybills) && item.waybills.length
+          ? item.waybills
+          : [
+              {
+                waybill_code: item.waybill_code,
+                receiver_name: item.receiver_name,
+                receiver_phone: item.receiver_phone,
+                receiver_address: item.receiver_address,
+              },
+            ];
+      current.waybills = [...current.waybills, ...nested].filter(
+        (w, index, arr) =>
+          index === arr.findIndex((x) => x.waybill_code === w.waybill_code),
+      );
+      map.set(key, current);
+    });
+    return Array.from(map.values());
+  }, [pickups]);
+
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
@@ -84,20 +113,21 @@ export default function CustomerPickupListScreen({ navigation }) {
   const renderItem = ({ item }) => {
     const showFinal = hasFinalPrice(item.price_status, item.final_total_amount);
     const statusColor = getPickupStatusColor(item.pickup_status);
+    const primaryWaybill = item.waybills?.[0];
 
     return (
       <TouchableOpacity
         style={styles.card}
         onPress={() =>
           navigation.navigate("CustomerPickupDetail", {
-            waybillCode: item.waybill_code,
+            waybillCode: primaryWaybill?.waybill_code || item.waybill_code,
           })
         }
         activeOpacity={0.8}
       >
         <View style={styles.cardHeader}>
           <View style={styles.codeBlock}>
-            <Text style={styles.waybillCode}>{item.waybill_code}</Text>
+            <Text style={styles.waybillCode}>{item.bag_code || item.waybill_code}</Text>
             <Text style={styles.requestCode}>YC: {item.request_code}</Text>
           </View>
 
@@ -117,6 +147,12 @@ export default function CustomerPickupListScreen({ navigation }) {
         </View>
 
         <View style={styles.cardBody}>
+          <InfoLine icon="albums-outline">
+            {item.bag_code ? `Túi thư: ${item.bag_code}` : "Đơn lẻ"}
+          </InfoLine>
+          <InfoLine icon="list-outline">
+            Số mã con: {item.waybill_count || item.waybills?.length || 1}
+          </InfoLine>
           <InfoLine icon="cube-outline">
             Trạng thái vận đơn: {getWaybillStatusLabel(item.waybill_status)}
           </InfoLine>
@@ -149,6 +185,23 @@ export default function CustomerPickupListScreen({ navigation }) {
             </View>
           )}
         </View>
+        {item.waybills?.length > 1 ? (
+          <View style={styles.chipsWrap}>
+            {item.waybills.map((w) => (
+              <TouchableOpacity
+                key={w.waybill_code}
+                style={styles.chip}
+                onPress={() =>
+                  navigation.navigate("CustomerPickupDetail", {
+                    waybillCode: w.waybill_code,
+                  })
+                }
+              >
+                <Text style={styles.chipText}>{w.waybill_code}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -182,7 +235,7 @@ export default function CustomerPickupListScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
-          data={pickups}
+          data={groupedPickups}
           keyExtractor={(item) => item.request_code}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
@@ -366,5 +419,22 @@ const styles = StyleSheet.create({
     color: "#854D0E",
     fontWeight: "700",
     textAlign: "center",
+  },
+  chipsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  chip: {
+    backgroundColor: "#E0F2FE",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  chipText: {
+    color: "#0369A1",
+    fontSize: 12,
+    fontWeight: "800",
   },
 });

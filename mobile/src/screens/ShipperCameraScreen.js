@@ -9,9 +9,11 @@ import {
   Alert,
   Dimensions,
   Modal,
+  Linking,
   Animated,
   Easing,
   TextInput,
+  ScrollView,
   KeyboardAvoidingView,
   FlatList,
 } from "react-native";
@@ -26,6 +28,11 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { CUSTOMER_ENDPOINTS } from "../constants/customerEndpoints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { customerService } from "../services/customer";
+import {
+  getOcrCustomerPickups,
+  getOcrCustomers,
+} from "../services/pickupService";
+import styles from "../styles/HomeStyles";
 import { useQueue } from "../context/QueueContext";
 import { COLORS } from "../constants/colors";
 import { checkNetworkConnection } from "../utils/networkUtils";
@@ -33,8 +40,6 @@ import { checkNetworkConnection } from "../utils/networkUtils";
 import ProcessedListScreen from "./ProcessedListScreen";
 import { useUser } from "../context/UserContext";
 import Constants from "expo-constants";
-
-const PRIMARY = COLORS.primary || "#1B5E20";
 
 export default function ShipperCameraScreen({ route, navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -44,12 +49,16 @@ export default function ShipperCameraScreen({ route, navigation }) {
 
   const { queue, addToQueue, updateQueueItem, removeQueueItem, clearQueue } =
     useQueue();
+
   const [isCapturing, setIsCapturing] = useState(false);
+
   const [showList, setShowList] = useState(false);
+
   const [showMenu, setShowMenu] = useState(false);
   const [showAccountInfo, setShowAccountInfo] = useState(false);
 
   const isProcessing = useRef(false);
+
   const isUploadingRef = useRef(false);
 
   const appVersion =
@@ -78,8 +87,8 @@ export default function ShipperCameraScreen({ route, navigation }) {
   const fetchCustomersData = async (keyword = "") => {
     setIsLoadingCustomers(true);
     try {
-      const res = await customerService.getCustomers(0, 100, keyword);
-      setCustomers(res.data.data);
+      const res = await getOcrCustomers(keyword);
+      setCustomers(res.success ? res.data?.items || [] : []);
     } catch (error) {
       Toast.show({ type: "error", text1: "Lỗi tải danh sách khách hàng" });
     } finally {
@@ -99,15 +108,8 @@ export default function ShipperCameraScreen({ route, navigation }) {
     if (!customerId) return;
     setIsLoadingBags(true);
     try {
-      const token = await AsyncStorage.getItem("access_token");
-      const res = await fetch(
-        `https://api.speedlight.minhhien.click/api/warehouse/pickup-bags?status=CREATED&customer_id=${customerId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      const data = await res.json();
-      setBags(Array.isArray(data) ? data : []);
+      const res = await getOcrCustomerPickups(customerId);
+      setBags(res.success ? res.data?.bags || [] : []);
     } catch (error) {
       Toast.show({ type: "error", text1: "Lỗi tải danh sách túi" });
     } finally {
@@ -119,7 +121,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
     setOcrConfig((prev) => ({ ...prev, customer: customer, bagCode: "" }));
     setShowCustomerModal(false);
     setShowOcrConfig(true);
-    fetchBagsData(customer.id);
+    fetchBagsData(customer.customer_id);
   };
 
   const handleSelectBag = (bagCode) => {
@@ -145,8 +147,10 @@ export default function ShipperCameraScreen({ route, navigation }) {
     lockOrientation();
   }, []);
 
+  // HÀM XỬ LÝ KHI NGƯỜI DÙNG CHẠM MÀN HÌNH (CÓ ANIMATION)
   const handleTapToFocus = (event) => {
     const { pageX, pageY } = event.nativeEvent;
+    // ... (Giữ nguyên đoạn code tính toán giới hạn vùng bấm trong scanFrame mà tôi hướng dẫn ở turn trước) ...
     const { width: screenW, height: screenH } = Dimensions.get("window");
     const frameW = screenW * 0.8;
     const frameH = screenW * 1.2;
@@ -155,31 +159,42 @@ export default function ShipperCameraScreen({ route, navigation }) {
     const minY = (screenH - frameH) / 2 - 50;
     const maxY = minY + frameH;
 
+    // KIỂM TRA: Ngón tay có nằm trong khung không?
     if (pageX >= minX && pageX <= maxX && pageY >= minY && pageY <= maxY) {
+      // 1. DỪNG TẤT CẢ ANIMATION ĐANG CHẠY (Nếu người dùng bấm liên tiếp)
       focusAnim.stopAnimation();
-      focusAnim.setValue(0);
+      focusAnim.setValue(0); // Reset về trạng thái ban đầu
+
+      // 2. Lưu tọa độ ngón tay để vẽ
       setFocusPoint({ x: pageX, y: pageY });
 
+      // 3. KÍCH HOẠT CHUỖI ANIMATION MƯỢT MÀ
       Animated.sequence([
+        // Pha 1: Hiện lên và Thu nhỏ nhẹ (Tạo cảm giác "bắt điểm")
         Animated.timing(focusAnim, {
-          toValue: 1,
-          duration: 200,
+          toValue: 1, // Đi đến trạng thái 1 (hiện rõ)
+          duration: 200, // Chạy trong 0.2 giây
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: true, // Dùng phần cứng để mượt nhất
         }),
+        // Pha 2: Chờ 0.8 giây cho người dùng nhìn rõ
         Animated.delay(800),
+        // Pha 3: Thu nhỏ dần và Mờ dần (Fade out)
         Animated.timing(focusAnim, {
-          toValue: 0,
-          duration: 400,
+          toValue: 0, // Về lại 0 (ẩn đi)
+          duration: 400, // Chạy trong 0.4 giây
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
+        // Khi toàn bộ chuỗi animation xong, mới xóa tọa độ để ẩn hẳn View
         if (finished) setFocusPoint(null);
       });
+    } else {
+      // NẾU KHÔNG (Bấm ra ngoài vùng viền mờ): Không làm gì cả
+      return;
     }
   };
-
   const handleLogout = () => {
     setShowMenu(false);
     Alert.alert("Đăng xuất", "Bạn có muốn thoát không?", [
@@ -200,23 +215,42 @@ export default function ShipperCameraScreen({ route, navigation }) {
   useEffect(() => {
     const processNextItem = async () => {
       if (isUploadingRef.current) return;
+
       const nextItem = [...queue]
         .reverse()
         .find((item) => item.status === "loading");
+
       if (nextItem) {
         isUploadingRef.current = true;
+
         await processQueueItem(nextItem);
+
         isUploadingRef.current = false;
       }
     };
+
     processNextItem();
   }, [queue]);
+
+  // const handleDeleteAccount = () => {
+  //     const email = "nmhien3007@gmail.com";
+  //     const subject = "Yêu cầu xóa tài khoản Speed Light";
+  //     const body = `Xin chào Admin,\n\nTôi là user: ${user.username || '...'}.\nTôi muốn yêu cầu xóa tài khoản và dữ liệu cá nhân của mình khỏi hệ thống.\n\nLý do (nếu có): ...`;
+
+  //     const mailUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  //     Linking.openURL(mailUrl).catch(() => {
+  //         Alert.alert("Lỗi", "Không thể mở ứng dụng Mail. Vui lòng gửi thủ công tới: " + email);
+  //     });
+  // };
 
   const takePicture = async () => {
     if (!cameraRef.current || isProcessing.current || !isCameraReady) return;
 
     const isConnected = await checkNetworkConnection();
-    if (!isConnected) return;
+    if (!isConnected) {
+      return;
+    }
 
     try {
       isProcessing.current = true;
@@ -227,6 +261,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
           quality: 1,
           exif: true,
         });
+
         let currentUri = photo.uri;
         let currentW = photo.width;
         let currentH = photo.height;
@@ -273,8 +308,8 @@ export default function ShipperCameraScreen({ route, navigation }) {
         );
 
         addToQueue(manipResult.uri, {
-          customer_id: ocrConfig.customer?.id,
-          customer_name: ocrConfig.customer?.ten_khach_hang,
+          customer_id: ocrConfig.customer?.customer_id,
+          customer_name: ocrConfig.customer?.customer_name,
           bag_code: ocrConfig.bagCode,
         });
       } else {
@@ -284,12 +319,14 @@ export default function ShipperCameraScreen({ route, navigation }) {
         });
         let realW = fixedPhoto.width;
         let realH = fixedPhoto.height;
+
         let currentUri = fixedPhoto.uri;
 
         if (realW < realH) {
           const rotated = await manipulateAsync(currentUri, [{ rotate: 270 }], {
             format: SaveFormat.JPEG,
           });
+
           currentUri = rotated.uri;
           realW = rotated.width;
           realH = rotated.height;
@@ -307,12 +344,10 @@ export default function ShipperCameraScreen({ route, navigation }) {
         let originY = visibleOriginY + cropY_in_Visible;
         const SHIFT_PIXEL_UI = 50;
         originX = originX - SHIFT_PIXEL_UI * scale;
-
         let finalX = Math.floor(Math.max(0, originX));
         let finalY = Math.floor(Math.max(0, originY));
         let finalW = Math.floor(cropTargetW);
         let finalH = Math.floor(cropTargetH);
-
         if (finalX + finalW > realW) finalW = realW - finalX;
         if (finalY + finalH > realH) finalH = realH - finalY;
         finalW = Math.max(1, finalW - 2);
@@ -335,11 +370,12 @@ export default function ShipperCameraScreen({ route, navigation }) {
           format: SaveFormat.JPEG,
         });
 
-        addToQueue(manipResult.uri, {
-          customer_id: ocrConfig.customer?.id,
-          customer_name: ocrConfig.customer?.ten_khach_hang,
+        const newItem = addToQueue(manipResult.uri, {
+          customer_id: ocrConfig.customer?.customer_id,
+          customer_name: ocrConfig.customer?.customer_name,
           bag_code: ocrConfig.bagCode,
         });
+        // processQueueItem(newItem);
       }
       Toast.show({
         type: "success",
@@ -369,7 +405,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
       const uType = (await AsyncStorage.getItem("user_type")) || "employee";
       if (uType === "customer") extractUrl = CUSTOMER_ENDPOINTS.EXTRACT;
       else if (uType === "admin")
-        extractUrl = "https://speedlight.minhhien.click/extract";
+        extractUrl = "https://speedlight.minhhien.click/extract"; // We can use the hardcoded one or ADMIN_ENDPOINTS.EXTRACT if imported
 
       const response = await fetch(extractUrl, {
         method: "POST",
@@ -380,6 +416,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
       const textResponse = await response.text();
 
       if (!response.ok) {
+        // console.error(`!!! Server Error ${response.status}:`, textResponse);
         throw new Error(`SERVER_${response.status}_${textResponse}`);
       }
 
@@ -406,7 +443,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <Ionicons name="videocam-off" size={50} color="#64748B" />
+        <Ionicons name="videocam-off" size={50} color="#666" />
         <Text style={styles.permissionText}>Cần cấp quyền Camera</Text>
         <TouchableOpacity
           onPress={requestPermission}
@@ -426,6 +463,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
         style={StyleSheet.absoluteFill}
         onPress={handleTapToFocus}
       >
+        {/* <View style={StyleSheet.absoluteFill}> */}
         <CameraView
           style={{ flex: 1 }}
           facing="back"
@@ -449,10 +487,12 @@ export default function ShipperCameraScreen({ route, navigation }) {
               left: focusPoint.x - 25,
               width: 50,
               height: 50,
+              // ----------------------------------------------------
               borderWidth: 2,
               borderColor: "#FFD700",
               backgroundColor: "transparent",
               zIndex: 10,
+
               opacity: focusAnim,
               transform: [
                 {
@@ -468,7 +508,17 @@ export default function ShipperCameraScreen({ route, navigation }) {
 
         <SafeAreaView style={styles.cameraOverlay} pointerEvents="box-none">
           <View style={styles.headerRow}>
-            <View style={styles.headerToolsGroup}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "rgba(255, 255, 255, 0.09)",
+                borderRadius: 25,
+                paddingHorizontal: 4,
+                paddingVertical: 4,
+                zIndex: 20,
+              }}
+            >
               <TouchableOpacity
                 onPress={() => navigation.goBack()}
                 style={{ padding: 8, paddingHorizontal: 12 }}
@@ -477,6 +527,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
                 <Ionicons name="arrow-back" size={24} color="#FFF" />
               </TouchableOpacity>
 
+              {/* Vạch ngăn cách dọc mờ ở giữa */}
               {isWarehouseStaff() && (
                 <>
                   <View
@@ -486,6 +537,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
                       backgroundColor: "rgba(255, 255, 255, 0.4)",
                     }}
                   />
+
                   <TouchableOpacity
                     onPress={() => navigation.replace("WarehouseHome")}
                     style={{ padding: 8, paddingHorizontal: 12 }}
@@ -548,10 +600,12 @@ export default function ShipperCameraScreen({ route, navigation }) {
           <View style={styles.scanFrameContainer} pointerEvents="none">
             <View style={styles.maskOverlay} />
             <View style={styles.scanFrame}>
+              {/* --- THÊM 4 CÁI GÓC VUÔNG VÀO ĐÂY --- */}
               <View style={[styles.corner, styles.topLeft]} />
               <View style={[styles.corner, styles.topRight]} />
               <View style={[styles.corner, styles.bottomLeft]} />
               <View style={[styles.corner, styles.bottomRight]} />
+              {/* ------------------------------------- */}
               <View style={[styles.maskBase, styles.maskTop]} />
               <View style={[styles.maskBase, styles.maskBottom]} />
               <View style={[styles.maskBase, styles.maskLeft]} />
@@ -579,7 +633,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
                   setShowOcrConfig(true);
                 }}
               >
-                <Text style={{ color: "#0F172A", fontWeight: "bold" }}>
+                <Text style={{ color: "#333", fontWeight: "bold" }}>
                   Hủy Quét
                 </Text>
               </TouchableOpacity>
@@ -601,6 +655,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
             )}
           </View>
         </SafeAreaView>
+        {/* </View > */}
       </TouchableOpacity>
 
       <Modal
@@ -610,11 +665,11 @@ export default function ShipperCameraScreen({ route, navigation }) {
         onRequestClose={() => setShowMenu(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlayLight}
+          style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowMenu(false)}
         >
-          <View style={styles.dropdownMenu}>
+          <View style={styles.menuContainer}>
             <View style={styles.menuHeader}>
               <Text style={styles.menuTitle}>Tiện ích</Text>
               <TouchableOpacity onPress={() => setShowMenu(false)}>
@@ -629,7 +684,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
                 navigation.navigate("ShipperPickupList");
               }}
             >
-              <View style={styles.menuIconBox}>
+              <View style={styles.iconBox}>
                 <Ionicons
                   name="cube-outline"
                   size={20}
@@ -640,7 +695,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
               <Ionicons name="chevron-forward" size={20} color="#ccc" />
             </TouchableOpacity>
 
-            <View style={styles.menuDivider} />
+            <View style={styles.divider} />
 
             <TouchableOpacity
               style={styles.menuItem}
@@ -649,7 +704,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
                 navigation.navigate("ShipperSelfAssignPickup");
               }}
             >
-              <View style={styles.menuIconBox}>
+              <View style={styles.iconBox}>
                 <Ionicons
                   name="git-pull-request-outline"
                   size={20}
@@ -660,7 +715,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
               <Ionicons name="chevron-forward" size={20} color="#ccc" />
             </TouchableOpacity>
 
-            <View style={styles.menuDivider} />
+            <View style={styles.divider} />
 
             <TouchableOpacity
               style={styles.menuItem}
@@ -669,31 +724,20 @@ export default function ShipperCameraScreen({ route, navigation }) {
                 setShowAccountInfo(true);
               }}
             >
-              <View style={styles.menuIconBox}>
-                <Ionicons
-                  name="person-outline"
-                  size={20}
-                  color={COLORS.secondary}
-                />
+              <View style={styles.iconBox}>
+                <Ionicons name="person" size={20} color={COLORS.secondary} />
               </View>
               <Text style={styles.menuText}>Thông tin tài khoản</Text>
               <Ionicons name="chevron-forward" size={20} color="#ccc" />
             </TouchableOpacity>
 
-            <View style={styles.menuDivider} />
+            <View style={styles.divider} />
 
             <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-              <View
-                style={[styles.menuIconBox, { backgroundColor: "#FEE2E2" }]}
-              >
-                <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+              <View style={[styles.iconBox, { backgroundColor: "#ffebee" }]}>
+                <Ionicons name="log-out" size={20} color={COLORS.logOut} />
               </View>
-              <Text
-                style={[
-                  styles.menuText,
-                  { color: "#EF4444", fontWeight: "700" },
-                ]}
-              >
+              <Text style={[styles.menuText, { color: COLORS.logOut }]}>
                 Đăng xuất
               </Text>
             </TouchableOpacity>
@@ -707,52 +751,51 @@ export default function ShipperCameraScreen({ route, navigation }) {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowAccountInfo(false)}
       >
-        <View style={styles.dnaContainer}>
-          <View style={styles.dnaHeader}>
-            <Text style={styles.dnaHeaderTitle}>Tài khoản</Text>
-            <TouchableOpacity onPress={() => setShowAccountInfo(false)}>
-              <Ionicons name="close" size={24} color="#0F172A" />
+        <View style={styles.accountModalContainer}>
+          <View style={styles.accountHeader}>
+            <Text style={styles.accountHeaderTitle}>Tài khoản</Text>
+            <TouchableOpacity
+              onPress={() => setShowAccountInfo(false)}
+              style={styles.closeBtnCircle}
+            >
+              <Ionicons name="close" size={20} color="#333" />
             </TouchableOpacity>
           </View>
-          <View style={styles.dnaContent}>
+
+          <View style={styles.accountBody}>
             <View style={{ alignItems: "center", marginBottom: 30 }}>
               <View style={styles.avatarCircle}>
+                {/* Nhớ dùng user?.username để tránh lỗi văng app khi đăng xuất */}
                 <Text
                   style={{ fontSize: 30, color: "white", fontWeight: "bold" }}
                 >
                   {user?.username ? user.username.charAt(0).toUpperCase() : "U"}
                 </Text>
               </View>
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: "900",
-                  marginTop: 10,
-                  color: "#0F172A",
-                }}
-              >
+              <Text style={{ fontSize: 20, fontWeight: "bold", marginTop: 10 }}>
                 {user?.username}
               </Text>
-              <Text style={{ color: "#64748B", fontWeight: "600" }}>
-                Thành viên Speed Light
-              </Text>
+              <Text style={{ color: "#666" }}>Thành viên Speed Light</Text>
             </View>
-            <View style={styles.dnaCard}>
-              <View style={styles.rowItem}>
+
+            <View style={styles.sectionBox}>
+              <TouchableOpacity style={styles.rowItem}>
                 <Text style={styles.rowLabel}>Tên đăng nhập</Text>
                 <Text style={styles.rowValue}>{user?.username}</Text>
-              </View>
-              <View style={styles.menuDivider} />
-              <View style={styles.rowItem}>
+              </TouchableOpacity>
+              <View style={styles.divider} />
+
+              <TouchableOpacity style={styles.rowItem}>
                 <Text style={styles.rowLabel}>Phiên bản App</Text>
                 <Text style={styles.rowValue}>{appVersion}</Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
       <Modal
+        Modal
         visible={showList}
         animationType="slide"
         presentationStyle="pageSheet"
@@ -766,10 +809,12 @@ export default function ShipperCameraScreen({ route, navigation }) {
           onDelete={(id) => removeQueueItem(id)}
           onRetry={(item) => {
             updateQueueItem(item.id, { status: "loading" });
+            // processQueueItem(item);
           }}
         />
       </Modal>
 
+      {/* Modal Config */}
       <Modal
         visible={showOcrConfig}
         animationType="slide"
@@ -781,25 +826,56 @@ export default function ShipperCameraScreen({ route, navigation }) {
           style={{ flex: 1 }}
         >
           <TouchableOpacity
-            style={styles.modalOverlayDark}
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "flex-end",
+            }}
             activeOpacity={1}
             onPress={() => setShowOcrConfig(false)}
           >
             <View
-              style={styles.bottomSheet}
+              style={{
+                backgroundColor: "white",
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                padding: 20,
+                minHeight: 300,
+              }}
               onStartShouldSetResponder={() => true}
             >
-              <View style={styles.sheetHandle} />
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Cấu hình chung OCR</Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 20,
+                }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+                  Cấu hình chung OCR
+                </Text>
                 <TouchableOpacity onPress={() => setShowOcrConfig(false)}>
-                  <Ionicons name="close-circle" size={28} color="#94A3B8" />
+                  <Ionicons name="close" size={24} color="#333" />
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionLabel}>1. Khách hàng</Text>
+              <Text
+                style={{ fontSize: 14, fontWeight: "600", marginBottom: 8 }}
+              >
+                1. Khách hàng
+              </Text>
               <TouchableOpacity
-                style={styles.selectionBox}
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 20,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
                 onPress={() => {
                   setShowOcrConfig(false);
                   setShowCustomerModal(true);
@@ -807,37 +883,54 @@ export default function ShipperCameraScreen({ route, navigation }) {
                 }}
               >
                 <Text
-                  style={[
-                    styles.selectionText,
-                    !ocrConfig.customer && { color: "#94A3B8" },
-                  ]}
+                  style={{
+                    color: ocrConfig.customer ? "#333" : "#999",
+                    flex: 1,
+                  }}
                 >
                   {ocrConfig.customer
-                    ? `[${ocrConfig.customer.ma_khach_hang}] ${ocrConfig.customer.ten_khach_hang}`
+                    ? `[${ocrConfig.customer.customer_code}] ${ocrConfig.customer.customer_name}`
                     : "Chọn khách hàng..."}
                 </Text>
-                <Ionicons name="chevron-down" size={20} color="#94A3B8" />
+                <Ionicons name="chevron-down" size={20} color="#999" />
               </TouchableOpacity>
 
-              <Text style={styles.sectionLabel}>2. Túi thư (Bag Code)</Text>
+              <Text
+                style={{ fontSize: 14, fontWeight: "600", marginBottom: 8 }}
+              >
+                2. Túi thư (Bag Code)
+              </Text>
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  marginBottom: 20,
+                  marginBottom: 15,
                 }}
               >
                 <TextInput
-                  style={styles.sheetInput}
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: "#ddd",
+                    borderRadius: 8,
+                    padding: 12,
+                    backgroundColor: "#f9f9f9",
+                    marginRight: 10,
+                  }}
                   placeholder="Nhập mã túi..."
-                  placeholderTextColor="#94A3B8"
                   value={ocrConfig.bagCode}
                   onChangeText={(t) =>
                     setOcrConfig((prev) => ({ ...prev, bagCode: t }))
                   }
                 />
                 <TouchableOpacity
-                  style={styles.scanBarcodeBtn}
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    padding: 12,
+                    borderRadius: 8,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
                   onPress={() => {
                     setShowOcrConfig(false);
                     setIsScanningBag(true);
@@ -855,17 +948,27 @@ export default function ShipperCameraScreen({ route, navigation }) {
                     setShowBagModal(true);
                   }}
                 >
-                  <Text style={{ color: PRIMARY, fontWeight: "700" }}>
+                  <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
                     + Chọn từ danh sách túi của KH
                   </Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={styles.primarySheetBtn}
+                style={{
+                  backgroundColor: COLORS.primary,
+                  padding: 16,
+                  borderRadius: 8,
+                  alignItems: "center",
+                  marginTop: 10,
+                }}
                 onPress={() => setShowOcrConfig(false)}
               >
-                <Text style={styles.primarySheetBtnText}>Xong</Text>
+                <Text
+                  style={{ color: "white", fontWeight: "bold", fontSize: 16 }}
+                >
+                  Xong
+                </Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -882,8 +985,17 @@ export default function ShipperCameraScreen({ route, navigation }) {
           setShowOcrConfig(true);
         }}
       >
-        <View style={styles.dnaContainer}>
-          <View style={styles.dnaHeader}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 16,
+              backgroundColor: "white",
+              borderBottomWidth: 1,
+              borderBottomColor: "#eee",
+            }}
+          >
             <TouchableOpacity
               onPress={() => {
                 setShowCustomerModal(false);
@@ -891,18 +1003,36 @@ export default function ShipperCameraScreen({ route, navigation }) {
               }}
               style={{ padding: 4 }}
             >
-              <Ionicons name="arrow-back" size={24} color="#0F172A" />
+              <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
-            <Text style={styles.dnaHeaderTitle}>Chọn Khách Hàng</Text>
-            <View style={{ width: 32 }} />
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                flex: 1,
+                textAlign: "center",
+                marginRight: 32,
+              }}
+            >
+              Chọn Khách Hàng
+            </Text>
           </View>
           <View style={{ padding: 16 }}>
-            <View style={styles.searchBox}>
-              <Ionicons name="search" size={20} color="#94A3B8" />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "white",
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                borderWidth: 1,
+                borderColor: "#ddd",
+              }}
+            >
+              <Ionicons name="search" size={20} color="#999" />
               <TextInput
-                style={styles.searchInput}
+                style={{ flex: 1, padding: 12 }}
                 placeholder="Tìm tên, mã khách hàng..."
-                placeholderTextColor="#94A3B8"
                 value={searchCustomer}
                 onChangeText={setSearchCustomer}
               />
@@ -911,32 +1041,35 @@ export default function ShipperCameraScreen({ route, navigation }) {
           {isLoadingCustomers ? (
             <ActivityIndicator
               size="large"
-              color={PRIMARY}
+              color={COLORS.primary}
               style={{ marginTop: 20 }}
             />
           ) : (
             <FlatList
               data={customers}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-              showsVerticalScrollIndicator={false}
+              keyExtractor={(item) => item.customer_id.toString()}
+              contentContainerStyle={{ padding: 16 }}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.dnaCard}
+                  style={{
+                    backgroundColor: "white",
+                    padding: 16,
+                    borderRadius: 8,
+                    marginBottom: 12,
+                  }}
                   onPress={() => handleSelectCustomer(item)}
-                  activeOpacity={0.7}
                 >
-                  <Text style={styles.cardTitleBlack}>
-                    {item.ten_khach_hang}
+                  <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                    {item.customer_name}
                   </Text>
-                  <Text style={styles.cardSub}>
-                    Mã: {item.ma_khach_hang} | SĐT: {item.sdt}
+                  <Text style={{ color: "#666", marginTop: 4 }}>
+                    Mã: {item.customer_code} | SĐT: {item.phone_number || "---"}
                   </Text>
                 </TouchableOpacity>
               )}
             />
           )}
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Modal Chọn Túi */}
@@ -949,8 +1082,17 @@ export default function ShipperCameraScreen({ route, navigation }) {
           setShowOcrConfig(true);
         }}
       >
-        <View style={styles.dnaContainer}>
-          <View style={styles.dnaHeader}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 16,
+              backgroundColor: "white",
+              borderBottomWidth: 1,
+              borderBottomColor: "#eee",
+            }}
+          >
             <TouchableOpacity
               onPress={() => {
                 setShowBagModal(false);
@@ -958,26 +1100,29 @@ export default function ShipperCameraScreen({ route, navigation }) {
               }}
               style={{ padding: 4 }}
             >
-              <Ionicons name="arrow-back" size={24} color="#0F172A" />
+              <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
-            <Text style={styles.dnaHeaderTitle}>Chọn Túi</Text>
-            <View style={{ width: 32 }} />
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                flex: 1,
+                textAlign: "center",
+                marginRight: 32,
+              }}
+            >
+              Chọn Túi
+            </Text>
           </View>
           {isLoadingBags ? (
             <ActivityIndicator
               size="large"
-              color={PRIMARY}
+              color={COLORS.primary}
               style={{ marginTop: 20 }}
             />
           ) : bags.length === 0 ? (
             <View style={{ padding: 20, alignItems: "center" }}>
-              <Ionicons
-                name="file-tray-outline"
-                size={40}
-                color="#94A3B8"
-                style={{ marginBottom: 10 }}
-              />
-              <Text style={{ color: "#64748B", fontWeight: "600" }}>
+              <Text style={{ color: "#666" }}>
                 Không có túi nào đang chờ của khách hàng này
               </Text>
             </View>
@@ -987,34 +1132,40 @@ export default function ShipperCameraScreen({ route, navigation }) {
               keyExtractor={(item) =>
                 item.bag_id ? item.bag_id.toString() : item.bag_code
               }
-              contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+              contentContainerStyle={{ padding: 16 }}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[
-                    styles.dnaCard,
-                    {
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    },
-                  ]}
+                  style={{
+                    backgroundColor: "white",
+                    padding: 16,
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
                   onPress={() => handleSelectBag(item.bag_code)}
-                  activeOpacity={0.7}
                 >
                   <View>
-                    <Text style={[styles.cardTitleBlack, { color: PRIMARY }]}>
+                    <Text
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: 16,
+                        color: COLORS.primary,
+                      }}
+                    >
                       {item.bag_code}
                     </Text>
-                    <Text style={styles.cardSub}>
+                    <Text style={{ color: "#666", marginTop: 4 }}>
                       Số bill hiện tại: {item.actual_quantity || 0}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
                 </TouchableOpacity>
               )}
             />
           )}
-        </View>
+        </SafeAreaView>
       </Modal>
 
       <View
@@ -1034,364 +1185,3 @@ export default function ShipperCameraScreen({ route, navigation }) {
     </View>
   );
 }
-
-// STYLES CHUẨN DNA & CAMERA
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000" },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F8FAFC",
-  },
-  permissionText: {
-    fontSize: 16,
-    color: "#475569",
-    marginVertical: 15,
-    fontWeight: "700",
-  },
-  btnPermission: {
-    backgroundColor: PRIMARY,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  btnPermissionText: { color: "white", fontWeight: "900" },
-
-  cameraOverlay: { flex: 1, justifyContent: "space-between" },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 15,
-    paddingTop: 10,
-    alignItems: "center",
-  },
-  headerToolsGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 25,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    zIndex: 20,
-  },
-  listButton: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  badge: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: "#EF4444",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  badgeText: { color: "white", fontSize: 10, fontWeight: "900" },
-
-  scanFrameContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  maskOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  scanFrame: {
-    width: "80%",
-    aspectRatio: 1 / 1.2,
-    backgroundColor: "transparent",
-    position: "relative",
-  },
-  scanHintText: {
-    color: "white",
-    marginTop: 30,
-    fontSize: 14,
-    fontWeight: "600",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-
-  // Corners for scan frame
-  corner: {
-    position: "absolute",
-    width: 40,
-    height: 40,
-    borderColor: "#10B981",
-  },
-  topLeft: {
-    top: 0,
-    left: 0,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderTopLeftRadius: 16,
-  },
-  topRight: {
-    top: 0,
-    right: 0,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderTopRightRadius: 16,
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderBottomLeftRadius: 16,
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderBottomRightRadius: 16,
-  },
-
-  // Masks for scan frame clearing
-  maskBase: { position: "absolute", backgroundColor: "rgba(0,0,0,0.45)" },
-  maskTop: { top: -1000, bottom: "100%", left: -1000, right: -1000 },
-  maskBottom: { top: "100%", bottom: -1000, left: -1000, right: -1000 },
-  maskLeft: { top: 0, bottom: 0, left: -1000, right: "100%" },
-  maskRight: { top: 0, bottom: 0, left: "100%", right: -1000 },
-
-  captureFloatingContainer: { alignItems: "center", marginBottom: 40 },
-  shutterBtnOuter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: "rgba(255,255,255,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  shutterBtnInner: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: "#FFF",
-  },
-
-  // Menu Dropdown
-  modalOverlayLight: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.1)",
-    justifyContent: "flex-start",
-  },
-  dropdownMenu: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 100 : 70,
-    right: 20,
-    width: 220,
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    paddingVertical: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  menuHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  menuTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  menuIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  menuText: { flex: 1, fontSize: 14, fontWeight: "700", color: "#334155" },
-  menuDivider: { height: 1, backgroundColor: "#F1F5F9", marginHorizontal: 16 },
-
-  // Bottom Sheet Chuẩn DNA
-  modalOverlayDark: {
-    flex: 1,
-    backgroundColor: "rgba(15,23,42,0.5)",
-    justifyContent: "flex-end",
-  },
-  bottomSheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 20,
-  },
-  sheetHandle: {
-    width: 42,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: "#E2E8F0",
-    alignSelf: "center",
-    marginBottom: 16,
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    marginBottom: 16,
-  },
-  sheetTitle: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
-  sectionLabel: {
-    fontSize: 14,
-    color: "#475569",
-    marginBottom: 8,
-    fontWeight: "700",
-  },
-
-  selectionBox: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    minHeight: 52,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: 20,
-  },
-  selectionText: {
-    color: "#0F172A",
-    fontSize: 15,
-    fontWeight: "600",
-    flex: 1,
-    paddingRight: 10,
-  },
-  sheetInput: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 52,
-    fontSize: 15,
-    color: "#0F172A",
-    fontWeight: "600",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginRight: 10,
-  },
-  scanBarcodeBtn: {
-    backgroundColor: PRIMARY,
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  primarySheetBtn: {
-    backgroundColor: PRIMARY,
-    height: 52,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 10,
-  },
-  primarySheetBtnText: { color: "#FFF", fontSize: 16, fontWeight: "900" },
-
-  // DNA Full Screen (Cho modal chọn list)
-  dnaContainer: { flex: 1, backgroundColor: "#F8FAFC" },
-  dnaHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: Platform.OS === "ios" ? 20 : 10,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  dnaHeaderTitle: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
-  dnaContent: { flex: 1, padding: 16 },
-  dnaCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardTitleBlack: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0F172A",
-    marginBottom: 4,
-  },
-  cardSub: { fontSize: 13, color: "#64748B", fontWeight: "600" },
-
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 15,
-    color: "#0F172A",
-    fontWeight: "600",
-  },
-
-  avatarCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: PRIMARY,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 4,
-    borderColor: "#E2E8F0",
-  },
-  rowItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-  },
-  rowLabel: { fontSize: 14, color: "#64748B", fontWeight: "700" },
-  rowValue: { fontSize: 14, color: "#0F172A", fontWeight: "800" },
-});

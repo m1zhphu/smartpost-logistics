@@ -13,11 +13,17 @@ export const ADMIN_ENDPOINTS = {
   CONFIRM_PICKED: (requestCode) => `${API_BASE_URL}/api/delivery/pickup-requests/${requestCode}/picked`,
   SEND_GPS_LOCATION: `${API_BASE_URL}/api/delivery/mobile/shipper/location`,
   UPLOAD_PICKUP_IMAGE: `${API_BASE_URL}/api/upload/bill?is_pickup=true`,
+  UPLOAD_BILL_IMAGE: `${API_BASE_URL}/api/upload/bill`,
   ADMIN_REGISTER_PUSH_TOKEN_URL: `${API_BASE_URL}/api/users/register-push-token`,
   TOGGLE_AVAILABILITY: `${API_BASE_URL}/api/delivery/mobile/shipper/availability`,
   
   // New API endpoints for Shipper OCR and Mock functions
   EXTRACT: process.env.EXPO_PUBLIC_EXTRACT_API_URL || 'https://speedlight.minhhien.click/extract',
+  OCR_CUSTOMERS: `${API_BASE_URL}/api/waybills/mobile/ocr/customers`,
+  OCR_CUSTOMER_PICKUPS: (customerId) => `${API_BASE_URL}/api/waybills/mobile/ocr/customers/${customerId}/pickups`,
+  OCR_BAG_WAYBILLS: (bagCode) => `${API_BASE_URL}/api/waybills/mobile/ocr/bags/${bagCode}/waybills`,
+  OCR_UPDATE_WAYBILL: (waybillCode) => `${API_BASE_URL}/api/waybills/mobile/ocr/waybills/${waybillCode}`,
+  OCR_EXTRA_WAYBILLS: (bagCode) => `${API_BASE_URL}/api/waybills/mobile/ocr/bags/${bagCode}/extra-waybills`,
   GET_AVAILABLE_PICKUPS: `${API_BASE_URL}/api/delivery/mobile/shipper/available-pickups`, // MOCK
   SELF_ASSIGN_PICKUP: `${API_BASE_URL}/api/delivery/mobile/shipper/self-assign`, // MOCK
   CREATE_BILL: `${API_BASE_URL}/api/delivery/mobile/shipper/create-bill`, // MOCK

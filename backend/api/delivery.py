@@ -764,6 +764,7 @@ def mark_pickup_request_picked(
             current_user["user_id"],
             pickup_image_url=data.pickup_image_url,
             note=data.note,
+            actual_quantity=data.actual_quantity,
         )
         db.commit()
         realtime_manager.publish([f"hub:{db_req.target_hub_id}", f"customer:{db_req.customer_id}", "admin"], "pickup.picked", {

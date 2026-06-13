@@ -80,8 +80,14 @@ export const removeFromRecipientBook = async (userId, id) => {
 
 export const getCustomerPickups = async () => {
     try {
-        const response = await apiClient.get(CUSTOMER_ENDPOINTS.GET_PICKUPS);
-        return { success: true, data: response.data };
+        const [pickupRes, bulkRes] = await Promise.all([
+            apiClient.get(CUSTOMER_ENDPOINTS.GET_PICKUPS),
+            apiClient.get(CUSTOMER_ENDPOINTS.GET_BULK_MAIL_PICKUPS),
+        ]);
+
+        const pickups = Array.isArray(pickupRes.data) ? pickupRes.data : [];
+        const bulkPickups = Array.isArray(bulkRes.data) ? bulkRes.data : [];
+        return { success: true, data: [...pickups, ...bulkPickups] };
     } catch (error) {
         return { success: false, message: getErrorMessage(error) };
     }
@@ -217,6 +223,21 @@ export const confirmPickup = async (requestCode, imageUrl, note) => {
     }
 };
 
+export const confirmPickupWithBagCount = async (requestCode, { imageUrl, note, actualQuantity }) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.CONFIRM_PICKED(requestCode), {
+            pickup_image_url: imageUrl,
+            note: note || '',
+            actual_quantity: actualQuantity,
+        }, {
+            headers: buildIdempotencyHeaders('mobile-shipper-picked')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
 export const uploadPickupImage = async (file) => {
     try {
         const formData = new FormData();
@@ -235,6 +256,50 @@ export const uploadPickupImage = async (file) => {
     }
 };
 
+export const uploadBillImage = async (file) => {
+    try {
+        const source = typeof file === 'string' ? { uri: file } : file;
+        const formData = new FormData();
+        formData.append('file', {
+            uri: source.uri,
+            name: source.name || `bill-${Date.now()}.jpg`,
+            type: source.type || 'image/jpeg'
+        });
+
+        const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_BILL_IMAGE, formData);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const extractBillOcr = async (file) => {
+    try {
+        const source = typeof file === 'string' ? { uri: file } : file;
+        const formData = new FormData();
+        formData.append('file', {
+            uri: source.uri,
+            name: source.name || `ocr-${Date.now()}.jpg`,
+            type: source.type || 'image/jpeg'
+        });
+
+        const response = await fetch(ADMIN_ENDPOINTS.EXTRACT, {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+            body: formData,
+        });
+
+        const textResponse = await response.text();
+        if (!response.ok) {
+            throw new Error(textResponse || `HTTP_${response.status}`);
+        }
+
+        return { success: true, data: JSON.parse(textResponse) };
+    } catch (error) {
+        return { success: false, message: error.message };
+    }
+};
+
 export const sendGpsLocation = async (latitude, longitude, accuracy, note) => {
     try {
         const response = await apiClient.post(ADMIN_ENDPOINTS.SEND_GPS_LOCATION, {
@@ -242,6 +307,58 @@ export const sendGpsLocation = async (latitude, longitude, accuracy, note) => {
             longitude,
             accuracy,
             note
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const getOcrCustomers = async (q = '') => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.OCR_CUSTOMERS, {
+            params: q ? { q } : {},
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const getOcrCustomerPickups = async (customerId) => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.OCR_CUSTOMER_PICKUPS(customerId));
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const getOcrBagWaybills = async (bagCode) => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.OCR_BAG_WAYBILLS(bagCode));
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const patchOcrWaybill = async (waybillCode, data) => {
+    try {
+        const response = await apiClient.patch(ADMIN_ENDPOINTS.OCR_UPDATE_WAYBILL(waybillCode), data);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const createOcrExtraWaybills = async (bagCode, count, note) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.OCR_EXTRA_WAYBILLS(bagCode), {
+            count,
+            note: note || '',
+        }, {
+            headers: buildIdempotencyHeaders('mobile-ocr-extra-waybill')
         });
         return { success: true, data: response.data };
     } catch (error) {

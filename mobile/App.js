@@ -38,6 +38,10 @@ import ShipperDeliveryDetailScreen from './src/screens/ShipperDeliveryDetailScre
 import ShipperReportIncidentScreen from './src/screens/ShipperReportIncidentScreen';
 import ShipperTrackingScreen from './src/screens/ShipperTrackingScreen';
 import AdminPickupFlowScreen from './src/screens/AdminPickupFlowScreen';
+import OcrPickupCustomerScreen from './src/screens/OcrPickupCustomerScreen';
+import OcrPickupListScreen from './src/screens/OcrPickupListScreen';
+import OcrBagDetailScreen from './src/screens/OcrBagDetailScreen';
+import OcrWaybillDetailScreen from './src/screens/OcrWaybillDetailScreen';
 
 import { QueueProvider } from './src/context/QueueContext';
 import { UserProvider, navigationRef } from './src/context/UserContext';
@@ -134,6 +138,10 @@ export default function App() {
             <Stack.Screen name="ShipperReportIncident" component={ShipperReportIncidentScreen} />
             <Stack.Screen name="ShipperTracking" component={ShipperTrackingScreen} />
             <Stack.Screen name="AdminPickupFlow" component={AdminPickupFlowScreen} />
+            <Stack.Screen name="OcrPickupCustomer" component={OcrPickupCustomerScreen} />
+            <Stack.Screen name="OcrPickupList" component={OcrPickupListScreen} />
+            <Stack.Screen name="OcrBagDetail" component={OcrBagDetailScreen} />
+            <Stack.Screen name="OcrWaybillDetail" component={OcrWaybillDetailScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         <Toast config={toastConfig} />

@@ -23,6 +23,7 @@ import * as Location from "expo-location";
 import { COLORS } from "../constants/colors";
 import {
   confirmPickup,
+  confirmPickupWithBagCount,
   getShipperPickupDetail,
   sendGpsLocation,
   uploadPickupImage,
@@ -53,6 +54,8 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   const [pickedNote, setPickedNote] = useState(
     "Đã lấy hàng từ khách và chuẩn bị mang về bưu cục",
   );
+  const [actualQuantityInput, setActualQuantityInput] = useState("");
+  const [varianceReason, setVarianceReason] = useState("");
 
   const [showBillModal, setShowBillModal] = useState(false);
 
@@ -67,6 +70,14 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       setDetail(result.data);
       setPickupImageUrl(result.data?.pickup_image_url || "");
       setPickupImagePreview(result.data?.pickup_image_url || "");
+      setActualQuantityInput(
+        String(
+          result.data?.actual_quantity ??
+            result.data?.expected_quantity ??
+            result.data?.est_quantity ??
+            "",
+        ),
+      );
     } else {
       Toast.show({
         type: "error",
@@ -151,7 +162,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       setPickupImagePreview(asset.uri);
       Toast.show({
         type: "success",
-        text1: "Đã tải ảnh pickup lên thành công",
+        text1: "Đã tải ảnh pickup thành công",
       });
       return;
     }
@@ -207,23 +218,59 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       return;
     }
 
+    const isBulkMail = detail?.pickup_mode === "BULK_MAIL";
+    const expectedQuantity =
+      detail?.expected_quantity ?? detail?.est_quantity ?? 0;
+    const parsedActualQuantity = parseInt(actualQuantityInput, 10);
+
+    if (isBulkMail) {
+      if (Number.isNaN(parsedActualQuantity) || parsedActualQuantity < 0) {
+        Toast.show({
+          type: "error",
+          text1: "Thiếu số kiện thực tế",
+          text2: "Vui lòng nhập số lượng thư/kiện bạn đã đếm.",
+        });
+        return;
+      }
+      if (parsedActualQuantity !== expectedQuantity && !varianceReason.trim()) {
+        Toast.show({
+          type: "error",
+          text1: "Thiếu ghi chú chênh lệch",
+          text2: "Khi số lượng thực tế khác dự kiến, vui lòng nhập ghi chú.",
+        });
+        return;
+      }
+    }
+
     Alert.alert("Xác nhận", "Bạn có chắc chắn đã lấy hàng thành công?", [
       { text: "Hủy", style: "cancel" },
       {
         text: "Đồng ý",
         onPress: async () => {
           setSubmitting(true);
-          const result = await confirmPickup(
-            requestCode,
-            pickupImageUrl,
-            pickedNote.trim() || "Đã lấy hàng thành công",
-          );
+          const noteParts = [pickedNote.trim() || "Đã lấy hàng thành công"];
+          if (varianceReason.trim()) {
+            noteParts.push(`Chênh lệch túi thư: ${varianceReason.trim()}`);
+          }
+          const note = noteParts.join("\n");
+          const result = isBulkMail
+            ? await confirmPickupWithBagCount(requestCode, {
+                imageUrl: pickupImageUrl,
+                note,
+                actualQuantity: parsedActualQuantity,
+              })
+            : await confirmPickup(requestCode, pickupImageUrl, note);
           setSubmitting(false);
 
           if (result.success) {
             Toast.show({
               type: "success",
-              text1: "Xác nhận lấy hàng thành công",
+              text1: isBulkMail
+                ? "Đã xác nhận lấy túi thư"
+                : "Xác nhận lấy hàng thành công",
+              text2: isBulkMail
+                ? "Lưu ý: backend hiện tại cần xác nhận thêm actual_quantity nếu muốn persist."
+                : undefined,
             });
             navigation.goBack();
           } else {
@@ -267,7 +314,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
     <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
       <Text
-        style={[bold ? styles.valueBold : styles.value, color && { color }]}
+        style={[styles.value, bold && styles.valueBold, color && { color }]}
       >
         {value}
       </Text>
@@ -338,17 +385,25 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           style={styles.backButton}
           activeOpacity={0.8}
         >
-          <Text style={styles.backButtonText}>Quay lại</Text>
+          <Text style={styles.backButtonText}>Quay lai</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  const isBulkMail = detail.pickup_mode === "BULK_MAIL";
+  const expectedQuantity = detail.expected_quantity ?? detail.est_quantity ?? 0;
+  const parsedActualQuantity = parseInt(actualQuantityInput, 10);
+  const hasVariance =
+    isBulkMail &&
+    !Number.isNaN(parsedActualQuantity) &&
+    parsedActualQuantity !== expectedQuantity;
+  const bagWaybills = Array.isArray(detail.waybills) ? detail.waybills : [];
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* HEADER CHUẨN FORM */}
       <View style={styles.header}>
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
         <View style={styles.headerCenter}>
@@ -377,9 +432,20 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               color={PRIMARY}
             />
             <Row
-              label="Mã vận đơn:"
-              value={detail.waybill_code || "---"}
+              label={isBulkMail ? "Mã túi:" : "Mã vận đơn:"}
+              value={
+                isBulkMail
+                  ? detail.bag_code || detail.waybill_code || "---"
+                  : detail.waybill_code || "---"
+              }
               bold
+              color={isBulkMail ? "#C2410C" : PRIMARY}
+            />
+            <Row
+              label="Loại pickup:"
+              value={isBulkMail ? "Túi thư" : "Đơn lẻ"}
+              bold
+              color={isBulkMail ? "#C2410C" : PRIMARY}
             />
             <Row
               label="Trạng thái pickup:"
@@ -404,7 +470,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>NGƯỜI GỬI</Text>
             <Row label="Tên:" value={detail.sender_name || "---"} />
-            <Row label="SĐT:" value={detail.sender_phone || "---"} bold />
+            <Row label="SDT:" value={detail.sender_phone || "---"} bold />
             <ColumnRow
               label="Địa chỉ lấy:"
               value={detail.pickup_address || "---"}
@@ -429,7 +495,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>NGƯỜI NHẬN</Text>
             <Row label="Tên:" value={detail.receiver_name || "---"} />
-            <Row label="SĐT:" value={detail.receiver_phone || "---"} />
+            <Row label="SDT:" value={detail.receiver_phone || "---"} />
             <ColumnRow
               label="Địa chỉ nhận:"
               value={detail.receiver_address || "---"}
@@ -442,7 +508,10 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               label="Loại hàng:"
               value={detail.product_name || detail.product_type || "---"}
             />
-            <Row label="Số kiện:" value={detail.est_quantity || 0} />
+            <Row
+              label={isBulkMail ? "Số thư dự kiến:" : "Số kiện:"}
+              value={expectedQuantity}
+            />
             <Row
               label="Khối lượng ước tính:"
               value={formatWeight(detail.est_weight)}
@@ -457,6 +526,126 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               value={detail.note || "Không có ghi chú"}
             />
           </View>
+
+          {isBulkMail ? (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>THÔNG TIN TÚI THƯ</Text>
+              <Row
+                label="Trạng thái Materialization:"
+                value={detail.materialization_status || "PENDING"}
+              />
+              <View style={styles.quantityWrap}>
+                <View style={styles.quantityInfoCard}>
+                  <Text style={styles.quantityLabel}>Dự kiến</Text>
+                  <Text style={styles.quantityValue}>{expectedQuantity}</Text>
+                </View>
+                <View style={styles.quantityInputCard}>
+                  <Text style={styles.quantityLabel}>Thực tế đếm được</Text>
+                  <TextInput
+                    style={styles.quantityInput}
+                    value={actualQuantityInput}
+                    onChangeText={setActualQuantityInput}
+                    keyboardType="number-pad"
+                    placeholder="Nhập số thư"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.quickCountActions}>
+                <TouchableOpacity
+                  style={[styles.quickCountBtn, styles.quickCountBtnNeutral]}
+                  onPress={() => {
+                    setActualQuantityInput(String(expectedQuantity));
+                    setVarianceReason("");
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={16}
+                    color="#059669"
+                  />
+                  <Text
+                    style={[styles.quickCountBtnText, { color: "#059669" }]}
+                  >
+                    Dự kiến
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.quickCountBtn, styles.quickCountBtnWarn]}
+                  onPress={() =>
+                    setActualQuantityInput(
+                      String(Math.max(expectedQuantity + 1, 1)),
+                    )
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={16}
+                    color="#C2410C"
+                  />
+                  <Text
+                    style={[styles.quickCountBtnText, { color: "#C2410C" }]}
+                  >
+                    Phát sinh
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {hasVariance ? (
+                <View style={styles.noteInputContainer}>
+                  <TextInput
+                    style={styles.noteInput}
+                    value={varianceReason}
+                    onChangeText={setVarianceReason}
+                    placeholder="Ghi chú chênh lệch số lượng..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              ) : null}
+
+              <View style={styles.childWaybillList}>
+                <Text style={styles.childWaybillTitle}>
+                  Danh sách vận đơn con ({bagWaybills.length})
+                </Text>
+                {bagWaybills.length === 0 ? (
+                  <Text style={styles.childWaybillEmpty}>
+                    Chưa có vận đơn còn trong túi.
+                  </Text>
+                ) : (
+                  bagWaybills.map((waybill, index) => (
+                    <View
+                      key={waybill.waybill_code || `${index}`}
+                      style={styles.childWaybillRow}
+                    >
+                      <View style={styles.childWaybillIndex}>
+                        <Text style={styles.childWaybillIndexText}>
+                          {index + 1}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.childWaybillCode}>
+                          {waybill.waybill_code || "Chưa có mã"}
+                        </Text>
+                        <Text style={styles.childWaybillMeta}>
+                          {waybill.ocr_status === "REVIEW"
+                            ? "Đã OCR"
+                            : waybill.ocr_status === "INCOMPLETE"
+                              ? "Thiếu thông tin"
+                              : "Chờ OCR"}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
+          ) : null}
 
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>ẢNH XÁC NHẬN PICKUP</Text>
@@ -515,7 +704,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
 
       <Modal
         visible={showBillModal}
-        transparent={true}
+        transparent
         animationType="slide"
         onRequestClose={() => setShowBillModal(false)}
       >
@@ -529,7 +718,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           >
             <TouchableOpacity
               style={styles.billMenuItem}
-              onPress={() => handleCreateBill("Tạo bill tổng")}
+              onPress={() => handleCreateBill("Tao bill tong")}
               activeOpacity={0.7}
             >
               <Text style={styles.billMenuText}>Tạo bill tổng</Text>
@@ -537,7 +726,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
             <View style={styles.divider} />
             <TouchableOpacity
               style={styles.billMenuItem}
-              onPress={() => handleCreateBill("Tạo bill lẻ")}
+              onPress={() => handleCreateBill("Tao bill le")}
               activeOpacity={0.7}
             >
               <Text style={styles.billMenuText}>Tạo bill lẻ</Text>
@@ -545,7 +734,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
             <View style={styles.divider} />
             <TouchableOpacity
               style={styles.billMenuItem}
-              onPress={() => handleCreateBill("Tạo bill đầy đủ")}
+              onPress={() => handleCreateBill("Tao bill day du")}
               activeOpacity={0.7}
             >
               <Text style={styles.billMenuText}>Tạo bill đầy đủ</Text>
@@ -556,13 +745,12 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               onPress={() => setShowBillModal(false)}
               activeOpacity={0.7}
             >
-              <Text style={styles.billMenuTextCancel}>Huỷ</Text>
+              <Text style={styles.billMenuTextCancel}>Hủy</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* BOTTOM DOCK CHUẨN FORM */}
       <View style={styles.bottomDock}>
         <View style={styles.actionGrid}>
           <TouchableOpacity
@@ -582,7 +770,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionGridBtn}
-            onPress={() => handleMockAction("Từ chối")}
+            onPress={() => handleMockAction("Tu choi")}
             activeOpacity={0.7}
           >
             <Ionicons name="close-circle" size={24} color="#EF4444" />
@@ -592,7 +780,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionGridBtn}
-            onPress={() => handleMockAction("Phụ phí")}
+            onPress={() => handleMockAction("Phu phi")}
             activeOpacity={0.7}
           >
             <Ionicons name="cash-outline" size={24} color={SECONDARY} />
@@ -602,7 +790,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionGridBtn}
-            onPress={() => handleMockAction("Sự cố")}
+            onPress={() => handleMockAction("Su co")}
             activeOpacity={0.7}
           >
             <Ionicons name="warning" size={24} color="#F59E0B" />
@@ -626,7 +814,6 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   );
 }
 
-// STYLES CHUẨN DNA
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: {
@@ -696,7 +883,6 @@ const styles = StyleSheet.create({
 
   scrollContent: { padding: 16, paddingBottom: 120 },
 
-  // Card Phẳng Chuẩn DNA
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -823,6 +1009,132 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  quantityWrap: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
+  },
+  quantityInfoCard: {
+    flex: 0.8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quantityInputCard: {
+    flex: 1.2,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+  },
+  quantityLabel: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  quantityValue: {
+    color: PRIMARY,
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  quantityInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  quickCountActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+  quickCountBtn: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  quickCountBtnNeutral: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#BBF7D0",
+  },
+  quickCountBtnWarn: {
+    backgroundColor: "#FFF7ED",
+    borderColor: "#FED7AA",
+  },
+  quickCountBtnText: {
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  childWaybillList: {
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingTop: 14,
+  },
+  childWaybillTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 10,
+  },
+  childWaybillEmpty: {
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  childWaybillRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    padding: 12,
+    marginBottom: 8,
+  },
+  childWaybillIndex: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  childWaybillIndexText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#64748B",
+  },
+  childWaybillCode: {
+    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  childWaybillMeta: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 3,
+  },
 
   uploadingRow: { flexDirection: "row", alignItems: "center", marginTop: 12 },
   uploadingText: {
@@ -833,7 +1145,6 @@ const styles = StyleSheet.create({
   },
   disabledBtn: { opacity: 0.7 },
 
-  // Bottom Bar Chuẩn Form
   bottomDock: {
     position: "absolute",
     bottom: 0,
@@ -863,7 +1174,6 @@ const styles = StyleSheet.create({
   },
   actionGridText: { fontSize: 11, fontWeight: "900", marginTop: 4 },
 
-  // Modal Chuẩn
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15,23,42,0.5)",

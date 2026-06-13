@@ -625,14 +625,25 @@ def assign_shipper_to_online_pickup(db: Session, db_req: models.BookingRequests,
     return db_req, waybill
 
 
-def mark_online_pickup_picked(db: Session, db_req: models.BookingRequests, user_id: int, pickup_image_url: str = None, note: str = None):
+def mark_online_pickup_picked(
+    db: Session,
+    db_req: models.BookingRequests,
+    user_id: int,
+    pickup_image_url: str = None,
+    note: str = None,
+    actual_quantity: int | None = None,
+):
     now = datetime.utcnow()
     waybills = get_request_waybills(db, db_req.request_id)
     waybill = waybills[0] if waybills else None
     db_req.status = "PICKED"
+    if actual_quantity is not None:
+        db_req.actual_quantity = actual_quantity
     if db_req.pickup_bag:
         db_req.pickup_bag.status = "PICKED"
         db_req.pickup_bag.pickup_time = now
+        if actual_quantity is not None:
+            db_req.pickup_bag.actual_quantity = actual_quantity
 
     for item in waybills:
         item.status = WaybillStatus.PICKED_PENDING_VERIFY if item.ocr_status not in ["PENDING", "INCOMPLETE"] else WaybillStatus.PENDING_OCR

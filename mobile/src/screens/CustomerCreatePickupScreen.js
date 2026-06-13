@@ -22,6 +22,7 @@ import {
   clearPickupDraft,
   createCustomerPickup,
   getPickupDraft,
+  removePickupDraft,
   savePickupDraft,
   upsertPickupDraft,
   fetchExtraServices,
@@ -97,6 +98,7 @@ const AutocompleteInput = ({
                 onSelect(item);
                 setShowDropdown(false);
               }}
+              activeOpacity={0.7}
             >
               <Text style={styles.dropdownItemText}>{item.name}</Text>
             </TouchableOpacity>
@@ -150,7 +152,11 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
           <View style={styles.modalHandle} />
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose}>
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={onClose}
+              activeOpacity={0.7}
+            >
               <Ionicons name="close-circle" size={28} color="#94A3B8" />
             </TouchableOpacity>
           </View>
@@ -169,6 +175,7 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
                   onSelect(item);
                   onClose();
                 }}
+                activeOpacity={0.7}
               >
                 <Text style={styles.modalItemText}>{item.name}</Text>
                 <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
@@ -182,7 +189,7 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
 };
 
 // ─── Main Component ────────────────────────────────────────────────────────
-export default function CustomerCreatePickupScreen({ navigation }) {
+export default function CustomerCreatePickupScreen({ navigation, route }) {
   const { user } = useUser();
 
   // Basic Sender
@@ -251,7 +258,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     onSelect: null,
   });
   const [loading, setLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const currentDraftIdRef = useRef(null);
   const draftHydratedRef = useRef(false);
+  const routeDraft = route?.params?.draft || null;
 
   useEffect(() => {
     fetchProvinces();
@@ -261,6 +271,9 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (isSubmittingRef.current) {
+        return;
+      }
       const hasMeaningfulContent =
         rName || rPhone || rAddressDetail || itemName;
       if (!hasMeaningfulContent) {
@@ -487,7 +500,77 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     setRWardQuery(ward.name);
   };
 
+  const hydrateDraft = async (draft) => {
+    if (!draft) return;
+
+    currentDraftIdRef.current = draft.draft_id || null;
+
+    setSName(draft.sName || user?.full_name || "");
+    setSPhone(draft.sPhone || user?.phone_number || "");
+    setSAddressDetail(
+      draft.sAddressDetail || user?.street_address || user?.address || "",
+    );
+
+    if (draft.sProvince) {
+      setSProvince(draft.sProvince);
+      setSProvinceQuery(draft.sProvinceQuery || draft.sProvince.name);
+      const dists = await fetchDistricts(draft.sProvince.code);
+      setSDistrictsData(dists);
+    }
+    if (draft.sDistrict) {
+      setSDistrict(draft.sDistrict);
+      setSDistrictQuery(draft.sDistrictQuery || draft.sDistrict.name);
+      const wards = await fetchWards(draft.sDistrict.code);
+      setSWardsData(wards);
+    }
+    if (draft.sWard) {
+      setSWard(draft.sWard);
+      setSWardQuery(draft.sWardQuery || draft.sWard.name);
+    }
+
+    setRName(draft.rName || "");
+    setRPhone(draft.rPhone || "");
+    setRAddressDetail(draft.rAddressDetail || "");
+
+    if (draft.rProvince) {
+      setRProvince(draft.rProvince);
+      setRProvinceQuery(draft.rProvinceQuery || draft.rProvince.name);
+      const dists = await fetchDistricts(draft.rProvince.code);
+      setRDistrictsData(dists);
+    }
+    if (draft.rDistrict) {
+      setRDistrict(draft.rDistrict);
+      setRDistrictQuery(draft.rDistrictQuery || draft.rDistrict.name);
+      const wards = await fetchWards(draft.rDistrict.code);
+      setRWardsData(wards);
+    }
+    if (draft.rWard) {
+      setRWard(draft.rWard);
+      setRWardQuery(draft.rWardQuery || draft.rWard.name);
+    }
+
+    setItemName(draft.itemName || "");
+    setItemWeight(draft.itemWeight ? String(draft.itemWeight) : "0.5");
+    setItemQuantity(draft.itemQuantity ? String(draft.itemQuantity) : "1");
+    setCodAmount(draft.codAmount ? String(draft.codAmount) : "");
+    setNote(draft.note || "");
+    setPackageType(draft.packageType || "goods");
+    setLength(draft.length ? String(draft.length) : "");
+    setWidth(draft.width ? String(draft.width) : "");
+    setHeight(draft.height ? String(draft.height) : "");
+    setPaymentMethod(draft.paymentMethod || "SENDER_DEBT");
+    setServiceType(draft.serviceType || "STANDARD");
+    setExtraServices(draft.extraServices || []);
+
+    draftHydratedRef.current = true;
+  };
+
   const loadDraft = async () => {
+    if (routeDraft) {
+      await hydrateDraft(routeDraft);
+      return;
+    }
+
     const draft = await getPickupDraft();
     if (!draft) {
       draftHydratedRef.current = true;
@@ -507,71 +590,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
         },
         {
           text: "Tiếp tục",
-          onPress: async () => {
-            setSName(draft.sName || user?.full_name || "");
-            setSPhone(draft.sPhone || user?.phone_number || "");
-            setSAddressDetail(
-              draft.sAddressDetail ||
-                user?.street_address ||
-                user?.address ||
-                "",
-            );
-
-            if (draft.sProvince) {
-              setSProvince(draft.sProvince);
-              setSProvinceQuery(draft.sProvinceQuery || draft.sProvince.name);
-              const dists = await fetchDistricts(draft.sProvince.code);
-              setSDistrictsData(dists);
-            }
-            if (draft.sDistrict) {
-              setSDistrict(draft.sDistrict);
-              setSDistrictQuery(draft.sDistrictQuery || draft.sDistrict.name);
-              const wards = await fetchWards(draft.sDistrict.code);
-              setSWardsData(wards);
-            }
-            if (draft.sWard) {
-              setSWard(draft.sWard);
-              setSWardQuery(draft.sWardQuery || draft.sWard.name);
-            }
-
-            setRName(draft.rName || "");
-            setRPhone(draft.rPhone || "");
-            setRAddressDetail(draft.rAddressDetail || "");
-
-            if (draft.rProvince) {
-              setRProvince(draft.rProvince);
-              setRProvinceQuery(draft.rProvinceQuery || draft.rProvince.name);
-              const dists = await fetchDistricts(draft.rProvince.code);
-              setRDistrictsData(dists);
-            }
-            if (draft.rDistrict) {
-              setRDistrict(draft.rDistrict);
-              setRDistrictQuery(draft.rDistrictQuery || draft.rDistrict.name);
-              const wards = await fetchWards(draft.rDistrict.code);
-              setRWardsData(wards);
-            }
-            if (draft.rWard) {
-              setRWard(draft.rWard);
-              setRWardQuery(draft.rWardQuery || draft.rWard.name);
-            }
-
-            setItemName(draft.itemName || "");
-            setItemWeight(draft.itemWeight ? String(draft.itemWeight) : "0.5");
-            setItemQuantity(
-              draft.itemQuantity ? String(draft.itemQuantity) : "1",
-            );
-            setCodAmount(draft.codAmount ? String(draft.codAmount) : "");
-            setNote(draft.note || "");
-            setPackageType(draft.packageType || "goods");
-            setLength(draft.length ? String(draft.length) : "");
-            setWidth(draft.width ? String(draft.width) : "");
-            setHeight(draft.height ? String(draft.height) : "");
-            setPaymentMethod(draft.paymentMethod || "SENDER_DEBT");
-            setServiceType(draft.serviceType || "STANDARD");
-            setExtraServices(draft.extraServices || []);
-
-            draftHydratedRef.current = true;
-          },
+          onPress: () => hydrateDraft(draft),
         },
       ],
     );
@@ -642,6 +661,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
   });
 
   const buildDraftSnapshot = () => ({
+    draft_id: currentDraftIdRef.current || undefined,
     sName,
     sPhone,
     sAddressDetail,
@@ -678,9 +698,11 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
   const handleSaveDraft = async () => {
     setLoading(true);
-    const result = await upsertPickupDraft(buildDraftSnapshot());
+    const snapshot = buildDraftSnapshot();
+    const result = await upsertPickupDraft(snapshot);
     setLoading(false);
-    if (result.success) {
+    if (result?.draft_id) {
+      currentDraftIdRef.current = result.draft_id;
       await clearPickupDraft();
       Toast.show({ type: "success", text1: "Đã lưu nháp trên thiết bị" });
       navigation.navigate("CustomerPickupDrafts");
@@ -713,11 +735,11 @@ export default function CustomerCreatePickupScreen({ navigation }) {
       return;
     }
     setLoading(true);
+    isSubmittingRef.current = true;
     const payload = buildPayload(false);
     const result = await createCustomerPickup(payload);
     setLoading(false);
     if (result.success) {
-      // Save recipient to book automatically
       if (user?.user_id) {
         saveToRecipientBook(user.user_id, {
           name: rName,
@@ -732,14 +754,20 @@ export default function CustomerCreatePickupScreen({ navigation }) {
         });
       }
 
-      await clearPickupDraft();
+      if (currentDraftIdRef.current) {
+        await removePickupDraft(currentDraftIdRef.current);
+      } else {
+        await clearPickupDraft();
+      }
+      currentDraftIdRef.current = null;
       Toast.show({
         type: "success",
         text1: "Tạo yêu cầu thành công",
-        text2: `Mã vận đơn: ${result.data?.waybill_code || "Đã tạo"}`,
+        text2: "Mã vận đơn: " + (result.data?.waybill_code || "Đã tạo"),
       });
       navigation.goBack();
     } else {
+      isSubmittingRef.current = false;
       Toast.show({
         type: "error",
         text1: "Lỗi tạo đơn",
@@ -753,7 +781,6 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     setRPhone(item.phone || "");
     setRAddressDetail(item.address_detail || "");
 
-    // Attempt to match the saved location names to current provincesData
     if (item.province_name) {
       const matchProv = provincesData.find(
         (p) => p.name === item.province_name || p.code == item.province_id,
@@ -890,26 +917,36 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     }
   };
 
+  const HeaderButton = ({ icon, onPress }) => (
+    <TouchableOpacity
+      style={styles.headerButton}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.headerButtonInner}>
+        <Ionicons name={icon} size={20} color={COLORS.white} />
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Header */}
+      {/* HEADER CHUẨN FORM */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color={COLORS.white} />
-        </TouchableOpacity>
+        <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Tạo lấy hàng</Text>
           <Text style={styles.headerSubtitle}>Điền thông tin đơn mới</Text>
         </View>
 
-        <TouchableOpacity onPress={handleSaveDraft} style={styles.draftPill}>
+        <TouchableOpacity
+          onPress={handleSaveDraft}
+          style={styles.draftPill}
+          activeOpacity={0.7}
+        >
           <Ionicons
             name="save-outline"
             size={16}
@@ -1027,6 +1064,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
                 onSelect: handleSelectRecipient,
               })
             }
+            activeOpacity={0.7}
           >
             <Text style={{ color: COLORS.primary, fontWeight: "bold" }}>
               + Sổ địa chỉ
@@ -1116,6 +1154,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
                 packageType === "goods" && styles.radioBtnActive,
               ]}
               onPress={() => setPackageType("goods")}
+              activeOpacity={0.8}
             >
               <Text
                 style={[
@@ -1132,6 +1171,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
                 packageType === "letter" && styles.radioBtnActive,
               ]}
               onPress={() => setPackageType("letter")}
+              activeOpacity={0.8}
             >
               <Text
                 style={[
@@ -1207,6 +1247,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
                 color: "#94A3B8",
                 marginBottom: 15,
                 fontStyle: "italic",
+                fontWeight: "600",
               }}
             >
               Tài liệu mặc định là 0.1kg và không cần kích thước.
@@ -1217,6 +1258,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           <TouchableOpacity
             style={styles.selectionBox}
             onPress={() => openModal("serviceType")}
+            activeOpacity={0.8}
           >
             <Text style={styles.selectionText}>
               {serviceType === "STANDARD"
@@ -1242,6 +1284,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           <TouchableOpacity
             style={styles.selectionBox}
             onPress={() => openModal("paymentMethod")}
+            activeOpacity={0.8}
           >
             <Text style={styles.selectionText}>
               {paymentMethod === "SENDER_DEBT"
@@ -1281,6 +1324,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
                     key={svc.service_code}
                     style={styles.checkboxRow}
                     onPress={() => toggleExtraService(svc.service_code)}
+                    activeOpacity={0.7}
                   >
                     <Ionicons
                       name={isSelected ? "checkbox" : "square-outline"}
@@ -1432,6 +1476,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           style={[styles.confirmBtn, loading && { opacity: 0.7 }]}
           onPress={handleConfirm}
           disabled={loading}
+          activeOpacity={0.8}
         >
           <Text style={styles.confirmBtnText}>
             {loading ? "ĐANG XỬ LÝ..." : "TẠO ĐƠN HÀNG"}
@@ -1452,7 +1497,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
 // ─── STYLES ĐƯỢC CHUẨN HÓA THEO GIAO DIỆN PHẲNG (WAREHOUSE UI) ─────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" }, // Nền sáng nhẹ để nổi bật card trắng
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
   header: {
     flexDirection: "row",
@@ -1482,6 +1527,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
   headerCenter: { alignItems: "center", flex: 1, paddingHorizontal: 10 },
   headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
   headerSubtitle: {

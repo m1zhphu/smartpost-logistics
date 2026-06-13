@@ -13,7 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import { COLORS } from "../constants/colors";
 import {
-  closePickupBag,
   createCustomerPickup,
   getPickupDrafts,
   removePickupDraft,
@@ -144,6 +143,10 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
     await removePickupDraft(draftId);
     setSelectedIds((prev) => prev.filter((id) => id !== draftId));
     loadDrafts();
+  };
+
+  const editDraft = (draft) => {
+    navigation.navigate("CustomerCreatePickup", { draft });
   };
 
   const handleExcelUpload = async () => {
@@ -310,13 +313,6 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
         }
       }
 
-      if (bagCode) {
-        const closeRes = await closePickupBag(bagCode);
-        if (!closeRes.success) {
-          throw new Error(closeRes.message || "Không chốt được túi");
-        }
-      }
-
       for (const draft of selectedDrafts) {
         await removePickupDraft(draft.draft_id);
       }
@@ -393,6 +389,14 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
                 : item.serviceType || "STANDARD"}
             </Text>
           </View>
+
+          <TouchableOpacity
+            onPress={() => editDraft(item)}
+            style={styles.editBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="pencil-outline" size={20} color={PRIMARY} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => deleteDraft(item.draft_id)}
@@ -633,6 +637,12 @@ const styles = StyleSheet.create({
   deleteBtn: {
     padding: 8,
     backgroundColor: "#FEE2E2",
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  editBtn: {
+    padding: 8,
+    backgroundColor: "#E0F2FE",
     borderRadius: 10,
     marginLeft: 10,
   },

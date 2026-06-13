@@ -39,8 +39,8 @@ export default function ShipperPickupListScreen({ navigation }) {
         if (data.event === "pickup.assigned_shipper") {
           Toast.show({
             type: "info",
-            text1: "Có đơn lấy hàng mới!",
-            text2: `Mã đơn: ${data.payload?.request_code || "N/A"}`,
+            text1: "Co don lay hang moi!",
+            text2: `Ma don: ${data.payload?.request_code || "N/A"}`,
           });
 
           fetchPickups();
@@ -96,6 +96,8 @@ export default function ShipperPickupListScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     const statusColor = getPickupStatusColor(item.pickup_status);
+    const isBulkMail = item.pickup_mode === "BULK_MAIL";
+    const expectedQuantity = item.expected_quantity ?? item.est_quantity ?? 0;
 
     return (
       <TouchableOpacity
@@ -112,49 +114,75 @@ export default function ShipperPickupListScreen({ navigation }) {
             <Text style={styles.requestCode}>{item.request_code}</Text>
 
             <Text style={styles.waybillCode}>
-              {item.waybill_code || "Chưa có mã vận đơn"}
+              {isBulkMail
+                ? item.bag_code || "Chưa có mã túi thư"
+                : item.waybill_code || "Chưa có mã vận đơn"}
             </Text>
           </View>
 
-          <View
-            style={[
-              styles.statusPill,
-              {
-                borderColor: `${statusColor}33`,
-                backgroundColor: `${statusColor}10`,
-              },
-            ]}
-          >
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {getPickupStatusLabel(item.pickup_status)}
-            </Text>
+          <View style={styles.headerPills}>
+            <View
+              style={[
+                styles.modePill,
+                isBulkMail ? styles.bulkPill : styles.singlePill,
+              ]}
+            >
+              <Ionicons
+                name={
+                  isBulkMail ? "mail-open-outline" : "document-text-outline"
+                }
+                size={12}
+                color={isBulkMail ? "#C2410C" : PRIMARY}
+              />
+              <Text
+                style={[
+                  styles.modePillText,
+                  { color: isBulkMail ? "#C2410C" : PRIMARY },
+                ]}
+              >
+                {isBulkMail ? "Tui thu" : "Don le"}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.statusPill,
+                {
+                  borderColor: `${statusColor}33`,
+                  backgroundColor: `${statusColor}10`,
+                },
+              ]}
+            >
+              <Text style={[styles.statusText, { color: statusColor }]}>
+                {getPickupStatusLabel(item.pickup_status)}
+              </Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.cardBody}>
           <InfoRow icon="person">
-            Người gửi:{" "}
+            Nguoi gui:{" "}
             <Text style={{ fontWeight: "700", color: "#0F172A" }}>
               {item.sender_name || "---"}
             </Text>
           </InfoRow>
 
           <InfoRow icon="call">
-            SĐT:{" "}
+            SDT:{" "}
             <Text style={{ fontWeight: "700", color: "#0F172A" }}>
               {item.sender_phone || "---"}
             </Text>
           </InfoRow>
 
           <InfoRow icon="location" numberOfLines={2}>
-            Địa chỉ:{" "}
+            Dia chi:{" "}
             <Text style={{ fontWeight: "700", color: "#0F172A" }}>
               {item.pickup_address || "---"}
             </Text>
           </InfoRow>
 
           <InfoRow icon="time-outline">
-            Hẹn lấy:{" "}
+            Hen lay:{" "}
             <Text style={{ fontWeight: "700", color: "#0F172A" }}>
               {formatDateTime(item.requested_pickup_time)}
             </Text>
@@ -162,9 +190,26 @@ export default function ShipperPickupListScreen({ navigation }) {
         </View>
 
         <View style={styles.metaRow}>
-          <MetaPill label="Số kiện" value={item.est_quantity || 0} />
-          <MetaPill label="KL ước tính" value={formatWeight(item.est_weight)} />
-          <MetaPill label="COD" value={formatCurrency(item.cod_amount)} />
+          <MetaPill
+            label={isBulkMail ? "Du kien" : "So kien"}
+            value={expectedQuantity}
+          />
+          <MetaPill
+            label={isBulkMail ? "Van don con" : "KL uoc tinh"}
+            value={
+              isBulkMail
+                ? item.waybill_count || 0
+                : formatWeight(item.est_weight)
+            }
+          />
+          <MetaPill
+            label={isBulkMail ? "Thuc te" : "COD"}
+            value={
+              isBulkMail
+                ? item.actual_quantity || 0
+                : formatCurrency(item.cod_amount)
+            }
+          />
         </View>
       </TouchableOpacity>
     );
@@ -174,7 +219,6 @@ export default function ShipperPickupListScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* HEADER CHUẨN FORM */}
       <View style={styles.header}>
         {navigation.canGoBack() ? (
           <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
@@ -185,7 +229,7 @@ export default function ShipperPickupListScreen({ navigation }) {
           />
         )}
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Đơn lấy hàng</Text>
+          <Text style={styles.headerTitle}>Don lay hang</Text>
         </View>
         <HeaderButton icon="reload" onPress={fetchPickups} />
       </View>
@@ -216,7 +260,6 @@ export default function ShipperPickupListScreen({ navigation }) {
   );
 }
 
-// STYLES CHUẨN DNA
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
 
@@ -275,7 +318,6 @@ const styles = StyleSheet.create({
 
   listContent: { padding: 16, paddingBottom: 30 },
 
-  // Card Phẳng Chuẩn DNA
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -305,6 +347,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748B",
     fontWeight: "600",
+  },
+  headerPills: {
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  modePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
+  bulkPill: {
+    backgroundColor: "#FFF7ED",
+    borderColor: "#FED7AA",
+  },
+  singlePill: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#BBF7D0",
+  },
+  modePillText: {
+    fontWeight: "900",
+    fontSize: 11,
   },
 
   statusPill: {

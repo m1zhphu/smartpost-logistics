@@ -18,6 +18,7 @@ export const CUSTOMER_ENDPOINTS = {
   // Pickup (Online)
   CREATE_PICKUP: `${API_BASE_URL}/api/waybills/customer/pickups`,
   CREATE_BULK_MAIL_PICKUP: `${API_BASE_URL}/api/waybills/customer/bulk-mail-pickups`,
+  GET_BULK_MAIL_PICKUPS: `${API_BASE_URL}/api/waybills/customer/bulk-mail-pickups`,
   GET_PICKUPS: `${API_BASE_URL}/api/waybills/customer/pickups`,
   GET_PICKUP_DETAIL: (waybillCode) =>
     `${API_BASE_URL}/api/waybills/customer/pickups/${waybillCode}`,

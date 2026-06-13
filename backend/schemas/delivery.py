@@ -64,6 +64,7 @@ class HubDispatchRejectRequest(BaseModel):
 class PickupPickedRequest(BaseModel):
     pickup_image_url: Optional[str] = None
     note: Optional[str] = None
+    actual_quantity: Optional[int] = None
 
 class ShipperAvailabilityRequest(BaseModel):
     is_online: bool
