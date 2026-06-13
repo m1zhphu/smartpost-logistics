@@ -314,6 +314,42 @@ def get_request_bag_summary(db: Session, db_req: models.BookingRequests) -> dict
 
 def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
     waybill = db_req.waybills[0] if db_req.waybills else None
+    pickup_bag = db_req.pickup_bag
+    bag_waybills = []
+    if pickup_bag:
+        sorted_items = sorted(
+            [item for item in pickup_bag.bag_items if item.waybill],
+            key=lambda item: item.bag_item_id or 0,
+        )
+        for index, item in enumerate(sorted_items, start=1):
+            w = item.waybill
+            bag_waybills.append({
+                "waybill_id": w.waybill_id,
+                "waybill_code": w.waybill_code,
+                "sequence_no": index,
+                "status": w.status,
+                "ocr_status": w.ocr_status,
+                "verify_status": w.verify_status,
+                "receiver_name": w.receiver_name,
+                "receiver_phone": w.receiver_phone,
+                "receiver_address": w.receiver_address,
+                "customer_reference_code": None,
+            })
+        if bag_waybills:
+            waybill = sorted_items[0].waybill
+    elif waybill:
+        bag_waybills.append({
+            "waybill_id": waybill.waybill_id,
+            "waybill_code": waybill.waybill_code,
+            "sequence_no": 1,
+            "status": waybill.status,
+            "ocr_status": waybill.ocr_status,
+            "verify_status": waybill.verify_status,
+            "receiver_name": waybill.receiver_name,
+            "receiver_phone": waybill.receiver_phone,
+            "receiver_address": waybill.receiver_address,
+            "customer_reference_code": None,
+        })
     hub = db_req.target_hub
     shipper = db_req.assigned_shipper
     customer = db_req.customer
@@ -361,8 +397,12 @@ def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
         "pickup_assigned_at": db_req.pickup_assigned_at,
         "created_at": created_at,
         "pickup_mode": db_req.pickup_mode or "SINGLE_WAYBILL",
-        "bag_code": db_req.bag_code,
-        "materialization_status": db_req.materialization_status,
+        "bag_code": pickup_bag.bag_code if pickup_bag else db_req.bag_code,
+        "expected_quantity": (pickup_bag.est_quantity if pickup_bag else db_req.est_quantity),
+        "actual_quantity": (pickup_bag.actual_quantity if pickup_bag else db_req.actual_quantity),
+        "waybill_count": len(bag_waybills),
+        "waybills": bag_waybills,
+        "materialization_status": (pickup_bag.materialization_status if pickup_bag else db_req.materialization_status),
     }
 
 
@@ -395,6 +435,13 @@ def get_request_waybill(db: Session, request_id: int):
         models.Waybills.request_id == request_id,
         models.Waybills.is_deleted == False,
     ).first()
+
+
+def get_request_waybills(db: Session, request_id: int):
+    return db.query(models.Waybills).filter(
+        models.Waybills.request_id == request_id,
+        models.Waybills.is_deleted == False,
+    ).order_by(models.Waybills.waybill_id.asc()).all()
 
 
 def confirm_online_pickup_hub(db: Session, db_req: models.BookingRequests, hub_id: int, user_id: int, note: str = None):
@@ -544,7 +591,8 @@ def assign_shipper_to_pickup(db: Session, db_req: models.BookingRequests, shippe
 
 def assign_shipper_to_online_pickup(db: Session, db_req: models.BookingRequests, shipper_id: int, user_id: int, note: str = None):
     now = datetime.utcnow()
-    waybill = get_request_waybill(db, db_req.request_id)
+    waybills = get_request_waybills(db, db_req.request_id)
+    waybill = waybills[0] if waybills else None
     db_req.status = "ASSIGNED_PICKUP"
     db_req.assigned_shipper_id = shipper_id
     db_req.pickup_assigned_by_user_id = user_id
@@ -552,13 +600,16 @@ def assign_shipper_to_online_pickup(db: Session, db_req: models.BookingRequests,
     if db_req.pickup_bag:
         db_req.pickup_bag.status = "ASSIGNED"
 
-    if waybill:
-        waybill.holding_shipper_id = shipper_id
-        waybill.status = WaybillStatus.CREATED
-        waybill.version = (waybill.version or 1) + 1
+    for item in waybills:
+        item.holding_shipper_id = shipper_id
+        if item.status in [WaybillStatus.PENDING_OCR, None]:
+            item.status = WaybillStatus.PENDING_OCR
+        elif item.status == WaybillStatus.CREATED:
+            item.status = WaybillStatus.CREATED
+        item.version = (item.version or 1) + 1
         db.add(models.TrackingLogs(
-            waybill_id=waybill.waybill_id,
-            status_id=waybill.status,
+            waybill_id=item.waybill_id,
+            status_id=item.status,
             hub_id=db_req.target_hub_id,
             user_id=user_id,
             system_time=now,
@@ -576,19 +627,20 @@ def assign_shipper_to_online_pickup(db: Session, db_req: models.BookingRequests,
 
 def mark_online_pickup_picked(db: Session, db_req: models.BookingRequests, user_id: int, pickup_image_url: str = None, note: str = None):
     now = datetime.utcnow()
-    waybill = get_request_waybill(db, db_req.request_id)
+    waybills = get_request_waybills(db, db_req.request_id)
+    waybill = waybills[0] if waybills else None
     db_req.status = "PICKED"
     if db_req.pickup_bag:
         db_req.pickup_bag.status = "PICKED"
         db_req.pickup_bag.pickup_time = now
 
-    if waybill:
-        waybill.status = WaybillStatus.PICKED_PENDING_VERIFY
-        waybill.pickup_image_url = pickup_image_url or waybill.pickup_image_url
-        waybill.version = (waybill.version or 1) + 1
+    for item in waybills:
+        item.status = WaybillStatus.PICKED_PENDING_VERIFY if item.ocr_status not in ["PENDING", "INCOMPLETE"] else WaybillStatus.PENDING_OCR
+        item.pickup_image_url = pickup_image_url or item.pickup_image_url
+        item.version = (item.version or 1) + 1
         db.add(models.TrackingLogs(
-            waybill_id=waybill.waybill_id,
-            status_id=WaybillStatus.PICKED_PENDING_VERIFY,
+            waybill_id=item.waybill_id,
+            status_id=item.status,
             hub_id=db_req.target_hub_id,
             user_id=user_id,
             system_time=now,

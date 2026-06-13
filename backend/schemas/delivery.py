@@ -124,6 +124,10 @@ class MobilePickupTaskResponse(BaseModel):
     created_at: Optional[datetime] = None
     pickup_mode: str = "SINGLE_WAYBILL"
     bag_code: Optional[str] = None
+    expected_quantity: Optional[int] = None
+    actual_quantity: Optional[int] = None
+    waybill_count: int = 0
+    waybills: List[dict] = Field(default_factory=list)
     materialization_status: Optional[str] = None
 
 class BookingRequestLogResponse(BaseModel):

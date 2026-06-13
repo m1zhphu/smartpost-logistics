@@ -2,6 +2,7 @@
 from fastapi import HTTPException
 
 class WaybillStatus:
+    PENDING_OCR = "PENDING_OCR"
     CREATED = "CREATED"           # Vừa tạo đơn (WAIT_PICKUP)
     PICKED_PENDING_VERIFY = "PICKED_PENDING_VERIFY" # Đã lấy, chờ xác thực
     VERIFY_ERROR = "VERIFY_ERROR" # Sai dữ liệu, cần cập nhật
@@ -20,6 +21,7 @@ class WaybillStatus:
     
 # Định nghĩa các bước đi hợp lệ (Mục 3.3 đặc tả)
 VALID_TRANSITIONS = {
+    WaybillStatus.PENDING_OCR: [WaybillStatus.PICKED_PENDING_VERIFY, WaybillStatus.CREATED, WaybillStatus.CANCELLED],
     WaybillStatus.CREATED: [WaybillStatus.PICKED_PENDING_VERIFY, WaybillStatus.IN_HUB, WaybillStatus.CANCELLED],
     WaybillStatus.PICKED_PENDING_VERIFY: [WaybillStatus.READY_WAREHOUSE, WaybillStatus.IN_HUB, WaybillStatus.VERIFY_ERROR],
     WaybillStatus.VERIFY_ERROR: [WaybillStatus.PICKED_PENDING_VERIFY, WaybillStatus.CANCELLED],

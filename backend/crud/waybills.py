@@ -92,16 +92,17 @@ def create_bulk_mail_pickup(
     db.add(request)
     db.flush()
 
-    if data.estimated_quantity == 1:
-        request.actual_quantity = 1
+    draft_by_sequence = {item.sequence_no: item for item in data.draft_items}
+
+    def create_pending_ocr_waybill(sequence_no: int, bag: models.Bags | None = None, draft_item=None):
         receiver = data.receiver
         waybill = models.Waybills(
             waybill_code=generate_waybill_code(db),
             request_id=request.request_id,
             customer_id=customer.customer_id,
-            receiver_name=receiver.name if receiver else None,
-            receiver_phone=receiver.phone if receiver else None,
-            receiver_address=receiver.address if receiver else None,
+            receiver_name=(draft_item.receiver_name if draft_item else None) or (receiver.name if receiver else None),
+            receiver_phone=(draft_item.receiver_phone if draft_item else None) or (receiver.phone if receiver else None),
+            receiver_address=(draft_item.receiver_address if draft_item else None) or (receiver.address if receiver else None),
             receiver_province_id=receiver.province_id if receiver else None,
             receiver_district_id=receiver.district_id if receiver else None,
             receiver_ward_id=receiver.ward_id if receiver else None,
@@ -118,7 +119,7 @@ def create_bulk_mail_pickup(
             vat_amount=0,
             total_amount_to_collect=0,
             price_status="PENDING_OCR",
-            status=WaybillStatus.CREATED,
+            status=WaybillStatus.PENDING_OCR,
             product_name=get_product_type_definition(product_type)["label"],
             sender_name=data.sender.name or customer.representative_name or customer.company_name,
             sender_phone=data.sender.phone or customer.phone_number,
@@ -135,7 +136,6 @@ def create_bulk_mail_pickup(
             verify_status="PENDING",
             version=1,
         )
-        request.materialization_status = "PENDING_OCR"
         db.add(waybill)
         db.flush()
         db.add(models.WaybillItems(
@@ -148,7 +148,15 @@ def create_bulk_mail_pickup(
             converted_weight=0,
             quantity=1,
         ))
+        if bag:
+            db.add(models.BagItems(bag_id=bag.bag_id, waybill_id=waybill.waybill_id))
         create_initial_log(db, waybill.waybill_id, target_hub_id, creator_id)
+        return waybill
+
+    if data.estimated_quantity == 1:
+        request.actual_quantity = 1
+        waybill = create_pending_ocr_waybill(1, None, draft_by_sequence.get(1))
+        request.materialization_status = "PENDING_OCR"
         db.add(models.BookingRequestLogs(
             request_id=request.request_id,
             user_id=creator_id,
@@ -172,25 +180,33 @@ def create_bulk_mail_pickup(
     )
     db.add(bag)
     db.flush()
-    for draft_item in data.draft_items:
+    created_waybills = []
+    for sequence_no in range(1, data.estimated_quantity + 1):
+        draft_item = draft_by_sequence.get(sequence_no)
+        waybill = create_pending_ocr_waybill(sequence_no, bag, draft_item)
+        created_waybills.append(waybill)
         db.add(models.BulkMailDraftItems(
             request_id=request.request_id,
             bag_id=bag.bag_id,
-            sequence_no=draft_item.sequence_no,
-            customer_reference_code=draft_item.customer_reference_code,
-            receiver_name=draft_item.receiver_name,
-            receiver_phone=draft_item.receiver_phone,
-            receiver_address=draft_item.receiver_address,
-            note=draft_item.note,
+            waybill_id=waybill.waybill_id,
+            sequence_no=sequence_no,
+            customer_reference_code=draft_item.customer_reference_code if draft_item else None,
+            receiver_name=draft_item.receiver_name if draft_item else None,
+            receiver_phone=draft_item.receiver_phone if draft_item else None,
+            receiver_address=draft_item.receiver_address if draft_item else None,
+            note=draft_item.note if draft_item else None,
             status="PENDING_OCR",
         ))
+    request.actual_quantity = 0
+    request.materialization_status = "PENDING_OCR"
+    bag.materialization_status = "PENDING_OCR"
     db.add(models.BookingRequestLogs(
         request_id=request.request_id,
         user_id=creator_id,
         action="Tạo yêu cầu pickup thư/bưu phẩm hàng loạt",
         note=f"Túi {bag.bag_code}, số lượng dự kiến {data.estimated_quantity}",
     ))
-    return request, bag, None
+    return request, bag, created_waybills[0] if created_waybills else None
 
 def get_waybill_by_code(db: Session, code: str):
     return db.query(models.Waybills).filter(

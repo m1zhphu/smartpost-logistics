@@ -91,6 +91,8 @@
             <div class="filter-label">Trạng thái</div>
             <el-select v-model="statusFilter" placeholder="Tất cả trạng thái" clearable class="w-full modern-select">
               <el-option label="Mới tạo (CREATED)" value="CREATED" />
+              <el-option label="Chờ OCR (PENDING_OCR)" value="PENDING_OCR" />
+              <el-option label="Chờ duyệt OCR (PICKED_PENDING_VERIFY)" value="PICKED_PENDING_VERIFY" />
               <el-option label="Trong kho (IN_HUB)" value="IN_HUB" />
               <el-option label="Đang đi giao (DELIVERING)" value="DELIVERING" />
               <el-option label="Giao thành công (DELIVERED)" value="DELIVERED" />
@@ -1123,7 +1125,9 @@ const handleDelete = async (code) => {
 
 const getStatusClass = (status) => {
   const map = {
+    'PENDING_OCR': 'tag-warning',
     'CREATED': 'tag-info',
+    'PICKED_PENDING_VERIFY': 'tag-warning',
     'IN_HUB': 'tag-primary',
     'DELIVERING': 'tag-warning',
     'DELIVERED': 'tag-success',
@@ -1135,7 +1139,9 @@ const getStatusClass = (status) => {
 
 const getStatusLabel = (status) => {
   const map = {
+    'PENDING_OCR': 'Chờ OCR',
     'CREATED': 'Mới tạo',
+    'PICKED_PENDING_VERIFY': 'Chờ duyệt OCR',
     'IN_HUB': 'Trong kho',
     'DELIVERING': 'Đang giao',
     'DELIVERED': 'Giao xong',

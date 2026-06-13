@@ -179,6 +179,36 @@ class BulkMailPickupResponse(BaseModel):
     bag_status: Optional[str] = None
     materialization_status: str
     created_at: Optional[datetime] = None
+    waybills: List[dict] = Field(default_factory=list)
+
+
+class MobileOcrWaybillUpdate(BaseModel):
+    receiver_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
+    receiver_address: Optional[str] = None
+    receiver_province_id: Optional[int] = None
+    receiver_district_id: Optional[int] = None
+    receiver_ward_id: Optional[int] = None
+    receiver_province_name: Optional[str] = None
+    receiver_district_name: Optional[str] = None
+    receiver_ward_name: Optional[str] = None
+    actual_weight: Optional[float] = Field(default=None, ge=0)
+    length: Optional[float] = Field(default=None, ge=0)
+    width: Optional[float] = Field(default=None, ge=0)
+    height: Optional[float] = Field(default=None, ge=0)
+    cod_amount: Optional[float] = Field(default=None, ge=0)
+    service_type: Optional[str] = None
+    product_name: Optional[str] = None
+    product_group: Optional[str] = None
+    declared_value: Optional[float] = Field(default=None, ge=0)
+    bill_image_url: Optional[str] = None
+    note: Optional[str] = None
+    ocr_raw_text: Optional[str] = None
+
+
+class MobileOcrExtraWaybillCreate(BaseModel):
+    count: int = Field(default=1, ge=1, le=1000)
+    note: Optional[str] = None
 
 
 class CustomerPickupCreateResponse(BaseModel):
