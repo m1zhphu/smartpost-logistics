@@ -7,12 +7,12 @@ import {
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
+  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
-import styles from "../styles/ForgotPasswordScreenStyles";
 import {
   requestForgotPasswordOtp,
   resetPasswordWithOtp,
@@ -25,10 +25,10 @@ const HeaderButton = ({ icon, onPress, disabled }) => (
     onPress={onPress}
     disabled={disabled}
     style={styles.headerButton}
-    activeOpacity={0.78}
+    activeOpacity={0.7}
   >
     <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={24} color={COLORS.white} />
+      <Ionicons name={icon} size={20} color={COLORS.white} />
     </View>
   </TouchableOpacity>
 );
@@ -68,7 +68,11 @@ const Input = ({
       />
 
       {showEye && (
-        <TouchableOpacity onPress={onEyePress} style={styles.eyeIcon}>
+        <TouchableOpacity
+          onPress={onEyePress}
+          style={styles.eyeIcon}
+          activeOpacity={0.7}
+        >
           <Ionicons
             name={eyeActive ? "eye-outline" : "eye-off-outline"}
             size={20}
@@ -208,13 +212,16 @@ export default function ForgotPasswordScreen({ route, navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER CHUẨN FORM */}
       <View style={styles.header}>
         <HeaderButton
           icon="arrow-back"
           onPress={() => navigation.goBack()}
           disabled={loading}
         />
-        <Text style={styles.headerTitle}>Quên mật khẩu</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Quên mật khẩu</Text>
+        </View>
         <View style={{ width: 38 }} />
       </View>
 
@@ -235,8 +242,8 @@ export default function ForgotPasswordScreen({ route, navigation }) {
             {step === 1 ? (
               <>
                 <Text style={styles.instruction}>
-                  Vui lòng nhập địa chỉ email đã đăng ký tài khoản. Chúng tôi
-                  sẽ gửi mã OTP gồm 6 chữ số để đặt lại mật khẩu.
+                  Vui lòng nhập địa chỉ email đã đăng ký tài khoản. Chúng tôi sẽ
+                  gửi mã OTP gồm 6 chữ số để đặt lại mật khẩu.
                 </Text>
 
                 <Text style={styles.label}>Email</Text>
@@ -250,24 +257,24 @@ export default function ForgotPasswordScreen({ route, navigation }) {
                 />
 
                 <TouchableOpacity
-                  style={[styles.saveBtn, loading && { opacity: 0.72 }]}
+                  style={[styles.saveBtn, loading && { opacity: 0.7 }]}
                   onPress={handleRequestOtp}
                   disabled={loading}
-                  activeOpacity={0.88}
+                  activeOpacity={0.8}
                 >
-                    {loading ? (
-                      <ActivityIndicator color={COLORS.white} />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Gửi mã OTP</Text>
-                    )}
+                  {loading ? (
+                    <ActivityIndicator color={COLORS.white} />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Gửi mã OTP</Text>
+                  )}
                 </TouchableOpacity>
               </>
             ) : (
               <>
                 <Text style={styles.instruction}>
                   Mã OTP đã được gửi đến email{" "}
-                  <Text style={styles.instructionBold}>{email}</Text>. Vui
-                  lòng kiểm tra hộp thư hoặc thư rác.
+                  <Text style={styles.instructionBold}>{email}</Text>. Vui lòng
+                  kiểm tra hộp thư hoặc thư rác.
                 </Text>
 
                 <Text style={styles.label}>Mã OTP</Text>
@@ -308,23 +315,23 @@ export default function ForgotPasswordScreen({ route, navigation }) {
                 />
 
                 <TouchableOpacity
-                  style={[styles.saveBtn, loading && { opacity: 0.72 }]}
+                  style={[styles.saveBtn, loading && { opacity: 0.7 }]}
                   onPress={handleResetPassword}
                   disabled={loading}
-                  activeOpacity={0.88}
+                  activeOpacity={0.8}
                 >
-                    {loading ? (
-                      <ActivityIndicator color={COLORS.white} />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Đặt lại mật khẩu</Text>
-                    )}
+                  {loading ? (
+                    <ActivityIndicator color={COLORS.white} />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Đặt lại mật khẩu</Text>
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.resendBtn}
                   onPress={handleRequestOtp}
                   disabled={loading}
-                  activeOpacity={0.75}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.resendText}>Gửi lại mã OTP</Text>
                 </TouchableOpacity>
@@ -337,15 +344,11 @@ export default function ForgotPasswordScreen({ route, navigation }) {
   );
 }
 
-/*
+// STYLES CHUẨN DNA
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-  },
-  keyboardRoot: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  keyboardRoot: { flex: 1 },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -356,11 +359,15 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 42,
     borderBottomRightRadius: 42,
     backgroundColor: PRIMARY,
-    ...Platform.select({
-        ios: { shadowColor: PRIMARY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16 },
-        android: { elevation: 8 }
-    }),
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
   },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
+
   headerButton: {
     width: 38,
     height: 38,
@@ -368,44 +375,42 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center'
-  },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
+
+  content: { flex: 1, padding: 20, justifyContent: "center" },
+
+  // Card Phẳng Chuẩn DNA
   formCard: {
+    backgroundColor: "#FFFFFF",
     padding: 20,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
-      android: { elevation: 4 }
-    })
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
+
   stepIconBox: {
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: "#F0FDF4",
+    backgroundColor: "#F8FAFC",
     alignSelf: "center",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#DCFCE7",
+    borderColor: "#E2E8F0",
   },
+
   instruction: {
     fontSize: 14,
     color: "#475569",
@@ -414,19 +419,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
   },
-  instructionBold: {
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-  label: {
-    fontSize: 13,
-    color: "#475569",
-    marginBottom: 8,
-    fontWeight: "700",
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
+  instructionBold: { fontWeight: "900", color: "#0F172A" },
+
+  label: { fontSize: 13, color: "#475569", marginBottom: 8, fontWeight: "700" },
+  inputGroup: { marginBottom: 16 },
+
   inputWrapper: {
     minHeight: 52,
     borderRadius: 12,
@@ -436,10 +433,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F8FAFC",
   },
-  inputIcon: {
-    marginLeft: 14,
-    marginRight: 8,
-  },
+  inputIcon: { marginLeft: 14, marginRight: 8 },
   input: {
     flex: 1,
     minHeight: 52,
@@ -454,6 +448,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   saveBtn: {
     borderRadius: 12,
     marginTop: 10,
@@ -462,19 +457,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  saveBtnText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  resendBtn: {
-    alignItems: "center",
-    marginTop: 20,
-  },
-  resendText: {
-    color: PRIMARY,
-    fontWeight: "800",
-    fontSize: 15
-  },
+  saveBtnText: { color: "#FFF", fontSize: 16, fontWeight: "900" },
+
+  resendBtn: { alignItems: "center", marginTop: 20 },
+  resendText: { color: PRIMARY, fontWeight: "800", fontSize: 15 },
 });
-*/

@@ -1,545 +1,1022 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import {
-    View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet,
-    KeyboardAvoidingView, Platform
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
+import { submitShipment } from "../services/shipmentService";
+import { checkNetworkConnection } from "../utils/networkUtils";
+import { COLORS } from "../constants/colors";
+import { useQueue } from "../context/QueueContext";
+import { useUser } from "../context/UserContext";
 
-import { Ionicons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
-import { submitShipment } from '../services/shipmentService';
-import styles from '../styles/CreateOrderStyles';
-import { checkNetworkConnection } from '../utils/networkUtils';
-import { COLORS } from '../constants/colors';
-import { useQueue } from '../context/QueueContext';
-import { useUser } from '../context/UserContext';
-import { Alert } from 'react-native';
+const PRIMARY = COLORS.primary || "#1B5E20";
 
 export default function CreateOrderScreen({ route, navigation }) {
-    const { senderData, receiverData, username, trackingNumber, queueId, bankBranch, unitCode, customer_id, customer_name, bag_code } = route.params || {};
-    const { user } = useUser();
-    const isShipper = user?.role_id === 4 || user?.is_shipper;
+  const {
+    senderData,
+    receiverData,
+    username,
+    trackingNumber,
+    queueId,
+    bankBranch,
+    unitCode,
+    customer_id,
+    customer_name,
+    bag_code,
+  } = route.params || {};
+  const { user } = useUser();
+  const isShipper = user?.role_id === 4 || user?.is_shipper;
 
-    const [rName, setRName] = useState(receiverData?.name || '');
-    const [rPhone, setRPhone] = useState(receiverData?.phone || '');
-    const [rAddress, setRAddress] = useState(receiverData?.address || '');
+  const [rName, setRName] = useState(receiverData?.name || "");
+  const [rPhone, setRPhone] = useState(receiverData?.phone || "");
+  const [rAddress, setRAddress] = useState(receiverData?.address || "");
 
+  const [sName, setSName] = useState(senderData?.name || "");
+  const [sPhone, setSPhone] = useState(senderData?.phone || "");
+  const [sAddress, setSAddress] = useState(senderData?.address || "");
 
-    const [sName, setSName] = useState(senderData?.name || '');
-    const [sPhone, setSPhone] = useState(senderData?.phone || '');
-    const [sAddress, setSAddress] = useState(senderData?.address || '');
+  const [loading, setLoading] = useState(false);
+  const [bank_branch, setBank_Branch] = useState(bankBranch || "");
+  const [unit_code, setUnit_Code] = useState(unitCode || "");
 
-    const [loading, setLoading] = useState(false);
-    const [bank_branch, setBank_Branch] = useState(bankBranch || '');
-    const [unit_code, setUnit_Code] = useState(unitCode || '');
+  const [trackingCode, setTrackingCode] = useState(trackingNumber || "");
+  const [actualWeight, setActualWeight] = useState("");
+  const [codAmount, setCodAmount] = useState("0");
+  const [shippingFee, setShippingFee] = useState("");
+  const [serviceType, setServiceType] = useState("STANDARD");
+  const [productName, setProductName] = useState("");
+  const [length, setLength] = useState("");
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
 
-    const [trackingCode, setTrackingCode] = useState(trackingNumber || '');
-    const [actualWeight, setActualWeight] = useState('');
-    const [codAmount, setCodAmount] = useState('0');
-    const [shippingFee, setShippingFee] = useState('');
-    const [serviceType, setServiceType] = useState('STANDARD');
-    const [productName, setProductName] = useState('');
-    const [length, setLength] = useState('');
-    const [width, setWidth] = useState('');
-    const [height, setHeight] = useState('');
+  const scrollViewRef = useRef(null);
+  const [senderCardY, setSenderCardY] = useState(0);
+  const [receiverCardY, setReceiverCardY] = useState(0);
 
-    const scrollViewRef = useRef(null);
-    const [senderCardY, setSenderCardY] = useState(0);
-    const [receiverCardY, setReceiverCardY] = useState(0);
+  const { removeQueueItem } = useQueue();
 
-    const { removeQueueItem } = useQueue();
+  const handleConfirm = async () => {
+    const isConnected = await checkNetworkConnection();
+    if (!isConnected) return;
 
-    // const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
-
-    const handleConfirm = async () => {
-        const isConnected = await checkNetworkConnection();
-        if (!isConnected) return;
-
-        if (!trackingCode || trackingCode.trim() === "") {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Mã vận đơn không được để trống' });
-            return;
-        }
-
-        if (!rName || rName.trim() === "") {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Tên người nhận' });
-            return;
-        }
-
-        if (!rPhone || rPhone.trim() === "") {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập SĐT người nhận' });
-            return;
-        }
-
-        if (!rAddress || rAddress.trim() === "") {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Địa chỉ người nhận' });
-            return;
-        }
-
-        if (!sName || sName.trim() === "") {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Tên người gửi' });
-            return;
-        }
-
-        if (!sPhone || sPhone.trim() === "") {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập SĐT người gửi' });
-            return;
-        }
-
-        if (!sAddress || sAddress.trim() === "") {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Địa chỉ người gửi' });
-            return;
-        }
-
-        if (!productName || productName.trim() === "") {
-            Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Tên hàng hóa' });
-            return;
-        }
-
-        if (isShipper) {
-            if (!actualWeight || parseFloat(actualWeight) <= 0) {
-                Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Trọng lượng (kg) > 0' });
-                return;
-            }
-
-            if (!shippingFee || parseFloat(shippingFee) <= 0) {
-                Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập Phí vận chuyển (VNĐ) > 0' });
-                return;
-            }
-        }
-
-        const payload = {
-            waybill_code: trackingCode.trim(),
-            sender_name: sName?.trim(),
-            sender_phone: sPhone?.trim(),
-            sender_address: sAddress?.trim(),
-            receiver_name: rName.trim(),
-            receiver_phone: rPhone.trim(),
-            receiver_address: rAddress.trim(),
-            actual_weight: parseFloat(actualWeight),
-            cod_amount: parseFloat(codAmount) || 0,
-            shipping_fee: parseFloat(shippingFee),
-            service_type: serviceType,
-            product_name: productName.trim(),
-            length: length ? parseFloat(length) : null,
-            width: width ? parseFloat(width) : null,
-            height: height ? parseFloat(height) : null,
-            payment_method: "SENDER_PAY",
-            bank_branch: bank_branch.trim(),
-            unit_code: unit_code.trim(),
-            customer_id: customer_id || null,
-            bag_code: bag_code || null
-        };
-
-        if (!isShipper) {
-            Alert.alert("Tính năng đang phát triển", "Tính năng tạo đơn từ OCR dành cho Kho đang chờ cập nhật endpoint của Kho.");
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const result = await submitShipment(payload);
-
-            if (result.success) {
-                if (queueId) {
-                    removeQueueItem(queueId);
-                }
-                navigation.navigate('Success', {
-                    trackingNumber: result.data?.waybill_code || payload.waybill_code,
-                });
-            } else {
-                if (result.isDuplicate) {
-                    Toast.show({
-                        type: 'error',
-                        text1: 'Trùng mã vận đơn!',
-                        text2: `${payload.waybill_code} đã tồn tại trên hệ thống`,
-                        visibilityTime: 4000
-                    });
-                } else {
-                    Toast.show({ type: 'error', text1: 'Gửi thất bại', text2: result.message || 'Lỗi không xác định. Vui lòng thử lại' });
-                }
-            }
-        } catch (error) {
-            Toast.show({
-                type: 'error',
-                text1: 'Lỗi tạo đơn',
-                text2: error.message
-            });
-        } finally {
-            setLoading(false);
-        }
+    if (!trackingCode || trackingCode.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Mã vận đơn không được để trống",
+      });
+      return;
     }
 
+    if (!rName || rName.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập Tên người nhận",
+      });
+      return;
+    }
 
-    const handleFocusSenderAddress = () => {
-        setTimeout(() => {
-            if (scrollViewRef.current) {
-                scrollViewRef.current.scrollTo({ y: senderCardY - 20, animated: true });
-            }
-        }, 250);
+    if (!rPhone || rPhone.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập SĐT người nhận",
+      });
+      return;
+    }
+
+    if (!rAddress || rAddress.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập Địa chỉ người nhận",
+      });
+      return;
+    }
+
+    if (!sName || sName.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập Tên người gửi",
+      });
+      return;
+    }
+
+    if (!sPhone || sPhone.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập SĐT người gửi",
+      });
+      return;
+    }
+
+    if (!sAddress || sAddress.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập Địa chỉ người gửi",
+      });
+      return;
+    }
+
+    if (!productName || productName.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Thiếu thông tin",
+        text2: "Vui lòng nhập Tên hàng hóa",
+      });
+      return;
+    }
+
+    if (isShipper) {
+      if (!actualWeight || parseFloat(actualWeight) <= 0) {
+        Toast.show({
+          type: "error",
+          text1: "Thiếu thông tin",
+          text2: "Vui lòng nhập Trọng lượng (kg) > 0",
+        });
+        return;
+      }
+
+      if (!shippingFee || parseFloat(shippingFee) <= 0) {
+        Toast.show({
+          type: "error",
+          text1: "Thiếu thông tin",
+          text2: "Vui lòng nhập Phí vận chuyển (VNĐ) > 0",
+        });
+        return;
+      }
+    }
+
+    const payload = {
+      waybill_code: trackingCode.trim(),
+      sender_name: sName?.trim(),
+      sender_phone: sPhone?.trim(),
+      sender_address: sAddress?.trim(),
+      receiver_name: rName.trim(),
+      receiver_phone: rPhone.trim(),
+      receiver_address: rAddress.trim(),
+      actual_weight: parseFloat(actualWeight),
+      cod_amount: parseFloat(codAmount) || 0,
+      shipping_fee: parseFloat(shippingFee),
+      service_type: serviceType,
+      product_name: productName.trim(),
+      length: length ? parseFloat(length) : null,
+      width: width ? parseFloat(width) : null,
+      height: height ? parseFloat(height) : null,
+      payment_method: "SENDER_PAY",
+      bank_branch: bank_branch.trim(),
+      unit_code: unit_code.trim(),
+      customer_id: customer_id || null,
+      bag_code: bag_code || null,
     };
 
+    if (!isShipper) {
+      Alert.alert(
+        "Tính năng đang phát triển",
+        "Tính năng tạo đơn từ OCR dành cho Kho đang chờ cập nhật endpoint của Kho.",
+      );
+      return;
+    }
 
-    const handleFocusSenderName = () => {
-        setTimeout(() => {
-            if (scrollViewRef.current) {
-                scrollViewRef.current.scrollTo({ y: senderCardY - 20, animated: true });
-            }
-        }, 250);
-    };
+    setLoading(true);
+    try {
+      const result = await submitShipment(payload);
 
-    const handleFocusReceiverName = () => {
-        setTimeout(() => {
-            if (scrollViewRef.current) {
-                scrollViewRef.current.scrollTo({
-                    y: receiverCardY - 20,
-                    animated: true
-                });
-            }
-        }, 250);
-    };
+      if (result.success) {
+        if (queueId) {
+          removeQueueItem(queueId);
+        }
+        navigation.navigate("Success", {
+          trackingNumber: result.data?.waybill_code || payload.waybill_code,
+        });
+      } else {
+        if (result.isDuplicate) {
+          Toast.show({
+            type: "error",
+            text1: "Trùng mã vận đơn!",
+            text2: `${payload.waybill_code} đã tồn tại trên hệ thống`,
+            visibilityTime: 4000,
+          });
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "Gửi thất bại",
+            text2: result.message || "Lỗi không xác định. Vui lòng thử lại",
+          });
+        }
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi tạo đơn",
+        text2: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleFocusSenderAddress = () => {
+    setTimeout(() => {
+      if (scrollViewRef.current)
+        scrollViewRef.current.scrollTo({ y: senderCardY - 20, animated: true });
+    }, 250);
+  };
 
-    const handleFocusReceiverAddress = () => {
-        setTimeout(() => {
-            if (scrollViewRef.current) {
-                scrollViewRef.current.scrollTo({
-                    y: receiverCardY - 20,
-                    animated: true
-                });
-            }
-        }, 250);
-    };
+  const handleFocusSenderName = () => {
+    setTimeout(() => {
+      if (scrollViewRef.current)
+        scrollViewRef.current.scrollTo({ y: senderCardY - 20, animated: true });
+    }, 250);
+  };
 
-    return (
-        <View style={styles.container}>
-            <StatusBar style="light" />
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="white" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Xác nhận đơn hàng</Text>
-                <View style={{ width: 24 }} />
+  const handleFocusReceiverName = () => {
+    setTimeout(() => {
+      if (scrollViewRef.current)
+        scrollViewRef.current.scrollTo({
+          y: receiverCardY - 20,
+          animated: true,
+        });
+    }, 250);
+  };
+
+  const handleFocusReceiverAddress = () => {
+    setTimeout(() => {
+      if (scrollViewRef.current)
+        scrollViewRef.current.scrollTo({
+          y: receiverCardY - 20,
+          animated: true,
+        });
+    }, 250);
+  };
+
+  const HeaderButton = ({ icon, onPress }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={styles.headerButton}
+      activeOpacity={0.7}
+    >
+      <View style={styles.headerButtonInner}>
+        <Ionicons name={icon} size={20} color="#FFFFFF" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
+
+      {/* HEADER CHUẨN FORM */}
+      <View style={styles.header}>
+        <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Xác nhận đơn hàng</Text>
+        </View>
+        <View style={{ width: 38 }} />
+      </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="qr-code-outline" size={20} color="#0F766E" />
+              <Text style={styles.sectionTitle}>MÃ VẬN ĐƠN</Text>
+            </View>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={[
+                  styles.input,
+                  { fontWeight: "900", fontSize: 16, color: PRIMARY },
+                ]}
+                value={trackingCode}
+                onChangeText={setTrackingCode}
+                placeholder="Nhập mã đơn hàng"
+                placeholderTextColor="#94A3B8"
+              />
+            </View>
+          </View>
+
+          <View style={styles.connectorContainer}>
+            <View style={styles.dottedLine} />
+            <Ionicons
+              name="chevron-down-circle"
+              size={20}
+              color="#94A3B8"
+              style={styles.connectorIcon}
+            />
+          </View>
+
+          {/* HIỂN THỊ THÔNG TIN TÚI/KHÁCH HÀNG (Nếu có) */}
+          {(customer_name || bag_code) && (
+            <>
+              <View
+                style={[
+                  styles.card,
+                  { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
+                ]}
+              >
+                <View style={styles.cardHeader}>
+                  <Ionicons
+                    name="pricetags-outline"
+                    size={20}
+                    color={PRIMARY}
+                  />
+                  <Text style={[styles.sectionTitle, { color: PRIMARY }]}>
+                    CẤU HÌNH OCR
+                  </Text>
+                </View>
+                {customer_name && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      marginBottom: 8,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name="person-outline"
+                      size={16}
+                      color="#64748B"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={{ fontSize: 14, color: "#475569" }}>
+                      Khách hàng:{" "}
+                      <Text style={{ fontWeight: "bold", color: "#0F172A" }}>
+                        {customer_name}
+                      </Text>
+                    </Text>
+                  </View>
+                )}
+                {bag_code && (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Ionicons
+                      name="bag-handle-outline"
+                      size={16}
+                      color="#64748B"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={{ fontSize: 14, color: "#475569" }}>
+                      Túi thư:{" "}
+                      <Text style={{ fontWeight: "bold", color: "#0F172A" }}>
+                        {bag_code}
+                      </Text>
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.connectorContainer}>
+                <View style={styles.dottedLine} />
+                <Ionicons
+                  name="chevron-down-circle"
+                  size={20}
+                  color="#94A3B8"
+                  style={styles.connectorIcon}
+                />
+              </View>
+            </>
+          )}
+
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="business-outline" size={20} color="#0F766E" />
+              <Text style={styles.sectionTitle}>THÔNG TIN ĐƠN VỊ</Text>
             </View>
 
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="briefcase-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                ]}
+                value={bank_branch}
+                onChangeText={setBank_Branch}
+                placeholder="Ngân hàng / Chi nhánh"
+                placeholderTextColor="#94A3B8"
+                multiline
+              />
+            </View>
+
+            <View style={[styles.inputWrapper, { marginTop: 12 }]}>
+              <Ionicons
+                name="pricetag-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                ]}
+                value={unit_code}
+                onChangeText={setUnit_Code}
+                placeholder="Mã đơn vị"
+                placeholderTextColor="#94A3B8"
+              />
+            </View>
+          </View>
+
+          <View style={styles.connectorContainer}>
+            <View style={styles.dottedLine} />
+            <Ionicons
+              name="chevron-down-circle"
+              size={20}
+              color="#94A3B8"
+              style={styles.connectorIcon}
+            />
+          </View>
+
+          <View
+            style={styles.card}
+            onLayout={(e) => setSenderCardY(e.nativeEvent.layout.y)}
+          >
+            <View style={styles.cardHeader}>
+              <Ionicons name="arrow-up-circle" size={20} color="#0284C7" />
+              <Text style={[styles.sectionTitle, { color: "#0284C7" }]}>
+                NGƯỜI GỬI
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.inputWrapper,
+                { alignItems: "flex-start", paddingVertical: 12 },
+              ]}
             >
-                <ScrollView style={styles.content} showsVerticalScrollIndicator={false} ref={scrollViewRef} contentContainerStyle={{ paddingBottom: 150 }} >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10, marginTop: 2 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    flex: 1,
+                    borderWidth: 0,
+                    paddingHorizontal: 0,
+                    minHeight: 20,
+                  },
+                ]}
+                value={sName}
+                onChangeText={setSName}
+                placeholder="Họ tên người gửi"
+                placeholderTextColor="#94A3B8"
+                multiline
+                onFocus={
+                  Platform.OS === "ios" ? handleFocusSenderName : undefined
+                }
+              />
+            </View>
 
-                    <View style={styles.card}>
-                        <View style={styles.cardHeader}>
-                            <Ionicons name="qr-code-outline" size={24} color={COLORS.secondary} />
-                            <Text style={[styles.cardTitle, { color: COLORS.secondary }]}>MÃ VẬN ĐƠN</Text>
-                        </View>
-                        <View style={styles.cardBody}>
-                            <View style={styles.inputWrapper}>
-                                <TextInput
-                                    style={[styles.input, { fontWeight: 'bold', fontSize: 16, color: '#333' }]}
-                                    value={trackingCode}
-                                    onChangeText={setTrackingCode}
-                                    placeholder="Nhập mã đơn hàng"
-                                    placeholderTextColor="#999"
-                                />
-                            </View>
-                        </View>
-                    </View>
+            <View style={[styles.inputWrapper, { marginTop: 12 }]}>
+              <Ionicons
+                name="call-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                ]}
+                value={sPhone}
+                onChangeText={setSPhone}
+                placeholder="Số điện thoại"
+                placeholderTextColor="#94A3B8"
+                keyboardType="phone-pad"
+              />
+            </View>
 
-                    <View style={styles.connectorContainer}>
-                        <View style={styles.dottedLine} />
-                        <Ionicons name="chevron-down-circle" size={20} color={COLORS.secondary} style={styles.connectorIcon} />
-                    </View>
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  marginTop: 12,
+                  alignItems: "flex-start",
+                  paddingVertical: 12,
+                },
+              ]}
+            >
+              <Ionicons
+                name="location-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10, marginTop: 2 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    flex: 1,
+                    borderWidth: 0,
+                    paddingHorizontal: 0,
+                    minHeight: 40,
+                  },
+                ]}
+                value={sAddress}
+                onChangeText={setSAddress}
+                placeholder="Địa chỉ gửi hàng"
+                placeholderTextColor="#94A3B8"
+                multiline
+                onFocus={
+                  Platform.OS === "ios" ? handleFocusSenderAddress : undefined
+                }
+              />
+            </View>
+          </View>
 
-                    {/* HIỂN THỊ THÔNG TIN TÚI/KHÁCH HÀNG (Nếu có) */}
-                    {(customer_name || bag_code) && (
-                        <>
-                            <View style={[styles.card, { backgroundColor: '#eef8f5', borderColor: COLORS.primary, borderWidth: 1 }]}>
-                                <View style={styles.cardHeader}>
-                                    <Ionicons name="pricetags-outline" size={24} color={COLORS.primary} />
-                                    <Text style={[styles.cardTitle, { color: COLORS.primary }]}>CẤU HÌNH OCR</Text>
-                                </View>
-                                <View style={styles.cardBody}>
-                                    {customer_name && (
-                                        <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-                                            <Ionicons name="person-outline" size={16} color="#666" style={{ marginRight: 6 }} />
-                                            <Text style={{ fontSize: 14, color: '#333' }}>Khách hàng: <Text style={{ fontWeight: 'bold' }}>{customer_name}</Text></Text>
-                                        </View>
-                                    )}
-                                    {bag_code && (
-                                        <View style={{ flexDirection: 'row' }}>
-                                            <Ionicons name="bag-handle-outline" size={16} color="#666" style={{ marginRight: 6 }} />
-                                            <Text style={{ fontSize: 14, color: '#333' }}>Túi thư: <Text style={{ fontWeight: 'bold' }}>{bag_code}</Text></Text>
-                                        </View>
-                                    )}
-                                </View>
-                            </View>
+          <View style={styles.connectorContainer}>
+            <View style={styles.dottedLine} />
+            <Ionicons
+              name="chevron-down-circle"
+              size={20}
+              color="#94A3B8"
+              style={styles.connectorIcon}
+            />
+          </View>
 
-                            <View style={styles.connectorContainer}>
-                                <View style={styles.dottedLine} />
-                                <Ionicons name="chevron-down-circle" size={20} color={COLORS.secondary} style={styles.connectorIcon} />
-                            </View>
-                        </>
-                    )}
+          <View
+            style={styles.card}
+            onLayout={(e) => setReceiverCardY(e.nativeEvent.layout.y)}
+          >
+            <View style={styles.cardHeader}>
+              <Ionicons name="arrow-down-circle" size={20} color="#D97706" />
+              <Text style={[styles.sectionTitle, { color: "#D97706" }]}>
+                NGƯỜI NHẬN
+              </Text>
+            </View>
 
+            <View
+              style={[
+                styles.inputWrapper,
+                { alignItems: "flex-start", paddingVertical: 12 },
+              ]}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10, marginTop: 2 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    flex: 1,
+                    borderWidth: 0,
+                    paddingHorizontal: 0,
+                    minHeight: 20,
+                  },
+                ]}
+                value={rName}
+                onChangeText={setRName}
+                placeholder="Họ tên người nhận"
+                placeholderTextColor="#94A3B8"
+                multiline
+                onFocus={
+                  Platform.OS === "ios" ? handleFocusReceiverName : undefined
+                }
+              />
+            </View>
 
-                    <View style={styles.card}>
-                        <View style={styles.cardHeader}>
-                            <Ionicons name="business-outline" size={24} color={COLORS.secondary} />
-                            <Text style={[styles.cardTitle, { color: COLORS.secondary }]}>THÔNG TIN ĐƠN VỊ</Text>
-                        </View>
-                        <View style={styles.cardBody}>
+            <View style={[styles.inputWrapper, { marginTop: 12 }]}>
+              <Ionicons
+                name="call-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                ]}
+                value={rPhone}
+                onChangeText={setRPhone}
+                placeholder="Số điện thoại"
+                placeholderTextColor="#94A3B8"
+                keyboardType="phone-pad"
+              />
+            </View>
 
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="briefcase-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                <TextInput
-                                    style={styles.input}
-                                    value={bank_branch}
-                                    onChangeText={setBank_Branch}
-                                    placeholder="Ngân hàng / Chi nhánh"
-                                    placeholderTextColor="#666"
-                                    multiline
-                                />
-                            </View>
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  marginTop: 12,
+                  alignItems: "flex-start",
+                  paddingVertical: 12,
+                },
+              ]}
+            >
+              <Ionicons
+                name="location-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10, marginTop: 2 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    flex: 1,
+                    borderWidth: 0,
+                    paddingHorizontal: 0,
+                    minHeight: 40,
+                  },
+                ]}
+                value={rAddress}
+                onChangeText={setRAddress}
+                placeholder="Địa chỉ giao hàng"
+                placeholderTextColor="#94A3B8"
+                multiline
+                onFocus={
+                  Platform.OS === "ios" ? handleFocusReceiverAddress : undefined
+                }
+              />
+            </View>
+          </View>
 
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="pricetag-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                <TextInput
-                                    style={styles.input}
-                                    value={unit_code}
-                                    onChangeText={setUnit_Code}
-                                    placeholder="Mã đơn vị"
-                                    placeholderTextColor="#666"
-                                />
-                            </View>
-                        </View>
-                    </View>
+          <View style={styles.connectorContainer}>
+            <View style={styles.dottedLine} />
+            <Ionicons
+              name="chevron-down-circle"
+              size={20}
+              color="#94A3B8"
+              style={styles.connectorIcon}
+            />
+          </View>
 
-                    <View style={styles.connectorContainer}>
-                        <View style={styles.dottedLine} />
-                        <Ionicons name="chevron-down-circle" size={20} color={COLORS.secondary} style={styles.connectorIcon} />
-                    </View>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="cube-outline" size={20} color="#0F766E" />
+              <Text style={[styles.sectionTitle, { color: "#0F766E" }]}>
+                THÔNG TIN HÀNG HÓA
+              </Text>
+            </View>
 
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="pricetag-outline"
+                size={18}
+                color="#94A3B8"
+                style={{ marginRight: 10 }}
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                ]}
+                value={productName}
+                onChangeText={setProductName}
+                placeholder="Tên hàng hóa (*)"
+                placeholderTextColor="#94A3B8"
+              />
+            </View>
 
-                    <View style={[styles.card, styles.activeCard]} onLayout={(event) => {
-                        const layout = event.nativeEvent.layout;
-                        setSenderCardY(layout.y);
-                    }}>
-                        <View style={styles.cardHeader}>
-                            <Ionicons name="arrow-up-circle" size={24} color={COLORS.secondary} />
-                            <Text style={[styles.cardTitle, { color: COLORS.secondary }]}>NGƯỜI GỬI</Text>
-                        </View>
-
-                        <View style={styles.cardBody}>
-                            <View style={[styles.inputWrapper, { height: 'auto', paddingVertical: 10, alignItems: 'flex-start' }]}>
-                                <Ionicons name="person-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10, marginTop: 2 }} />
-                                <TextInput
-                                    style={[styles.input, { minHeight: 20 }]}
-                                    value={sName}
-                                    onChangeText={setSName}
-                                    placeholder="Họ tên người gửi"
-                                    placeholderTextColor="#666"
-                                    multiline
-                                    onFocus={Platform.OS === 'ios' ? handleFocusSenderName : undefined}
-                                />
-                            </View>
-
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="call-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                <TextInput
-                                    style={styles.input}
-                                    value={sPhone}
-                                    onChangeText={setSPhone}
-                                    placeholder="Số điện thoại"
-                                    placeholderTextColor="#666"
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
-
-                            <View style={[styles.inputWrapper, { height: 'auto', paddingVertical: 10, alignItems: 'flex-start' }]}>
-                                <Ionicons name="location-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10, marginTop: 2 }} />
-                                <TextInput
-                                    style={[styles.input, { minHeight: 50 }]}
-                                    value={sAddress}
-                                    onChangeText={setSAddress}
-                                    placeholder="Địa chỉ gửi hàng"
-                                    placeholderTextColor="#666"
-                                    multiline
-                                    onFocus={Platform.OS === 'ios' ? handleFocusSenderAddress : undefined}
-
-                                />
-                            </View>
-                        </View>
-                    </View>
-
-                    <View style={styles.connectorContainer}>
-                        <View style={styles.dottedLine} />
-                        <Ionicons name="chevron-down-circle" size={20} color={COLORS.secondary} style={styles.connectorIcon} />
-                    </View>
-
-                    <View
-                        style={[styles.card, styles.activeCard]}
-                        onLayout={(event) => {
-                            const layout = event.nativeEvent.layout;
-                            setReceiverCardY(layout.y);
-                        }}>
-                        <View style={styles.cardHeader}>
-                            <Ionicons name="arrow-down-circle" size={24} color={COLORS.secondary} />
-                            <Text style={[styles.cardTitle, { color: COLORS.secondary }]}>NGƯỜI NHẬN</Text>
-                        </View>
-
-
-
-                        <View style={styles.cardBody}>
-                            <View style={[styles.inputWrapper, { height: 'auto', paddingVertical: 10, alignItems: 'flex-start' }]}>
-                                <Ionicons name="person-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10, marginTop: 2 }} />
-                                <TextInput
-                                    style={[styles.input, { minHeight: 20 }]}
-                                    value={rName}
-                                    onChangeText={setRName}
-                                    placeholder="Họ tên người nhận"
-                                    placeholderTextColor="#666"
-                                    multiline
-                                    onFocus={Platform.OS === 'ios' ? handleFocusReceiverName : undefined}
-
-                                />
-                            </View>
-
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="call-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                <TextInput
-                                    style={styles.input}
-                                    value={rPhone}
-                                    onChangeText={setRPhone}
-                                    placeholder="Số điện thoại"
-                                    placeholderTextColor="#666"
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
-
-                            <View style={[styles.inputWrapper, { height: 'auto', paddingVertical: 10, alignItems: 'flex-start' }]}>
-                                <Ionicons name="location-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10, marginTop: 2 }} />
-                                <TextInput
-                                    style={[styles.input, { minHeight: 50 }]}
-                                    value={rAddress}
-                                    onChangeText={setRAddress}
-                                    placeholder="Địa chỉ giao hàng"
-                                    placeholderTextColor="#666"
-                                    multiline
-                                    onFocus={Platform.OS === 'ios' ? handleFocusReceiverAddress : undefined}
-                                />
-                            </View>
-                        </View>
-                    </View>
-
-                    <View style={styles.connectorContainer}>
-                        <View style={styles.dottedLine} />
-                        <Ionicons name="chevron-down-circle" size={20} color={COLORS.secondary} style={styles.connectorIcon} />
-                    </View>
-
-                    <View style={[styles.card, styles.activeCard]}>
-                        <View style={styles.cardHeader}>
-                            <Ionicons name="cube-outline" size={24} color={COLORS.secondary} />
-                            <Text style={[styles.cardTitle, { color: COLORS.secondary }]}>THÔNG TIN HÀNG HÓA</Text>
-                        </View>
-                        <View style={styles.cardBody}>
-                            <View style={styles.inputWrapper}>
-                                <Ionicons name="pricetag-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                <TextInput
-                                    style={styles.input}
-                                    value={productName}
-                                    onChangeText={setProductName}
-                                    placeholder="Tên hàng hóa (*)"
-                                    placeholderTextColor="#666"
-                                />
-                            </View>
-
-                            {isShipper ? (
-                                <>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                        <View style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}>
-                                            <Ionicons name="scale-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                            <TextInput
-                                                style={styles.input}
-                                                value={actualWeight}
-                                                onChangeText={setActualWeight}
-                                                placeholder="Trọng lượng (kg) (*)"
-                                                placeholderTextColor="#666"
-                                                keyboardType="numeric"
-                                            />
-                                        </View>
-                                        <View style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}>
-                                            <Ionicons name="cash-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                            <TextInput
-                                                style={styles.input}
-                                                value={codAmount}
-                                                onChangeText={setCodAmount}
-                                                placeholder="Thu hộ COD (VNĐ)"
-                                                placeholderTextColor="#666"
-                                                keyboardType="numeric"
-                                            />
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.inputWrapper}>
-                                        <Ionicons name="card-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                        <TextInput
-                                            style={styles.input}
-                                            value={shippingFee}
-                                            onChangeText={setShippingFee}
-                                            placeholder="Phí vận chuyển (VNĐ) (*)"
-                                            placeholderTextColor="#666"
-                                            keyboardType="numeric"
-                                        />
-                                    </View>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-                                        <View style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}>
-                                            <TextInput style={styles.input} value={length} onChangeText={setLength} placeholder="Dài (cm)" placeholderTextColor="#666" keyboardType="numeric" />
-                                        </View>
-                                        <View style={[styles.inputWrapper, { flex: 1, marginHorizontal: 5 }]}>
-                                            <TextInput style={styles.input} value={width} onChangeText={setWidth} placeholder="Rộng (cm)" placeholderTextColor="#666" keyboardType="numeric" />
-                                        </View>
-                                        <View style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}>
-                                            <TextInput style={styles.input} value={height} onChangeText={setHeight} placeholder="Cao (cm)" placeholderTextColor="#666" keyboardType="numeric" />
-                                        </View>
-                                    </View>
-                                </>
-                            ) : (
-                                <View style={styles.inputWrapper}>
-                                    <Ionicons name="cash-outline" size={18} color={COLORS.secondary} style={{ marginRight: 10 }} />
-                                    <TextInput
-                                        style={styles.input}
-                                        value={codAmount}
-                                        onChangeText={setCodAmount}
-                                        placeholder="Thu hộ COD (VNĐ)"
-                                        placeholderTextColor="#666"
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-                            )}
-                        </View>
-                    </View>
-
-
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-
-                <View style={styles.bottomDock}>
-                    <TouchableOpacity
-                        style={[styles.confirmBtn, loading && { opacity: 0.7 }]}
-                        onPress={handleConfirm}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <Text style={styles.confirmBtnText}>ĐANG XỬ LÝ...</Text>
-                        ) : (
-                            <>
-                                <Text style={styles.confirmBtnText}>LƯU & NHẬN HÀNG</Text>
-                                <Ionicons name="checkmark-circle" size={20} color="white" style={{ marginLeft: 8 }} />
-                            </>
-                        )}
-                    </TouchableOpacity>
+            {isShipper ? (
+              <>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginTop: 12,
+                  }}
+                >
+                  <View
+                    style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}
+                  >
+                    <Ionicons
+                      name="scale-outline"
+                      size={18}
+                      color="#94A3B8"
+                      style={{ marginRight: 8 }}
+                    />
+                    <TextInput
+                      style={[
+                        styles.input,
+                        { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                      ]}
+                      value={actualWeight}
+                      onChangeText={setActualWeight}
+                      placeholder="Nặng(kg)*"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View
+                    style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}
+                  >
+                    <Ionicons
+                      name="cash-outline"
+                      size={18}
+                      color="#94A3B8"
+                      style={{ marginRight: 8 }}
+                    />
+                    <TextInput
+                      style={[
+                        styles.input,
+                        { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                      ]}
+                      value={codAmount}
+                      onChangeText={setCodAmount}
+                      placeholder="COD (VNĐ)"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                    />
+                  </View>
                 </View>
-            </KeyboardAvoidingView>
+
+                <View style={[styles.inputWrapper, { marginTop: 12 }]}>
+                  <Ionicons
+                    name="card-outline"
+                    size={18}
+                    color="#94A3B8"
+                    style={{ marginRight: 10 }}
+                  />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                    ]}
+                    value={shippingFee}
+                    onChangeText={setShippingFee}
+                    placeholder="Phí vận chuyển (VNĐ) (*)"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginTop: 12,
+                  }}
+                >
+                  <View
+                    style={[styles.inputWrapper, { flex: 1, marginRight: 5 }]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          flex: 1,
+                          borderWidth: 0,
+                          paddingHorizontal: 0,
+                          textAlign: "center",
+                        },
+                      ]}
+                      value={length}
+                      onChangeText={setLength}
+                      placeholder="Dài (cm)"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View
+                    style={[
+                      styles.inputWrapper,
+                      { flex: 1, marginHorizontal: 5 },
+                    ]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          flex: 1,
+                          borderWidth: 0,
+                          paddingHorizontal: 0,
+                          textAlign: "center",
+                        },
+                      ]}
+                      value={width}
+                      onChangeText={setWidth}
+                      placeholder="Rộng (cm)"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View
+                    style={[styles.inputWrapper, { flex: 1, marginLeft: 5 }]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          flex: 1,
+                          borderWidth: 0,
+                          paddingHorizontal: 0,
+                          textAlign: "center",
+                        },
+                      ]}
+                      value={height}
+                      onChangeText={setHeight}
+                      placeholder="Cao (cm)"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={[styles.inputWrapper, { marginTop: 12 }]}>
+                <Ionicons
+                  name="cash-outline"
+                  size={18}
+                  color="#94A3B8"
+                  style={{ marginRight: 10 }}
+                />
+                <TextInput
+                  style={[
+                    styles.input,
+                    { flex: 1, borderWidth: 0, paddingHorizontal: 0 },
+                  ]}
+                  value={codAmount}
+                  onChangeText={setCodAmount}
+                  placeholder="Thu hộ COD (VNĐ)"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        <View style={styles.bottomDock}>
+          <TouchableOpacity
+            style={[styles.confirmBtn, loading && { opacity: 0.7 }]}
+            onPress={handleConfirm}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <>
+                <Text style={styles.confirmBtnText}>LƯU & XÁC NHẬN</Text>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color="white"
+                  style={{ marginLeft: 8 }}
+                />
+              </>
+            )}
+          </TouchableOpacity>
         </View>
-    );
+      </KeyboardAvoidingView>
+    </View>
+  );
 }
+
+// STYLES CHUẨN DNA
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  scrollContent: { padding: 16, paddingBottom: 100 },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    backgroundColor: PRIMARY,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
+  },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
+
+  headerButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
+
+  // Card Phẳng Chuẩn DNA
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginLeft: 8,
+  },
+
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 52,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: "#0F172A",
+    fontWeight: "600",
+    paddingVertical: 0,
+  },
+
+  connectorContainer: { alignItems: "center", marginVertical: -16, zIndex: 5 },
+  dottedLine: {
+    width: 1,
+    height: 24,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderStyle: "dashed",
+  },
+  connectorIcon: {
+    marginTop: -4,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+
+  bottomDock: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  confirmBtn: {
+    backgroundColor: PRIMARY,
+    height: 52,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmBtnText: { color: "white", fontWeight: "900", fontSize: 15 },
+});

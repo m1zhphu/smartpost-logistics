@@ -12,7 +12,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { getCustomerPickups } from "../services/pickupService";
-import styles from "../styles/CustomerPickupListScreenStyles";
 import {
   formatCurrency,
   formatDateTime,
@@ -34,19 +33,15 @@ export default function CustomerPickupListScreen({ navigation }) {
     const unsubscribe = navigation.addListener("focus", () => {
       fetchPickups();
     });
-
     return unsubscribe;
   }, [navigation]);
 
   const fetchPickups = async () => {
     setLoading(true);
-
     const result = await getCustomerPickups();
-
     if (result.success) {
       setPickups(result.data || []);
     }
-
     setLoading(false);
   };
 
@@ -54,10 +49,10 @@ export default function CustomerPickupListScreen({ navigation }) {
     <TouchableOpacity
       onPress={onPress}
       style={styles.headerButton}
-      activeOpacity={0.78}
+      activeOpacity={0.7}
     >
       <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={24} color="#FFFFFF" />
+        <Ionicons name={icon} size={20} color="#FFFFFF" />
       </View>
     </TouchableOpacity>
   );
@@ -67,7 +62,6 @@ export default function CustomerPickupListScreen({ navigation }) {
       <View style={styles.infoIconBox}>
         <Ionicons name={icon} size={15} color={PRIMARY} />
       </View>
-
       <Text style={styles.infoText}>{children}</Text>
     </View>
   );
@@ -89,7 +83,6 @@ export default function CustomerPickupListScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     const showFinal = hasFinalPrice(item.price_status, item.final_total_amount);
-
     const statusColor = getPickupStatusColor(item.pickup_status);
 
     return (
@@ -100,7 +93,7 @@ export default function CustomerPickupListScreen({ navigation }) {
             waybillCode: item.waybill_code,
           })
         }
-        activeOpacity={0.84}
+        activeOpacity={0.8}
       >
         <View style={styles.cardHeader}>
           <View style={styles.codeBlock}>
@@ -127,15 +120,12 @@ export default function CustomerPickupListScreen({ navigation }) {
           <InfoLine icon="cube-outline">
             Trạng thái vận đơn: {getWaybillStatusLabel(item.waybill_status)}
           </InfoLine>
-
           <InfoLine icon="business-outline">
             Văn phòng: {getOfficeStatusLabel(item.office_status)}
           </InfoLine>
-
           <InfoLine icon="bicycle-outline">
             Bưu tá: {item.assigned_shipper_name || "Chưa phân công"}
           </InfoLine>
-
           <InfoLine icon="time-outline">
             Ngày tạo: {formatDateTime(item.created_at)}
           </InfoLine>
@@ -167,11 +157,12 @@ export default function CustomerPickupListScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER CHUẨN FORM MỚI */}
       <View style={styles.header}>
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
-
-        <Text style={styles.headerTitle}>Đơn lấy hàng của tôi</Text>
-
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Đơn lấy hàng của tôi</Text>
+        </View>
         <HeaderButton icon="reload" onPress={fetchPickups} />
       </View>
 
@@ -182,11 +173,11 @@ export default function CustomerPickupListScreen({ navigation }) {
       ) : pickups.length === 0 ? (
         <View style={styles.center}>
           <View style={styles.emptyIconBox}>
-            <Ionicons name="file-tray-outline" size={34} color="#94A3B8" />
+            <Ionicons name="file-tray-outline" size={36} color="#94A3B8" />
           </View>
-
+          <Text style={styles.emptyTitle}>Chưa có yêu cầu nào</Text>
           <Text style={styles.emptyText}>
-            Bạn chưa có yêu cầu lấy hàng nào.
+            Bạn chưa có yêu cầu lấy hàng nào trên hệ thống.
           </Text>
         </View>
       ) : (
@@ -202,37 +193,26 @@ export default function CustomerPickupListScreen({ navigation }) {
   );
 }
 
-/*
+// STYLES CHUẨN DNA
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-  },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
   header: {
     flexDirection: "row",
-    backgroundColor: PRIMARY,
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingTop: Platform.OS === "ios" ? 55 : 35,
     paddingHorizontal: 20,
     paddingBottom: 22,
-    alignItems: "center",
-    justifyContent: "space-between",
     borderBottomLeftRadius: 42,
     borderBottomRightRadius: 42,
-
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    backgroundColor: PRIMARY,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
   },
-
   headerButton: {
     width: 38,
     height: 38,
@@ -240,82 +220,63 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-  },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
+  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
 
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
 
+  // Empty State Chuẩn
   emptyIconBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 28,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: "rgba(241,245,249,0.8)",
     justifyContent: "center",
-    marginBottom: 14,
+    alignItems: "center",
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    borderColor: "#FFFFFF",
   },
-
-  emptyText: {
-    color: "#64748B",
+  emptyTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 8,
+  },
+  emptyText: {
     textAlign: "center",
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "600",
   },
 
-  listContent: {
-    padding: 15,
-    paddingBottom: 26,
-  },
+  listContent: { padding: 16, paddingBottom: 30 },
 
+  // Card Phẳng Chuẩn DNA
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 15,
-    marginBottom: 15,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -325,18 +286,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     marginBottom: 12,
   },
-
-  codeBlock: {
-    flex: 1,
-    paddingRight: 10,
-  },
-
-  waybillCode: {
-    fontWeight: "900",
-    fontSize: 16,
-    color: SECONDARY,
-  },
-
+  codeBlock: { flex: 1, paddingRight: 10 },
+  waybillCode: { fontWeight: "900", fontSize: 16, color: SECONDARY },
   requestCode: {
     marginTop: 4,
     fontSize: 12,
@@ -345,27 +296,19 @@ const styles = StyleSheet.create({
   },
 
   statusPill: {
-    borderRadius: 999,
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
   },
-
-  statusText: {
-    fontWeight: "900",
-    fontSize: 12,
-    maxWidth: 110,
-    textAlign: "right",
-  },
+  statusText: { fontWeight: "800", fontSize: 11, textAlign: "right" },
 
   cardBody: {},
-
   infoLine: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 9,
+    marginBottom: 10,
   },
-
   infoIconBox: {
     width: 24,
     height: 24,
@@ -373,16 +316,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 8,
+    marginRight: 10,
   },
-
   infoText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#334155",
     flex: 1,
-    marginBottom: 2,
     fontWeight: "600",
-    lineHeight: 21,
+    lineHeight: 22,
   },
 
   priceSection: {
@@ -391,37 +332,24 @@ const styles = StyleSheet.create({
     marginTop: 12,
     gap: 8,
   },
-
   pricePill: {
     flex: 1,
     backgroundColor: "#F8FAFC",
     borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
   pricePillLabel: {
     fontSize: 11,
     color: "#64748B",
     marginBottom: 4,
     fontWeight: "700",
   },
-
-  pricePillValue: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-
-  priceSuccess: {
-    color: "#16A34A",
-  },
-
-  priceDanger: {
-    color: "#EF4444",
-  },
+  pricePillValue: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
+  priceSuccess: { color: "#16A34A" },
+  priceDanger: { color: "#EF4444" },
 
   priceHintBox: {
     flex: 1,
@@ -433,12 +361,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FEF08A",
   },
-
   priceHint: {
     fontSize: 11,
     color: "#854D0E",
-    fontWeight: "600",
+    fontWeight: "700",
     textAlign: "center",
   },
 });
-*/

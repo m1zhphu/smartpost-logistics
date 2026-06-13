@@ -10,6 +10,7 @@ import {
   Animated,
   Easing,
   Platform,
+  StyleSheet,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
@@ -17,7 +18,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import { COLORS } from "../constants/colors";
 import { useUser } from "../context/UserContext";
-import styles from "../styles/CustomerCreatePickupScreenStyles";
 import {
   clearPickupDraft,
   createCustomerPickup,
@@ -56,13 +56,17 @@ const AutocompleteInput = ({
   const [showDropdown, setShowDropdown] = useState(false);
 
   const filtered = data.filter((item) =>
-    normalizeText(item.name).includes(normalizeText(value))
+    normalizeText(item.name).includes(normalizeText(value)),
   );
 
   return (
     <View style={{ position: "relative", zIndex, marginBottom: 16 }}>
       <TextInput
-        style={[styles.input, { marginBottom: 0 }, disabled && { opacity: 0.5, backgroundColor: COLORS.surfaceMuted }]}
+        style={[
+          styles.input,
+          { marginBottom: 0 },
+          disabled && { opacity: 0.5, backgroundColor: "#F1F5F9" },
+        ]}
         value={value}
         onChangeText={(text) => {
           onChangeText(text);
@@ -126,9 +130,23 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
   }, [visible]);
 
   return (
-    <Modal visible={visible} animationType="none" transparent onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <Animated.View style={[styles.modalSheet, { transform: [{ translateY: slideAnim }] }]}>
+    <Modal
+      visible={visible}
+      animationType="none"
+      transparent
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <Animated.View
+          style={[
+            styles.modalSheet,
+            { transform: [{ translateY: slideAnim }] },
+          ]}
+        >
           <View style={styles.modalHandle} />
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
@@ -143,7 +161,10 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
             contentContainerStyle={{ paddingBottom: 24 }}
             renderItem={({ item, index }) => (
               <TouchableOpacity
-                style={[styles.modalItem, index === data.length - 1 && { borderBottomWidth: 0 }]}
+                style={[
+                  styles.modalItem,
+                  index === data.length - 1 && { borderBottomWidth: 0 },
+                ]}
                 onPress={() => {
                   onSelect(item);
                   onClose();
@@ -160,18 +181,6 @@ const SelectModal = ({ visible, title, data, onSelect, onClose }) => {
   );
 };
 
-const HeaderButton = ({ icon, onPress }) => (
-    <TouchableOpacity
-        onPress={onPress}
-        style={styles.headerButton}
-        activeOpacity={0.78}
-    >
-        <View style={styles.headerButtonInner}>
-            <Ionicons name={icon} size={24} color={COLORS.white} />
-        </View>
-    </TouchableOpacity>
-);
-
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function CustomerCreatePickupScreen({ navigation }) {
   const { user } = useUser();
@@ -180,7 +189,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
   const [sName, setSName] = useState(user?.full_name || "");
   const [sPhone, setSPhone] = useState(user?.phone_number || "");
   const [sAddressDetail, setSAddressDetail] = useState(
-    user?.street_address || user?.address || ""
+    user?.street_address || user?.address || "",
   );
 
   // Sender Location Objects
@@ -235,7 +244,12 @@ export default function CustomerCreatePickupScreen({ navigation }) {
   const [simulateLoading, setSimulateLoading] = useState(false);
 
   const [provincesData, setProvincesData] = useState([]);
-  const [modalConfig, setModalConfig] = useState({ visible: false, title: "", data: [], onSelect: null });
+  const [modalConfig, setModalConfig] = useState({
+    visible: false,
+    title: "",
+    data: [],
+    onSelect: null,
+  });
   const [loading, setLoading] = useState(false);
   const draftHydratedRef = useRef(false);
 
@@ -247,11 +261,12 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
-      const hasMeaningfulContent = rName || rPhone || rAddressDetail || itemName;
+      const hasMeaningfulContent =
+        rName || rPhone || rAddressDetail || itemName;
       if (!hasMeaningfulContent) {
         return;
       }
-      
+
       e.preventDefault();
 
       Alert.alert(
@@ -264,7 +279,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
             style: "destructive",
             onPress: () => navigation.dispatch(e.data.action),
           },
-        ]
+        ],
       );
     });
     return unsubscribe;
@@ -281,9 +296,26 @@ export default function CustomerCreatePickupScreen({ navigation }) {
   useEffect(() => {
     if (!draftHydratedRef.current) return;
     const hasContent =
-      sName || sPhone || sAddressDetail || sProvince || sDistrict || sWard ||
-      rName || rPhone || rAddressDetail || rProvince || rDistrict || rWard ||
-      itemName || itemWeight || itemQuantity || codAmount || note || length || width || height;
+      sName ||
+      sPhone ||
+      sAddressDetail ||
+      sProvince ||
+      sDistrict ||
+      sWard ||
+      rName ||
+      rPhone ||
+      rAddressDetail ||
+      rProvince ||
+      rDistrict ||
+      rWard ||
+      itemName ||
+      itemWeight ||
+      itemQuantity ||
+      codAmount ||
+      note ||
+      length ||
+      width ||
+      height;
 
     if (!hasContent) {
       clearPickupDraft();
@@ -291,19 +323,66 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     }
 
     savePickupDraft({
-      sName, sPhone, sAddressDetail,
-      sProvince, sDistrict, sWard,
-      sProvinceQuery, sDistrictQuery, sWardQuery,
-      rName, rPhone, rAddressDetail,
-      rProvince, rDistrict, rWard,
-      rProvinceQuery, rDistrictQuery, rWardQuery,
-      itemName, itemWeight, itemQuantity, codAmount, note, packageType,
-      length, width, height, paymentMethod, serviceType,
+      sName,
+      sPhone,
+      sAddressDetail,
+      sProvince,
+      sDistrict,
+      sWard,
+      sProvinceQuery,
+      sDistrictQuery,
+      sWardQuery,
+      rName,
+      rPhone,
+      rAddressDetail,
+      rProvince,
+      rDistrict,
+      rWard,
+      rProvinceQuery,
+      rDistrictQuery,
+      rWardQuery,
+      itemName,
+      itemWeight,
+      itemQuantity,
+      codAmount,
+      note,
+      packageType,
+      length,
+      width,
+      height,
+      paymentMethod,
+      serviceType,
     });
   }, [
-    sName, sPhone, sAddressDetail, sProvince, sDistrict, sWard, sProvinceQuery, sDistrictQuery, sWardQuery,
-    rName, rPhone, rAddressDetail, rProvince, rDistrict, rWard, rProvinceQuery, rDistrictQuery, rWardQuery,
-    itemName, itemWeight, itemQuantity, codAmount, note, packageType, length, width, height, paymentMethod, serviceType,
+    sName,
+    sPhone,
+    sAddressDetail,
+    sProvince,
+    sDistrict,
+    sWard,
+    sProvinceQuery,
+    sDistrictQuery,
+    sWardQuery,
+    rName,
+    rPhone,
+    rAddressDetail,
+    rProvince,
+    rDistrict,
+    rWard,
+    rProvinceQuery,
+    rDistrictQuery,
+    rWardQuery,
+    itemName,
+    itemWeight,
+    itemQuantity,
+    codAmount,
+    note,
+    packageType,
+    length,
+    width,
+    height,
+    paymentMethod,
+    serviceType,
   ]);
 
   const fetchProvinces = async () => {
@@ -314,7 +393,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
       if (user?.province_id || user?.province) {
         const matchedProv = data.find(
-          (p) => p.code == user.province_id || p.name === user.province
+          (p) => p.code == user.province_id || p.name === user.province,
         );
         if (matchedProv) {
           handleSelectSProvince(matchedProv);
@@ -327,7 +406,9 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
   const fetchDistricts = async (provinceCode) => {
     try {
-      const response = await fetch(`https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`);
+      const response = await fetch(
+        `https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`,
+      );
       const data = await response.json();
       return data.districts || [];
     } catch (error) {
@@ -338,7 +419,9 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
   const fetchWards = async (districtCode) => {
     try {
-      const response = await fetch(`https://provinces.open-api.vn/api/d/${districtCode}?depth=2`);
+      const response = await fetch(
+        `https://provinces.open-api.vn/api/d/${districtCode}?depth=2`,
+      );
       const data = await response.json();
       return data.wards || [];
     } catch (error) {
@@ -427,49 +510,56 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           onPress: async () => {
             setSName(draft.sName || user?.full_name || "");
             setSPhone(draft.sPhone || user?.phone_number || "");
-            setSAddressDetail(draft.sAddressDetail || user?.street_address || user?.address || "");
-            
+            setSAddressDetail(
+              draft.sAddressDetail ||
+                user?.street_address ||
+                user?.address ||
+                "",
+            );
+
             if (draft.sProvince) {
-                setSProvince(draft.sProvince);
-                setSProvinceQuery(draft.sProvinceQuery || draft.sProvince.name);
-                const dists = await fetchDistricts(draft.sProvince.code);
-                setSDistrictsData(dists);
+              setSProvince(draft.sProvince);
+              setSProvinceQuery(draft.sProvinceQuery || draft.sProvince.name);
+              const dists = await fetchDistricts(draft.sProvince.code);
+              setSDistrictsData(dists);
             }
             if (draft.sDistrict) {
-                setSDistrict(draft.sDistrict);
-                setSDistrictQuery(draft.sDistrictQuery || draft.sDistrict.name);
-                const wards = await fetchWards(draft.sDistrict.code);
-                setSWardsData(wards);
+              setSDistrict(draft.sDistrict);
+              setSDistrictQuery(draft.sDistrictQuery || draft.sDistrict.name);
+              const wards = await fetchWards(draft.sDistrict.code);
+              setSWardsData(wards);
             }
             if (draft.sWard) {
-                setSWard(draft.sWard);
-                setSWardQuery(draft.sWardQuery || draft.sWard.name);
+              setSWard(draft.sWard);
+              setSWardQuery(draft.sWardQuery || draft.sWard.name);
             }
 
             setRName(draft.rName || "");
             setRPhone(draft.rPhone || "");
             setRAddressDetail(draft.rAddressDetail || "");
-            
+
             if (draft.rProvince) {
-                setRProvince(draft.rProvince);
-                setRProvinceQuery(draft.rProvinceQuery || draft.rProvince.name);
-                const dists = await fetchDistricts(draft.rProvince.code);
-                setRDistrictsData(dists);
+              setRProvince(draft.rProvince);
+              setRProvinceQuery(draft.rProvinceQuery || draft.rProvince.name);
+              const dists = await fetchDistricts(draft.rProvince.code);
+              setRDistrictsData(dists);
             }
             if (draft.rDistrict) {
-                setRDistrict(draft.rDistrict);
-                setRDistrictQuery(draft.rDistrictQuery || draft.rDistrict.name);
-                const wards = await fetchWards(draft.rDistrict.code);
-                setRWardsData(wards);
+              setRDistrict(draft.rDistrict);
+              setRDistrictQuery(draft.rDistrictQuery || draft.rDistrict.name);
+              const wards = await fetchWards(draft.rDistrict.code);
+              setRWardsData(wards);
             }
             if (draft.rWard) {
-                setRWard(draft.rWard);
-                setRWardQuery(draft.rWardQuery || draft.rWard.name);
+              setRWard(draft.rWard);
+              setRWardQuery(draft.rWardQuery || draft.rWard.name);
             }
 
             setItemName(draft.itemName || "");
             setItemWeight(draft.itemWeight ? String(draft.itemWeight) : "0.5");
-            setItemQuantity(draft.itemQuantity ? String(draft.itemQuantity) : "1");
+            setItemQuantity(
+              draft.itemQuantity ? String(draft.itemQuantity) : "1",
+            );
             setCodAmount(draft.codAmount ? String(draft.codAmount) : "");
             setNote(draft.note || "");
             setPackageType(draft.packageType || "goods");
@@ -483,7 +573,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
             draftHydratedRef.current = true;
           },
         },
-      ]
+      ],
     );
   };
 
@@ -515,9 +605,15 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     items: [
       {
         product_group: packageType === "goods" ? "PARCEL" : "DOCUMENT",
-        product_name: packageType === "goods" ? itemName || "Hàng hóa" : "Thư từ / Tài liệu",
-        description: note || (packageType === "goods" ? itemName || "Hàng hóa" : "Tài liệu"),
-        weight: parseFloat(itemWeight) || (packageType === "letter" ? 0.1 : 0.5),
+        product_name:
+          packageType === "goods"
+            ? itemName || "Hàng hóa"
+            : "Thư từ / Tài liệu",
+        description:
+          note ||
+          (packageType === "goods" ? itemName || "Hàng hóa" : "Tài liệu"),
+        weight:
+          parseFloat(itemWeight) || (packageType === "letter" ? 0.1 : 0.5),
         length: packageType === "goods" ? parseFloat(length) || 0 : 0,
         width: packageType === "goods" ? parseFloat(width) || 0 : 0,
         height: packageType === "goods" ? parseFloat(height) || 0 : 0,
@@ -529,12 +625,12 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     cod_amount: parseFloat(codAmount) || 0,
     cod_receiver_pays_fee: false,
     service_type: serviceType,
-    extra_services: extraServices.map(code => {
-      const svc = availableServices.find(s => s.service_code === code);
+    extra_services: extraServices.map((code) => {
+      const svc = availableServices.find((s) => s.service_code === code);
       return {
         service_code: code,
         service_name: svc ? svc.service_name : "",
-        service_fee: svc ? (svc.fee_type === 'FIXED' ? svc.fee_value : 0) : 0
+        service_fee: svc ? (svc.fee_type === "FIXED" ? svc.fee_value : 0) : 0,
       };
     }),
     delivery_note_option: "CHO_XEM_HANG",
@@ -546,14 +642,36 @@ export default function CustomerCreatePickupScreen({ navigation }) {
   });
 
   const buildDraftSnapshot = () => ({
-    sName, sPhone, sAddressDetail,
-    sProvince, sDistrict, sWard,
-    sProvinceQuery, sDistrictQuery, sWardQuery,
-    rName, rPhone, rAddressDetail,
-    rProvince, rDistrict, rWard,
-    rProvinceQuery, rDistrictQuery, rWardQuery,
-    itemName, itemWeight, itemQuantity, codAmount, note, packageType,
-    length, width, height, paymentMethod, serviceType, extraServices,
+    sName,
+    sPhone,
+    sAddressDetail,
+    sProvince,
+    sDistrict,
+    sWard,
+    sProvinceQuery,
+    sDistrictQuery,
+    sWardQuery,
+    rName,
+    rPhone,
+    rAddressDetail,
+    rProvince,
+    rDistrict,
+    rWard,
+    rProvinceQuery,
+    rDistrictQuery,
+    rWardQuery,
+    itemName,
+    itemWeight,
+    itemQuantity,
+    codAmount,
+    note,
+    packageType,
+    length,
+    width,
+    height,
+    paymentMethod,
+    serviceType,
+    extraServices,
     created_at: new Date().toISOString(),
     draft_title: rName || itemName || "Nháp pickup",
   });
@@ -576,7 +694,17 @@ export default function CustomerCreatePickupScreen({ navigation }) {
   };
 
   const handleConfirm = async () => {
-    if (!rName || !rPhone || !rAddressDetail || !sPhone || !sProvince || !sDistrict || !sAddressDetail || !rProvince || !rDistrict) {
+    if (
+      !rName ||
+      !rPhone ||
+      !rAddressDetail ||
+      !sPhone ||
+      !sProvince ||
+      !sDistrict ||
+      !sAddressDetail ||
+      !rProvince ||
+      !rDistrict
+    ) {
       Toast.show({
         type: "error",
         text1: "Thiếu thông tin",
@@ -600,7 +728,7 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           province_name: rProvince?.name,
           district_name: rDistrict?.name,
           ward_name: rWard?.name,
-          address_detail: rAddressDetail
+          address_detail: rAddressDetail,
         });
       }
 
@@ -624,10 +752,12 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     setRName(item.name || "");
     setRPhone(item.phone || "");
     setRAddressDetail(item.address_detail || "");
-    
+
     // Attempt to match the saved location names to current provincesData
     if (item.province_name) {
-      const matchProv = provincesData.find(p => p.name === item.province_name || p.code == item.province_id);
+      const matchProv = provincesData.find(
+        (p) => p.name === item.province_name || p.code == item.province_id,
+      );
       if (matchProv) {
         setRProvince(matchProv);
         setRProvinceQuery(matchProv.name);
@@ -635,7 +765,9 @@ export default function CustomerCreatePickupScreen({ navigation }) {
         setRDistrictsData(dists);
 
         if (item.district_name) {
-          const matchDist = dists.find(d => d.name === item.district_name || d.code == item.district_id);
+          const matchDist = dists.find(
+            (d) => d.name === item.district_name || d.code == item.district_id,
+          );
           if (matchDist) {
             setRDistrict(matchDist);
             setRDistrictQuery(matchDist.name);
@@ -643,7 +775,9 @@ export default function CustomerCreatePickupScreen({ navigation }) {
             setRWardsData(wards);
 
             if (item.ward_name) {
-              const matchWard = wards.find(w => w.name === item.ward_name || w.code == item.ward_id);
+              const matchWard = wards.find(
+                (w) => w.name === item.ward_name || w.code == item.ward_id,
+              );
               if (matchWard) {
                 setRWard(matchWard);
                 setRWardQuery(matchWard.name);
@@ -668,7 +802,8 @@ export default function CustomerCreatePickupScreen({ navigation }) {
       setSimulateResult(null);
       return;
     }
-    const weightVal = parseFloat(itemWeight) || (packageType === "letter" ? 0.1 : 0);
+    const weightVal =
+      parseFloat(itemWeight) || (packageType === "letter" ? 0.1 : 0);
     if (!weightVal) {
       setSimulateResult(null);
       setSimulateError("");
@@ -691,11 +826,13 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
     const res = await simulatePrice(payload);
     setSimulateLoading(false);
-    if (res.success && res.data?.status === 'SUCCESS') {
+    if (res.success && res.data?.status === "SUCCESS") {
       setSimulateResult(res.data);
     } else {
       setSimulateResult(null);
-      setSimulateError(res.message || "Tuyến đường này chưa được cấu hình giá cước.");
+      setSimulateError(
+        res.message || "Tuyến đường này chưa được cấu hình giá cước.",
+      );
     }
   };
 
@@ -703,11 +840,22 @@ export default function CustomerCreatePickupScreen({ navigation }) {
     if (draftHydratedRef.current) {
       debouncedSimulate();
     }
-  }, [sProvince, rProvince, itemWeight, packageType, length, width, height, serviceType, codAmount, extraServices]);
+  }, [
+    sProvince,
+    rProvince,
+    itemWeight,
+    packageType,
+    length,
+    width,
+    height,
+    serviceType,
+    codAmount,
+    extraServices,
+  ]);
 
   const toggleExtraService = (code) => {
     if (extraServices.includes(code)) {
-      setExtraServices(extraServices.filter(s => s !== code));
+      setExtraServices(extraServices.filter((s) => s !== code));
     } else {
       setExtraServices([...extraServices, code]);
     }
@@ -748,13 +896,26 @@ export default function CustomerCreatePickupScreen({ navigation }) {
 
       {/* Header */}
       <View style={styles.header}>
-        <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={20} color={COLORS.white} />
+        </TouchableOpacity>
+
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Tạo lấy hàng</Text>
           <Text style={styles.headerSubtitle}>Điền thông tin đơn mới</Text>
         </View>
+
         <TouchableOpacity onPress={handleSaveDraft} style={styles.draftPill}>
-          <Ionicons name="save-outline" size={16} color="white" style={{ marginRight: 4 }} />
+          <Ionicons
+            name="save-outline"
+            size={16}
+            color="white"
+            style={{ marginRight: 4 }}
+          />
           <Text style={styles.draftText}>Lưu nháp</Text>
         </TouchableOpacity>
       </View>
@@ -767,7 +928,9 @@ export default function CustomerCreatePickupScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}
       >
-        <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>1. NGƯỜI GỬI</Text>
+        <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>
+          1. NGƯỜI GỬI
+        </Text>
         <View style={[styles.card, { zIndex: 30 }]}>
           <Text style={styles.inputLabel}>Họ tên người gửi</Text>
           <TextInput
@@ -789,7 +952,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           <Text style={styles.inputLabel}>Tỉnh / Thành phố</Text>
           <AutocompleteInput
             value={sProvinceQuery}
-            onChangeText={(t) => { setSProvinceQuery(t); setSProvince(null); }}
+            onChangeText={(t) => {
+              setSProvinceQuery(t);
+              setSProvince(null);
+            }}
             placeholder="Chọn Tỉnh / Thành phố"
             data={provincesData}
             onSelect={handleSelectSProvince}
@@ -798,7 +964,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           <Text style={styles.inputLabel}>Quận / Huyện</Text>
           <AutocompleteInput
             value={sDistrictQuery}
-            onChangeText={(t) => { setSDistrictQuery(t); setSDistrict(null); }}
+            onChangeText={(t) => {
+              setSDistrictQuery(t);
+              setSDistrict(null);
+            }}
             placeholder="Chọn Quận / Huyện"
             data={sDistrictsData}
             onSelect={handleSelectSDistrict}
@@ -808,16 +977,24 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           <Text style={styles.inputLabel}>Phường / Xã</Text>
           <AutocompleteInput
             value={sWardQuery}
-            onChangeText={(t) => { setSWardQuery(t); setSWard(null); }}
+            onChangeText={(t) => {
+              setSWardQuery(t);
+              setSWard(null);
+            }}
             placeholder="Chọn Phường / Xã"
             data={sWardsData}
             onSelect={handleSelectSWard}
             disabled={!sDistrict}
             zIndex={10}
           />
-          <Text style={styles.inputLabel}>Địa chỉ chi tiết (Số nhà, đường...)</Text>
+          <Text style={styles.inputLabel}>
+            Địa chỉ chi tiết (Số nhà, đường...)
+          </Text>
           <TextInput
-            style={[styles.input, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]}
+            style={[
+              styles.input,
+              { minHeight: 60, textAlignVertical: "top", marginBottom: 0 },
+            ]}
             value={sAddressDetail}
             onChangeText={setSAddressDetail}
             placeholder="Nhập địa chỉ chi tiết"
@@ -827,10 +1004,33 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           />
         </View>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <Text style={[styles.sectionTitle, { color: COLORS.primary, marginBottom: 0 }]}>2. NGƯỜI NHẬN</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("CustomerRecipients", { isSelectMode: true, onSelect: handleSelectRecipient })}>
-            <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>+ Sổ địa chỉ</Text>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 10,
+          }}
+        >
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: COLORS.primary, marginBottom: 0 },
+            ]}
+          >
+            2. NGƯỜI NHẬN
+          </Text>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("CustomerRecipients", {
+                isSelectMode: true,
+                onSelect: handleSelectRecipient,
+              })
+            }
+          >
+            <Text style={{ color: COLORS.primary, fontWeight: "bold" }}>
+              + Sổ địa chỉ
+            </Text>
           </TouchableOpacity>
         </View>
         <View style={[styles.card, { zIndex: 20 }]}>
@@ -854,7 +1054,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           <Text style={styles.inputLabel}>Tỉnh / Thành phố *</Text>
           <AutocompleteInput
             value={rProvinceQuery}
-            onChangeText={(t) => { setRProvinceQuery(t); setRProvince(null); }}
+            onChangeText={(t) => {
+              setRProvinceQuery(t);
+              setRProvince(null);
+            }}
             placeholder="Chọn Tỉnh / Thành phố"
             data={provincesData}
             onSelect={handleSelectRProvince}
@@ -863,7 +1066,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           <Text style={styles.inputLabel}>Quận / Huyện *</Text>
           <AutocompleteInput
             value={rDistrictQuery}
-            onChangeText={(t) => { setRDistrictQuery(t); setRDistrict(null); }}
+            onChangeText={(t) => {
+              setRDistrictQuery(t);
+              setRDistrict(null);
+            }}
             placeholder="Chọn Quận / Huyện"
             data={rDistrictsData}
             onSelect={handleSelectRDistrict}
@@ -873,7 +1079,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           <Text style={styles.inputLabel}>Phường / Xã</Text>
           <AutocompleteInput
             value={rWardQuery}
-            onChangeText={(t) => { setRWardQuery(t); setRWard(null); }}
+            onChangeText={(t) => {
+              setRWardQuery(t);
+              setRWard(null);
+            }}
             placeholder="Chọn Phường / Xã"
             data={rWardsData}
             onSelect={handleSelectRWard}
@@ -882,7 +1091,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           />
           <Text style={styles.inputLabel}>Địa chỉ chi tiết *</Text>
           <TextInput
-            style={[styles.input, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]}
+            style={[
+              styles.input,
+              { minHeight: 60, textAlignVertical: "top", marginBottom: 0 },
+            ]}
             value={rAddressDetail}
             onChangeText={setRAddressDetail}
             placeholder="Nhập địa chỉ chi tiết"
@@ -892,129 +1104,324 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           />
         </View>
 
-        <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>3. HÀNG HÓA & THANH TOÁN</Text>
+        <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>
+          3. HÀNG HÓA & THANH TOÁN
+        </Text>
         <View style={[styles.card, { zIndex: 10 }]}>
           <Text style={styles.inputLabel}>Loại hàng hóa</Text>
           <View style={styles.radioGroup}>
             <TouchableOpacity
-              style={[styles.radioBtn, packageType === "goods" && styles.radioBtnActive]}
+              style={[
+                styles.radioBtn,
+                packageType === "goods" && styles.radioBtnActive,
+              ]}
               onPress={() => setPackageType("goods")}
             >
-              <Text style={[styles.radioText, packageType === "goods" && styles.radioTextActive]}>Hàng hóa</Text>
+              <Text
+                style={[
+                  styles.radioText,
+                  packageType === "goods" && styles.radioTextActive,
+                ]}
+              >
+                Hàng hóa
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.radioBtn, packageType === "letter" && styles.radioBtnActive]}
+              style={[
+                styles.radioBtn,
+                packageType === "letter" && styles.radioBtnActive,
+              ]}
               onPress={() => setPackageType("letter")}
             >
-              <Text style={[styles.radioText, packageType === "letter" && styles.radioTextActive]}>Tài liệu</Text>
+              <Text
+                style={[
+                  styles.radioText,
+                  packageType === "letter" && styles.radioTextActive,
+                ]}
+              >
+                Tài liệu
+              </Text>
             </TouchableOpacity>
           </View>
 
           {packageType === "goods" ? (
             <>
               <Text style={styles.inputLabel}>Tên hàng hóa</Text>
-              <TextInput style={styles.input} value={itemName} onChangeText={setItemName} placeholder="Ví dụ: Quần áo, sách..." placeholderTextColor="#94A3B8" />
+              <TextInput
+                style={styles.input}
+                value={itemName}
+                onChangeText={setItemName}
+                placeholder="Ví dụ: Quần áo, sách..."
+                placeholderTextColor="#94A3B8"
+              />
               <Text style={styles.inputLabel}>Trọng lượng (kg)</Text>
-              <TextInput style={styles.input} value={itemWeight} onChangeText={setItemWeight} placeholder="Ví dụ: 0.5" keyboardType="decimal-pad" placeholderTextColor="#94A3B8" />
+              <TextInput
+                style={styles.input}
+                value={itemWeight}
+                onChangeText={setItemWeight}
+                placeholder="Ví dụ: 0.5"
+                keyboardType="decimal-pad"
+                placeholderTextColor="#94A3B8"
+              />
               <Text style={styles.inputLabel}>Số lượng</Text>
-              <TextInput style={styles.input} value={itemQuantity} onChangeText={setItemQuantity} placeholder="Ví dụ: 1" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
+              <TextInput
+                style={styles.input}
+                value={itemQuantity}
+                onChangeText={setItemQuantity}
+                placeholder="Ví dụ: 1"
+                keyboardType="number-pad"
+                placeholderTextColor="#94A3B8"
+              />
               <Text style={styles.inputLabel}>Kích thước (cm)</Text>
               <View style={styles.rowInputs}>
-                <TextInput style={[styles.input, styles.flexInput, styles.spacedInput]} value={length} onChangeText={setLength} placeholder="Dài" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
-                <TextInput style={[styles.input, styles.flexInput, styles.spacedInput]} value={width} onChangeText={setWidth} placeholder="Rộng" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
-                <TextInput style={[styles.input, styles.flexInput]} value={height} onChangeText={setHeight} placeholder="Cao" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
+                <TextInput
+                  style={[styles.input, styles.flexInput, styles.spacedInput]}
+                  value={length}
+                  onChangeText={setLength}
+                  placeholder="Dài"
+                  keyboardType="number-pad"
+                  placeholderTextColor="#94A3B8"
+                />
+                <TextInput
+                  style={[styles.input, styles.flexInput, styles.spacedInput]}
+                  value={width}
+                  onChangeText={setWidth}
+                  placeholder="Rộng"
+                  keyboardType="number-pad"
+                  placeholderTextColor="#94A3B8"
+                />
+                <TextInput
+                  style={[styles.input, styles.flexInput]}
+                  value={height}
+                  onChangeText={setHeight}
+                  placeholder="Cao"
+                  keyboardType="number-pad"
+                  placeholderTextColor="#94A3B8"
+                />
               </View>
             </>
           ) : (
-            <Text style={{ fontSize: 13, color: "#94A3B8", marginBottom: 15, fontStyle: "italic" }}>
+            <Text
+              style={{
+                fontSize: 13,
+                color: "#94A3B8",
+                marginBottom: 15,
+                fontStyle: "italic",
+              }}
+            >
               Tài liệu mặc định là 0.1kg và không cần kích thước.
             </Text>
           )}
 
           <Text style={styles.inputLabel}>Dịch vụ vận chuyển</Text>
-          <TouchableOpacity style={styles.selectionBox} onPress={() => openModal("serviceType")}>
+          <TouchableOpacity
+            style={styles.selectionBox}
+            onPress={() => openModal("serviceType")}
+          >
             <Text style={styles.selectionText}>
-              {serviceType === "STANDARD" ? "Tiêu chuẩn (STANDARD)" : serviceType === "CPN" ? "Chuyển phát nhanh (CPN)" : "Hỏa tốc (HT)"}
+              {serviceType === "STANDARD"
+                ? "Tiêu chuẩn (STANDARD)"
+                : serviceType === "CPN"
+                  ? "Chuyển phát nhanh (CPN)"
+                  : "Hỏa tốc (HT)"}
             </Text>
             <Ionicons name="chevron-down" size={18} color="#94A3B8" />
           </TouchableOpacity>
 
           <Text style={styles.inputLabel}>Tiền thu hộ (COD)</Text>
-          <TextInput style={styles.input} value={codAmount} onChangeText={setCodAmount} placeholder="Nhập số tiền (VNĐ)" keyboardType="number-pad" placeholderTextColor="#94A3B8" />
+          <TextInput
+            style={styles.input}
+            value={codAmount}
+            onChangeText={setCodAmount}
+            placeholder="Nhập số tiền (VNĐ)"
+            keyboardType="number-pad"
+            placeholderTextColor="#94A3B8"
+          />
 
           <Text style={styles.inputLabel}>Thanh toán cước phí</Text>
-          <TouchableOpacity style={styles.selectionBox} onPress={() => openModal("paymentMethod")}>
+          <TouchableOpacity
+            style={styles.selectionBox}
+            onPress={() => openModal("paymentMethod")}
+          >
             <Text style={styles.selectionText}>
-              {paymentMethod === "SENDER_DEBT" ? "Shop trả cước cuối tháng" : paymentMethod === "SENDER_PAY" ? "Shop trả ngay khi gửi" : "Người nhận trả cước"}
+              {paymentMethod === "SENDER_DEBT"
+                ? "Shop trả cước cuối tháng"
+                : paymentMethod === "SENDER_PAY"
+                  ? "Shop trả ngay khi gửi"
+                  : "Người nhận trả cước"}
             </Text>
             <Ionicons name="chevron-down" size={18} color="#94A3B8" />
           </TouchableOpacity>
-          
+
           <Text style={styles.inputLabel}>Ghi chú</Text>
-          <TextInput style={[styles.input, { minHeight: 60, textAlignVertical: "top", marginBottom: 0 }]} value={note} onChangeText={setNote} placeholder="Ghi chú thêm..." placeholderTextColor="#94A3B8" multiline numberOfLines={3} />
-          
+          <TextInput
+            style={[
+              styles.input,
+              { minHeight: 60, textAlignVertical: "top", marginBottom: 0 },
+            ]}
+            value={note}
+            onChangeText={setNote}
+            placeholder="Ghi chú thêm..."
+            placeholderTextColor="#94A3B8"
+            multiline
+            numberOfLines={3}
+          />
+
           {availableServices.length > 0 && (
             <View style={{ marginTop: 15 }}>
               <Text style={styles.inputLabel}>Dịch vụ gia tăng</Text>
-              {availableServices.map(svc => {
+              {availableServices.map((svc) => {
                 const isSelected = extraServices.includes(svc.service_code);
-                const priceText = svc.fee_type === "FIXED" ? `+${svc.fee_value.toLocaleString("vi-VN")}đ` : `+${svc.fee_value}%`;
+                const priceText =
+                  svc.fee_type === "FIXED"
+                    ? `+${svc.fee_value.toLocaleString("vi-VN")}đ`
+                    : `+${svc.fee_value}%`;
                 return (
-                  <TouchableOpacity 
-                    key={svc.service_code} 
+                  <TouchableOpacity
+                    key={svc.service_code}
                     style={styles.checkboxRow}
                     onPress={() => toggleExtraService(svc.service_code)}
                   >
-                    <Ionicons 
-                      name={isSelected ? "checkbox" : "square-outline"} 
-                      size={20} 
-                      color={isSelected ? COLORS.primary : "#94A3B8"} 
+                    <Ionicons
+                      name={isSelected ? "checkbox" : "square-outline"}
+                      size={20}
+                      color={isSelected ? COLORS.primary : "#94A3B8"}
                     />
-                    <Text style={[styles.checkboxLabel, isSelected && { color: COLORS.primary }]}>
-                      {svc.service_name} <Text style={{ color: isSelected ? COLORS.primary : "#64748B", fontWeight: "bold" }}>({priceText})</Text>
+                    <Text
+                      style={[
+                        styles.checkboxLabel,
+                        isSelected && { color: COLORS.primary },
+                      ]}
+                    >
+                      {svc.service_name}{" "}
+                      <Text
+                        style={{
+                          color: isSelected ? COLORS.primary : "#64748B",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        ({priceText})
+                      </Text>
                     </Text>
                   </TouchableOpacity>
-                )
+                );
               })}
             </View>
           )}
         </View>
 
         {/* Cước phí dự kiến */}
-        <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>4. ƯỚC TÍNH CƯỚC PHÍ</Text>
+        <Text style={[styles.sectionTitle, { color: COLORS.primary }]}>
+          4. ƯỚC TÍNH CƯỚC PHÍ
+        </Text>
         <View style={[styles.card, { zIndex: 5 }]}>
           {simulateLoading ? (
-            <Text style={{ textAlign: "center", color: "#64748B", padding: 15, fontWeight: "700" }}>Đang tính cước phí...</Text>
+            <Text
+              style={{
+                textAlign: "center",
+                color: "#64748B",
+                padding: 15,
+                fontWeight: "700",
+              }}
+            >
+              Đang tính cước phí...
+            </Text>
           ) : simulateError ? (
             <View style={{ padding: 10, alignItems: "center" }}>
-              <Ionicons name="warning" size={28} color="#EAB308" style={{ marginBottom: 5 }} />
-              <Text style={{ color: "#EAB308", fontWeight: "700", textAlign: "center", fontSize: 14 }}>{simulateError}</Text>
+              <Ionicons
+                name="warning"
+                size={28}
+                color="#EAB308"
+                style={{ marginBottom: 5 }}
+              />
+              <Text
+                style={{
+                  color: "#EAB308",
+                  fontWeight: "700",
+                  textAlign: "center",
+                  fontSize: 14,
+                }}
+              >
+                {simulateError}
+              </Text>
             </View>
           ) : simulateResult ? (
             <View>
               <View style={styles.billingRow}>
                 <Text style={styles.billingLabel}>Cước chính:</Text>
-                <Text style={styles.billingValue}>{simulateResult.main_fee?.toLocaleString()} đ</Text>
+                <Text style={styles.billingValue}>
+                  {simulateResult.main_fee?.toLocaleString()} đ
+                </Text>
               </View>
               <View style={styles.billingRow}>
                 <Text style={styles.billingLabel}>Phí DV gia tăng:</Text>
-                <Text style={styles.billingValue}>{simulateResult.extra_fee?.toLocaleString()} đ</Text>
+                <Text style={styles.billingValue}>
+                  {simulateResult.extra_fee?.toLocaleString()} đ
+                </Text>
               </View>
               <View style={styles.billingRow}>
                 <Text style={styles.billingLabel}>Thuế VAT (8%):</Text>
-                <Text style={styles.billingValue}>{simulateResult.vat_8?.toLocaleString()} đ</Text>
+                <Text style={styles.billingValue}>
+                  {simulateResult.vat_8?.toLocaleString()} đ
+                </Text>
               </View>
-              <View style={{ height: 1, backgroundColor: "#E2E8F0", marginVertical: 12 }} />
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: "#E2E8F0",
+                  marginVertical: 12,
+                }}
+              />
               <View style={styles.billingRow}>
-                <Text style={[styles.billingLabel, { fontWeight: "900", color: COLORS.textPrimary }]}>TỔNG CỘNG TẠM TÍNH:</Text>
-                <Text style={[styles.billingValue, { fontWeight: "900", color: COLORS.primary, fontSize: 16 }]}>{simulateResult.grand_total?.toLocaleString()} đ</Text>
+                <Text
+                  style={[
+                    styles.billingLabel,
+                    { fontWeight: "900", color: COLORS.textPrimary },
+                  ]}
+                >
+                  TỔNG CỘNG TẠM TÍNH:
+                </Text>
+                <Text
+                  style={[
+                    styles.billingValue,
+                    { fontWeight: "900", color: COLORS.primary, fontSize: 16 },
+                  ]}
+                >
+                  {simulateResult.grand_total?.toLocaleString()} đ
+                </Text>
               </View>
-              <Text style={{ fontSize: 11, color: "#64748B", textAlign: "center", marginTop: 12, fontWeight: "700" }}>* Cước phí thực tế sẽ được cập nhật sau khi bưu cục cân đo hàng hóa.</Text>
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: "#64748B",
+                  textAlign: "center",
+                  marginTop: 12,
+                  fontWeight: "700",
+                }}
+              >
+                * Cước phí thực tế sẽ được cập nhật sau khi bưu cục cân đo hàng
+                hóa.
+              </Text>
             </View>
           ) : (
             <View style={{ padding: 10, alignItems: "center" }}>
-              <Ionicons name="information-circle-outline" size={28} color="#94A3B8" style={{ marginBottom: 5 }} />
-              <Text style={{ color: "#64748B", textAlign: "center", fontSize: 13, fontWeight: "700" }}>Vui lòng điền địa chỉ người gửi, người nhận và khối lượng để xem cước phí dự kiến.</Text>
+              <Ionicons
+                name="information-circle-outline"
+                size={28}
+                color="#94A3B8"
+                style={{ marginBottom: 5 }}
+              />
+              <Text
+                style={{
+                  color: "#64748B",
+                  textAlign: "center",
+                  fontSize: 13,
+                  fontWeight: "700",
+                }}
+              >
+                Vui lòng điền địa chỉ người gửi, người nhận và khối lượng để xem
+                cước phí dự kiến.
+              </Text>
             </View>
           )}
         </View>
@@ -1026,7 +1433,9 @@ export default function CustomerCreatePickupScreen({ navigation }) {
           onPress={handleConfirm}
           disabled={loading}
         >
-          <Text style={styles.confirmBtnText}>{loading ? "ĐANG XỬ LÝ..." : "TẠO ĐƠN HÀNG"}</Text>
+          <Text style={styles.confirmBtnText}>
+            {loading ? "ĐANG XỬ LÝ..." : "TẠO ĐƠN HÀNG"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -1041,9 +1450,10 @@ export default function CustomerCreatePickupScreen({ navigation }) {
   );
 }
 
-/*
+// ─── STYLES ĐƯỢC CHUẨN HÓA THEO GIAO DIỆN PHẲNG (WAREHOUSE UI) ─────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F3F4F6" },
+  container: { flex: 1, backgroundColor: "#F8FAFC" }, // Nền sáng nhẹ để nổi bật card trắng
+
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -1054,10 +1464,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 42,
     borderBottomRightRadius: 42,
     backgroundColor: PRIMARY,
-    ...Platform.select({
-        ios: { shadowColor: PRIMARY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16 },
-        android: { elevation: 8 }
-    }),
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
   },
   headerButton: {
     width: 38,
@@ -1066,14 +1477,20 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   headerCenter: { alignItems: "center", flex: 1, paddingHorizontal: 10 },
   headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
-  headerSubtitle: { color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 2, fontWeight: "700" },
+  headerSubtitle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: "700",
+  },
+
   draftPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -1083,6 +1500,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   draftText: { color: "white", fontSize: 13, fontWeight: "800" },
+
   scrollContent: { padding: 16, paddingBottom: 140 },
   sectionTitle: {
     fontSize: 14,
@@ -1092,12 +1510,15 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginLeft: 4,
   },
+
   inputLabel: {
     fontSize: 13,
     fontWeight: "700",
     color: "#475569",
     marginBottom: 8,
   },
+
+  // Áp dụng đúng form: Nền trắng, Bo tròn 16px, Viền xám nhạt #E2E8F0, Đổ bóng mờ 0.06
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -1105,11 +1526,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     marginBottom: 10,
-    ...Platform.select({
-      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8 },
-      android: { elevation: 2 }
-    })
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
+
   input: {
     backgroundColor: "#F8FAFC",
     borderRadius: 12,
@@ -1122,6 +1545,7 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     marginBottom: 16,
   },
+
   selectionBox: {
     backgroundColor: "#F8FAFC",
     borderRadius: 12,
@@ -1135,6 +1559,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   selectionText: { color: "#0F172A", fontSize: 15, fontWeight: "600" },
+
   dropdownContainer: {
     position: "absolute",
     top: 56,
@@ -1144,10 +1569,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8 },
-      android: { elevation: 4 }
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
     zIndex: 100,
   },
   dropdownItem: {
@@ -1157,9 +1583,11 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F1F5F9",
   },
   dropdownItemText: { fontSize: 15, color: "#0F172A", fontWeight: "600" },
+
   rowInputs: { flexDirection: "row", justifyContent: "space-between" },
   flexInput: { flex: 1 },
   spacedInput: { marginRight: 12 },
+
   radioGroup: {
     flexDirection: "row",
     marginBottom: 16,
@@ -1167,16 +1595,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
   },
-  radioBtn: { flex: 1, paddingVertical: 12, alignItems: "center", borderRadius: 10 },
+  radioBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: 10,
+  },
   radioBtnActive: {
     backgroundColor: "#FFFFFF",
-    ...Platform.select({
-      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4 },
-      android: { elevation: 2 }
-    })
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   radioText: { color: "#64748B", fontSize: 14, fontWeight: "700" },
   radioTextActive: { color: PRIMARY, fontWeight: "900" },
+
   checkboxRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1186,23 +1621,17 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 14,
     color: "#0F172A",
-    fontWeight: "600"
+    fontWeight: "600",
   },
+
   billingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
   },
-  billingLabel: {
-    color: "#64748B",
-    fontSize: 14,
-    fontWeight: "700"
-  },
-  billingValue: {
-    color: "#0F172A",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  billingLabel: { color: "#64748B", fontSize: 14, fontWeight: "700" },
+  billingValue: { color: "#0F172A", fontSize: 14, fontWeight: "700" },
+
   bottomDock: {
     position: "absolute",
     bottom: 0,
@@ -1210,13 +1639,14 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: "#FFFFFF",
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
     borderTopWidth: 1,
     borderTopColor: "#E2E8F0",
-    ...Platform.select({
-      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.06, shadowRadius: 8 },
-      android: { elevation: 8 }
-    })
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
   },
   confirmBtn: {
     backgroundColor: COLORS.primary,
@@ -1226,6 +1656,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   confirmBtnText: { color: "white", fontSize: 16, fontWeight: "900" },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.5)",
@@ -1237,10 +1668,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     maxHeight: "75%",
     padding: 20,
-    ...Platform.select({
-      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20 },
-      android: { elevation: 20 }
-    })
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   modalHandle: {
     width: 42,
@@ -1270,4 +1702,3 @@ const styles = StyleSheet.create({
   },
   modalItemText: { fontSize: 16, color: "#0F172A", fontWeight: "600" },
 });
-*/

@@ -9,6 +9,7 @@ import {
   FlatList,
   Platform,
   Image,
+  StyleSheet,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,7 +18,6 @@ import { COLORS } from "../constants/colors";
 import { API_BASE_URL } from "../constants/customerEndpoints";
 import { apiClient } from "../context/UserContext";
 import dayjs from "dayjs";
-import styles from "../styles/CustomerTrackingScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 const SECONDARY = COLORS.secondary || "#0F766E";
@@ -46,7 +46,6 @@ export default function CustomerTrackingScreen({ navigation }) {
       setTrackingData(response.data);
     } catch (error) {
       console.error("Lỗi tra cứu:", error);
-
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -61,18 +60,12 @@ export default function CustomerTrackingScreen({ navigation }) {
     <TouchableOpacity
       onPress={onPress}
       style={styles.headerButton}
-      activeOpacity={0.78}
+      activeOpacity={0.7}
     >
       <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={24} color={COLORS.white} />
+        <Ionicons name={icon} size={20} color={COLORS.white} />
       </View>
     </TouchableOpacity>
-  );
-
-  const GlassCard = ({ children, style }) => (
-    <View style={[styles.card, style]}>
-      {children}
-    </View>
   );
 
   const Row = ({ label, value, bold, color }) => (
@@ -112,10 +105,17 @@ export default function CustomerTrackingScreen({ navigation }) {
           ) : null}
 
           {item.note ? <Text style={styles.logNote}>{item.note}</Text> : null}
+
           {item.pickup_image_url ? (
-            <Image 
-              source={{ uri: item.pickup_image_url }} 
-              style={{ width: '100%', height: 150, borderRadius: 8, marginTop: 10, resizeMode: 'cover' }} 
+            <Image
+              source={{ uri: item.pickup_image_url }}
+              style={{
+                width: "100%",
+                height: 150,
+                borderRadius: 8,
+                marginTop: 10,
+                resizeMode: "cover",
+              }}
             />
           ) : null}
         </View>
@@ -127,12 +127,13 @@ export default function CustomerTrackingScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER CHUẨN FORM */}
       <View style={styles.header}>
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
-
-        <Text style={styles.headerTitle}>Tra cứu vận đơn</Text>
-
-        <View style={{ width: 42 }} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Tra cứu vận đơn</Text>
+        </View>
+        <View style={{ width: 38 }} />
       </View>
 
       <View style={styles.searchSection}>
@@ -143,33 +144,34 @@ export default function CustomerTrackingScreen({ navigation }) {
             color={PRIMARY}
             style={styles.searchIcon}
           />
-
           <TextInput
             style={styles.searchInput}
-            placeholder="Nhập mã vận đơn (VD: SP123456789)"
-            placeholderTextColor="rgba(71,85,105,0.5)"
+            placeholder="Nhập mã vận đơn (VD: SP123456...)"
+            placeholderTextColor="#94A3B8"
             value={trackingCode}
             onChangeText={setTrackingCode}
             autoCapitalize="characters"
             onSubmitEditing={handleSearch}
             underlineColorAndroid="transparent"
           />
-
           {trackingCode.length > 0 && (
-            <TouchableOpacity onPress={() => setTrackingCode("")}>
+            <TouchableOpacity
+              onPress={() => setTrackingCode("")}
+              style={{ padding: 4 }}
+            >
               <Ionicons name="close-circle" size={20} color="#94A3B8" />
             </TouchableOpacity>
           )}
         </View>
 
         <TouchableOpacity
-          style={[styles.searchBtn, loading && { opacity: 0.72 }]}
+          style={[styles.searchBtn, loading && { opacity: 0.7 }]}
           onPress={handleSearch}
           disabled={loading}
-          activeOpacity={0.88}
+          activeOpacity={0.8}
         >
           {loading ? (
-              <ActivityIndicator color={COLORS.white} />
+            <ActivityIndicator color={COLORS.white} />
           ) : (
             <Text style={styles.searchBtnText}>Tra cứu</Text>
           )}
@@ -185,9 +187,8 @@ export default function CustomerTrackingScreen({ navigation }) {
           contentContainerStyle={styles.resultContainer}
           showsVerticalScrollIndicator={false}
         >
-          <GlassCard>
+          <View style={styles.card}>
             <Text style={styles.sectionTitle}>THÔNG TIN VẬN ĐƠN</Text>
-
             <Row label="Mã đơn:" value={trackingData.waybill_code} bold />
             <Row
               label="Trạng thái hiện tại:"
@@ -197,19 +198,19 @@ export default function CustomerTrackingScreen({ navigation }) {
             />
             <Row label="Người gửi:" value={trackingData.sender_name} />
             <Row label="Người nhận:" value={trackingData.receiver_name} />
-          </GlassCard>
+          </View>
 
           <Text style={styles.timelineTitle}>HÀNH TRÌNH ĐƠN HÀNG</Text>
 
           {trackingData.logs && trackingData.logs.length > 0 ? (
-            <GlassCard>
+            <View style={styles.card}>
               <FlatList
                 data={[...trackingData.logs].reverse()}
                 keyExtractor={(item, index) => index.toString()}
                 renderItem={renderLogItem}
                 scrollEnabled={false}
               />
-            </GlassCard>
+            </View>
           ) : (
             <View style={styles.centerContentInline}>
               <Text style={styles.emptyText}>
@@ -221,9 +222,8 @@ export default function CustomerTrackingScreen({ navigation }) {
       ) : (
         <View style={styles.centerContent}>
           <View style={styles.emptyIconBox}>
-            <Ionicons name="cube-outline" size={60} color="#CBD5E1" />
+            <Ionicons name="search-outline" size={36} color="#94A3B8" />
           </View>
-
           <Text style={styles.placeholderText}>
             Nhập mã vận đơn để bắt đầu tra cứu
           </Text>
@@ -233,34 +233,27 @@ export default function CustomerTrackingScreen({ navigation }) {
   );
 }
 
-/* const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-  },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
   header: {
     flexDirection: "row",
-    backgroundColor: PRIMARY,
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingTop: Platform.OS === "ios" ? 55 : 35,
     paddingHorizontal: 20,
     paddingBottom: 22,
-    alignItems: "center",
-    justifyContent: "space-between",
     borderBottomLeftRadius: 42,
     borderBottomRightRadius: 42,
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    backgroundColor: PRIMARY,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
   },
+  headerCenter: { alignItems: "center", flex: 1 },
+  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
 
   headerButton: {
     width: 38,
@@ -269,19 +262,14 @@ export default function CustomerTrackingScreen({ navigation }) {
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
 
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
+  // Card Phẳng Chuẩn DNA
   searchSection: {
     margin: 16,
     borderRadius: 16,
@@ -289,19 +277,12 @@ export default function CustomerTrackingScreen({ navigation }) {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -313,17 +294,8 @@ export default function CustomerTrackingScreen({ navigation }) {
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
-  searchIcon: {
-    marginRight: 8,
-  },
-
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: "#0F172A",
-    fontWeight: "700",
-  },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 15, color: "#0F172A", fontWeight: "700" },
 
   searchBtn: {
     backgroundColor: PRIMARY,
@@ -332,46 +304,31 @@ export default function CustomerTrackingScreen({ navigation }) {
     justifyContent: "center",
     alignItems: "center",
   },
+  searchBtnText: { color: "white", fontSize: 15, fontWeight: "900" },
 
-  searchBtnText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-
-  centerContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
+  centerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
   centerContentInline: {
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
 
+  // Empty State Chuẩn
   emptyIconBox: {
-    marginBottom: 10,
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: "rgba(241,245,249,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
   },
+  placeholderText: { color: "#0F172A", fontSize: 15, fontWeight: "800" },
+  emptyText: { color: "#64748B", fontSize: 14, fontWeight: "600" },
 
-  placeholderText: {
-    color: "#64748B",
-    marginTop: 10,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  emptyText: {
-    color: "#64748B",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  resultContainer: {
-    padding: 16,
-    paddingBottom: 50,
-  },
+  resultContainer: { padding: 16, paddingBottom: 50 },
 
   card: {
     borderRadius: 16,
@@ -380,33 +337,26 @@ export default function CustomerTrackingScreen({ navigation }) {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   sectionTitle: {
     fontSize: 14,
     fontWeight: "900",
-    color: SECONDARY,
+    color: "#0F172A",
     marginBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
-    paddingBottom: 7,
+    paddingBottom: 8,
   },
-
   timelineTitle: {
     fontSize: 14,
     fontWeight: "900",
-    color: SECONDARY,
+    color: "#0F172A",
     marginLeft: 4,
     marginTop: 4,
     marginBottom: 10,
@@ -415,24 +365,16 @@ export default function CustomerTrackingScreen({ navigation }) {
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 9,
+    marginBottom: 10,
   },
-
-  label: {
-    color: "#64748B",
-    fontSize: 14,
-    flex: 1,
-    fontWeight: "700",
-  },
-
+  label: { color: "#64748B", fontSize: 14, flex: 1, fontWeight: "600" },
   value: {
-    color: "#1E293B",
+    color: "#0F172A",
     fontSize: 14,
     flex: 1,
     textAlign: "right",
     fontWeight: "700",
   },
-
   valueBold: {
     color: PRIMARY,
     fontSize: 14,
@@ -441,16 +383,8 @@ export default function CustomerTrackingScreen({ navigation }) {
     textAlign: "right",
   },
 
-  timelineItem: {
-    flexDirection: "row",
-  },
-
-  timelineColumn: {
-    width: 20,
-    alignItems: "center",
-    marginRight: 15,
-  },
-
+  timelineItem: { flexDirection: "row" },
+  timelineColumn: { width: 20, alignItems: "center", marginRight: 15 },
   dot: {
     width: 12,
     height: 12,
@@ -459,11 +393,7 @@ export default function CustomerTrackingScreen({ navigation }) {
     zIndex: 2,
     marginTop: 4,
   },
-
-  activeDot: {
-    backgroundColor: PRIMARY,
-  },
-
+  activeDot: { backgroundColor: PRIMARY },
   timelineLine: {
     width: 2,
     flex: 1,
@@ -472,31 +402,15 @@ export default function CustomerTrackingScreen({ navigation }) {
     zIndex: 1,
   },
 
-  contentColumn: {
-    flex: 1,
-    paddingBottom: 25,
-  },
-
-  logStatus: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-
-  logTime: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 4,
-    fontWeight: "700",
-  },
-
+  contentColumn: { flex: 1, paddingBottom: 25 },
+  logStatus: { fontSize: 15, fontWeight: "800", color: "#0F172A" },
+  logTime: { fontSize: 13, color: "#64748B", marginTop: 4, fontWeight: "600" },
   logLocation: {
     fontSize: 13,
     color: "#475569",
     marginTop: 4,
-    fontWeight: "700",
+    fontWeight: "600",
   },
-
   logNote: {
     fontSize: 13,
     color: "#EF4444",
@@ -504,4 +418,4 @@ export default function CustomerTrackingScreen({ navigation }) {
     fontStyle: "italic",
     fontWeight: "700",
   },
-}); */
+});

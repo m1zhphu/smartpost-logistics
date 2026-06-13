@@ -23,7 +23,6 @@ import {
 } from "../utils/pickupHelpers";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
-const SECONDARY = COLORS.secondary || "#0F766E";
 
 export default function ShipperPickupListScreen({ navigation }) {
   const [pickups, setPickups] = useState([]);
@@ -57,13 +56,10 @@ export default function ShipperPickupListScreen({ navigation }) {
 
   const fetchPickups = async () => {
     setLoading(true);
-
     const result = await getShipperAssignedPickups();
-
     if (result.success) {
       setPickups(result.data || []);
     }
-
     setLoading(false);
   };
 
@@ -71,10 +67,10 @@ export default function ShipperPickupListScreen({ navigation }) {
     <TouchableOpacity
       onPress={onPress}
       style={styles.headerButton}
-      activeOpacity={0.78}
+      activeOpacity={0.7}
     >
       <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={24} color="#FFF" />
+        <Ionicons name={icon} size={20} color="#FFF" />
       </View>
     </TouchableOpacity>
   );
@@ -109,7 +105,7 @@ export default function ShipperPickupListScreen({ navigation }) {
             requestCode: item.request_code,
           })
         }
-        activeOpacity={0.84}
+        activeOpacity={0.8}
       >
         <View style={styles.cardHeader}>
           <View style={styles.codeBlock}>
@@ -136,27 +132,38 @@ export default function ShipperPickupListScreen({ navigation }) {
         </View>
 
         <View style={styles.cardBody}>
-          <InfoRow icon="person">{item.sender_name || "---"}</InfoRow>
+          <InfoRow icon="person">
+            Người gửi:{" "}
+            <Text style={{ fontWeight: "700", color: "#0F172A" }}>
+              {item.sender_name || "---"}
+            </Text>
+          </InfoRow>
 
-          <InfoRow icon="call">{item.sender_phone || "---"}</InfoRow>
+          <InfoRow icon="call">
+            SĐT:{" "}
+            <Text style={{ fontWeight: "700", color: "#0F172A" }}>
+              {item.sender_phone || "---"}
+            </Text>
+          </InfoRow>
 
           <InfoRow icon="location" numberOfLines={2}>
-            {item.pickup_address || "---"}
+            Địa chỉ:{" "}
+            <Text style={{ fontWeight: "700", color: "#0F172A" }}>
+              {item.pickup_address || "---"}
+            </Text>
           </InfoRow>
 
           <InfoRow icon="time-outline">
-            Hẹn lấy: {formatDateTime(item.requested_pickup_time)}
+            Hẹn lấy:{" "}
+            <Text style={{ fontWeight: "700", color: "#0F172A" }}>
+              {formatDateTime(item.requested_pickup_time)}
+            </Text>
           </InfoRow>
         </View>
 
         <View style={styles.metaRow}>
           <MetaPill label="Số kiện" value={item.est_quantity || 0} />
-
-          <MetaPill
-            label="KL ước tính"
-            value={formatWeight(item.est_weight)}
-          />
-
+          <MetaPill label="KL ước tính" value={formatWeight(item.est_weight)} />
           <MetaPill label="COD" value={formatCurrency(item.cod_amount)} />
         </View>
       </TouchableOpacity>
@@ -167,6 +174,7 @@ export default function ShipperPickupListScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER CHUẨN FORM */}
       <View style={styles.header}>
         {navigation.canGoBack() ? (
           <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
@@ -176,9 +184,9 @@ export default function ShipperPickupListScreen({ navigation }) {
             onPress={() => navigation.replace("Home")}
           />
         )}
-
-        <Text style={styles.headerTitle}>Đơn lấy hàng</Text>
-
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Đơn lấy hàng</Text>
+        </View>
         <HeaderButton icon="reload" onPress={fetchPickups} />
       </View>
 
@@ -189,9 +197,8 @@ export default function ShipperPickupListScreen({ navigation }) {
       ) : pickups.length === 0 ? (
         <View style={styles.center}>
           <View style={styles.emptyIconBox}>
-            <Ionicons name="cube-outline" size={34} color="#94A3B8" />
+            <Ionicons name="cube-outline" size={36} color="#94A3B8" />
           </View>
-
           <Text style={styles.emptyText}>
             Hiện không có đơn nào cần đi lấy.
           </Text>
@@ -209,11 +216,9 @@ export default function ShipperPickupListScreen({ navigation }) {
   );
 }
 
+// STYLES CHUẨN DNA
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-  },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
   header: {
     flexDirection: "row",
@@ -225,19 +230,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     borderBottomLeftRadius: 42,
     borderBottomRightRadius: 42,
-
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
   },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
 
   headerButton: {
     width: 38,
@@ -246,82 +246,49 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
 
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   emptyIconBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 28,
-    backgroundColor: "#FFFFFF",
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: "rgba(241,245,249,0.8)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    borderColor: "#FFFFFF",
   },
-
   emptyText: {
-    color: "#64748B",
+    color: "#0F172A",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
     textAlign: "center",
   },
 
-  listContent: {
-    padding: 15,
-    paddingBottom: 26,
-  },
+  listContent: { padding: 16, paddingBottom: 30 },
 
+  // Card Phẳng Chuẩn DNA
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 15,
-    marginBottom: 15,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -331,18 +298,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     marginBottom: 12,
   },
-
-  codeBlock: {
-    flex: 1,
-    paddingRight: 10,
-  },
-
-  requestCode: {
-    fontWeight: "900",
-    fontSize: 16,
-    color: SECONDARY,
-  },
-
+  codeBlock: { flex: 1, paddingRight: 10 },
+  requestCode: { fontWeight: "900", fontSize: 16, color: PRIMARY },
   waybillCode: {
     marginTop: 4,
     fontSize: 12,
@@ -351,53 +308,40 @@ const styles = StyleSheet.create({
   },
 
   statusPill: {
-    borderRadius: 999,
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
   },
-
-  statusText: {
-    fontWeight: "900",
-    fontSize: 12,
-    maxWidth: 110,
-    textAlign: "right",
-  },
+  statusText: { fontWeight: "900", fontSize: 11, textAlign: "right" },
 
   cardBody: {},
-
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 9,
-  },
-
+  infoRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 10 },
   infoIconBox: {
     width: 24,
     height: 24,
     borderRadius: 8,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 8,
+    marginRight: 10,
   },
-
   infoText: {
-    fontSize: 14,
-    color: "#334155",
+    fontSize: 13,
+    color: "#64748B",
     flex: 1,
-    marginBottom: 2,
     fontWeight: "600",
-    lineHeight: 21,
+    lineHeight: 22,
   },
 
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 12,
-    gap: 8,
+    gap: 10,
   },
-
   metaPill: {
     flex: 1,
     backgroundColor: "#F8FAFC",
@@ -407,17 +351,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
   metaLabel: {
     fontSize: 11,
     color: "#64748B",
     marginBottom: 4,
     fontWeight: "700",
+    textAlign: "center",
   },
-
   metaValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "900",
     color: "#0F172A",
+    textAlign: "center",
   },
 });

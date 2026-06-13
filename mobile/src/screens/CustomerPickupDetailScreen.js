@@ -12,7 +12,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { getCustomerPickupDetail } from "../services/pickupService";
-import styles from "../styles/CustomerPickupDetailScreenStyles";
 import {
   formatCurrency,
   formatDateTime,
@@ -25,7 +24,6 @@ import {
 } from "../utils/pickupHelpers";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
-const SECONDARY = COLORS.secondary || "#0F766E";
 
 export default function CustomerPickupDetailScreen({ route, navigation }) {
   const { waybillCode } = route.params;
@@ -38,13 +36,10 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
 
   const fetchDetail = async () => {
     setLoading(true);
-
     const result = await getCustomerPickupDetail(waybillCode);
-
     if (result.success) {
       setDetail(result.data);
     }
-
     setLoading(false);
   };
 
@@ -52,22 +47,17 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
     <TouchableOpacity
       onPress={onPress}
       style={styles.headerButton}
-      activeOpacity={0.78}
+      activeOpacity={0.7}
     >
       <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={24} color="#FFFFFF" />
+        <Ionicons name={icon} size={20} color="#FFFFFF" />
       </View>
     </TouchableOpacity>
-  );
-
-  const GlassCard = ({ children }) => (
-    <View style={styles.card}>{children}</View>
   );
 
   const Row = ({ label, value, bold, color }) => (
     <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
-
       <Text
         style={[bold ? styles.valueBold : styles.value, color && { color }]}
       >
@@ -89,17 +79,14 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
     return (
       <View style={[styles.container, styles.center]}>
         <StatusBar style="light" />
-
         <View style={styles.emptyIconBox}>
           <Ionicons name="alert-circle-outline" size={36} color="#EF4444" />
         </View>
-
         <Text style={styles.errorText}>Không thể tải chi tiết đơn hàng.</Text>
-
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
-          activeOpacity={0.85}
+          activeOpacity={0.8}
         >
           <Text style={styles.backBtnText}>Quay lại</Text>
         </TouchableOpacity>
@@ -119,62 +106,62 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER CHUẨN FORM MỚI */}
       <View style={styles.header}>
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
-
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          Chi tiết {waybillCode}
-        </Text>
-
-        <View style={{ width: 42 }} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            Chi tiết {waybillCode}
+          </Text>
+        </View>
+        {/* View ẩn để cân bằng header */}
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <GlassCard>
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>THÔNG TIN CHUNG</Text>
-
           <Row label="Mã yêu cầu:" value={detail.request_code} />
-          <Row label="Mã vận đơn:" value={detail.waybill_code} bold />
+          <Row
+            label="Mã vận đơn:"
+            value={detail.waybill_code}
+            bold
+            color={PRIMARY}
+          />
           <Row label="Ngày tạo:" value={formatDateTime(detail.created_at)} />
-        </GlassCard>
+        </View>
 
-        <GlassCard>
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>TRẠNG THÁI</Text>
-
           <Row
             label="Trạng thái lấy hàng:"
             value={getPickupStatusLabel(detail.pickup_status)}
             bold
             color={getPickupStatusColor(detail.pickup_status)}
           />
-
           <Row
             label="Trạng thái vận đơn:"
             value={getWaybillStatusLabel(detail.waybill_status)}
           />
-
           <Row
             label="Văn phòng nhận:"
             value={getOfficeStatusLabel(detail.office_status)}
           />
-
           <Row
             label="Bưu tá:"
             value={detail.assigned_shipper_name || "Chưa phân công"}
           />
-        </GlassCard>
+        </View>
 
-        <GlassCard>
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>CƯỚC PHÍ</Text>
-
           <Row
             label="Trạng thái giá:"
             value={getPriceStatusLabel(detail.price_status)}
           />
-
           <Row
             label="Cước dự kiến:"
             value={formatCurrency(detail.estimated_total_amount)}
@@ -188,7 +175,6 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
                 bold
                 color="#059669"
               />
-
               <Row
                 label="Chênh lệch:"
                 value={`${priceDiff > 0 ? "+" : ""}${formatCurrency(priceDiff)}`}
@@ -210,49 +196,37 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
                 color="#64748B"
                 style={{ marginRight: 8 }}
               />
-
               <Text style={styles.hintText}>
                 Đơn hàng chưa có cước thật. Hệ thống sẽ cập nhật sau khi nhập
                 kho và cân lại.
               </Text>
             </View>
           )}
-        </GlassCard>
+        </View>
       </ScrollView>
     </View>
   );
 }
 
-/*
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-  },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
   header: {
     flexDirection: "row",
-    backgroundColor: PRIMARY,
-    height: 96,
-    paddingTop: Platform.OS === "ios" ? 46 : 36,
-    paddingHorizontal: 15,
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.22,
-        shadowRadius: 18,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    backgroundColor: PRIMARY,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
   },
-
   headerButton: {
     width: 38,
     height: 38,
@@ -260,117 +234,82 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
+  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
 
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  scrollContent: { padding: 16, paddingBottom: 30 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  headerTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "900",
-    flex: 1,
-    textAlign: "center",
-    paddingHorizontal: 10,
-  },
-
-  scrollContent: {
-    padding: 15,
-    paddingBottom: 30,
-  },
-
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
+  // Empty/Error State chuẩn
   emptyIconBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 28,
-    backgroundColor: "#FFFFFF",
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: "#FEE2E2", // Đỏ nhạt cho lỗi
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "#FFFFFF",
   },
-
   errorText: {
-    color: "#EF4444",
-    fontSize: 16,
+    color: "#0F172A",
+    fontSize: 15,
     marginBottom: 20,
-    fontWeight: "800",
+    fontWeight: "700",
   },
-
   backBtn: {
     backgroundColor: PRIMARY,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 12,
   },
+  backBtnText: { color: "white", fontWeight: "900", fontSize: 14 },
 
-  backBtnText: {
-    color: "white",
-    fontWeight: "900",
-  },
-
+  // Card Phẳng Chuẩn DNA
   card: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
   sectionTitle: {
     fontSize: 14,
     fontWeight: "900",
-    color: SECONDARY,
-    marginBottom: 15,
+    color: "#0F172A",
+    marginBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
-    paddingBottom: 7,
+    paddingBottom: 8,
   },
-
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 12,
   },
-
-  label: {
-    color: "#64748B",
-    fontSize: 14,
-    flex: 1,
-    fontWeight: "700",
-  },
-
+  label: { color: "#64748B", fontSize: 14, flex: 1, fontWeight: "600" },
   value: {
-    color: "#1E293B",
+    color: "#0F172A",
     fontSize: 14,
     flex: 1,
     textAlign: "right",
     fontWeight: "700",
   },
-
   valueBold: {
-    color: PRIMARY,
+    color: "#0F172A",
     fontSize: 14,
     fontWeight: "900",
     flex: 1,
@@ -383,17 +322,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     borderRadius: 12,
     padding: 12,
-    marginTop: 4,
+    marginTop: 8,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
   hintText: {
     color: "#64748B",
     fontSize: 13,
     lineHeight: 20,
     flex: 1,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });
-*/

@@ -6,12 +6,12 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
-import styles from "../styles/CustomerProfileScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
@@ -25,7 +25,6 @@ export default function CustomerProfileScreen({ navigation }) {
       await refreshProfile();
       setLoading(false);
     };
-
     load();
   }, []);
 
@@ -33,10 +32,10 @@ export default function CustomerProfileScreen({ navigation }) {
     <TouchableOpacity
       onPress={onPress}
       style={styles.headerButton}
-      activeOpacity={0.78}
+      activeOpacity={0.7}
     >
       <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={24} color={COLORS.white} />
+        <Ionicons name={icon} size={20} color={COLORS.white} />
       </View>
     </TouchableOpacity>
   );
@@ -48,7 +47,7 @@ export default function CustomerProfileScreen({ navigation }) {
         dark ? { backgroundColor: "#334155" } : { backgroundColor: PRIMARY },
       ]}
       onPress={onPress}
-      activeOpacity={0.86}
+      activeOpacity={0.8}
     >
       <Ionicons name={icon} size={16} color={COLORS.white} />
       <Text style={styles.editBtnText}>{text}</Text>
@@ -60,7 +59,6 @@ export default function CustomerProfileScreen({ navigation }) {
       <View style={styles.iconContainer}>
         <Ionicons name={icon} size={20} color={PRIMARY} />
       </View>
-
       <View style={styles.infoContent}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value || "Chưa cập nhật"}</Text>
@@ -72,10 +70,13 @@ export default function CustomerProfileScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER CHUẨN FORM MỚI */}
       <View style={styles.header}>
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
-        <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
-        <View style={{ width: 42 }} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
+        </View>
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView
@@ -103,7 +104,6 @@ export default function CustomerProfileScreen({ navigation }) {
               <Text style={styles.userName}>
                 {user?.full_name || "Chưa cập nhật tên"}
               </Text>
-
               <Text style={styles.userRole}>Khách hàng thành viên</Text>
 
               <PrimaryButton
@@ -111,9 +111,7 @@ export default function CustomerProfileScreen({ navigation }) {
                 text="Cập nhật thông tin"
                 onPress={() => navigation.navigate("CustomerUpdateProfile")}
               />
-
-              <View style={{ height: 10 }} />
-
+              <View style={{ height: 12 }} />
               <PrimaryButton
                 icon="lock-closed"
                 text="Đổi mật khẩu"
@@ -135,11 +133,7 @@ export default function CustomerProfileScreen({ navigation }) {
                 label="Số điện thoại"
                 value={user?.phone_number}
               />
-              <InfoRow
-                icon="mail-outline"
-                label="Email"
-                value={user?.email}
-              />
+              <InfoRow icon="mail-outline" label="Email" value={user?.email} />
               <InfoRow
                 icon="location-outline"
                 label="Địa chỉ"
@@ -153,36 +147,26 @@ export default function CustomerProfileScreen({ navigation }) {
   );
 }
 
-/*
+// STYLES CHUẨN DNA
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-  },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
     paddingHorizontal: 20,
     paddingBottom: 22,
-    paddingTop: Platform.OS === "ios" ? 55 : 35,
-    backgroundColor: PRIMARY,
     borderBottomLeftRadius: 42,
     borderBottomRightRadius: 42,
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    backgroundColor: PRIMARY,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
   },
-
   headerButton: {
     width: 38,
     height: 38,
@@ -190,48 +174,34 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
+  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
 
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  content: { flex: 1 },
+  contentContainer: { paddingBottom: 30, paddingTop: 16 },
 
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#FFF",
-  },
-
-  content: {
-    flex: 1,
-  },
-
-  contentContainer: {
-    paddingBottom: 28,
-  },
-
+  // Card Phẳng Chuẩn DNA
   profileCard: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
     padding: 20,
     borderRadius: 16,
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
   avatarPlaceholder: {
     width: 84,
     height: 84,
@@ -243,104 +213,73 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
-  avatarText: {
-    fontSize: 34,
-    fontWeight: "900",
-    color: PRIMARY,
-  },
-
+  avatarText: { fontSize: 34, fontWeight: "900", color: PRIMARY },
   userName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "900",
     color: "#0F172A",
     marginBottom: 4,
     textAlign: "center",
   },
-
   userRole: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#64748B",
-    marginBottom: 16,
+    marginBottom: 20,
     fontWeight: "700",
   },
 
   editBtn: {
-    minHeight: 42,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    height: 48,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
   },
-
   editBtnText: {
     color: "#FFF",
-    fontWeight: "900",
+    fontWeight: "800",
     marginLeft: 8,
+    fontSize: 14,
   },
 
   infoSection: {
     marginHorizontal: 16,
     marginBottom: 16,
-    padding: 16,
+    padding: 20,
     borderRadius: 16,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "900",
     color: "#0F172A",
-    marginBottom: 16,
+    marginBottom: 20,
   },
 
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-
+  infoRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   iconContainer: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
-
-  infoContent: {
-    flex: 1,
-  },
-
+  infoContent: { flex: 1 },
   infoLabel: {
     fontSize: 12,
     color: "#64748B",
     marginBottom: 2,
     fontWeight: "700",
   },
-
-  infoValue: {
-    fontSize: 14,
-    color: "#0F172A",
-    fontWeight: "800",
-  },
+  infoValue: { fontSize: 14, color: "#0F172A", fontWeight: "800" },
 });
-*/

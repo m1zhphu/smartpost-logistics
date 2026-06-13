@@ -12,7 +12,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import { COLORS } from "../constants/colors";
-import styles from "../styles/CustomerPickupDraftsScreenStyles";
 import {
   closePickupBag,
   createCustomerPickup,
@@ -115,9 +114,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
 
   const loadDrafts = async () => {
     setLoading(true);
-
     const data = await getPickupDrafts();
-
     setDrafts(data);
     setLoading(false);
   };
@@ -136,11 +133,10 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
   };
 
   const toggleAll = () => {
-    if (selectedIds.length === drafts.length) {
+    if (selectedIds.length === drafts.length && drafts.length > 0) {
       setSelectedIds([]);
       return;
     }
-
     setSelectedIds(drafts.map((item) => item.draft_id));
   };
 
@@ -153,41 +149,56 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
   const handleExcelUpload = async () => {
     try {
       const res = await DocumentPicker.getDocumentAsync({
-        type: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"],
+        type: [
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-excel",
+        ],
         copyToCacheDirectory: true,
       });
 
       if (res.canceled) return;
-      
+
       const fileUri = res.assets[0].uri;
       Toast.show({ type: "info", text1: "Đang đọc file Excel..." });
-      
-      const b64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+
+      const b64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
       const rawRows = await parseExcelFile(b64);
-      
+
       if (rawRows.length === 0) {
         Toast.show({ type: "error", text1: "File Excel rỗng" });
         return;
       }
 
-      Toast.show({ type: "info", text1: `Đang phân tích ${rawRows.length} dòng...` });
-      
+      Toast.show({
+        type: "info",
+        text1: `Đang phân tích ${rawRows.length} dòng...`,
+      });
+
       const provincesRes = await fetch("https://provinces.open-api.vn/api/");
       const provinces = await provincesRes.json();
-      
+
       const districtsCache = {};
       const wardsCache = {};
-      
+
       const fetchDistrictsForProvince = async (pId) => {
-        const dRes = await fetch(`https://provinces.open-api.vn/api/p/${pId}?depth=2`);
+        const dRes = await fetch(
+          `https://provinces.open-api.vn/api/p/${pId}?depth=2`,
+        );
         const data = await dRes.json();
-        return (data.districts || []).map(d => ({ id: d.code, name: d.name }));
+        return (data.districts || []).map((d) => ({
+          id: d.code,
+          name: d.name,
+        }));
       };
-      
+
       const fetchWardsForDistrict = async (dId) => {
-        const wRes = await fetch(`https://provinces.open-api.vn/api/d/${dId}?depth=2`);
+        const wRes = await fetch(
+          `https://provinces.open-api.vn/api/d/${dId}?depth=2`,
+        );
         const data = await wRes.json();
-        return (data.wards || []).map(w => ({ id: w.code, name: w.name }));
+        return (data.wards || []).map((w) => ({ id: w.code, name: w.name }));
       };
 
       const defaultSender = {
@@ -196,12 +207,12 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
         province_id: user?.province_id || null,
         district_id: user?.district_id || null,
         ward_id: user?.ward_id || null,
-        address_detail: user?.street_address || user?.address || ""
+        address_detail: user?.street_address || user?.address || "",
       };
 
       const importedDrafts = await processExcelRows({
         rawRows,
-        provincesList: provinces.map(p => ({ id: p.code, name: p.name })),
+        provincesList: provinces.map((p) => ({ id: p.code, name: p.name })),
         fetchDistricts: fetchDistrictsForProvince,
         fetchWards: fetchWardsForDistrict,
         districtsCache,
@@ -216,28 +227,35 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
 
       const firstRow = importedDrafts[0];
       const bulkDraft = {
-        pickup_mode: 'BULK_MAIL',
+        pickup_mode: "BULK_MAIL",
         bulk_draft_items: importedDrafts.map((d, index) => ({
-           sequence_no: index + 1,
-           customer_reference_code: d.shop_order_code || null,
-           receiver_name: d.receiver?.name || null,
-           receiver_phone: d.receiver?.phone || null,
-           receiver_address: d.receiver?.address_detail || null,
-           note: d.note || null
+          sequence_no: index + 1,
+          customer_reference_code: d.shop_order_code || null,
+          receiver_name: d.receiver?.name || null,
+          receiver_phone: d.receiver?.phone || null,
+          receiver_address: d.receiver?.address_detail || null,
+          note: d.note || null,
         })),
-        bulk_product_type: firstRow.items[0]?.product_group || 'PARCEL',
+        bulk_product_type: firstRow.items[0]?.product_group || "PARCEL",
         bulk_estimated_quantity: importedDrafts.length,
         sender: firstRow.sender,
-        draft_id: 'excel_' + Date.now().toString(),
+        draft_id: "excel_" + Date.now().toString(),
         created_at: new Date().toISOString(),
         draft_title: `Lên đơn từ Excel (${importedDrafts.length} bưu gửi)`,
       };
 
       await upsertPickupDraft(bulkDraft);
-      Toast.show({ type: "success", text1: `Đã đưa ${importedDrafts.length} đơn vào hàng chờ` });
+      Toast.show({
+        type: "success",
+        text1: `Đã đưa ${importedDrafts.length} đơn vào hàng chờ`,
+      });
       loadDrafts();
     } catch (error) {
-      Toast.show({ type: "error", text1: "Lỗi đọc file", text2: error.message });
+      Toast.show({
+        type: "error",
+        text1: "Lỗi đọc file",
+        text2: error.message,
+      });
     }
   };
 
@@ -255,28 +273,28 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
     try {
       const createdCodes = [];
       let bagCode = "";
-      
-      let bagPayloads = [];
 
       for (const draft of selectedDrafts) {
-        if (draft.pickup_mode === 'BULK_MAIL') {
+        if (draft.pickup_mode === "BULK_MAIL") {
           const bulkPayload = {
-             product_type: draft.bulk_product_type,
-             estimated_quantity: draft.bulk_estimated_quantity,
-             sender: {
-               name: draft.sender.name,
-               phone: draft.sender.phone,
-               address: draft.sender.address_detail,
-               province_id: Number(draft.sender.province_id),
-               district_id: Number(draft.sender.district_id),
-               ward_id: draft.sender.ward_id ? Number(draft.sender.ward_id) : null,
-               province_name: draft.sender.province_name,
-               district_name: draft.sender.district_name,
-               ward_name: draft.sender.ward_name,
-             },
-             draft_items: draft.bulk_draft_items,
+            product_type: draft.bulk_product_type,
+            estimated_quantity: draft.bulk_estimated_quantity,
+            sender: {
+              name: draft.sender.name,
+              phone: draft.sender.phone,
+              address: draft.sender.address_detail,
+              province_id: Number(draft.sender.province_id),
+              district_id: Number(draft.sender.district_id),
+              ward_id: draft.sender.ward_id
+                ? Number(draft.sender.ward_id)
+                : null,
+              province_name: draft.sender.province_name,
+              district_name: draft.sender.district_name,
+              ward_name: draft.sender.ward_name,
+            },
+            draft_items: draft.bulk_draft_items,
           };
-          
+
           const res = await createCustomerBulkMailPickup(bulkPayload);
           if (!res.success) {
             throw new Error(res.message || "Không tạo được đơn hàng loạt");
@@ -284,11 +302,9 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           bagCode = res.data?.bag_code || bagCode;
         } else {
           const res = await createCustomerPickup(buildPickupPayload(draft));
-  
           if (!res.success) {
             throw new Error(res.message || "Không tạo được đơn");
           }
-  
           createdCodes.push(res.data?.waybill_code);
           bagCode = res.data?.bag_code || bagCode;
         }
@@ -296,7 +312,6 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
 
       if (bagCode) {
         const closeRes = await closePickupBag(bagCode);
-
         if (!closeRes.success) {
           throw new Error(closeRes.message || "Không chốt được túi");
         }
@@ -331,23 +346,23 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
     <TouchableOpacity
       onPress={onPress}
       style={styles.headerButton}
-      activeOpacity={0.78}
+      activeOpacity={0.7}
     >
       <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={24} color="#FFFFFF" />
+        <Ionicons name={icon} size={20} color="#FFFFFF" />
       </View>
     </TouchableOpacity>
   );
 
   const renderItem = ({ item }) => {
     const checked = selectedIds.includes(item.draft_id);
-    const isBulk = item.pickup_mode === 'BULK_MAIL';
+    const isBulk = item.pickup_mode === "BULK_MAIL";
 
     return (
       <TouchableOpacity
         style={[styles.card, checked && styles.cardChecked]}
         onPress={() => toggleDraft(item.draft_id)}
-        activeOpacity={0.84}
+        activeOpacity={0.8}
       >
         <View style={styles.cardHeader}>
           <View style={styles.checkBox}>
@@ -359,7 +374,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           </View>
 
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>
+            <Text style={styles.title} numberOfLines={1}>
               {item.draft_title ||
                 item.rName ||
                 item.itemName ||
@@ -367,26 +382,50 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
             </Text>
 
             <Text style={styles.subText}>
-              {isBulk ? (item.bulk_product_type === 'DOCUMENT' ? 'Thư từ/Tài liệu' : 'Bưu kiện/Bưu phẩm') : (item.rPhone || "---")} · {isBulk ? `${item.bulk_estimated_quantity} bưu gửi` : (item.serviceType || "STANDARD")}
+              {isBulk
+                ? item.bulk_product_type === "DOCUMENT"
+                  ? "Thư từ/Tài liệu"
+                  : "Bưu kiện/Bưu phẩm"
+                : item.rPhone || "---"}{" "}
+              ·{" "}
+              {isBulk
+                ? `${item.bulk_estimated_quantity} bưu gửi`
+                : item.serviceType || "STANDARD"}
             </Text>
           </View>
 
           <TouchableOpacity
             onPress={() => deleteDraft(item.draft_id)}
             style={styles.deleteBtn}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
             <Ionicons name="trash-outline" size={20} color="#EF4444" />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.meta}>Người gửi: {isBulk ? item.sender?.name : item.sName || "---"}</Text>
-        {!isBulk && <Text style={styles.meta}>Người nhận: {item.rName || "---"}</Text>}
+        <View style={styles.divider} />
+
+        <Text style={styles.meta} numberOfLines={1}>
+          Người gửi:{" "}
+          <Text style={{ fontWeight: "600", color: "#0F172A" }}>
+            {isBulk ? item.sender?.name : item.sName || "---"}
+          </Text>
+        </Text>
+        {!isBulk && (
+          <Text style={styles.meta} numberOfLines={1}>
+            Người nhận:{" "}
+            <Text style={{ fontWeight: "600", color: "#0F172A" }}>
+              {item.rName || "---"}
+            </Text>
+          </Text>
+        )}
         <Text style={styles.meta}>
           Ngày lưu:{" "}
-          {item.created_at
-            ? new Date(item.created_at).toLocaleString("vi-VN")
-            : "---"}
+          <Text style={{ fontWeight: "600", color: "#0F172A" }}>
+            {item.created_at
+              ? new Date(item.created_at).toLocaleString("vi-VN")
+              : "---"}
+          </Text>
         </Text>
       </TouchableOpacity>
     );
@@ -396,16 +435,15 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER CHUẨN FORM MỚI */}
       <View style={styles.header}>
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
-
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Hàng chờ (Drafts)</Text>
-          <Text style={styles.headerSub}>
+          <Text style={styles.headerSubtitle}>
             {selectedIds.length}/{drafts.length} đã chọn
           </Text>
         </View>
-
         <HeaderButton icon="checkmark-done-outline" onPress={toggleAll} />
       </View>
 
@@ -418,16 +456,23 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           <View style={styles.emptyIconBox}>
             <Ionicons name="folder-open-outline" size={36} color="#94A3B8" />
           </View>
+          <Text style={styles.emptyTitle}>Chưa có nháp nào</Text>
+          <Text style={styles.emptyText}>
+            Tạo nháp mới hoặc tải lên từ Excel
+          </Text>
 
-          <Text style={styles.emptyText}>Chưa có nháp nào.</Text>
-          
           <TouchableOpacity
-            style={[styles.secondaryBtn, { marginTop: 20, width: 200, height: 44, borderRadius: 22 }]}
+            style={styles.outlineBtn}
             onPress={handleExcelUpload}
-            activeOpacity={0.84}
+            activeOpacity={0.8}
           >
-            <Ionicons name="document-text-outline" size={18} color={PRIMARY} style={{ marginRight: 8 }} />
-            <Text style={styles.secondaryBtnText}>Nhập từ Excel</Text>
+            <Ionicons
+              name="document-text-outline"
+              size={18}
+              color={PRIMARY}
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.outlineBtnText}>Nhập từ Excel</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -438,40 +483,223 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={() => (
-             <TouchableOpacity
-               style={[styles.secondaryBtn, { marginBottom: 16, height: 44, borderRadius: 12, flexDirection: 'row', justifyContent: 'center' }]}
-               onPress={handleExcelUpload}
-               activeOpacity={0.84}
-             >
-               <Ionicons name="document-text-outline" size={18} color={PRIMARY} style={{ marginRight: 8 }} />
-               <Text style={styles.secondaryBtnText}>Nhập từ Excel</Text>
-             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.outlineBtnHeader}
+              onPress={handleExcelUpload}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={18}
+                color={PRIMARY}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.outlineBtnText}>Nhập dữ liệu từ Excel</Text>
+            </TouchableOpacity>
           )}
         />
       )}
 
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          onPress={() => navigation.navigate("CustomerCreatePickup")}
-          activeOpacity={0.84}
-        >
-          <Text style={styles.secondaryBtnText}>Tạo 1 đơn</Text>
-        </TouchableOpacity>
+      {/* BOTTOM DOCK CHUẨN FORM */}
+      <View style={styles.bottomDock}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate("CustomerCreatePickup")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryBtnText}>Tạo đơn mới</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.primaryBtn, submitting && { opacity: 0.7 }]}
-          onPress={submitSelected}
-          disabled={submitting}
-          activeOpacity={0.88}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryBtnText}>Tạo túi từ nháp</Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.primaryBtn, submitting && { opacity: 0.7 }]}
+            onPress={submitSelected}
+            disabled={submitting}
+            activeOpacity={0.8}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryBtnText}>Chốt túi hàng</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    backgroundColor: PRIMARY,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
+  },
+  headerButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
+  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
+  headerSubtitle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: "600",
+  },
+
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  listContent: { padding: 16, paddingBottom: 120 },
+
+  // Empty State chuẩn Form
+  emptyIconBox: {
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: "rgba(241,245,249,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 8,
+  },
+  emptyText: {
+    textAlign: "center",
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  // Card Phẳng Chuẩn DNA
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardChecked: {
+    borderColor: PRIMARY,
+    backgroundColor: "#F0FDF4", // Màu xanh lá siêu nhạt để nhận biết đã chọn
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  checkBox: { marginRight: 12 },
+  title: { fontSize: 15, fontWeight: "800", color: "#0F172A", marginBottom: 4 },
+  subText: { fontSize: 13, color: "#64748B", fontWeight: "600" },
+
+  deleteBtn: {
+    padding: 8,
+    backgroundColor: "#FEE2E2",
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  divider: { height: 1, backgroundColor: "#F1F5F9", marginBottom: 12 },
+  meta: { fontSize: 13, color: "#64748B", marginBottom: 4 },
+
+  outlineBtn: {
+    marginTop: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 200,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: PRIMARY,
+    backgroundColor: "#FFFFFF",
+  },
+  outlineBtnHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: PRIMARY,
+    backgroundColor: "#FFFFFF",
+    marginBottom: 16,
+  },
+  outlineBtnText: { color: PRIMARY, fontSize: 14, fontWeight: "800" },
+
+  // Bottom Dock Chuẩn Form
+  bottomDock: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  primaryBtn: {
+    flex: 1.5,
+    backgroundColor: PRIMARY,
+    height: 52,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 10,
+  },
+  primaryBtnText: { color: "white", fontSize: 15, fontWeight: "900" },
+  secondaryBtn: {
+    flex: 1,
+    backgroundColor: "#F1F5F9",
+    height: 52,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  secondaryBtnText: { color: "#475569", fontSize: 15, fontWeight: "800" },
+});

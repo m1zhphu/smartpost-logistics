@@ -62,9 +62,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
 
   const fetchDetail = async () => {
     setLoading(true);
-
     const result = await getShipperPickupDetail(requestCode);
-
     if (result.success) {
       setDetail(result.data);
       setPickupImageUrl(result.data?.pickup_image_url || "");
@@ -76,44 +74,33 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
         text2: result.message,
       });
     }
-
     setLoading(false);
   };
 
   const getDisplayImageUrl = (value) => {
     if (!value) return "";
     if (value.startsWith("http") || value.startsWith("file:")) return value;
-
     const base = process.env.EXPO_PUBLIC_API_BASE_URL || "";
     return `${base}${value}`;
   };
 
   const handleCall = async () => {
     if (!detail?.sender_phone) return;
-
     const url = `tel:${detail.sender_phone}`;
     const canOpen = await Linking.canOpenURL(url);
-
-    if (canOpen) {
-      Linking.openURL(url);
-    }
+    if (canOpen) Linking.openURL(url);
   };
 
   const handleOpenMap = async () => {
     if (!detail?.pickup_address) return;
-
     const query = encodeURIComponent(detail.pickup_address);
     const mapUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
     const canOpen = await Linking.canOpenURL(mapUrl);
-
-    if (canOpen) {
-      Linking.openURL(mapUrl);
-    }
+    if (canOpen) Linking.openURL(mapUrl);
   };
 
   const handleSendLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
-
     if (status !== "granted") {
       Alert.alert(
         "Quyền truy cập",
@@ -121,27 +108,17 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       );
       return;
     }
-
-    Toast.show({
-      type: "info",
-      text1: "Đang lấy vị trí...",
-    });
-
+    Toast.show({ type: "info", text1: "Đang lấy vị trí..." });
     try {
       const location = await Location.getCurrentPositionAsync({});
-
       const result = await sendGpsLocation(
         location.coords.latitude,
         location.coords.longitude,
         location.coords.accuracy,
         "Shipper gửi vị trí khi đi lấy hàng",
       );
-
       if (result.success) {
-        Toast.show({
-          type: "success",
-          text1: "Gửi vị trí thành công",
-        });
+        Toast.show({ type: "success", text1: "Gửi vị trí thành công" });
       } else {
         Toast.show({
           type: "error",
@@ -161,32 +138,25 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   const uploadSelectedImage = async (asset) => {
     setUploadingImage(true);
     setPickupImagePreview(asset.uri);
-
     const result = await uploadPickupImage({
       uri: asset.uri,
       name: asset.fileName || `pickup-${Date.now()}.jpg`,
       type: asset.mimeType || "image/jpeg",
     });
-
     setUploadingImage(false);
 
     const uploadedUrl = result.data?.image_url || result.data?.file_url;
-
     if (result.success && uploadedUrl) {
       setPickupImageUrl(uploadedUrl);
       setPickupImagePreview(asset.uri);
-
       Toast.show({
         type: "success",
         text1: "Đã tải ảnh pickup lên thành công",
       });
-
       return;
     }
-
     setPickupImagePreview("");
     setPickupImageUrl("");
-
     Toast.show({
       type: "error",
       text1: "Upload ảnh thất bại",
@@ -213,18 +183,17 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
     const result =
       mode === "camera"
         ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
+            mediaTypes: ["images"],
             allowsEditing: true,
             quality: 0.8,
           })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
+            mediaTypes: ["images"],
             allowsEditing: true,
             quality: 0.8,
           });
 
     if (result.canceled || !result.assets?.length) return;
-
     await uploadSelectedImage(result.assets[0]);
   };
 
@@ -239,21 +208,16 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
     }
 
     Alert.alert("Xác nhận", "Bạn có chắc chắn đã lấy hàng thành công?", [
-      {
-        text: "Hủy",
-        style: "cancel",
-      },
+      { text: "Hủy", style: "cancel" },
       {
         text: "Đồng ý",
         onPress: async () => {
           setSubmitting(true);
-
           const result = await confirmPickup(
             requestCode,
             pickupImageUrl,
             pickedNote.trim() || "Đã lấy hàng thành công",
           );
-
           setSubmitting(false);
 
           if (result.success) {
@@ -261,7 +225,6 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               type: "success",
               text1: "Xác nhận lấy hàng thành công",
             });
-
             navigation.goBack();
           } else {
             Toast.show({
@@ -285,27 +248,19 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
 
   const handleCreateBill = (billType) => {
     setShowBillModal(false);
-
-    navigation.navigate("ShipperCreateBill", {
-      billType,
-      requestCode,
-    });
+    navigation.navigate("ShipperCreateBill", { billType, requestCode });
   };
 
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
       onPress={onPress}
       style={styles.headerButton}
-      activeOpacity={0.78}
+      activeOpacity={0.7}
     >
       <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={24} color="#FFF" />
+        <Ionicons name={icon} size={20} color="#FFF" />
       </View>
     </TouchableOpacity>
-  );
-
-  const GlassCard = ({ children }) => (
-    <View style={styles.card}>{children}</View>
   );
 
   const Row = ({ label, value, bold, color }) => (
@@ -336,10 +291,10 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       ]}
       disabled={disabled}
       onPress={onPress}
-      activeOpacity={0.86}
+      activeOpacity={0.8}
     >
       <View style={styles.primaryButtonInner}>
-        <Ionicons name={icon} size={19} color="#FFF" />
+        <Ionicons name={icon} size={18} color="#FFF" />
         <Text style={styles.primaryButtonText}>{text}</Text>
       </View>
     </TouchableOpacity>
@@ -354,7 +309,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       ]}
       disabled={disabled}
       onPress={onPress}
-      activeOpacity={0.84}
+      activeOpacity={0.8}
     >
       <View style={styles.secondaryButtonInner}>
         <Ionicons name={icon} size={18} color={PRIMARY} />
@@ -374,12 +329,14 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   if (!detail) {
     return (
       <View style={[styles.container, styles.center]}>
+        <View style={styles.emptyIconBox}>
+          <Ionicons name="alert-circle-outline" size={36} color="#EF4444" />
+        </View>
         <Text style={styles.errorText}>Không thể tải chi tiết lấy hàng.</Text>
-
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
-          activeOpacity={0.85}
+          activeOpacity={0.8}
         >
           <Text style={styles.backButtonText}>Quay lại</Text>
         </TouchableOpacity>
@@ -391,11 +348,12 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER CHUẨN FORM */}
       <View style={styles.header}>
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
-
-        <Text style={styles.headerTitle}>Chi tiết lấy hàng</Text>
-
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Chi tiết lấy hàng</Text>
+        </View>
         <HeaderButton icon="location-outline" onPress={handleSendLocation} />
       </View>
 
@@ -410,10 +368,14 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
-          <GlassCard>
+          <View style={styles.card}>
             <Text style={styles.sectionTitle}>THÔNG TIN PICKUP</Text>
-
-            <Row label="Mã yêu cầu:" value={detail.request_code} bold />
+            <Row
+              label="Mã yêu cầu:"
+              value={detail.request_code}
+              bold
+              color={PRIMARY}
+            />
             <Row
               label="Mã vận đơn:"
               value={detail.waybill_code || "---"}
@@ -437,18 +399,16 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               label="Văn phòng tiếp nhận:"
               value={detail.target_hub_name || "---"}
             />
-          </GlassCard>
+          </View>
 
-          <GlassCard>
+          <View style={styles.card}>
             <Text style={styles.sectionTitle}>NGƯỜI GỬI</Text>
-
             <Row label="Tên:" value={detail.sender_name || "---"} />
             <Row label="SĐT:" value={detail.sender_phone || "---"} bold />
             <ColumnRow
               label="Địa chỉ lấy:"
               value={detail.pickup_address || "---"}
             />
-
             <View style={styles.actionRow}>
               <PrimaryButton
                 icon="call"
@@ -457,7 +417,6 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
                 onPress={handleCall}
                 style={styles.actionButtonSpacer}
               />
-
               <PrimaryButton
                 icon="map"
                 text="Bản đồ"
@@ -465,22 +424,20 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
                 onPress={handleOpenMap}
               />
             </View>
-          </GlassCard>
+          </View>
 
-          <GlassCard>
+          <View style={styles.card}>
             <Text style={styles.sectionTitle}>NGƯỜI NHẬN</Text>
-
             <Row label="Tên:" value={detail.receiver_name || "---"} />
             <Row label="SĐT:" value={detail.receiver_phone || "---"} />
             <ColumnRow
               label="Địa chỉ nhận:"
               value={detail.receiver_address || "---"}
             />
-          </GlassCard>
+          </View>
 
-          <GlassCard>
+          <View style={styles.card}>
             <Text style={styles.sectionTitle}>KIỆN HÀNG</Text>
-
             <Row
               label="Loại hàng:"
               value={detail.product_name || detail.product_type || "---"}
@@ -493,19 +450,16 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
             <Row label="COD:" value={formatCurrency(detail.cod_amount)} />
             <Row
               label="Cước:"
-              value={`${getPriceStatusLabel(detail.price_status)} - ${formatCurrency(
-                detail.estimated_total_amount,
-              )}`}
+              value={`${getPriceStatusLabel(detail.price_status)} - ${formatCurrency(detail.estimated_total_amount)}`}
             />
             <ColumnRow
               label="Ghi chú:"
               value={detail.note || "Không có ghi chú"}
             />
-          </GlassCard>
+          </View>
 
-          <GlassCard>
+          <View style={styles.card}>
             <Text style={styles.sectionTitle}>ẢNH XÁC NHẬN PICKUP</Text>
-
             <View style={styles.uploadActions}>
               <SecondaryButton
                 icon="camera-outline"
@@ -514,7 +468,6 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
                 onPress={() => handlePickImage("camera")}
                 style={styles.secondaryButtonSpacer}
               />
-
               <SecondaryButton
                 icon="images-outline"
                 text="Chọn ảnh"
@@ -530,7 +483,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               />
             ) : (
               <View style={styles.placeholderBox}>
-                <Ionicons name="image-outline" size={28} color="#94A3B8" />
+                <Ionicons name="image-outline" size={32} color="#94A3B8" />
                 <Text style={styles.placeholderText}>Chưa có ảnh pickup</Text>
               </View>
             )}
@@ -556,7 +509,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
                 <Text style={styles.uploadingText}>Đang tải ảnh lên...</Text>
               </View>
             ) : null}
-          </GlassCard>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -577,37 +530,31 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
             <TouchableOpacity
               style={styles.billMenuItem}
               onPress={() => handleCreateBill("Tạo bill tổng")}
-              activeOpacity={0.78}
+              activeOpacity={0.7}
             >
               <Text style={styles.billMenuText}>Tạo bill tổng</Text>
             </TouchableOpacity>
-
             <View style={styles.divider} />
-
             <TouchableOpacity
               style={styles.billMenuItem}
               onPress={() => handleCreateBill("Tạo bill lẻ")}
-              activeOpacity={0.78}
+              activeOpacity={0.7}
             >
               <Text style={styles.billMenuText}>Tạo bill lẻ</Text>
             </TouchableOpacity>
-
             <View style={styles.divider} />
-
             <TouchableOpacity
               style={styles.billMenuItem}
               onPress={() => handleCreateBill("Tạo bill đầy đủ")}
-              activeOpacity={0.78}
+              activeOpacity={0.7}
             >
               <Text style={styles.billMenuText}>Tạo bill đầy đủ</Text>
             </TouchableOpacity>
-
             <View style={styles.divider} />
-
             <TouchableOpacity
               style={styles.billMenuItemCancel}
               onPress={() => setShowBillModal(false)}
-              activeOpacity={0.78}
+              activeOpacity={0.7}
             >
               <Text style={styles.billMenuTextCancel}>Huỷ</Text>
             </TouchableOpacity>
@@ -615,13 +562,14 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
         </Pressable>
       </Modal>
 
+      {/* BOTTOM DOCK CHUẨN FORM */}
       <View style={styles.bottomDock}>
         <View style={styles.actionGrid}>
           <TouchableOpacity
             style={styles.actionGridBtn}
             onPress={handleConfirmPicked}
             disabled={submitting || uploadingImage}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
             {submitting ? (
               <ActivityIndicator size="small" color={PRIMARY} />
@@ -632,44 +580,40 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               Đã nhận
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.actionGridBtn}
             onPress={() => handleMockAction("Từ chối")}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
             <Ionicons name="close-circle" size={24} color="#EF4444" />
             <Text style={[styles.actionGridText, { color: "#EF4444" }]}>
               Từ chối
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.actionGridBtn}
             onPress={() => handleMockAction("Phụ phí")}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
             <Ionicons name="cash-outline" size={24} color={SECONDARY} />
             <Text style={[styles.actionGridText, { color: SECONDARY }]}>
               Phụ phí
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.actionGridBtn}
             onPress={() => handleMockAction("Sự cố")}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
             <Ionicons name="warning" size={24} color="#F59E0B" />
             <Text style={[styles.actionGridText, { color: "#F59E0B" }]}>
               Sự cố
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.actionGridBtn}
             onPress={() => setShowBillModal(true)}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
             <Ionicons name="list-circle" size={24} color="#3B82F6" />
             <Text style={[styles.actionGridText, { color: "#3B82F6" }]}>
@@ -682,151 +626,119 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   );
 }
 
+// STYLES CHUẨN DNA
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-  },
-
-  header: {
-    flexDirection: "row",
-    backgroundColor: PRIMARY,
-    height: 96,
-    paddingTop: Platform.OS === "ios" ? 46 : 36,
-    paddingHorizontal: 15,
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.22,
-        shadowRadius: 18,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-
-  headerButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
 
+  emptyIconBox: {
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+  },
   errorText: {
-    color: "#EF4444",
+    color: "#0F172A",
     fontSize: 16,
-    marginBottom: 20,
     fontWeight: "700",
+    marginBottom: 20,
   },
-
   backButton: {
     backgroundColor: PRIMARY,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 12,
   },
+  backButtonText: { color: "white", fontWeight: "900", fontSize: 14 },
 
-  backButtonText: {
-    color: "white",
-    fontWeight: "900",
+  header: {
+    flexDirection: "row",
+    backgroundColor: PRIMARY,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
   },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
 
-  scrollContent: {
-    padding: 15,
-    paddingBottom: 150,
+  headerButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
 
+  scrollContent: { padding: 16, paddingBottom: 120 },
+
+  // Card Phẳng Chuẩn DNA
   card: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
   sectionTitle: {
     fontSize: 14,
     fontWeight: "900",
-    color: SECONDARY,
-    marginBottom: 15,
+    color: "#0F172A",
+    marginBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
-    paddingBottom: 7,
+    paddingBottom: 8,
   },
 
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
+    gap: 12,
   },
-
-  columnRow: {
-    marginBottom: 10,
-  },
-
-  label: {
-    color: "#64748B",
-    fontSize: 15,
-    flex: 1,
-    fontWeight: "700",
-  },
-
+  columnRow: { marginBottom: 12 },
+  label: { color: "#64748B", fontSize: 14, flex: 1, fontWeight: "600" },
   value: {
-    color: "#1E293B",
-    fontSize: 15,
-    flex: 1,
+    color: "#0F172A",
+    fontSize: 14,
+    flex: 1.2,
     textAlign: "right",
     fontWeight: "700",
   },
-
-  valueBold: {
-    color: PRIMARY,
-    fontSize: 15,
-    fontWeight: "900",
-    flex: 1,
-    textAlign: "right",
-  },
-
+  valueBold: { fontWeight: "900" },
   valueBlock: {
-    color: "#1E293B",
-    fontSize: 15,
+    color: "#0F172A",
+    fontSize: 14,
     marginTop: 6,
     lineHeight: 22,
     fontWeight: "700",
@@ -836,20 +748,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 15,
+    paddingTop: 15,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
-    paddingTop: 15,
   },
-
-  actionButtonSpacer: {
-    marginRight: 10,
-  },
-
-  primaryButtonWrap: {
-    flex: 1,
-    borderRadius: 12,
-  },
-
+  actionButtonSpacer: { marginRight: 10 },
+  primaryButtonWrap: { flex: 1, borderRadius: 12 },
   primaryButtonInner: {
     minHeight: 46,
     borderRadius: 12,
@@ -857,28 +761,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   primaryButtonText: {
     color: "white",
     fontWeight: "900",
-    fontSize: 15,
+    fontSize: 14,
     marginLeft: 6,
   },
 
-  uploadActions: {
-    flexDirection: "row",
-    marginBottom: 14,
-  },
-
-  secondaryButtonWrap: {
-    flex: 1,
-    borderRadius: 12,
-  },
-
-  secondaryButtonSpacer: {
-    marginRight: 10,
-  },
-
+  uploadActions: { flexDirection: "row", marginBottom: 16 },
+  secondaryButtonWrap: { flex: 1, borderRadius: 12 },
+  secondaryButtonSpacer: { marginRight: 10 },
   secondaryButtonInner: {
     minHeight: 46,
     borderRadius: 12,
@@ -889,113 +781,89 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F8FAFC",
   },
-
   secondaryButtonText: {
     color: PRIMARY,
-    fontWeight: "900",
+    fontWeight: "800",
     marginLeft: 6,
+    fontSize: 14,
   },
 
   placeholderBox: {
     height: 180,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: "#E2E8F0",
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F8FAFC",
   },
-
-  placeholderText: {
-    marginTop: 8,
-    color: "#64748B",
-    fontWeight: "700",
-  },
-
+  placeholderText: { marginTop: 8, color: "#64748B", fontWeight: "700" },
   previewImage: {
     width: "100%",
     height: 220,
     borderRadius: 16,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
 
   noteInputContainer: {
-    marginTop: 12,
-    borderRadius: 16,
+    marginTop: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F8FAFC",
   },
-
   noteInput: {
     minHeight: 90,
-    padding: 13,
+    padding: 14,
     textAlignVertical: "top",
     color: "#0F172A",
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
-  uploadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
-  },
-
+  uploadingRow: { flexDirection: "row", alignItems: "center", marginTop: 12 },
   uploadingText: {
     color: "#475569",
     fontSize: 13,
     marginLeft: 8,
     fontWeight: "700",
   },
+  disabledBtn: { opacity: 0.7 },
 
+  // Bottom Bar Chuẩn Form
   bottomDock: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    backgroundColor: "#FFFFFF",
     padding: 10,
+    paddingBottom: Platform.OS === "ios" ? 25 : 10,
     borderTopWidth: 1,
     borderTopColor: "#E2E8F0",
-    paddingBottom: Platform.OS === "ios" ? 25 : 10,
-    backgroundColor: "#FFFFFF",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#64748B",
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
   },
-
   actionGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
   actionGridBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 5,
   },
+  actionGridText: { fontSize: 11, fontWeight: "900", marginTop: 4 },
 
-  actionGridText: {
-    fontSize: 11,
-    fontWeight: "900",
-    marginTop: 4,
-  },
-
-  disabledBtn: {
-    opacity: 0.7,
-  },
-
+  // Modal Chuẩn
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15,23,42,0.5)",
@@ -1003,53 +871,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
   },
-
   billMenuContainer: {
-    width: "80%",
-    borderRadius: 16,
+    width: "85%",
+    borderRadius: 20,
     backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 18 },
-        shadowOpacity: 0.18,
-        shadowRadius: 26,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
+    overflow: "hidden",
   },
-
   billMenuItem: {
     paddingVertical: 18,
     alignItems: "center",
+    backgroundColor: "#FFFFFF",
   },
-
   billMenuItemCancel: {
     paddingVertical: 18,
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    backgroundColor: "#F8FAFC",
   },
-
-  billMenuText: {
-    fontSize: 16,
-    color: PRIMARY,
-    fontWeight: "800",
-  },
-
-  billMenuTextCancel: {
-    fontSize: 16,
-    color: "#64748B",
-    fontWeight: "900",
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: "#E2E8F0",
-  },
+  billMenuText: { fontSize: 16, color: PRIMARY, fontWeight: "900" },
+  billMenuTextCancel: { fontSize: 16, color: "#EF4444", fontWeight: "900" },
+  divider: { height: 1, backgroundColor: "#F1F5F9" },
 });
