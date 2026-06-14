@@ -546,6 +546,8 @@ def list_hub_dispatch_requests(
     current_user: dict = Depends(get_current_user)
 ):
     _require_pickup_operator(current_user)
+    if current_user.get("role_id") == 1 and not hub_id:
+        return crud_delivery.get_online_pickup_requests(db, status=status)
     target_hub_id = hub_id if current_user.get("role_id") == 1 else current_user.get("primary_hub_id")
     if not target_hub_id:
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc van phong")

@@ -1430,14 +1430,10 @@ const fetchTabRequests = async (tabName) => {
       pendingRequests.value = [...(resPending.data || []), ...(resRejected.data || [])];
     } else if (tabName === 'dispatch-hub') {
       if (isAdmin) {
-        const res = await api.get('/api/delivery/online-pickup-requests', {
-          params: { status: 'DISPATCHED_TO_HUB' }
-        });
-        let data = res.data || [];
-        if (selectedHubId.value) {
-          data = data.filter(r => r.target_hub_id === selectedHubId.value);
-        }
-        dispatchRequests.value = data;
+        const params = { status: 'DISPATCHED_TO_HUB' };
+        if (selectedHubId.value) params.hub_id = selectedHubId.value;
+        const res = await api.get('/api/delivery/hub-dispatch-requests', { params });
+        dispatchRequests.value = res.data || [];
       } else {
         const res = await api.get('/api/delivery/hub-dispatch-requests', {
           params: { status: 'DISPATCHED_TO_HUB', hub_id: hubId }

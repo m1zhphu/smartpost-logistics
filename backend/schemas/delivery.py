@@ -195,6 +195,7 @@ class BookingRequestResponse(BaseModel):
     sender_phone: Optional[str]
     pickup_address: Optional[str]
     target_hub_id: Optional[int]
+    target_hub_name: Optional[str] = None
     product_type: Optional[str]
     est_weight: Optional[float]
     est_quantity: Optional[int]

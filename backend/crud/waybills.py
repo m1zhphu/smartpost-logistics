@@ -81,7 +81,7 @@ def create_bulk_mail_pickup(
         actual_quantity=0,
         pickup_mode="BULK_MAIL",
         materialization_status="PENDING",
-        status="RECEIVED" if target_hub_id else "PENDING_CONFIRMATION",
+        status="PENDING_CONFIRMATION",
         requested_pickup_time=data.pickup_time,
         pickup_method="OUR_STAFF_PICKUP",
         priority="NORMAL",
@@ -339,6 +339,7 @@ def create_customer_pickup_waybill(
     request_code = generate_waybill_code(db)
     booking_status = initial_status or ("DRAFT" if data.save_as_draft else "PENDING_CONFIRMATION")
     assigned_origin_hub_id = target_hub_id if booking_status == "RECEIVED" else None
+    proposed_target_hub_id = target_hub_id if booking_status in ["PENDING_CONFIRMATION", "DISPATCHED_TO_HUB", "RECEIVED"] else None
     booking = models.BookingRequests(
         request_code=request_code,
         source=source,
@@ -346,7 +347,7 @@ def create_customer_pickup_waybill(
         customer_id=customer.customer_id,
         sender_phone=sender.phone or customer.phone_number,
         pickup_address=sender.address or customer.address_detail,
-        target_hub_id=target_hub_id if booking_status == "RECEIVED" else None,
+        target_hub_id=proposed_target_hub_id,
         product_type=normalize_product_type(first_item.product_group),
         est_weight=total_weight,
         est_quantity=sum(int(item.quantity or 1) for item in items),

@@ -1126,6 +1126,7 @@ def create_customer_pickup_waybill(
             shipping_fee=shipping_fee,
             extra_services_fee=extra_services_fee,
             vat_amount=vat_amount,
+            target_hub_id=origin_hub.hub_id,
         )
         db.commit()
         db.refresh(booking)

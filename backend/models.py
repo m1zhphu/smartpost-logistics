@@ -529,6 +529,10 @@ class BookingRequests(Base):
         return self.assigned_shipper.full_name if self.assigned_shipper else None
 
     @property
+    def target_hub_name(self):
+        return self.target_hub.hub_name if self.target_hub else None
+
+    @property
     def bag_code(self):
         if self.pickup_bag:
             return self.pickup_bag.bag_code
