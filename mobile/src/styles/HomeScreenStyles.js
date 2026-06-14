@@ -1,26 +1,12 @@
-import { Platform, StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 import { COLORS } from "../constants/colors";
 
-const PRIMARY = COLORS.primary || "#1B5E20";
-const WHITE = COLORS.white || "#FFFFFF";
-const SURFACE_MUTED = COLORS.surfaceMuted || "#F1F5F9";
+const HomeScreenStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+  },
 
-const glassShadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: COLORS.primaryDark || PRIMARY,
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.14,
-      shadowRadius: 22,
-    },
-    android: {
-      elevation: 6,
-    },
-  }),
-};
-
-export default StyleSheet.create({
-  container: { flex: 1, backgroundColor: SURFACE_MUTED },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -28,278 +14,240 @@ export default StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 25,
     paddingTop: Platform.OS === "ios" ? 55 : 35,
-    backgroundColor: PRIMARY,
+    backgroundColor: COLORS.primary,
     borderBottomLeftRadius: 42,
     borderBottomRightRadius: 42,
-    overflow: "hidden",
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     zIndex: 10,
-    ...Platform.select({
-      ios: {
-        shadowColor: PRIMARY,
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.22,
-        shadowRadius: 18,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
   },
-  headerOrbOne: {
-    position: "absolute",
-    width: 190,
-    height: 190,
-    borderRadius: 95,
-    top: -80,
-    right: -62,
-    backgroundColor: "rgba(255,255,255,0.18)",
+
+  headerTextGroup: {
+    flex: 1,
   },
-  headerOrbTwo: {
-    position: "absolute",
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    bottom: -70,
-    left: -42,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  headerGlassLine: {
-    position: "absolute",
-    left: 28,
-    right: 28,
-    top: Platform.OS === "ios" ? 48 : 28,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
-  },
-  headerTextGroup: { flex: 1, paddingRight: 14 },
+
   greeting: {
     fontSize: Platform.OS === "ios" ? 14 : 11,
-    color: "rgba(255,255,255,0.78)",
+    color: "rgba(255,255,255,0.7)",
     letterSpacing: 0.5,
-    fontWeight: "600",
   },
+
   userName: {
-    fontSize: Platform.OS === "ios" ? 20 : 14,
-    fontWeight: "900",
-    color: WHITE,
+    fontSize: Platform.OS === "ios" ? 18 : 12,
+    fontWeight: "800",
+    color: "#FFFFFF",
     marginTop: 4,
     marginBottom: 8,
   },
+
   roleBadge: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.15)",
     alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 14,
-    overflow: "hidden",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.24)",
-    backgroundColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
-  roleDot: { width: 7, height: 7, borderRadius: 4, marginRight: 7 },
+
+  roleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+
   roleText: {
     fontSize: Platform.OS === "ios" ? 13 : 10,
-    color: WHITE,
-    fontWeight: "700",
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
-  headerActions: { flexDirection: "row", alignItems: "center" },
-  circleButtonShadow: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
   },
+
   appleCircleBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.18)",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
   },
-  circleButtonTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 8,
-    right: 8,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.48)",
+
+  menuButtonSpacing: {
+    marginLeft: 12,
   },
+
   appleBadge: {
     position: "absolute",
     top: -4,
     right: -4,
-    backgroundColor: COLORS.danger,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#EF4444",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: PRIMARY,
-    paddingHorizontal: 4,
+    borderColor: COLORS.primary,
   },
-  appleBadgeText: { color: WHITE, fontSize: 10, fontWeight: "900" },
-  content: { flex: 1, paddingHorizontal: 16, paddingTop: 30 },
-  rowWrapper: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
-  gridCardTouchable: { width: "48%", borderRadius: 24, ...glassShadow },
+
+  appleBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
+  },
+
+  content: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+    padding: 16,
+  },
+
+  rowWrapper: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+
   gridCard: {
-    minHeight: 142,
-    paddingVertical: 20,
-    paddingHorizontal: 8,
-    borderRadius: 24,
-    overflow: "hidden",
+    width: "48%",
+    minHeight: 160,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    alignItems: "center",
-    backgroundColor: Platform.OS === "android" ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.36)",
+    borderColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
+
+  cardBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    marginBottom: 14,
   },
-  cardGlow: {
-    position: "absolute",
-    top: 12,
-    left: 14,
-    width: 58,
-    height: 28,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.28)",
-    transform: [{ rotate: "-18deg" }],
+
+  cardBadgeText: {
+    fontSize: 10,
+    fontWeight: "900",
   },
+
   gridIconBox: {
-    width: 62,
-    height: 62,
-    borderRadius: 22,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    overflow: "hidden",
+    marginBottom: 14,
   },
+
   gridCardTitle: {
     fontSize: 15,
-    fontWeight: "800",
-    color: COLORS.textPrimary,
-    textAlign: "center",
-    lineHeight: 22,
+    fontWeight: "900",
+    color: "#0F172A",
+    lineHeight: 20,
   },
+
+  gridCardDesc: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 6,
+    fontWeight: "600",
+  },
+
   fab: {
     position: "absolute",
-    bottom: 30,
     right: 20,
+    bottom: 28,
     width: 62,
     height: 62,
     borderRadius: 31,
-    overflow: "hidden",
-    zIndex: 999,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#f97316",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.36,
-        shadowRadius: 14,
-      },
-      android: {
-        elevation: 9,
-      },
-    }),
-  },
-  fabGradient: {
-    flex: 1,
-    borderRadius: 31,
+    backgroundColor: "#F97316",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.42)",
-    overflow: "hidden",
+    shadowColor: "#F97316",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  fabGloss: {
-    position: "absolute",
-    top: 4,
-    left: 10,
-    right: 10,
-    height: 24,
-    borderRadius: 999,
+
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    alignItems: "flex-end",
+    paddingTop: Platform.OS === "ios" ? 96 : 76,
+    paddingRight: 16,
   },
-  menuOverlay: { flex: 1, backgroundColor: "rgba(15,23,42,0.18)" },
-  dropdownShadow: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 115 : 75,
-    right: 20,
-    width: 220,
-    borderRadius: 22,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 14 },
-        shadowOpacity: 0.18,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
-  },
+
   dropdownMenu: {
-    width: 220,
-    paddingVertical: 8,
-    borderRadius: 22,
+    width: 230,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor: Platform.OS === "android" ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.42)",
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  dropdownTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    borderRadius: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
+
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
   },
+
   menuIconBox: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    backgroundColor: "rgba(243,244,246,0.86)",
+    backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.84)",
   },
-  menuIconBoxDanger: { backgroundColor: "rgba(254,242,242,0.9)" },
-  menuText: { flex: 1, fontSize: 14, fontWeight: "700", color: COLORS.textPrimary },
-  menuTextDanger: { color: COLORS.danger, fontWeight: "800" },
-  menuDivider: { height: 1, backgroundColor: "rgba(148,163,184,0.18)", marginHorizontal: 16 },
+
+  menuText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#0F172A",
+    fontWeight: "700",
+  },
+
+  menuDivider: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+  },
+
+  logoutMenuIconBox: {
+    backgroundColor: "#FEF2F2",
+  },
+
+  logoutMenuText: {
+    color: "#EF4444",
+    fontWeight: "700",
+  },
 });
+
+export default HomeScreenStyles;

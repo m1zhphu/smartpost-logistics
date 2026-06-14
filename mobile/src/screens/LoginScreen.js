@@ -21,7 +21,7 @@ import { requestRegisterOTP, verifyRegisterOTP } from "../services/authService";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
 import { checkNetworkConnection } from "../utils/networkUtils";
-import styles from "../styles/LoginStyles";
+import styles from "../styles/LoginScreenStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PRIMARY = COLORS.primaryColorAuth || "#1B5E20";
@@ -57,16 +57,16 @@ const Input = ({
   showPassword,
   onToggleEye,
 }) => (
-  <View style={localStyles.inputWrapper}>
+  <View style={styles.inputWrapper}>
     <Ionicons
       name={icon}
       size={20}
       color={PRIMARY}
-      style={localStyles.icon}
+      style={styles.icon}
     />
 
     <TextInput
-      style={[localStyles.input, multiline && localStyles.inputMultiline]}
+      style={[styles.input, multiline && styles.inputMultiline]}
       placeholder={placeholder}
       placeholderTextColor="#94A3B8"
       value={value}
@@ -87,7 +87,7 @@ const Input = ({
     {showEye && (
       <TouchableOpacity
         onPress={onToggleEye}
-        style={localStyles.eyeIcon}
+        style={styles.eyeIcon}
         activeOpacity={0.72}
       >
         <Ionicons
@@ -102,7 +102,7 @@ const Input = ({
 
 const SolidButton = ({ title, onPress, disabled, loading }) => (
   <TouchableOpacity
-    style={[styles.loginBtn, localStyles.primaryButton]}
+    style={[styles.loginBtn, styles.primaryButton]}
     onPress={onPress}
     disabled={disabled}
     activeOpacity={0.88}
@@ -110,13 +110,13 @@ const SolidButton = ({ title, onPress, disabled, loading }) => (
       {loading ? (
         <ActivityIndicator color="#ffffff" />
       ) : (
-        <Text style={localStyles.primaryButtonText}>{title}</Text>
+        <Text style={styles.primaryButtonText}>{title}</Text>
       )}
   </TouchableOpacity>
 );
 
 const Toggle = ({ userType, onChangeUserType }) => (
-  <View style={localStyles.toggleContainer}>
+  <View style={styles.toggleContainer}>
     {USER_TYPES.map((item) => {
       const active = userType === item.key;
 
@@ -124,16 +124,16 @@ const Toggle = ({ userType, onChangeUserType }) => (
         <TouchableOpacity
           key={item.key}
           style={[
-            localStyles.toggleButton,
-            active && localStyles.toggleButtonActive,
+            styles.toggleButton,
+            active && styles.toggleButtonActive,
           ]}
           onPress={() => onChangeUserType(item.key)}
           activeOpacity={0.86}
         >
           <Text
             style={[
-              localStyles.toggleText,
-              active && localStyles.toggleTextActive,
+              styles.toggleText,
+              active && styles.toggleTextActive,
             ]}
           >
             {item.label}
@@ -579,7 +579,7 @@ export default function LoginScreen({ navigation }) {
       <StatusBar style="dark" />
 
       <KeyboardAvoidingView
-        style={localStyles.keyboardAvoidingRoot}
+        style={styles.keyboardAvoidingRoot}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
@@ -633,7 +633,7 @@ export default function LoginScreen({ navigation }) {
       {/* OTP Modal */}
       <Modal visible={showOtpModal} transparent={true} animationType="fade">
         <KeyboardAvoidingView
-          style={localStyles.keyboardAvoidingRoot}
+          style={styles.keyboardAvoidingRoot}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
         >
@@ -654,8 +654,8 @@ export default function LoginScreen({ navigation }) {
                   Mã OTP đã được gửi đến email {regEmail}
                 </Text>
 
-                <TextInput
-                    style={localStyles.otpInput}
+                  <TextInput
+                    style={styles.otpInput}
                     placeholder="--- ---"
                     placeholderTextColor="#CBD5E1"
                     value={otpCode}
@@ -671,16 +671,16 @@ export default function LoginScreen({ navigation }) {
 
                 <View style={styles.modalBtnContainer}>
                   <TouchableOpacity
-                    style={[styles.modalBtn, localStyles.modalCancelBtn]}
+                    style={[styles.modalBtn, styles.modalCancelBtn]}
                     onPress={() => setShowOtpModal(false)}
                     disabled={loading}
                     activeOpacity={0.82}
                   >
-                    <Text style={localStyles.modalCancelText}>Hủy</Text>
+                    <Text style={styles.modalCancelText}>Hủy</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.modalBtn, localStyles.modalSubmitBtn]}
+                    style={[styles.modalBtn, styles.modalSubmitBtn]}
                     onPress={handleVerifyOTP}
                     disabled={loading}
                     activeOpacity={0.88}
@@ -688,7 +688,7 @@ export default function LoginScreen({ navigation }) {
                       {loading ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text style={localStyles.modalSubmitText}>
+                        <Text style={styles.modalSubmitText}>
                           Xác thực
                         </Text>
                       )}
@@ -703,116 +703,4 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const localStyles = StyleSheet.create({
-  keyboardAvoidingRoot: {
-    flex: 1,
-  },
-  toggleContainer: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 4,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-    marginBottom: 24,
-    width: "100%",
-  },
-  toggleButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  toggleButtonActive: {
-    backgroundColor: "#F1F5F9",
-  },
-  toggleText: {
-    color: "#64748B",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  toggleTextActive: {
-    color: PRIMARY,
-    fontWeight: "900",
-  },
-  inputWrapper: {
-    minHeight: 56,
-    width: "100%",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    marginBottom: 16,
-  },
-  icon: {
-    marginLeft: 16,
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    height: 56,
-    color: "#0F172A",
-    fontSize: 15,
-    fontWeight: "600",
-    paddingRight: 12,
-    paddingVertical: 0,
-  },
-  inputMultiline: {
-    height: 96,
-    paddingTop: 16,
-    paddingBottom: 14,
-  },
-  eyeIcon: {
-    width: 48,
-    height: 56,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButton: {
-    minHeight: 56,
-    borderRadius: 14,
-    backgroundColor: PRIMARY,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  otpInput: {
-    height: 60,
-    width: "100%",
-    borderRadius: 14,
-    textAlign: "center",
-    fontSize: 24,
-    fontWeight: "900",
-    letterSpacing: 8,
-    color: "#0F172A",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  modalCancelBtn: {
-    backgroundColor: "#F1F5F9",
-  },
-  modalCancelText: {
-    color: "#475569",
-    fontWeight: "800",
-    fontSize: 15
-  },
-  modalSubmitBtn: {
-    backgroundColor: PRIMARY,
-    justifyContent: "center"
-  },
-  modalSubmitText: {
-    color: "#ffffff",
-    fontWeight: "900",
-    fontSize: 15
-  },
-});
+

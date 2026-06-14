@@ -3,21 +3,9 @@ import { COLORS } from "../constants/colors";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
-const ShipperCreateBillStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
-
-  contentWrapper: {
-    flex: 1,
-    padding: 16,
-  },
+export default StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  contentWrapper: { flex: 1, padding: 16 },
 
   permissionContainer: {
     flex: 1,
@@ -25,25 +13,19 @@ const ShipperCreateBillStyles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F8FAFC",
   },
-
   permissionText: {
     fontSize: 16,
     color: "#475569",
     marginVertical: 15,
     fontWeight: "700",
   },
-
   btnPermission: {
     backgroundColor: PRIMARY,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
   },
-
-  btnPermissionText: {
-    color: "white",
-    fontWeight: "900",
-  },
+  btnPermissionText: { color: "white", fontWeight: "900" },
 
   header: {
     flexDirection: "row",
@@ -56,25 +38,13 @@ const ShipperCreateBillStyles = StyleSheet.create({
     borderBottomRightRadius: 42,
     backgroundColor: PRIMARY,
     shadowColor: "#ebebeb",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     zIndex: 10,
   },
-
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "900",
-  },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
 
   headerButton: {
     width: 38,
@@ -84,29 +54,17 @@ const ShipperCreateBillStyles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
   },
-
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerRightPlaceholder: {
-    width: 38,
-  },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
 
   tabContainer: {
     flexDirection: "row",
     backgroundColor: PRIMARY,
     paddingHorizontal: 20,
   },
-
   tab: {
     flex: 1,
     paddingVertical: 12,
@@ -114,21 +72,9 @@ const ShipperCreateBillStyles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: "transparent",
   },
-
-  activeTab: {
-    borderBottomColor: "white",
-  },
-
-  tabText: {
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-
-  activeTabText: {
-    color: "white",
-    fontWeight: "900",
-  },
+  activeTab: { borderBottomColor: "white" },
+  tabText: { color: "rgba(255,255,255,0.7)", fontWeight: "800", fontSize: 14 },
+  activeTabText: { color: "white", fontWeight: "900" },
 
   cameraContainer: {
     height: 250,
@@ -137,17 +83,7 @@ const ShipperCreateBillStyles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 16,
   },
-
-  camera: {
-    flex: 1,
-  },
-
-  cameraOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
+  cameraOverlay: { flex: 1, justifyContent: "center", alignItems: "center" },
   scanTarget: {
     width: 250,
     height: 100,
@@ -156,7 +92,6 @@ const ShipperCreateBillStyles = StyleSheet.create({
     backgroundColor: "rgba(16, 185, 129, 0.1)",
     borderRadius: 8,
   },
-
   processingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.1)",
@@ -164,12 +99,7 @@ const ShipperCreateBillStyles = StyleSheet.create({
     alignItems: "center",
   },
 
-  processingText: {
-    color: "white",
-    marginTop: 10,
-    fontWeight: "700",
-  },
-
+  // Card Phẳng Chuẩn DNA
   inputCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -178,26 +108,18 @@ const ShipperCreateBillStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     shadowColor: "#64748B",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-
   sectionTitle: {
     fontSize: 14,
     fontWeight: "900",
     color: "#0F172A",
     marginBottom: 12,
   },
-
-  inputRow: {
-    flexDirection: "row",
-  },
-
+  inputRow: { flexDirection: "row" },
   input: {
     flex: 1,
     borderWidth: 1,
@@ -209,7 +131,6 @@ const ShipperCreateBillStyles = StyleSheet.create({
     color: "#0F172A",
     fontWeight: "600",
   },
-
   scanBtn: {
     backgroundColor: PRIMARY,
     flexDirection: "row",
@@ -219,12 +140,7 @@ const ShipperCreateBillStyles = StyleSheet.create({
     borderRadius: 12,
     marginLeft: 12,
   },
-
-  scanBtnText: {
-    color: "white",
-    fontWeight: "900",
-    marginLeft: 6,
-  },
+  scanBtnText: { color: "white", fontWeight: "900", marginLeft: 6 },
 
   listCard: {
     flex: 1,
@@ -234,26 +150,13 @@ const ShipperCreateBillStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     shadowColor: "#64748B",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-
-  emptyBox: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  emptyText: {
-    color: "#64748B",
-    textAlign: "center",
-    fontWeight: "600",
-  },
+  emptyBox: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyText: { color: "#64748B", textAlign: "center", fontWeight: "600" },
 
   listItem: {
     flexDirection: "row",
@@ -265,7 +168,6 @@ const ShipperCreateBillStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
   listIndex: {
     backgroundColor: "#EF4444",
     width: 24,
@@ -275,24 +177,10 @@ const ShipperCreateBillStyles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
+  listIndexText: { color: "white", fontWeight: "900", fontSize: 11 },
+  listCode: { flex: 1, fontSize: 15, fontWeight: "700", color: "#0F172A" },
 
-  listIndexText: {
-    color: "white",
-    fontWeight: "900",
-    fontSize: 11,
-  },
-
-  listCode: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-
-  removeButton: {
-    padding: 4,
-  },
-
+  // Bottom Bar Chuẩn Form
   bottomBar: {
     position: "absolute",
     bottom: 0,
@@ -306,15 +194,11 @@ const ShipperCreateBillStyles = StyleSheet.create({
     borderTopColor: "#E2E8F0",
     gap: 12,
     shadowColor: "#64748B",
-    shadowOffset: {
-      width: 0,
-      height: -4,
-    },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-
   secondaryBtn: {
     flex: 1,
     backgroundColor: "#F8FAFC",
@@ -325,13 +209,7 @@ const ShipperCreateBillStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
-  secondaryBtnText: {
-    color: "#475569",
-    fontWeight: "800",
-    fontSize: 15,
-  },
-
+  secondaryBtnText: { color: "#475569", fontWeight: "800", fontSize: 15 },
   primaryBtn: {
     flex: 1,
     backgroundColor: PRIMARY,
@@ -340,12 +218,5 @@ const ShipperCreateBillStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  primaryBtnText: {
-    color: "white",
-    fontWeight: "900",
-    fontSize: 15,
-  },
+  primaryBtnText: { color: "white", fontWeight: "900", fontSize: 15 },
 });
-
-export default ShipperCreateBillStyles;

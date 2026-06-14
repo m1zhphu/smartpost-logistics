@@ -6,7 +6,7 @@ const { width } = Dimensions.get("window");
 const ShipperCameraStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "black",
+    backgroundColor: "#F8FAFC",
   },
 
   flex1: {
@@ -89,7 +89,7 @@ const ShipperCameraStyles = StyleSheet.create({
 
   listButton: {
     flexDirection: "row",
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(150, 150, 150, 0.1)",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -208,7 +208,7 @@ const ShipperCameraStyles = StyleSheet.create({
 
   maskBase: {
     position: "absolute",
-    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
     zIndex: 1,
   },
 
@@ -283,7 +283,7 @@ const ShipperCameraStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
-    elevation: 5,
+    elevation: 2,
   },
 
   cancelScanButtonText: {
@@ -293,7 +293,7 @@ const ShipperCameraStyles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
     justifyContent: "center",
     padding: 20,
   },
@@ -304,7 +304,7 @@ const ShipperCameraStyles = StyleSheet.create({
     padding: 20,
     width: "80%",
     alignSelf: "center",
-    elevation: 5,
+    elevation: 2,
   },
 
   menuHeader: {
@@ -401,8 +401,8 @@ const ShipperCameraStyles = StyleSheet.create({
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    elevation: 5,
+    shadowOpacity: 0.06,
+    elevation: 2,
   },
 
   avatarText: {
@@ -446,7 +446,7 @@ const ShipperCameraStyles = StyleSheet.create({
 
   configBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
     justifyContent: "flex-end",
   },
 
@@ -603,7 +603,7 @@ const ShipperCameraStyles = StyleSheet.create({
   customerCard: {
     backgroundColor: "white",
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     marginBottom: 12,
   },
 
@@ -625,7 +625,7 @@ const ShipperCameraStyles = StyleSheet.create({
   bagCard: {
     backgroundColor: "white",
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     marginBottom: 12,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -645,7 +645,7 @@ const ShipperCameraStyles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 9999,
-    elevation: 9999,
+    elevation: 2,
     pointerEvents: "box-none",
   },
 });

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 from typing import List, Optional
@@ -1082,6 +1082,7 @@ def _calculate_pickup_estimated_price(db: Session, customer: models.Customers, d
 @router.post("/customer/pickups", response_model=schema_wb.CustomerPickupCreateResponse)
 def create_customer_pickup_waybill(
     data: schema_wb.CustomerPickupCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -1131,7 +1132,7 @@ def create_customer_pickup_waybill(
         db.commit()
         db.refresh(booking)
         db.refresh(waybill)
-        realtime_manager.publish(["admin", f"customer:{customer.customer_id}"], "pickup.created", {
+        realtime_manager.publish(["admin", f"customer:{customer.customer_id}", f"hub:{origin_hub.hub_id}"], "pickup.created", {
             "request_id": booking.request_id,
             "request_code": booking.request_code,
             "waybill_code": waybill.waybill_code,
@@ -1139,6 +1140,21 @@ def create_customer_pickup_waybill(
             "customer_id": customer.customer_id,
             "pickup_status": booking.status,
         })
+        
+        # Gửi push notification cho tất cả shipper thuộc hub này
+        shippers = db.query(models.Users).filter(
+            models.Users.primary_hub_id == origin_hub.hub_id,
+            models.Users.role_id == 4,
+            models.Users.push_token.isnot(None)
+        ).all()
+        for shipper in shippers:
+            background_tasks.add_task(
+                send_expo_push_notification,
+                shipper.push_token,
+                "Có đơn yêu cầu lấy hàng mới!",
+                f"Mã đơn: {booking.request_code}",
+                {"request_code": booking.request_code}
+            )
         response = _build_pickup_create_response(booking, waybill)
         response["bag_code"] = pickup_bag.bag_code if pickup_bag else None
         return response
@@ -1153,6 +1169,7 @@ def create_customer_pickup_waybill(
 @router.post("/customer/bulk-mail-pickups", response_model=schema_wb.BulkMailPickupResponse)
 def create_customer_bulk_mail_pickup(
     data: schema_wb.BulkMailPickupCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -1203,6 +1220,22 @@ def create_customer_bulk_mail_pickup(
             "estimated_quantity": data.estimated_quantity,
             "product_type": data.product_type,
         })
+        
+        # Gửi push notification cho các shipper thuộc hub này
+        shippers = db.query(models.Users).filter(
+            models.Users.primary_hub_id == target_hub.hub_id,
+            models.Users.role_id == 4,
+            models.Users.push_token.isnot(None)
+        ).all()
+        for shipper in shippers:
+            background_tasks.add_task(
+                send_expo_push_notification,
+                shipper.push_token,
+                "Có túi thư lấy hàng mới!",
+                f"Mã yêu cầu: {request.request_code}",
+                {"request_code": request.request_code}
+            )
+
         return {
             "request_id": request.request_id,
             "request_code": request.request_code,

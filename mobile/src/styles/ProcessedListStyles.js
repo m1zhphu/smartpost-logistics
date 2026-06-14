@@ -1,136 +1,222 @@
-import { StyleSheet, Dimensions, Platform } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { StyleSheet, Dimensions, Platform } from "react-native";
+import { COLORS } from "../constants/colors";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 const ProcessedListStyles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
-    header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 15, paddingVertical: 10,
-        backgroundColor: COLORS.primary,
-        paddingTop: Platform.OS === 'android' ? 20 : 15
-    },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: 'white' },
-    backButton: { padding: 5 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: COLORS.primary,
+    paddingTop: Platform.OS === "android" ? 20 : 15,
+  },
+  headerTitle: { fontSize: 18, fontWeight: "bold", color: "white" },
+  backButton: { padding: 5 },
 
-    card: {
-        backgroundColor: 'white', borderRadius: 12, marginBottom: 15,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-        borderLeftWidth: 4, borderLeftColor: COLORS.secondary
-    },
-    cardHeader: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 15, paddingVertical: 10,
-        borderBottomWidth: 1, borderBottomColor: '#f0f0f0'
-    },
-    cardTitle: { marginLeft: 8, fontWeight: 'bold', fontSize: 14 },
-    closeBtn: { padding: 5 },
+  card: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.secondary,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  cardTitle: { marginLeft: 8, fontWeight: "bold", fontSize: 14 },
+  closeBtn: { padding: 5 },
 
-    cardBody: { padding: 15 },
+  cardBody: { padding: 15 },
 
-    thumbnail: { width: 70, height: 70, borderRadius: 8, backgroundColor: '#eee', borderWidth: 1, borderColor: '#ddd' },
-    zoomIcon: { position: 'absolute', bottom: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', padding: 2, borderRadius: 4 },
+  thumbnail: {
+    width: 70,
+    height: 70,
+    borderRadius: 8,
+    backgroundColor: "#eee",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  zoomIcon: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    backgroundColor: "rgba(150, 150, 150, 0.1)",
+    padding: 2,
+    borderRadius: 4,
+  },
 
-    trackingText: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 4 },
-    subText: { fontSize: 13, color: '#666' },
-    errorText: { fontSize: 13, color: COLORS.error, fontStyle: 'italic' },
+  trackingText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+  },
+  subText: { fontSize: 13, color: "#666" },
+  errorText: { fontSize: 13, color: COLORS.error, fontStyle: "italic" },
 
-    cardFooter: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 15 },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 15,
+  },
 
-    primaryBtn: {
-        backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 10,
-        borderRadius: 20, flexDirection: 'row', alignItems: 'center'
-    },
-    primaryBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
+  primaryBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  primaryBtnText: { color: "white", fontWeight: "bold", fontSize: 13 },
 
-    retryBtn: {
-        backgroundColor: COLORS.processScanOrange, paddingHorizontal: 20, paddingVertical: 10,
-        borderRadius: 20, flexDirection: 'row', alignItems: 'center'
-    },
-    retryBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
+  retryBtn: {
+    backgroundColor: COLORS.processScanOrange,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  retryBtnText: { color: "white", fontWeight: "bold", fontSize: 13 },
 
-    emptyState: { alignItems: 'center', marginTop: 100 },
+  emptyState: { alignItems: "center", marginTop: 100 },
 
-    modalContainer: { flex: 1, backgroundColor: 'black', justifyContent: 'center' },
-    fullImage: { width: width, height: height * 0.7 },
-    modalCloseBtn: {
-        position: 'absolute', top: 50, right: 20, zIndex: 10,
-        backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: 5
-    },
-    modalFooter: {
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        padding: 30, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.8)'
-    },
-    modalRetakeBtn: {
-        flexDirection: 'row', backgroundColor: COLORS.error,
-        paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25,
-        alignItems: 'center'
-    },
-    metaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        paddingTop: 10,
-        paddingBottom: 5,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f5f5f5'
-    },
-    badgeIndex: {
-        backgroundColor: '#e0e0e0',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        marginRight: 8
-    },
-    badgeIndexText: {
-        fontSize: 11,
-        fontWeight: 'bold',
-        color: '#555'
-    },
-    timestampText: {
-        fontSize: 12,
-        color: '#888',
-        flex: 1
-    },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "black",
+    justifyContent: "center",
+  },
+  fullImage: { width: width, height: height * 0.7 },
+  modalCloseBtn: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: "rgba(150, 150, 150, 0.1)",
+    borderRadius: 20,
+    padding: 5,
+  },
+  modalFooter: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 30,
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+  },
+  modalRetakeBtn: {
+    flexDirection: "row",
+    backgroundColor: COLORS.error,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: "center",
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingTop: 10,
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f5f5f5",
+  },
+  badgeIndex: {
+    backgroundColor: "#e0e0e0",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  badgeIndexText: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#555",
+  },
+  timestampText: {
+    fontSize: 12,
+    color: "#888",
+    flex: 1,
+  },
 
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: height * 0.15,
-        paddingHorizontal: 40
-    },
-    illustrationCircle: {
-        width: 140, height: 140,
-        borderRadius: 70,
-        backgroundColor: '#e8f5e9',
-        justifyContent: 'center', alignItems: 'center',
-        marginBottom: 25,
-        shadowColor: COLORS.secondary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20
-    },
-    miniIconBadge: {
-        position: 'absolute', bottom: 10, right: 10,
-        backgroundColor: COLORS.secondary,
-        width: 40, height: 40, borderRadius: 20,
-        justifyContent: 'center', alignItems: 'center',
-        borderWidth: 3, borderColor: 'white'
-    },
-    emptyTitle: {
-        fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 10, textAlign: 'center'
-    },
-    emptySubtitle: {
-        fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 30
-    },
-    actionBtn: {
-        flexDirection: 'row', backgroundColor: COLORS.secondary,
-        paddingVertical: 12, paddingHorizontal: 25, borderRadius: 25,
-        alignItems: 'center', elevation: 3,
-        shadowColor: COLORS.secondary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3
-    },
-    actionBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: height * 0.15,
+    paddingHorizontal: 40,
+  },
+  illustrationCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "#e8f5e9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 25,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+  },
+  miniIconBadge: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    backgroundColor: COLORS.secondary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "white",
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 30,
+  },
+  actionBtn: {
+    flexDirection: "row",
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    alignItems: "center",
+    elevation: 2,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+  },
+  actionBtnText: { color: "white", fontWeight: "bold", fontSize: 16 },
 });
 
 export default ProcessedListStyles;

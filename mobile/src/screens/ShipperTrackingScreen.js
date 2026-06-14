@@ -8,6 +8,7 @@ import {
   FlatList,
   Keyboard,
   Platform,
+  Image,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -77,6 +78,19 @@ export default function ShipperTrackingScreen({ navigation }) {
           )}
           {item.note ? (
             <Text style={styles.noteText}>Ghi chú: {item.note}</Text>
+          ) : null}
+
+          {item.action === "Giao hàng thành công" && trackingData?.pod_image_url ? (
+            <Image
+              source={{ uri: trackingData.pod_image_url }}
+              style={{
+                width: "100%",
+                height: 150,
+                borderRadius: 8,
+                marginTop: 10,
+                resizeMode: "cover",
+              }}
+            />
           ) : null}
         </View>
       </View>

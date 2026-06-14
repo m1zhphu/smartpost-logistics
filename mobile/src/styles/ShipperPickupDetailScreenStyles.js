@@ -2,18 +2,9 @@ import { StyleSheet, Platform } from "react-native";
 import { COLORS } from "../constants/colors";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
-const SECONDARY = COLORS.secondary || "#0F766E";
 
-const ShipperPickupDetailScreenStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-
-  flex1: {
-    flex: 1,
-  },
-
+export default StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: {
     flex: 1,
     justifyContent: "center",
@@ -32,26 +23,19 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FFFFFF",
   },
-
   errorText: {
     color: "#0F172A",
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 20,
   },
-
   backButton: {
     backgroundColor: PRIMARY,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
   },
-
-  backButtonText: {
-    color: "white",
-    fontWeight: "900",
-    fontSize: 14,
-  },
+  backButtonText: { color: "white", fontWeight: "900", fontSize: 14 },
 
   header: {
     flexDirection: "row",
@@ -65,44 +49,28 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     borderBottomRightRadius: 42,
     shadowColor: "#ebebeb",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     zIndex: 10,
   },
-
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "900",
-  },
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
 
   headerButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
   },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
 
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 120,
-  },
+  scrollContent: { padding: 16, paddingBottom: 120 },
 
   card: {
     backgroundColor: "#FFFFFF",
@@ -117,7 +85,6 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-
   sectionTitle: {
     fontSize: 14,
     fontWeight: "900",
@@ -134,18 +101,8 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     marginBottom: 10,
     gap: 12,
   },
-
-  columnRow: {
-    marginBottom: 12,
-  },
-
-  label: {
-    color: "#64748B",
-    fontSize: 14,
-    flex: 1,
-    fontWeight: "600",
-  },
-
+  columnRow: { marginBottom: 12 },
+  label: { color: "#64748B", fontSize: 14, flex: 1, fontWeight: "600" },
   value: {
     color: "#0F172A",
     fontSize: 14,
@@ -153,11 +110,7 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     textAlign: "right",
     fontWeight: "700",
   },
-
-  valueBold: {
-    fontWeight: "900",
-  },
-
+  valueBold: { fontWeight: "900" },
   valueBlock: {
     color: "#0F172A",
     fontSize: 14,
@@ -174,24 +127,8 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
   },
-
-  actionButtonSpacer: {
-    marginRight: 10,
-  },
-
-  primaryButtonWrap: {
-    flex: 1,
-    borderRadius: 12,
-  },
-
-  primaryButtonGreen: {
-    backgroundColor: "#10B981",
-  },
-
-  primaryButtonBlue: {
-    backgroundColor: "#3B82F6",
-  },
-
+  actionButtonSpacer: { marginRight: 10 },
+  primaryButtonWrap: { flex: 1, borderRadius: 12 },
   primaryButtonInner: {
     minHeight: 46,
     borderRadius: 12,
@@ -199,7 +136,6 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   primaryButtonText: {
     color: "white",
     fontWeight: "900",
@@ -207,20 +143,9 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  uploadActions: {
-    flexDirection: "row",
-    marginBottom: 16,
-  },
-
-  secondaryButtonWrap: {
-    flex: 1,
-    borderRadius: 12,
-  },
-
-  secondaryButtonSpacer: {
-    marginRight: 10,
-  },
-
+  uploadActions: { flexDirection: "row", marginBottom: 16 },
+  secondaryButtonWrap: { flex: 1, borderRadius: 12 },
+  secondaryButtonSpacer: { marginRight: 10 },
   secondaryButtonInner: {
     minHeight: 46,
     borderRadius: 12,
@@ -231,7 +156,6 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F8FAFC",
   },
-
   secondaryButtonText: {
     color: PRIMARY,
     fontWeight: "800",
@@ -249,13 +173,7 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F8FAFC",
   },
-
-  placeholderText: {
-    marginTop: 8,
-    color: "#64748B",
-    fontWeight: "700",
-  },
-
+  placeholderText: { marginTop: 8, color: "#64748B", fontWeight: "700" },
   previewImage: {
     width: "100%",
     height: 220,
@@ -272,7 +190,6 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     borderColor: "#E2E8F0",
     backgroundColor: "#F8FAFC",
   },
-
   noteInput: {
     minHeight: 90,
     padding: 14,
@@ -281,16 +198,14 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-
   quantityWrap: {
     flexDirection: "row",
     gap: 12,
     marginBottom: 14,
   },
-
   quantityInfoCard: {
     flex: 0.8,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     backgroundColor: "#F8FAFC",
@@ -298,29 +213,25 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   quantityInputCard: {
     flex: 1.2,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     backgroundColor: "#F8FAFC",
     padding: 14,
   },
-
   quantityLabel: {
     color: "#64748B",
     fontSize: 12,
     fontWeight: "700",
     marginBottom: 6,
   },
-
   quantityValue: {
     color: PRIMARY,
     fontSize: 24,
     fontWeight: "900",
   },
-
   quantityInput: {
     borderRadius: 12,
     borderWidth: 1,
@@ -332,13 +243,11 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     fontWeight: "900",
     color: "#0F172A",
   },
-
   quickCountActions: {
     flexDirection: "row",
     gap: 10,
     marginBottom: 14,
   },
-
   quickCountBtn: {
     flex: 1,
     borderRadius: 12,
@@ -350,49 +259,34 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
-
   quickCountBtnNeutral: {
     backgroundColor: "#ECFDF5",
     borderColor: "#BBF7D0",
   },
-
   quickCountBtnWarn: {
     backgroundColor: "#FFF7ED",
     borderColor: "#FED7AA",
   },
-
   quickCountBtnText: {
     fontSize: 13,
     fontWeight: "900",
   },
-
-  quickCountTextNeutral: {
-    color: "#059669",
-  },
-
-  quickCountTextWarn: {
-    color: "#C2410C",
-  },
-
   childWaybillList: {
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
     paddingTop: 14,
   },
-
   childWaybillTitle: {
     fontSize: 13,
     fontWeight: "900",
     color: "#0F172A",
     marginBottom: 10,
   },
-
   childWaybillEmpty: {
     color: "#64748B",
     fontSize: 13,
     fontWeight: "600",
   },
-
   childWaybillRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -403,7 +297,6 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-
   childWaybillIndex: {
     width: 28,
     height: 28,
@@ -415,23 +308,16 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 10,
   },
-
   childWaybillIndexText: {
     fontSize: 12,
     fontWeight: "900",
     color: "#64748B",
   },
-
-  childWaybillContent: {
-    flex: 1,
-  },
-
   childWaybillCode: {
     color: "#0F172A",
     fontSize: 13,
     fontWeight: "800",
   },
-
   childWaybillMeta: {
     color: "#64748B",
     fontSize: 12,
@@ -439,22 +325,14 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     marginTop: 3,
   },
 
-  uploadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
-  },
-
+  uploadingRow: { flexDirection: "row", alignItems: "center", marginTop: 12 },
   uploadingText: {
     color: "#475569",
     fontSize: 13,
     marginLeft: 8,
     fontWeight: "700",
   },
-
-  disabledBtn: {
-    opacity: 0.7,
-  },
+  disabledBtn: { opacity: 0.7 },
 
   bottomDock: {
     position: "absolute",
@@ -470,96 +348,50 @@ const ShipperPickupDetailScreenStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
   },
-
   actionGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
   actionGridBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 5,
   },
-
-  actionGridText: {
-    fontSize: 11,
-    fontWeight: "900",
-    marginTop: 4,
-  },
-
-  actionGridTextPrimary: {
-    color: PRIMARY,
-  },
-
-  actionGridTextDanger: {
-    color: "#EF4444",
-  },
-
-  actionGridTextSecondary: {
-    color: SECONDARY,
-  },
-
-  actionGridTextWarning: {
-    color: "#F59E0B",
-  },
-
-  actionGridTextBlue: {
-    color: "#3B82F6",
-  },
+  actionGridText: { fontSize: 11, fontWeight: "900", marginTop: 4 },
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15,23,42,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
   },
-
   billMenuContainer: {
     width: "85%",
     borderRadius: 20,
     backgroundColor: "#FFFFFF",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 20,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
     overflow: "hidden",
   },
-
   billMenuItem: {
     paddingVertical: 18,
     alignItems: "center",
     backgroundColor: "#FFFFFF",
   },
-
   billMenuItemCancel: {
     paddingVertical: 18,
     alignItems: "center",
     backgroundColor: "#F8FAFC",
   },
-
-  billMenuText: {
-    fontSize: 16,
-    color: PRIMARY,
-    fontWeight: "900",
-  },
-
-  billMenuTextCancel: {
-    fontSize: 16,
-    color: "#EF4444",
-    fontWeight: "900",
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-  },
+  billMenuText: { fontSize: 16, color: PRIMARY, fontWeight: "900" },
+  billMenuTextCancel: { fontSize: 16, color: "#EF4444", fontWeight: "900" },
+  divider: { height: 1, backgroundColor: "#F1F5F9" },
 });
-
-export default ShipperPickupDetailScreenStyles;

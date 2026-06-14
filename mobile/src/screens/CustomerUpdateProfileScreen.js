@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  StyleSheet,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +14,7 @@ import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
 import { useUser, apiClient } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
+import styles from "../styles/CustomerUpdateProfileScreenStyles";
 import { CUSTOMER_ENDPOINTS } from "../constants/customerEndpoints";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
@@ -544,167 +544,4 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: Platform.OS === "ios" ? 55 : 35,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 42,
-    borderBottomRightRadius: 42,
-    backgroundColor: PRIMARY,
-    shadowColor: "#ebebeb",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    zIndex: 10,
-  },
-  headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
-
-  headerButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerButtonInner: { justifyContent: "center", alignItems: "center" },
-
-  content: { flex: 1 },
-  contentContainer: { padding: 16, paddingBottom: 120 },
-
-  formCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#0F172A",
-    marginBottom: 16,
-  },
-
-  inputGroup: { marginBottom: 16 },
-  autocompleteGroupTop: { zIndex: 30 },
-  autocompleteGroupMiddle: { zIndex: 20 },
-  autocompleteGroupBottom: { zIndex: 10 },
-  label: { fontSize: 13, color: "#475569", marginBottom: 8, fontWeight: "700" },
-  required: { color: "#EF4444" },
-
-  inputContainer: {
-    minHeight: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: 14,
-    justifyContent: "center",
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  inputContainerDisabled: {
-    opacity: 0.6,
-    backgroundColor: "#F1F5F9",
-  },
-  inputContainerMultiline: {
-    minHeight: 76,
-    paddingVertical: 12,
-    alignItems: "flex-start",
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: "#0F172A",
-    fontWeight: "700",
-    padding: 0,
-  },
-  inputMultiline: { textAlignVertical: "top" },
-
-  autocompleteWrap: {
-    position: "relative",
-  },
-  dropdownContainer: {
-    position: "absolute",
-    top: 58,
-    left: 0,
-    right: 0,
-    maxHeight: 220,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 8,
-    zIndex: 50,
-  },
-  dropdownItem: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  dropdownItemLast: { borderBottomWidth: 0 },
-  dropdownItemText: {
-    color: "#0F172A",
-    fontSize: 15,
-    fontWeight: "700",
-    flex: 1,
-    paddingRight: 10,
-  },
-  dropdownEmptyText: {
-    color: "#64748B",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  saveBtn: {
-    height: 52,
-    borderRadius: 12,
-    backgroundColor: PRIMARY,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveBtnText: { color: "#FFF", fontSize: 15, fontWeight: "900" },
-});

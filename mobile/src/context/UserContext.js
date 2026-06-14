@@ -192,6 +192,23 @@ export const UserProvider = ({ children }) => {
                     const data = JSON.parse(event.data);
                     if (data.event) {
                         DeviceEventEmitter.emit('realtime_event', data);
+
+                        // Global notifications for Shippers
+                        if (user?.is_shipper || user?.role_id === 1 || user?.role_id === 7) {
+                            if (data.event === 'pickup.created' || data.event === 'pickup.bulk_mail_created') {
+                                Toast.show({
+                                    type: "info",
+                                    text1: "Có đơn yêu cầu lấy hàng mới!",
+                                    text2: `Mã đơn/yêu cầu: ${data.payload?.request_code || "N/A"}`
+                                });
+                            } else if (data.event === 'pickup.assigned_shipper') {
+                                Toast.show({
+                                    type: "info",
+                                    text1: "Bạn được phân công 1 đơn lấy hàng!",
+                                    text2: `Mã đơn: ${data.payload?.request_code || "N/A"}`
+                                });
+                            }
+                        }
                     }
                 } catch (err) {
                     console.error('Lỗi parse Realtime WS', err);

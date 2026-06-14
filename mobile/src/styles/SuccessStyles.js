@@ -10,7 +10,7 @@ const SuccessStyles = StyleSheet.create({
     circleBg: {
         width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.secondary,
         justifyContent: 'center', alignItems: 'center',
-        elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3
+        elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.06
     },
 
     contentBox: { width: '100%', alignItems: 'center' },
@@ -20,7 +20,7 @@ const SuccessStyles = StyleSheet.create({
     ticketContainer: {
         width: '100%', backgroundColor: 'white', borderRadius: 12,
         overflow: 'hidden', marginBottom: 40,
-        elevation: 5
+        elevation: 2
     },
     ticketHeader: { backgroundColor: '#e8f5e9', padding: 10, alignItems: 'center' },
     ticketLabel: { color: COLORS.secondary, fontSize: 12, fontWeight: 'bold', letterSpacing: 1 },
@@ -38,7 +38,7 @@ const SuccessStyles = StyleSheet.create({
         backgroundColor: COLORS.secondary,
         height: 55, borderRadius: 30,
         flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-        elevation: 5
+        elevation: 2
     },
     btnPrimaryText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
 

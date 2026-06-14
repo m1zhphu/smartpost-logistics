@@ -117,6 +117,19 @@ export default function CustomerTrackingScreen({ navigation }) {
               }}
             />
           ) : null}
+
+          {item.pod_image_url ? (
+            <Image
+              source={{ uri: item.pod_image_url }}
+              style={{
+                width: "100%",
+                height: 150,
+                borderRadius: 8,
+                marginTop: 10,
+                resizeMode: "cover",
+              }}
+            />
+          ) : null}
         </View>
       </View>
     );

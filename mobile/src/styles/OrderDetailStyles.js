@@ -5,13 +5,13 @@ import { COLORS } from '../constants/colors';
 const { width } = Dimensions.get('window');
 
 const OrderDetailStyles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0a1f13' },
+    container: { flex: 1, backgroundColor: '#F8FAFC'},
     centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a1f13' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, height: 60, marginTop: StatusBar.currentHeight || 20 },
     headerTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
     content: { flex: 1, padding: 15 },
 
-    card: { backgroundColor: '#1d3b2e', padding: 20, borderRadius: 10, alignItems: 'center', marginBottom: 20 },
+    card: { backgroundColor: '#1d3b2e', padding: 20, borderRadius: 16, alignItems: 'center', marginBottom: 20 },
     label: { color: '#aaa', fontSize: 12, marginBottom: 5 },
     trackingNumber: { color: COLORS.secondary, fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
     date: { color: '#888', fontSize: 13, marginBottom: 10 },

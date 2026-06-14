@@ -55,9 +55,9 @@ export default StyleSheet.create({
     alignItems: "center",
     shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
   primaryBtnText: {
     color: "white",

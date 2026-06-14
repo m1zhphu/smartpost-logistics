@@ -32,7 +32,7 @@ import {
   getOcrCustomerPickups,
   getOcrCustomers,
 } from "../services/pickupService";
-import styles from "../styles/HomeStyles";
+import styles from "../styles/ShipperCameraScreenStyles";
 import { useQueue } from "../context/QueueContext";
 import { COLORS } from "../constants/colors";
 import { checkNetworkConnection } from "../utils/networkUtils";

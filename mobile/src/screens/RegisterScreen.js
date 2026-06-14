@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { registerUser } from '../services/authService';
-import styles from '../styles/RegisterStyles';
+import styles from '../styles/RegisterScreenStyles';
 import { COLORS } from '../constants/colors';
 import { checkNetworkConnection } from '../utils/networkUtils';
 

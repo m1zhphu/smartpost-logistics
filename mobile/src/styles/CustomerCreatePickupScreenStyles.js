@@ -10,7 +10,7 @@ const TEXT_PRIMARY = COLORS.textPrimary || "#0F172A";
 const TEXT_SECONDARY = COLORS.textSecondary || "#475569";
 
 export default StyleSheet.create({
-  container: { flex: 1, backgroundColor: SURFACE_MUTED },
+  container: { flex: 1, backgroundColor: '#F8FAFC'},
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -22,15 +22,15 @@ export default StyleSheet.create({
     borderBottomRightRadius: 42,
     backgroundColor: PRIMARY,
     ...Platform.select({
-      ios: { shadowColor: PRIMARY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16 },
-      android: { elevation: 8 },
+      ios: { shadowColor: PRIMARY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 2 },
     }),
   },
   headerButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: "center",
     alignItems: "center",
   },
@@ -109,8 +109,8 @@ export default StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderSoft || "#E2E8F0",
     ...Platform.select({
-      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8 },
-      android: { elevation: 4 },
+      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 2 },
     }),
     zIndex: 100,
   },
@@ -135,7 +135,7 @@ export default StyleSheet.create({
   radioBtnActive: {
     backgroundColor: SURFACE,
     ...Platform.select({
-      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4 },
+      ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
       android: { elevation: 2 },
     }),
   },
@@ -163,7 +163,7 @@ export default StyleSheet.create({
     borderTopColor: COLORS.borderSoft || "#E2E8F0",
     ...Platform.select({
       ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.06, shadowRadius: 8 },
-      android: { elevation: 8 },
+      android: { elevation: 2 },
     }),
   },
   confirmBtn: {
@@ -278,7 +278,7 @@ export default StyleSheet.create({
   secondaryBtnText: { color: TEXT_SECONDARY, fontSize: 14, fontWeight: "800" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
     justifyContent: "flex-end",
   },
   modalSheet: {
@@ -288,8 +288,8 @@ export default StyleSheet.create({
     maxHeight: "75%",
     padding: 20,
     ...Platform.select({
-      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20 },
-      android: { elevation: 20 },
+      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 2 },
     }),
   },
   modalHandle: {

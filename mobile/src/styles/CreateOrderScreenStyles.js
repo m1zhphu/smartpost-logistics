@@ -5,6 +5,7 @@ const PRIMARY = COLORS.primary || "#1B5E20";
 
 export default StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
+  scrollContent: { padding: 16, paddingBottom: 100 },
 
   header: {
     flexDirection: "row",
@@ -13,9 +14,9 @@ export default StyleSheet.create({
     paddingTop: Platform.OS === "ios" ? 55 : 35,
     paddingHorizontal: 20,
     paddingBottom: 22,
+    backgroundColor: PRIMARY,
     borderBottomLeftRadius: 42,
     borderBottomRightRadius: 42,
-    backgroundColor: PRIMARY,
     shadowColor: "#ebebeb",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
@@ -23,7 +24,7 @@ export default StyleSheet.create({
     zIndex: 10,
   },
   headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
 
   headerButton: {
     width: 38,
@@ -39,10 +40,8 @@ export default StyleSheet.create({
   },
   headerButtonInner: { justifyContent: "center", alignItems: "center" },
 
-  content: { flex: 1 },
-  contentContainer: { padding: 16, paddingBottom: 120 },
-
-  formCard: {
+  // Card Phẳng Chuẩn DNA
+  card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
@@ -54,95 +53,48 @@ export default StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-
+  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "900",
     color: "#0F172A",
-    marginBottom: 16,
+    marginLeft: 8,
   },
 
-  inputGroup: { marginBottom: 16 },
-  autocompleteGroupTop: { zIndex: 30 },
-  autocompleteGroupMiddle: { zIndex: 20 },
-  autocompleteGroupBottom: { zIndex: 10 },
-  label: { fontSize: 13, color: "#475569", marginBottom: 8, fontWeight: "700" },
-  required: { color: "#EF4444" },
-
-  inputContainer: {
-    minHeight: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: 14,
-    justifyContent: "center",
+  inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  inputContainerDisabled: {
-    opacity: 0.6,
-    backgroundColor: "#F1F5F9",
-  },
-  inputContainerMultiline: {
-    minHeight: 76,
-    paddingVertical: 12,
-    alignItems: "flex-start",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 52,
   },
   input: {
     flex: 1,
     fontSize: 15,
     color: "#0F172A",
-    fontWeight: "700",
-    padding: 0,
-  },
-  inputMultiline: { textAlignVertical: "top" },
-
-  autocompleteWrap: {
-    position: "relative",
-  },
-  dropdownContainer: {
-    position: "absolute",
-    top: 58,
-    left: 0,
-    right: 0,
-    maxHeight: 220,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-    zIndex: 50,
-  },
-  dropdownItem: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  dropdownItemLast: { borderBottomWidth: 0 },
-  dropdownItemText: {
-    color: "#0F172A",
-    fontSize: 15,
-    fontWeight: "700",
-    flex: 1,
-    paddingRight: 10,
-  },
-  dropdownEmptyText: {
-    color: "#64748B",
-    fontSize: 14,
     fontWeight: "600",
+    paddingVertical: 0,
   },
 
-  bottomBar: {
+  connectorContainer: { alignItems: "center", marginVertical: -16, zIndex: 5 },
+  dottedLine: {
+    width: 1,
+    height: 24,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderStyle: "dashed",
+  },
+  connectorIcon: {
+    marginTop: -4,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+
+  bottomDock: {
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -158,12 +110,13 @@ export default StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  saveBtn: {
+  confirmBtn: {
+    backgroundColor: PRIMARY,
     height: 52,
     borderRadius: 12,
-    backgroundColor: PRIMARY,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  saveBtnText: { color: "#FFF", fontSize: 15, fontWeight: "900" },
+  confirmBtnText: { color: "white", fontWeight: "900", fontSize: 15 },
 });

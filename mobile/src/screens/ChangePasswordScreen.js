@@ -5,36 +5,42 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { apiClient } from "../context/UserContext";
-import { COLORS } from "../constants/colors";
-import styles from "../styles/ChangePasswordScreenStyles";
 import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { apiClient } from "../context/UserContext";
+import { COLORS } from "../constants/colors";
 import { CUSTOMER_ENDPOINTS } from "../constants/customerEndpoints";
 import { WAREHOUSE_ENDPOINTS } from "../constants/warehouseEndpoints";
-
-const PRIMARY = COLORS.primary || "#1B5E20";
+import styles from "../styles/ChangePasswordScreenStyles";
 
 export default function ChangePasswordScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
   const [userType, setUserType] = useState("customer");
 
   useEffect(() => {
     const fetchUserType = async () => {
-      const uType = await AsyncStorage.getItem("user_type");
-      if (uType) {
-        setUserType(uType);
+      const storedUserType = await AsyncStorage.getItem("user_type");
+
+      if (storedUserType) {
+        setUserType(storedUserType);
       }
     };
+
     fetchUserType();
   }, []);
 
@@ -67,6 +73,7 @@ export default function ChangePasswordScreen({ navigation }) {
     }
 
     setLoading(true);
+
     try {
       const url =
         userType === "customer"
@@ -84,10 +91,12 @@ export default function ChangePasswordScreen({ navigation }) {
           text1: "Thành công",
           text2: "Đổi mật khẩu thành công!",
         });
+
         navigation.goBack();
       }
     } catch (error) {
       console.error("Change password error:", error);
+
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -98,118 +107,141 @@ export default function ChangePasswordScreen({ navigation }) {
     }
   };
 
-  const HeaderButton = ({ icon, onPress }) => (
+  const HeaderButton = ({ icon, onPress, disabled }) => (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.headerButton}
+      style={styles.headerBtn}
       activeOpacity={0.7}
+      disabled={disabled}
     >
-      <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={20} color={COLORS.white} />
-      </View>
+      <Ionicons name={icon} size={20} color={COLORS.white} />
     </TouchableOpacity>
   );
 
+  const PasswordInput = ({
+    label,
+    value,
+    onChangeText,
+    placeholder,
+    visible,
+    onToggleVisible,
+  }) => (
+    <View style={styles.formGroup}>
+      <Text style={styles.label}>{label}</Text>
+
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor="#94A3B8"
+          secureTextEntry={!visible}
+          keyboardAppearance="light"
+          underlineColorAndroid="transparent"
+        />
+
+        <TouchableOpacity
+          onPress={onToggleVisible}
+          style={styles.eyeIcon}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={visible ? "eye-outline" : "eye-off-outline"}
+            size={20}
+            color="#94A3B8"
+          />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       <StatusBar style="light" />
 
-      {/* HEADER CHUẨN FORM */}
       <View style={styles.header}>
         <HeaderButton
-          icon="arrow-back"
+          icon="arrow-back-outline"
           onPress={() => navigation.goBack()}
           disabled={loading}
         />
-        <View style={styles.headerCenter}>
+
+        <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Đổi mật khẩu</Text>
+          <Text style={styles.headerSubTitle}>
+            Cập nhật mật khẩu bảo mật tài khoản
+          </Text>
         </View>
-        <View style={{ width: 38 }} />
+
+        <View style={styles.headerRightPlaceholder} />
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.formCard}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mật khẩu hiện tại</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                placeholder="Nhập mật khẩu hiện tại"
-                placeholderTextColor="#94A3B8"
-                secureTextEntry={!showCurrent}
-              />
-              <TouchableOpacity
-                onPress={() => setShowCurrent(!showCurrent)}
-                style={styles.eyeIcon}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={showCurrent ? "eye-outline" : "eye-off-outline"}
-                  size={20}
-                  color="#94A3B8"
-                />
-              </TouchableOpacity>
-            </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.card}>
+          <View style={styles.cardIconBox}>
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={32}
+              color="#1B5E20"
+            />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mật khẩu mới</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="Nhập mật khẩu mới"
-                placeholderTextColor="#94A3B8"
-                secureTextEntry={!showNew}
-              />
-              <TouchableOpacity
-                onPress={() => setShowNew(!showNew)}
-                style={styles.eyeIcon}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={showNew ? "eye-outline" : "eye-off-outline"}
-                  size={20}
-                  color="#94A3B8"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
+          <Text style={styles.cardTitle}>Bảo mật tài khoản</Text>
+          <Text style={styles.cardDesc}>
+            Vui lòng nhập mật khẩu hiện tại và mật khẩu mới để tiếp tục.
+          </Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nhập lại mật khẩu mới</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Xác nhận mật khẩu mới"
-                placeholderTextColor="#94A3B8"
-                secureTextEntry={!showConfirm}
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirm(!showConfirm)}
-                style={styles.eyeIcon}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={showConfirm ? "eye-outline" : "eye-off-outline"}
-                  size={20}
-                  color="#94A3B8"
-                />
-              </TouchableOpacity>
-            </View>
+          <PasswordInput
+            label="Mật khẩu hiện tại"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            placeholder="Nhập mật khẩu hiện tại"
+            visible={showCurrent}
+            onToggleVisible={() => setShowCurrent(!showCurrent)}
+          />
+
+          <PasswordInput
+            label="Mật khẩu mới"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="Nhập mật khẩu mới"
+            visible={showNew}
+            onToggleVisible={() => setShowNew(!showNew)}
+          />
+
+          <PasswordInput
+            label="Nhập lại mật khẩu mới"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Xác nhận mật khẩu mới"
+            visible={showConfirm}
+            onToggleVisible={() => setShowConfirm(!showConfirm)}
+          />
+
+          <View style={styles.noteBox}>
+            <Ionicons
+              name="information-circle-outline"
+              size={18}
+              color="#64748B"
+            />
+            <Text style={styles.noteText}>
+              Mật khẩu mới nên có ít nhất 6 ký tự để đảm bảo an toàn.
+            </Text>
           </View>
         </View>
-      </View>
+      </ScrollView>
 
-      {/* BOTTOM BAR CHUẨN FORM */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
-          style={[styles.saveBtn, loading && { opacity: 0.7 }]}
+          style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
           onPress={handleChangePassword}
           disabled={loading}
           activeOpacity={0.8}
@@ -221,8 +253,6 @@ export default function ChangePasswordScreen({ navigation }) {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
-
-// styles moved to ../styles/ChangePasswordScreenStyles

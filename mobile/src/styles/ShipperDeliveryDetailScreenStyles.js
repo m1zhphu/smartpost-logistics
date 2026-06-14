@@ -3,12 +3,8 @@ import { COLORS } from "../constants/colors";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
-const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-
+export default StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: {
     flex: 1,
     justifyContent: "center",
@@ -27,24 +23,7 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FFFFFF",
   },
-
-  emptyText: {
-    color: "#0F172A",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  backToListButton: {
-    marginTop: 20,
-    backgroundColor: PRIMARY,
-    padding: 12,
-    borderRadius: 12,
-  },
-
-  backToListButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
+  emptyText: { color: "#0F172A", fontSize: 16, fontWeight: "700" },
 
   header: {
     flexDirection: "row",
@@ -58,22 +37,12 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     borderBottomRightRadius: 42,
     shadowColor: "#ebebeb",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     zIndex: 10,
   },
-
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
+  headerCenter: { flex: 1, alignItems: "center" },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
   headerSub: {
     color: "rgba(255,255,255,0.85)",
     fontSize: 12,
@@ -85,29 +54,19 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
   },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
 
-  headerButtonInner: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  scrollContent: { padding: 16, paddingBottom: 120 },
 
-  headerRightPlaceholder: {
-    width: 38,
-  },
-
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 120,
-  },
-
+  // Card Phẳng Chuẩn DNA
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -131,21 +90,13 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     borderBottomColor: "#F1F5F9",
     paddingBottom: 8,
   },
-
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
     gap: 12,
   },
-
-  label: {
-    color: "#64748B",
-    fontSize: 14,
-    flex: 1,
-    fontWeight: "700",
-  },
-
+  label: { color: "#64748B", fontSize: 14, flex: 1, fontWeight: "700" },
   value: {
     color: "#0F172A",
     fontSize: 14,
@@ -153,11 +104,7 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     textAlign: "right",
     fontWeight: "600",
   },
-
-  valueBold: {
-    fontWeight: "900",
-  },
-
+  valueBold: { fontWeight: "900" },
   blockText: {
     color: "#0F172A",
     fontSize: 14,
@@ -176,13 +123,7 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 10,
   },
-
-  imageBtnText: {
-    color: PRIMARY,
-    fontWeight: "900",
-    marginLeft: 8,
-  },
-
+  imageBtnText: { color: PRIMARY, fontWeight: "900", marginLeft: 8 },
   previewHint: {
     color: "#16A34A",
     fontSize: 12,
@@ -190,7 +131,6 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
-
   input: {
     backgroundColor: "#F8FAFC",
     borderWidth: 1,
@@ -203,11 +143,7 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  noteInput: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-
+  // Bottom Bar Chuẩn Form
   bottomBar: {
     position: "absolute",
     bottom: 0,
@@ -224,9 +160,8 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
   },
-
   failBtn: {
     flex: 1,
     backgroundColor: "#FEF2F2",
@@ -236,12 +171,7 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EF4444",
   },
-
-  failText: {
-    color: "#EF4444",
-    fontWeight: "900",
-  },
-
+  failText: { color: "#EF4444", fontWeight: "900" },
   okBtn: {
     flex: 1.5,
     backgroundColor: PRIMARY,
@@ -249,15 +179,5 @@ const ShipperDeliveryDetailScreenStyles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-
-  okText: {
-    color: "white",
-    fontWeight: "900",
-  },
-
-  disabledOpacity: {
-    opacity: 0.7,
-  },
+  okText: { color: "white", fontWeight: "900" },
 });
-
-export default ShipperDeliveryDetailScreenStyles;

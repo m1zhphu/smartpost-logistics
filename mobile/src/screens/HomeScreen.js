@@ -11,14 +11,13 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
+
 import { COLORS } from "../constants/colors";
 import { useQueue } from "../context/QueueContext";
 import { useUser } from "../context/UserContext";
 import GlobalChat from "../components/GlobalChat";
 import NotificationModal from "../components/NotificationModal";
 import styles from "../styles/HomeScreenStyles";
-
-const PRIMARY = COLORS.primary || "#1B5E20";
 
 export default function HomeScreen({ navigation }) {
   const {
@@ -29,7 +28,9 @@ export default function HomeScreen({ navigation }) {
     unreadCount,
     toggleUserOnlineStatus,
   } = useUser();
+
   const { clearQueue } = useQueue();
+
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 
@@ -57,6 +58,7 @@ export default function HomeScreen({ navigation }) {
 
   const handleFeaturePress = async (screenName) => {
     const userType = await AsyncStorage.getItem("user_type");
+
     if (userType === "employee") {
       Alert.alert(
         "Tính năng chưa phát triển",
@@ -64,13 +66,12 @@ export default function HomeScreen({ navigation }) {
       );
       return;
     }
+
     navigation.navigate(screenName);
   };
 
   const handleToggleOnline = () => {
-    if (!isShipperRole) {
-      return;
-    }
+    if (!isShipperRole) return;
 
     const nextStatus = !user?.is_online;
     const note = nextStatus ? "Bắt đầu ca làm" : "Kết thúc ca làm";
@@ -87,7 +88,11 @@ export default function HomeScreen({ navigation }) {
               const { shipperService } = require("../services/shipper");
               await shipperService.toggleAvailability(nextStatus, note);
               toggleUserOnlineStatus(nextStatus);
-              Toast.show({ type: "success", text1: "Đã cập nhật trạng thái" });
+
+              Toast.show({
+                type: "success",
+                text1: "Đã cập nhật trạng thái",
+              });
             } catch (error) {
               Toast.show({
                 type: "error",
@@ -112,18 +117,21 @@ export default function HomeScreen({ navigation }) {
     <TouchableOpacity
       style={styles.gridCard}
       onPress={onPress}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
       disabled={isMenuVisible || isNotifModalVisible}
     >
       <View style={[styles.cardBadge, { backgroundColor: bgColor }]}>
         <Text style={[styles.cardBadgeText, { color }]}>{badgeText}</Text>
       </View>
+
       <View style={[styles.gridIconBox, { backgroundColor: bgColor }]}>
         <Ionicons name={icon} size={28} color={color} />
       </View>
+
       <Text style={styles.gridCardTitle} numberOfLines={2}>
         {title}
       </Text>
+
       <Text style={styles.gridCardDesc} numberOfLines={1}>
         {desc}
       </Text>
@@ -148,6 +156,7 @@ export default function HomeScreen({ navigation }) {
                 })
               }
             />
+
             <MenuItem
               title="Hub xác nhận"
               desc="Xác nhận chuyển"
@@ -162,6 +171,7 @@ export default function HomeScreen({ navigation }) {
               }
             />
           </View>
+
           <View style={styles.rowWrapper}>
             <MenuItem
               title="Chờ gán bưu tá"
@@ -171,9 +181,12 @@ export default function HomeScreen({ navigation }) {
               bgColor="#FEF3C7"
               badgeText="ĐIỀU PHỐI"
               onPress={() =>
-                navigation.navigate("AdminPickupFlow", { initialTab: "assign" })
+                navigation.navigate("AdminPickupFlow", {
+                  initialTab: "assign",
+                })
               }
             />
+
             <MenuItem
               title="OCR Túi thư"
               desc="Mở túi, OCR bill"
@@ -184,6 +197,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate("OcrPickupCustomer")}
             />
           </View>
+
           <View style={styles.rowWrapper}>
             <MenuItem
               title="Tracking"
@@ -200,50 +214,27 @@ export default function HomeScreen({ navigation }) {
     }
 
     return (
-      <>
-        <View style={styles.rowWrapper}>
-          <MenuItem
-            title="Đơn lấy hàng"
-            desc="Danh sách cần lấy"
-            icon="cube-outline"
-            color="#0284C7"
-            bgColor="#E0F2FE"
-            badgeText="NGHIỆP VỤ"
-            onPress={() => handleFeaturePress("ShipperPickupList")}
-          />
-          <MenuItem
-            title="Tự điều phối"
-            desc="Nhận đơn quét mã"
-            icon="git-pull-request-outline"
-            color="#10B981"
-            bgColor="#D1FAE5"
-            badgeText="NGHIỆP VỤ"
-            onPress={() => handleFeaturePress("ShipperSelfAssignPickup")}
-          />
-        </View>
-        <View style={styles.rowWrapper}>
-          <MenuItem
-            title="Giao hàng"
-            desc="Danh sách cần giao"
-            icon="paper-plane-outline"
-            color="#D97706"
-            bgColor="#FEF3C7"
-            badgeText="NGHIỆP VỤ"
-            onPress={() => handleFeaturePress("ShipperDeliveryList")}
-          />
-        </View>
-        <View style={styles.rowWrapper}>
-          <MenuItem
-            title="Tracking"
-            desc="Tra cứu hành trình"
-            icon="search-outline"
-            color="#8B5CF6"
-            bgColor="#EDE9FE"
-            badgeText="CÔNG CỤ"
-            onPress={() => handleFeaturePress("ShipperTracking")}
-          />
-        </View>
-      </>
+      <View style={styles.rowWrapper}>
+        <MenuItem
+          title="Đơn lấy hàng"
+          desc="Danh sách cần lấy"
+          icon="cube-outline"
+          color="#0284C7"
+          bgColor="#E0F2FE"
+          badgeText="NGHIỆP VỤ"
+          onPress={() => handleFeaturePress("ShipperPickupList")}
+        />
+
+        <MenuItem
+          title="Giao hàng"
+          desc="Danh sách cần giao"
+          icon="paper-plane-outline"
+          color="#D97706"
+          bgColor="#FEF3C7"
+          badgeText="NGHIỆP VỤ"
+          onPress={() => handleFeaturePress("ShipperDeliveryList")}
+        />
+      </View>
     );
   };
 
@@ -254,6 +245,7 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.header}>
         <View style={styles.headerTextGroup}>
           <Text style={styles.greeting}>Xin chào,</Text>
+
           <Text style={styles.userName}>
             {user?.full_name || user?.username || "Nhân viên"}
           </Text>
@@ -275,6 +267,7 @@ export default function HomeScreen({ navigation }) {
                 },
               ]}
             />
+
             <Text style={styles.roleText}>
               {isShipperRole
                 ? user?.is_online
@@ -285,13 +278,14 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={() => setIsNotifModalVisible(true)}
             style={styles.appleCircleBtn}
             activeOpacity={0.7}
           >
             <Ionicons name="notifications" size={20} color="#FFF" />
+
             {unreadCount > 0 && (
               <View style={styles.appleBadge}>
                 <Text style={styles.appleBadgeText}>
@@ -303,7 +297,7 @@ export default function HomeScreen({ navigation }) {
 
           <TouchableOpacity
             onPress={() => setIsMenuVisible(true)}
-            style={[styles.appleCircleBtn, { marginLeft: 12 }]}
+            style={[styles.appleCircleBtn, styles.menuButtonSpacing]}
             activeOpacity={0.7}
           >
             <Ionicons name="options-outline" size={20} color="#FFF" />
@@ -336,14 +330,14 @@ export default function HomeScreen({ navigation }) {
       >
         <Pressable
           style={styles.menuOverlay}
-          onPress={(e) => {
-            e.stopPropagation();
+          onPress={(event) => {
+            event.stopPropagation();
             setIsMenuVisible(false);
           }}
         >
           <Pressable
             style={styles.dropdownMenu}
-            onPress={(e) => e.stopPropagation()}
+            onPress={(event) => event.stopPropagation()}
           >
             {isWarehouseStaff() && (
               <>
@@ -362,8 +356,10 @@ export default function HomeScreen({ navigation }) {
                       color="#4B5563"
                     />
                   </View>
-                  <Text style={styles.menuText}>Giao dien Kho</Text>
+
+                  <Text style={styles.menuText}>Giao diện Kho</Text>
                 </TouchableOpacity>
+
                 <View style={styles.menuDivider} />
               </>
             )}
@@ -376,17 +372,11 @@ export default function HomeScreen({ navigation }) {
               }}
               activeOpacity={0.7}
             >
-              <View
-                style={[styles.menuIconBox, { backgroundColor: "#FEF2F2" }]}
-              >
+              <View style={[styles.menuIconBox, styles.logoutMenuIconBox]}>
                 <Ionicons name="log-out-outline" size={20} color="#EF4444" />
               </View>
-              <Text
-                style={[
-                  styles.menuText,
-                  { color: "#EF4444", fontWeight: "700" },
-                ]}
-              >
+
+              <Text style={[styles.menuText, styles.logoutMenuText]}>
                 Đăng xuất
               </Text>
             </TouchableOpacity>
@@ -398,5 +388,3 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 }
-
-// styles moved to ../styles/HomeScreenStyles

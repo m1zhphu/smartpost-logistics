@@ -30,7 +30,7 @@ const CreateOrderStyles = StyleSheet.create({
     content: { flex: 1, padding: 15 },
 
     card: {
-        backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16,
         padding: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)'
     },
     activeCard: {
@@ -67,7 +67,7 @@ const CreateOrderStyles = StyleSheet.create({
         backgroundColor: COLORS.secondary, borderRadius: 30, height: 50,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3, elevation: 5
+        shadowOpacity: 0.06, elevation: 2
     },
     confirmBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
 });

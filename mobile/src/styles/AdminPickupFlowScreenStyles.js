@@ -1,166 +1,98 @@
-import { Platform, StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 import { COLORS } from "../constants/colors";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
-const WHITE = COLORS.white || "#FFFFFF";
-const SURFACE = COLORS.surface || "#FFFFFF";
-const SURFACE_SOFT = COLORS.surfaceSoft || "#F8FAFC";
-const SURFACE_MUTED = COLORS.surfaceMuted || "#F1F5F9";
 
-const shadow = {
-  ...Platform.select({
-    ios: {
-      shadowColor: COLORS.primaryDark || PRIMARY,
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.12,
-      shadowRadius: 20,
-    },
-    android: {
-      elevation: 5,
-    },
-  }),
-};
-
-const AdminPickupFlowScreenStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: SURFACE_MUTED,
-  },
+export default StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: Platform.OS === "ios" ? 52 : 38,
-    paddingHorizontal: 16,
-    paddingBottom: 18,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    overflow: "hidden",
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    backgroundColor: PRIMARY,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    zIndex: 10,
   },
-
-  headerOrbOne: {
-    position: "absolute",
-    top: -80,
-    right: -40,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: "rgba(255,255,255,0.16)",
-  },
-
-  headerOrbTwo: {
-    position: "absolute",
-    left: -35,
-    bottom: -70,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-
-  headerLine: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 48 : 32,
-    left: 24,
-    right: 24,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.36)",
+  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 12 },
+  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
+  headerSub: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
+    textAlign: "center",
   },
 
   headerButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
-  },
-
-  headerButtonInner: {
     alignItems: "center",
-    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
   },
-
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-    paddingHorizontal: 12,
-  },
-
-  headerTitle: {
-    color: WHITE,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
-  headerSub: {
-    color: "rgba(255,255,255,0.84)",
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 3,
-    textAlign: "center",
-  },
+  headerButtonInner: { justifyContent: "center", alignItems: "center" },
 
   tabRow: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 10,
+    marginTop: 16,
+    marginBottom: 8,
   },
-
   tabButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 18,
+    borderRadius: 12,
     marginRight: 8,
-    backgroundColor: COLORS.borderSoft || "#E2E8F0",
+    backgroundColor: "#F1F5F9",
   },
-
-  tabButtonActive: {
-    backgroundColor: PRIMARY,
-  },
-
+  tabButtonActive: { backgroundColor: PRIMARY },
   tabText: {
     textAlign: "center",
-    color: COLORS.textSecondary || "#64748B",
+    color: "#64748B",
     fontWeight: "800",
-    fontSize: 13,
+    fontSize: 12,
   },
+  tabTextActive: { color: "#FFFFFF" },
 
-  tabTextActive: {
-    color: WHITE,
-  },
-
+  // Card Phẳng Chuẩn DNA
   summaryCard: {
     marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 14,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.92)",
-    ...shadow,
+    borderColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
-  summaryLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary || "#64748B",
-    fontWeight: "700",
-  },
-
+  summaryLabel: { fontSize: 12, color: "#64748B", fontWeight: "700" },
   summaryValue: {
     fontSize: 28,
     color: PRIMARY,
     fontWeight: "900",
     marginTop: 2,
   },
-
   summaryHint: {
     fontSize: 12,
-    color: COLORS.textSecondary || "#64748B",
+    color: "#475569",
     fontWeight: "700",
     marginTop: 6,
   },
@@ -172,296 +104,196 @@ const AdminPickupFlowScreenStyles = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
+  // Empty State Chuẩn
   emptyIconBox: {
-    width: 74,
-    height: 74,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    alignItems: "center",
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: "rgba(245, 249, 255, 0.8)",
     justifyContent: "center",
-    marginBottom: 14,
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
   },
-
   emptyText: {
     textAlign: "center",
-    color: COLORS.textSecondary || "#64748B",
-    fontWeight: "800",
+    color: "#64748B",
+    fontWeight: "700",
+    fontSize: 14,
   },
 
-  listContent: {
-    padding: 16,
-    paddingBottom: 120,
-  },
-
-  cardShadow: {
-    borderRadius: 24,
-    marginBottom: 14,
-    ...shadow,
-  },
+  listContent: { padding: 16, paddingBottom: 120 },
 
   card: {
-    borderRadius: 24,
-    padding: 15,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
-    overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.84)",
-    marginBottom: 14,
-    ...shadow,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+    marginBottom: 16,
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
-  cardChecked: {
-    borderColor: "rgba(15,61,38,0.32)",
-  },
-
-  cardTopLine: {
-    position: "absolute",
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.96)",
-  },
-
+  cardChecked: { borderColor: PRIMARY, backgroundColor: "#F0FDF4" },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 12,
     gap: 10,
   },
-
-  cardTitleWrap: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-
-  checkboxIcon: {
-    marginRight: 8,
-  },
-
-  cardTitleContent: {
-    flex: 1,
-  },
-
-  requestCode: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: COLORS.textPrimary || "#0F172A",
-  },
-
-  subCode: {
-    fontSize: 12,
-    color: COLORS.textSecondary || "#64748B",
-    marginTop: 4,
-    fontWeight: "700",
-  },
-
-  cardBadgeGroup: {
-    alignItems: "flex-end",
-    gap: 4,
-  },
+  cardTitleWrap: { flex: 1, flexDirection: "row", alignItems: "flex-start" },
+  requestCode: { fontSize: 15, fontWeight: "900", color: "#0F172A" },
+  subCode: { fontSize: 12, color: "#64748B", marginTop: 4, fontWeight: "700" },
 
   statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
     alignSelf: "flex-start",
   },
-
-  statusText: {
-    fontSize: 11,
-    fontWeight: "900",
-  },
-
+  statusText: { fontSize: 10, fontWeight: "900" },
   sourcePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
     alignSelf: "flex-start",
     marginTop: 4,
   },
-
-  sourcePillText: {
-    fontSize: 11,
-    fontWeight: "900",
-  },
+  sourcePillText: { fontSize: 10, fontWeight: "800" },
 
   metaRow: {
-    marginTop: 8,
-  },
-
-  metaLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary || "#64748B",
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-
-  metaValue: {
-    fontSize: 14,
-    color: COLORS.textPrimary || "#0F172A",
-    fontWeight: "700",
-    lineHeight: 20,
-  },
-
-  actionRow: {
     flexDirection: "row",
-    marginTop: 14,
-    gap: 10,
+    justifyContent: "space-between",
+    marginBottom: 8,
+    gap: 12,
+  },
+  metaLabel: { fontSize: 13, color: "#64748B", fontWeight: "600", flex: 1 },
+  metaValue: {
+    fontSize: 13,
+    color: "#0F172A",
+    fontWeight: "700",
+    flex: 1.2,
+    textAlign: "right",
   },
 
+  actionRow: { flexDirection: "row", marginTop: 16, gap: 12 },
   secondaryAction: {
     flex: 1,
-    minHeight: 44,
-    borderRadius: 16,
+    minHeight: 48,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: COLORS.borderMuted || "#CBD5E1",
+    borderColor: "#E2E8F0",
   },
-
-  secondaryActionText: {
-    color: COLORS.textSecondary || "#64748B",
-    fontWeight: "900",
-  },
-
+  secondaryActionText: { color: "#64748B", fontWeight: "800" },
   primaryActionWrap: {
-    flex: 1.2,
-    borderRadius: 16,
-    overflow: "hidden",
-    minHeight: 44,
+    flex: 1.5,
+    borderRadius: 12,
+    backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 48,
   },
-
-  primaryAction: {
-    backgroundColor: PRIMARY,
-  },
-
-  rejectAction: {
+  rejectActionWrap: {
+    flex: 1.5,
+    borderRadius: 12,
     backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
   },
+  primaryActionText: { color: "#FFFFFF", fontWeight: "900" },
 
-  primaryActionText: {
-    color: WHITE,
-    fontWeight: "900",
-  },
+  uploadActions: { flexDirection: "row", gap: 12, marginBottom: 16 },
 
-  uploadActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-
-  pickedPreviewImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-
+  // Bottom Bar Chuẩn Form
   bottomBar: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    padding: 14,
-    paddingBottom: Platform.OS === "ios" ? 24 : 18,
+    padding: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.88)",
-    backgroundColor: "rgba(255,255,255,0.84)",
+    borderTopColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
-  dispatchButtonWrap: {
-    borderRadius: 18,
-    overflow: "hidden",
-  },
-
   dispatchButton: {
-    minHeight: 50,
-    borderRadius: 18,
+    minHeight: 52,
+    borderRadius: 12,
+    backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: PRIMARY,
   },
-
-  dispatchButtonText: {
-    color: WHITE,
-    fontWeight: "900",
-    fontSize: 15,
-  },
-
-  disabledBtn: {
-    opacity: 0.65,
-  },
+  dispatchButtonText: { color: "#FFFFFF", fontWeight: "900", fontSize: 15 },
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15,23,42,0.3)",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
     justifyContent: "center",
     padding: 20,
   },
-
   modalCard: {
     maxHeight: "70%",
-    borderRadius: 22,
-    backgroundColor: SURFACE,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
     padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
-  rejectCard: {
-    borderRadius: 22,
-    backgroundColor: SURFACE,
-    padding: 16,
-  },
-
   modalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
-    color: COLORS.textPrimary || "#0F172A",
-    marginBottom: 14,
+    color: "#0F172A",
+    marginBottom: 16,
   },
 
   modalItem: {
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderSoft || "#E2E8F0",
+    borderBottomColor: "#F1F5F9",
   },
-
-  modalItemTitle: {
-    fontSize: 15,
-    color: COLORS.textPrimary || "#0F172A",
-    fontWeight: "800",
-  },
-
+  modalItemTitle: { fontSize: 15, color: "#0F172A", fontWeight: "800" },
   modalItemSub: {
     fontSize: 12,
-    color: COLORS.textSecondary || "#64748B",
+    color: "#64748B",
     fontWeight: "700",
     marginTop: 4,
   },
-
   emptyModalText: {
-    color: COLORS.textSecondary || "#64748B",
+    color: "#64748B",
     fontWeight: "700",
+    textAlign: "center",
+    marginVertical: 20,
   },
 
   noteInput: {
     minHeight: 110,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.borderMuted || "#CBD5E1",
-    backgroundColor: SURFACE_SOFT,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
     paddingHorizontal: 14,
     paddingVertical: 12,
     textAlignVertical: "top",
-    color: COLORS.textPrimary || "#0F172A",
-    marginBottom: 14,
+    color: "#0F172A",
+    marginBottom: 16,
+    fontWeight: "600",
   },
 });
-
-export default AdminPickupFlowScreenStyles;
