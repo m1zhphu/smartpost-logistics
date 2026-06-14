@@ -4,9 +4,7 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
-  StyleSheet,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +21,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import { parseExcelFile, processExcelRows } from "../utils/excelParser";
 import { useUser } from "../context/UserContext";
+import styles from "../styles/CustomerPickupDraftsScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
@@ -30,6 +29,20 @@ const buildFullAddress = (detail, ward, district, province) =>
   [detail, ward?.name, district?.name, province?.name]
     .filter(Boolean)
     .join(", ");
+
+const buildBulkReceiverPayload = (draft) => {
+  const firstItem = draft.bulk_draft_items?.[0] || {};
+  const hasReceiver =
+    Number(draft.bulk_estimated_quantity) === 1 &&
+    (firstItem.receiver_name || firstItem.receiver_phone || firstItem.receiver_address);
+
+  if (!hasReceiver) return null;
+  return {
+    name: firstItem.receiver_name || null,
+    phone: firstItem.receiver_phone || null,
+    address: firstItem.receiver_address || "",
+  };
+};
 
 const buildPickupPayload = (draft) => ({
   order_type: "DOMESTIC",
@@ -285,7 +298,14 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
             sender: {
               name: draft.sender.name,
               phone: draft.sender.phone,
-              address: draft.sender.address_detail,
+              address: [
+                draft.sender.address_detail,
+                draft.sender.ward_name,
+                draft.sender.district_name,
+                draft.sender.province_name,
+              ]
+                .filter(Boolean)
+                .join(", "),
               province_id: Number(draft.sender.province_id),
               district_id: Number(draft.sender.district_id),
               ward_id: draft.sender.ward_id
@@ -296,6 +316,10 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
               ward_name: draft.sender.ward_name,
             },
             draft_items: draft.bulk_draft_items,
+            receiver: buildBulkReceiverPayload(draft),
+            pickup_time: draft.pickup_time || null,
+            target_hub_id: draft.target_hub_id ? Number(draft.target_hub_id) : null,
+            note: draft.note || null,
           };
 
           const res = await createCustomerBulkMailPickup(bulkPayload);
@@ -533,183 +557,4 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: Platform.OS === "ios" ? 55 : 35,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 42,
-    borderBottomRightRadius: 42,
-    backgroundColor: PRIMARY,
-    shadowColor: "#ebebeb",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    zIndex: 10,
-  },
-  headerButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerButtonInner: { justifyContent: "center", alignItems: "center" },
-  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
-  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 13,
-    marginTop: 2,
-    fontWeight: "600",
-  },
-
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  listContent: { padding: 16, paddingBottom: 120 },
-
-  // Empty State chuẩn Form
-  emptyIconBox: {
-    width: 66,
-    height: 66,
-    borderRadius: 22,
-    backgroundColor: "rgba(241,245,249,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#0F172A",
-    marginBottom: 8,
-  },
-  emptyText: {
-    textAlign: "center",
-    color: "#64748B",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  // Card Phẳng Chuẩn DNA
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardChecked: {
-    borderColor: PRIMARY,
-    backgroundColor: "#F0FDF4", // Màu xanh lá siêu nhạt để nhận biết đã chọn
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  checkBox: { marginRight: 12 },
-  title: { fontSize: 15, fontWeight: "800", color: "#0F172A", marginBottom: 4 },
-  subText: { fontSize: 13, color: "#64748B", fontWeight: "600" },
-
-  deleteBtn: {
-    padding: 8,
-    backgroundColor: "#FEE2E2",
-    borderRadius: 10,
-    marginLeft: 10,
-  },
-  editBtn: {
-    padding: 8,
-    backgroundColor: "#E0F2FE",
-    borderRadius: 10,
-    marginLeft: 10,
-  },
-  divider: { height: 1, backgroundColor: "#F1F5F9", marginBottom: 12 },
-  meta: { fontSize: 13, color: "#64748B", marginBottom: 4 },
-
-  outlineBtn: {
-    marginTop: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    width: 200,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: PRIMARY,
-    backgroundColor: "#FFFFFF",
-  },
-  outlineBtnHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: PRIMARY,
-    backgroundColor: "#FFFFFF",
-    marginBottom: 16,
-  },
-  outlineBtnText: { color: PRIMARY, fontSize: 14, fontWeight: "800" },
-
-  // Bottom Dock Chuẩn Form
-  bottomDock: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  primaryBtn: {
-    flex: 1.5,
-    backgroundColor: PRIMARY,
-    height: 52,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 10,
-  },
-  primaryBtnText: { color: "white", fontSize: 15, fontWeight: "900" },
-  secondaryBtn: {
-    flex: 1,
-    backgroundColor: "#F1F5F9",
-    height: 52,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  secondaryBtnText: { color: "#475569", fontSize: 15, fontWeight: "800" },
-});
+// styles moved to ../styles/CustomerPickupDraftsScreenStyles

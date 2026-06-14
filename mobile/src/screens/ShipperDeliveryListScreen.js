@@ -4,13 +4,13 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
+import styles from "../styles/ShipperDeliveryListScreenStyles";
 import { getDeliveryTasks } from "../services/deliveryService";
 import {
   formatCurrency,
@@ -176,159 +176,4 @@ export default function ShipperDeliveryListScreen({ navigation }) {
 }
 
 // STYLES CHUẨN DNA
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-
-  header: {
-    flexDirection: "row",
-    backgroundColor: PRIMARY,
-    paddingTop: Platform.OS === "ios" ? 55 : 35,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomLeftRadius: 42,
-    borderBottomRightRadius: 42,
-    shadowColor: "#ebebeb",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    zIndex: 10,
-  },
-  headerCenter: { alignItems: "center", flex: 1 },
-  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
-  headerSub: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: "700",
-  },
-
-  headerButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerButtonInner: { justifyContent: "center", alignItems: "center" },
-
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-  // Empty State Chuẩn
-  emptyIconBox: {
-    width: 66,
-    height: 66,
-    borderRadius: 22,
-    backgroundColor: "rgba(241,245,249,0.8)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-  },
-  emptyText: {
-    color: "#0F172A",
-    fontSize: 16,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-
-  listContent: { padding: 16, paddingBottom: 30 },
-
-  // Card Phẳng Chuẩn DNA
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    paddingBottom: 12,
-    marginBottom: 12,
-  },
-  codeBlock: { flex: 1, paddingRight: 10 },
-  code: { fontWeight: "900", fontSize: 16, color: PRIMARY },
-  sub: { marginTop: 4, fontSize: 12, color: "#64748B", fontWeight: "600" },
-
-  statusPill: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: "rgba(27,94,32,0.15)",
-    backgroundColor: "#F0FDF4",
-  },
-  status: {
-    fontWeight: "900",
-    fontSize: 11,
-    color: PRIMARY,
-    textAlign: "right",
-  },
-
-  cardBody: {},
-  infoLine: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 10,
-  },
-  infoIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  line: {
-    fontSize: 13,
-    color: "#64748B",
-    flex: 1,
-    fontWeight: "600",
-    lineHeight: 22,
-  },
-
-  metaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-    gap: 10,
-  },
-  metaPill: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: "#64748B",
-    marginBottom: 4,
-    fontWeight: "700",
-  },
-  metaValue: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
-  metaValueDanger: { color: "#EF4444" },
-});
+// styles moved to ../styles/ShipperDeliveryListScreenStyles

@@ -3,11 +3,11 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  StyleSheet,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
@@ -82,11 +82,17 @@ const AutocompleteInput = ({
   );
   const limitedData = filteredData.slice(0, 8);
   const shouldShowDropdown = isFocused && !disabled;
-  const shouldShowEmpty = shouldShowDropdown && value.trim() && !limitedData.length;
+  const shouldShowEmpty =
+    shouldShowDropdown && value.trim() && !limitedData.length;
 
   return (
     <View style={styles.autocompleteWrap}>
-      <View style={[styles.inputContainer, disabled && styles.inputContainerDisabled]}>
+      <View
+        style={[
+          styles.inputContainer,
+          disabled && styles.inputContainerDisabled,
+        ]}
+      >
         <TextInput
           style={styles.input}
           value={value}

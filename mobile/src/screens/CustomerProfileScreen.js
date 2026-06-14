@@ -3,15 +3,14 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Platform,
   ScrollView,
   ActivityIndicator,
-  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
+import styles from "../styles/CustomerProfileScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
@@ -148,138 +147,4 @@ export default function CustomerProfileScreen({ navigation }) {
 }
 
 // STYLES CHUẨN DNA
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: Platform.OS === "ios" ? 55 : 35,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 42,
-    borderBottomRightRadius: 42,
-    backgroundColor: PRIMARY,
-    shadowColor: "#ebebeb",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    zIndex: 10,
-  },
-  headerButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerButtonInner: { justifyContent: "center", alignItems: "center" },
-  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
-  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
-
-  content: { flex: 1 },
-  contentContainer: { paddingBottom: 30, paddingTop: 16 },
-
-  // Card Phẳng Chuẩn DNA
-  profileCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 16,
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  avatarPlaceholder: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-    backgroundColor: "#F0FDF4",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  avatarText: { fontSize: 34, fontWeight: "900", color: PRIMARY },
-  userName: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#0F172A",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  userRole: {
-    fontSize: 13,
-    color: "#64748B",
-    marginBottom: 20,
-    fontWeight: "700",
-  },
-
-  editBtn: {
-    height: 48,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-  },
-  editBtnText: {
-    color: "#FFF",
-    fontWeight: "800",
-    marginLeft: 8,
-    fontSize: 14,
-  },
-
-  infoSection: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#0F172A",
-    marginBottom: 20,
-  },
-
-  infoRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#F1F5F9",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  infoContent: { flex: 1 },
-  infoLabel: {
-    fontSize: 12,
-    color: "#64748B",
-    marginBottom: 2,
-    fontWeight: "700",
-  },
-  infoValue: { fontSize: 14, color: "#0F172A", fontWeight: "800" },
-});
+// styles moved to ../styles/CustomerProfileScreenStyles

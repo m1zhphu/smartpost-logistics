@@ -1,0 +1,565 @@
+import { StyleSheet, Platform } from "react-native";
+import { COLORS } from "../constants/colors";
+
+const PRIMARY = COLORS.primary || "#1B5E20";
+const SECONDARY = COLORS.secondary || "#0F766E";
+
+const ShipperPickupDetailScreenStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+
+  flex1: {
+    flex: 1,
+  },
+
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+
+  emptyIconBox: {
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+  },
+
+  errorText: {
+    color: "#0F172A",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 20,
+  },
+
+  backButton: {
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+
+  backButtonText: {
+    color: "white",
+    fontWeight: "900",
+    fontSize: 14,
+  },
+
+  header: {
+    flexDirection: "row",
+    backgroundColor: PRIMARY,
+    paddingTop: Platform.OS === "ios" ? 55 : 35,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomLeftRadius: 42,
+    borderBottomRightRadius: 42,
+    shadowColor: "#ebebeb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    zIndex: 10,
+  },
+
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  headerTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
+  headerButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+
+  headerButtonInner: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 120,
+  },
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    paddingBottom: 8,
+  },
+
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    gap: 12,
+  },
+
+  columnRow: {
+    marginBottom: 12,
+  },
+
+  label: {
+    color: "#64748B",
+    fontSize: 14,
+    flex: 1,
+    fontWeight: "600",
+  },
+
+  value: {
+    color: "#0F172A",
+    fontSize: 14,
+    flex: 1.2,
+    textAlign: "right",
+    fontWeight: "700",
+  },
+
+  valueBold: {
+    fontWeight: "900",
+  },
+
+  valueBlock: {
+    color: "#0F172A",
+    fontSize: 14,
+    marginTop: 6,
+    lineHeight: 22,
+    fontWeight: "700",
+  },
+
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+
+  actionButtonSpacer: {
+    marginRight: 10,
+  },
+
+  primaryButtonWrap: {
+    flex: 1,
+    borderRadius: 12,
+  },
+
+  primaryButtonGreen: {
+    backgroundColor: "#10B981",
+  },
+
+  primaryButtonBlue: {
+    backgroundColor: "#3B82F6",
+  },
+
+  primaryButtonInner: {
+    minHeight: 46,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  primaryButtonText: {
+    color: "white",
+    fontWeight: "900",
+    fontSize: 14,
+    marginLeft: 6,
+  },
+
+  uploadActions: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
+
+  secondaryButtonWrap: {
+    flex: 1,
+    borderRadius: 12,
+  },
+
+  secondaryButtonSpacer: {
+    marginRight: 10,
+  },
+
+  secondaryButtonInner: {
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+  },
+
+  secondaryButtonText: {
+    color: PRIMARY,
+    fontWeight: "800",
+    marginLeft: 6,
+    fontSize: 14,
+  },
+
+  placeholderBox: {
+    height: 180,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+  },
+
+  placeholderText: {
+    marginTop: 8,
+    color: "#64748B",
+    fontWeight: "700",
+  },
+
+  previewImage: {
+    width: "100%",
+    height: 220,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  noteInputContainer: {
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+  },
+
+  noteInput: {
+    minHeight: 90,
+    padding: 14,
+    textAlignVertical: "top",
+    color: "#0F172A",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  quantityWrap: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
+  },
+
+  quantityInfoCard: {
+    flex: 0.8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  quantityInputCard: {
+    flex: 1.2,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+  },
+
+  quantityLabel: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+
+  quantityValue: {
+    color: PRIMARY,
+    fontSize: 24,
+    fontWeight: "900",
+  },
+
+  quantityInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+
+  quickCountActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+
+  quickCountBtn: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+
+  quickCountBtnNeutral: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#BBF7D0",
+  },
+
+  quickCountBtnWarn: {
+    backgroundColor: "#FFF7ED",
+    borderColor: "#FED7AA",
+  },
+
+  quickCountBtnText: {
+    fontSize: 13,
+    fontWeight: "900",
+  },
+
+  quickCountTextNeutral: {
+    color: "#059669",
+  },
+
+  quickCountTextWarn: {
+    color: "#C2410C",
+  },
+
+  childWaybillList: {
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingTop: 14,
+  },
+
+  childWaybillTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 10,
+  },
+
+  childWaybillEmpty: {
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  childWaybillRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    padding: 12,
+    marginBottom: 8,
+  },
+
+  childWaybillIndex: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+
+  childWaybillIndexText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#64748B",
+  },
+
+  childWaybillContent: {
+    flex: 1,
+  },
+
+  childWaybillCode: {
+    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  childWaybillMeta: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 3,
+  },
+
+  uploadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+  },
+
+  uploadingText: {
+    color: "#475569",
+    fontSize: 13,
+    marginLeft: 8,
+    fontWeight: "700",
+  },
+
+  disabledBtn: {
+    opacity: 0.7,
+  },
+
+  bottomDock: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    padding: 10,
+    paddingBottom: Platform.OS === "ios" ? 25 : 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+
+  actionGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  actionGridBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 5,
+  },
+
+  actionGridText: {
+    fontSize: 11,
+    fontWeight: "900",
+    marginTop: 4,
+  },
+
+  actionGridTextPrimary: {
+    color: PRIMARY,
+  },
+
+  actionGridTextDanger: {
+    color: "#EF4444",
+  },
+
+  actionGridTextSecondary: {
+    color: SECONDARY,
+  },
+
+  actionGridTextWarning: {
+    color: "#F59E0B",
+  },
+
+  actionGridTextBlue: {
+    color: "#3B82F6",
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+
+  billMenuContainer: {
+    width: "85%",
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
+    overflow: "hidden",
+  },
+
+  billMenuItem: {
+    paddingVertical: 18,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+
+  billMenuItemCancel: {
+    paddingVertical: 18,
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+  },
+
+  billMenuText: {
+    fontSize: 16,
+    color: PRIMARY,
+    fontWeight: "900",
+  },
+
+  billMenuTextCancel: {
+    fontSize: 16,
+    color: "#EF4444",
+    fontWeight: "900",
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+  },
+});
+
+export default ShipperPickupDetailScreenStyles;

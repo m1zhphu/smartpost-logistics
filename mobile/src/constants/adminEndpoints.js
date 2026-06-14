@@ -24,6 +24,7 @@ export const ADMIN_ENDPOINTS = {
   OCR_CUSTOMER_PICKUPS: (customerId) => `${API_BASE_URL}/api/waybills/mobile/ocr/customers/${customerId}/pickups`,
   OCR_BAG_WAYBILLS: (bagCode) => `${API_BASE_URL}/api/waybills/mobile/ocr/bags/${bagCode}/waybills`,
   OCR_UPDATE_WAYBILL: (waybillCode) => `${API_BASE_URL}/api/waybills/mobile/ocr/waybills/${waybillCode}`,
+  OCR_VERIFY_WAYBILL: (waybillCode) => `${API_BASE_URL}/api/waybills/${waybillCode}/verify`,
   OCR_EXTRA_WAYBILLS: (bagCode) => `${API_BASE_URL}/api/waybills/mobile/ocr/bags/${bagCode}/extra-waybills`,
   GET_AVAILABLE_PICKUPS: `${API_BASE_URL}/api/delivery/mobile/shipper/available-pickups`, // MOCK
   SELF_ASSIGN_PICKUP: `${API_BASE_URL}/api/delivery/mobile/shipper/self-assign`, // MOCK

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, SectionList, TouchableOpacity, StyleSheet,
+  View, Text, SectionList, TouchableOpacity,
   ActivityIndicator, Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -9,13 +9,22 @@ import Toast from 'react-native-toast-message';
 import { COLORS } from '../constants/colors';
 import { getOcrCustomerPickups } from '../services/pickupService';
 import { formatDateTime } from '../utils/pickupHelpers';
+import styles from '../styles/OcrPickupListScreenStyles';
 
 const PRIMARY = COLORS.primary || '#1B5E20';
 
 const OCR_STATUS_CONFIG = {
   PENDING: { label: 'Chờ OCR', color: '#64748B', bg: '#F8FAFC' },
   INCOMPLETE: { label: 'Thiếu thông tin', color: '#D97706', bg: '#FEF3C7' },
+  VERIFIED: { label: 'Đã duyệt', color: '#059669', bg: '#DCFCE7' },
   REVIEW: { label: 'Đã OCR xong', color: '#059669', bg: '#D1FAE5' },
+};
+
+const getWaybillOcrState = (waybill) => {
+  if (waybill?.verify_status === 'VERIFIED' || waybill?.status === 'PICKED_PENDING_VERIFY') {
+    return 'VERIFIED';
+  }
+  return waybill?.ocr_status || 'PENDING';
 };
 
 const MATERIALIZATION_CONFIG = {
@@ -55,7 +64,7 @@ export default function OcrPickupListScreen({ route, navigation }) {
   );
 
   const getOcrProgress = (waybills = []) => {
-    const done = waybills.filter(w => w.ocr_status === 'REVIEW').length;
+    const done = waybills.filter(w => getWaybillOcrState(w) !== 'PENDING').length;
     return { done, total: waybills.length };
   };
 
@@ -119,7 +128,7 @@ export default function OcrPickupListScreen({ route, navigation }) {
   };
 
   const renderSingleWaybill = ({ item }) => {
-    const ocrCfg = OCR_STATUS_CONFIG[item.ocr_status] || OCR_STATUS_CONFIG.PENDING;
+    const ocrCfg = OCR_STATUS_CONFIG[getWaybillOcrState(item)] || OCR_STATUS_CONFIG.PENDING;
     return (
       <TouchableOpacity
         style={styles.waybillCard}
@@ -187,75 +196,4 @@ export default function OcrPickupListScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: {
-    flexDirection: 'row', backgroundColor: PRIMARY,
-    paddingTop: Platform.OS === 'ios' ? 55 : 35,
-    paddingHorizontal: 20, paddingBottom: 22,
-    alignItems: 'center', justifyContent: 'space-between',
-    borderBottomLeftRadius: 42, borderBottomRightRadius: 42,
-    shadowColor: '#ebebeb', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 5, zIndex: 10,
-  },
-  headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
-  headerTitle: { color: 'white', fontSize: 17, fontWeight: '900' },
-  headerSubtitle: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '600', marginTop: 2 },
-  headerButton: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyIconBox: { width: 66, height: 66, borderRadius: 22, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  emptyText: { color: '#0F172A', fontSize: 16, fontWeight: '800', textAlign: 'center' },
-  listContent: { padding: 16, paddingBottom: 30 },
-  sectionHeader: { backgroundColor: '#F8FAFC', paddingVertical: 8, paddingHorizontal: 4, marginBottom: 8, marginTop: 4 },
-  sectionHeaderText: { fontSize: 13, fontWeight: '900', color: '#475569', letterSpacing: 0.5, textTransform: 'uppercase' },
-  // Bag card
-  bagCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0',
-    shadowColor: '#64748B', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-  },
-  bagCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  bagIconBox: {
-    width: 42, height: 42, borderRadius: 12,
-    backgroundColor: `${PRIMARY}10`, alignItems: 'center',
-    justifyContent: 'center', marginRight: 10, borderWidth: 1, borderColor: `${PRIMARY}25`,
-  },
-  bagCardInfo: { flex: 1 },
-  bagCode: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
-  bagMeta: { fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 2 },
-  statusBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1 },
-  statusBadgeText: { fontSize: 10, fontWeight: '900' },
-  progressSection: { marginBottom: 12 },
-  progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  progressLabel: { fontSize: 12, fontWeight: '700', color: '#475569' },
-  progressPct: { fontSize: 12, fontWeight: '900', color: PRIMARY },
-  progressBar: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
-  bagFooter: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  countPill: {
-    flex: 1, backgroundColor: '#F8FAFC', borderRadius: 10,
-    paddingVertical: 8, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center',
-  },
-  countLabel: { fontSize: 10, fontWeight: '700', color: '#64748B', marginBottom: 2 },
-  countValue: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
-  openBagBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: PRIMARY, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
-  },
-  openBagBtnText: { color: '#FFF', fontSize: 12, fontWeight: '900' },
-  // Single waybill card
-  waybillCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
-    marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0', elevation: 1,
-  },
-  waybillRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  waybillCode: { fontSize: 14, fontWeight: '900', color: PRIMARY },
-  ocrBadge: { borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
-  ocrBadgeText: { fontSize: 10, fontWeight: '900' },
-  waybillMeta: { fontSize: 12, fontWeight: '600', color: '#64748B' },
-});
+// styles moved to ../styles/OcrPickupListScreenStyles

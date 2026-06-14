@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   Image,
   FlatList,
-  StyleSheet,
   Modal,
   ActivityIndicator,
+  StyleSheet,
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";

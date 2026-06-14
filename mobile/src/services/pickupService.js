@@ -379,6 +379,18 @@ export const patchOcrWaybill = async (waybillCode, data) => {
     }
 };
 
+export const verifyOcrWaybill = async (waybillCode, action = 'VERIFIED', errorMsg) => {
+    try {
+        const response = await apiClient.patch(ADMIN_ENDPOINTS.OCR_VERIFY_WAYBILL(waybillCode), {
+            action,
+            error_msg: errorMsg || null,
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
 export const createOcrExtraWaybills = async (bagCode, count, note) => {
     try {
         const response = await apiClient.post(ADMIN_ENDPOINTS.OCR_EXTRA_WAYBILLS(bagCode), {

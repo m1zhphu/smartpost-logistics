@@ -4,9 +4,7 @@ import {
   Text,
   TouchableOpacity,
   Animated,
-  StyleSheet,
   Dimensions,
-  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +12,7 @@ import { CommonActions } from "@react-navigation/native";
 import { useQueue } from "../context/QueueContext";
 import { checkNetworkConnection } from "../utils/networkUtils";
 import { COLORS } from "../constants/colors";
+import styles from "../styles/SuccessScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 const { width } = Dimensions.get("window");
@@ -153,113 +152,4 @@ export default function SuccessScreen({ navigation, route }) {
   );
 }
 
-// STYLES CHUẨN DNA
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-
-  // Card Phẳng Chuẩn DNA
-  card: {
-    width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 24,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-
-  iconContainer: { marginBottom: 20, marginTop: -60 },
-  circleBg: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: "#10B981", // Xanh lá báo thành công
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 6,
-    borderColor: "#FFFFFF",
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-
-  title: { fontSize: 24, fontWeight: "900", color: "#0F172A", marginBottom: 8 },
-  subtitle: {
-    fontSize: 14,
-    color: "#64748B",
-    textAlign: "center",
-    marginBottom: 24,
-    fontWeight: "600",
-    lineHeight: 22,
-    paddingHorizontal: 10,
-  },
-
-  ticketContainer: {
-    width: "100%",
-    backgroundColor: "#F8FAFC",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 20,
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  ticketHeader: { marginBottom: 8 },
-  ticketLabel: {
-    fontSize: 12,
-    color: "#64748B",
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  ticketBody: { marginBottom: 16 },
-  trackingCode: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: PRIMARY,
-    letterSpacing: 1,
-  },
-  dashedLine: {
-    width: "100%",
-    height: 1,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderStyle: "dashed",
-    marginBottom: 12,
-  },
-  ticketFooter: { flexDirection: "row", alignItems: "center", gap: 6 },
-  ticketFooterText: { fontSize: 13, color: "#64748B", fontWeight: "700" },
-
-  buttonGroup: { width: "100%", gap: 12 },
-  btnPrimary: {
-    backgroundColor: PRIMARY,
-    height: 52,
-    borderRadius: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnPrimaryText: { color: "white", fontWeight: "900", fontSize: 15 },
-  btnOutline: {
-    backgroundColor: "#FFFFFF",
-    height: 52,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  btnOutlineText: { color: "#475569", fontWeight: "800", fontSize: 15 },
-});
+// styles moved to ../styles/SuccessScreenStyles

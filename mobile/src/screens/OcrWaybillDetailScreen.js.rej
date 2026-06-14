@@ -1,0 +1,63 @@
+diff a/mobile/src/screens/OcrWaybillDetailScreen.js b/mobile/src/screens/OcrWaybillDetailScreen.js	(rejected hunks)
+@@ -219,20 +220,32 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
+   };
+ 
+   const handleSave = async () => {
+-    if (!form.receiver_name.trim() || !form.receiver_phone.trim()) {
++    if (
++      !form.receiver_name.trim() ||
++      !form.receiver_phone.trim() ||
++      !form.receiver_address.trim()
++    ) {
+       Toast.show({
+         type: "error",
+         text1: "Thiếu thông tin cơ bản",
+-        text2: "Vui lòng nhập tên và SDT người nhận.",
++        text2: "Vui lòng nhập tên, SDT và địa chỉ người nhận.",
++      });
++      return;
++    }
++
++    if (!form.actual_weight || Number(form.actual_weight) <= 0) {
++      Toast.show({
++        type: "error",
++        text1: "Thiếu khối lượng",
++        text2: "Trọng lượng thực tế phải lớn hơn 0.",
+       });
+       return;
+     }
+ 
+     setSaving(true);
+     const result = await patchOcrWaybill(waybillCode, buildPayload());
+-    setSaving(false);
+-
+     if (!result.success) {
++      setSaving(false);
+       Toast.show({
+         type: "error",
+         text1: "Không lưu được OCR",
+@@ -241,10 +254,22 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
+       return;
+     }
+ 
++    const verifyResult = await verifyOcrWaybill(waybillCode, "VERIFIED");
++    setSaving(false);
++
++    if (!verifyResult.success) {
++      Toast.show({
++        type: "error",
++        text1: "Đã lưu OCR nhưng chưa verify",
++        text2: verifyResult.message,
++      });
++      return;
++    }
++
+     Toast.show({
+       type: "success",
+-      text1: "Đã cập nhật vận đơn",
+-      text2: `Trạng thái OCR: ${result.data?.ocr_status || "REVIEW"}`,
++      text1: "Đã duyệt OCR thành công",
++      text2: verifyResult.data?.verify_status || "VERIFIED",
+     });
+     navigation.goBack();
+   };

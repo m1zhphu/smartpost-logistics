@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
+  Alert,
   View,
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { getCustomerPickups } from "../services/pickupService";
+import styles from "../styles/CustomerPickupListScreenStyles";
 import {
   formatCurrency,
   formatDateTime,
@@ -43,6 +43,17 @@ export default function CustomerPickupListScreen({ navigation }) {
       setPickups(result.data || []);
     }
     setLoading(false);
+  };
+
+  const openPickupDetail = (waybillCode) => {
+    if (!waybillCode) {
+      Alert.alert(
+        "Chưa có vận đơn chi tiết",
+        "Yêu cầu này đang chờ hệ thống khởi tạo vận đơn chi tiết. Bạn vui lòng thử lại sau.",
+      );
+      return;
+    }
+    navigation.navigate("CustomerPickupDetail", { waybillCode });
   };
 
   const groupedPickups = useMemo(() => {
@@ -118,17 +129,15 @@ export default function CustomerPickupListScreen({ navigation }) {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() =>
-          navigation.navigate("CustomerPickupDetail", {
-            waybillCode: primaryWaybill?.waybill_code || item.waybill_code,
-          })
-        }
+        onPress={() => openPickupDetail(primaryWaybill?.waybill_code || item.waybill_code)}
         activeOpacity={0.8}
       >
         <View style={styles.cardHeader}>
           <View style={styles.codeBlock}>
-            <Text style={styles.waybillCode}>{item.bag_code || item.waybill_code}</Text>
-            <Text style={styles.requestCode}>YC: {item.request_code}</Text>
+            <Text style={styles.waybillCode}>
+              {item.bag_code || item.waybill_code || "Yêu cầu đang xử lý"}
+            </Text>
+            <Text style={styles.requestCode}>YC: {item.request_code || "---"}</Text>
           </View>
 
           <View
@@ -187,17 +196,13 @@ export default function CustomerPickupListScreen({ navigation }) {
         </View>
         {item.waybills?.length > 1 ? (
           <View style={styles.chipsWrap}>
-            {item.waybills.map((w) => (
+            {item.waybills.map((w, index) => (
               <TouchableOpacity
-                key={w.waybill_code}
+                key={w.waybill_code || `${item.request_code || item.bag_code}-wb-${index}`}
                 style={styles.chip}
-                onPress={() =>
-                  navigation.navigate("CustomerPickupDetail", {
-                    waybillCode: w.waybill_code,
-                  })
-                }
+                onPress={() => openPickupDetail(w.waybill_code)}
               >
-                <Text style={styles.chipText}>{w.waybill_code}</Text>
+                <Text style={styles.chipText}>{w.waybill_code || `Mã con ${index + 1}`}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -236,7 +241,9 @@ export default function CustomerPickupListScreen({ navigation }) {
       ) : (
         <FlatList
           data={groupedPickups}
-          keyExtractor={(item) => item.request_code}
+          keyExtractor={(item) =>
+            String(item.request_code || item.bag_code || item.waybill_code)
+          }
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -247,194 +254,4 @@ export default function CustomerPickupListScreen({ navigation }) {
 }
 
 // STYLES CHUẨN DNA
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: Platform.OS === "ios" ? 55 : 35,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 42,
-    borderBottomRightRadius: 42,
-    backgroundColor: PRIMARY,
-    shadowColor: "#ebebeb",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    zIndex: 10,
-  },
-  headerButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerButtonInner: { justifyContent: "center", alignItems: "center" },
-  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
-  headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
-
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-
-  // Empty State Chuẩn
-  emptyIconBox: {
-    width: 66,
-    height: 66,
-    borderRadius: 22,
-    backgroundColor: "rgba(241,245,249,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#0F172A",
-    marginBottom: 8,
-  },
-  emptyText: {
-    textAlign: "center",
-    color: "#64748B",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  listContent: { padding: 16, paddingBottom: 30 },
-
-  // Card Phẳng Chuẩn DNA
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    paddingBottom: 12,
-    marginBottom: 12,
-  },
-  codeBlock: { flex: 1, paddingRight: 10 },
-  waybillCode: { fontWeight: "900", fontSize: 16, color: SECONDARY },
-  requestCode: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#64748B",
-    fontWeight: "600",
-  },
-
-  statusPill: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-  },
-  statusText: { fontWeight: "800", fontSize: 11, textAlign: "right" },
-
-  cardBody: {},
-  infoLine: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 10,
-  },
-  infoIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  infoText: {
-    fontSize: 13,
-    color: "#334155",
-    flex: 1,
-    fontWeight: "600",
-    lineHeight: 22,
-  },
-
-  priceSection: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-    gap: 8,
-  },
-  pricePill: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  pricePillLabel: {
-    fontSize: 11,
-    color: "#64748B",
-    marginBottom: 4,
-    fontWeight: "700",
-  },
-  pricePillValue: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
-  priceSuccess: { color: "#16A34A" },
-  priceDanger: { color: "#EF4444" },
-
-  priceHintBox: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 8,
-    backgroundColor: "#FEF9C3",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FEF08A",
-  },
-  priceHint: {
-    fontSize: 11,
-    color: "#854D0E",
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  chipsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 10,
-  },
-  chip: {
-    backgroundColor: "#E0F2FE",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  chipText: {
-    color: "#0369A1",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-});
+// styles moved to ../styles/CustomerPickupListScreenStyles
