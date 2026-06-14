@@ -68,12 +68,10 @@ def create_bulk_mail_pickup(
     target_hub_id: int | None,
 ):
     product_type = normalize_product_type(data.product_type)
-    if product_type not in {"DOCUMENT", "PARCEL"}:
-        raise ValueError("Pickup hàng loạt chỉ hỗ trợ thư từ/tài liệu hoặc bưu phẩm, bưu kiện")
 
     request = models.BookingRequests(
         request_code=generate_waybill_code(db),
-        source="PORTAL",
+        source=(getattr(data, "source", None) or "PORTAL").upper(),
         customer_id=customer.customer_id,
         sender_phone=data.sender.phone or customer.phone_number,
         pickup_address=data.sender.address or customer.address_detail,
@@ -83,7 +81,7 @@ def create_bulk_mail_pickup(
         actual_quantity=0,
         pickup_mode="BULK_MAIL",
         materialization_status="PENDING",
-        status="PENDING_CONFIRMATION",
+        status="RECEIVED" if target_hub_id else "PENDING_CONFIRMATION",
         requested_pickup_time=data.pickup_time,
         pickup_method="OUR_STAFF_PICKUP",
         priority="NORMAL",
@@ -111,7 +109,8 @@ def create_bulk_mail_pickup(
             receiver_ward_name=receiver.ward_name if receiver else None,
             origin_hub_id=target_hub_id,
             holding_hub_id=target_hub_id,
-            service_type="STANDARD",
+            service_type=getattr(data, "service_type", None) or "STANDARD",
+            payment_method=getattr(data, "payment_method", None) or "SENDER_DEBT",
             actual_weight=0,
             cod_amount=0,
             shipping_fee=0,
@@ -549,6 +548,9 @@ def customer_pickup_payload(request: models.BookingRequests, waybill: models.Way
         # Weights
         "estimated_weight": float(waybill.estimated_weight or 0),
         "actual_weight": float(waybill.actual_weight) if waybill.actual_weight is not None else None,
+        "ocr_status": waybill.ocr_status,
+        "bill_image_url": waybill.bill_image_url,
+        "pickup_image_url": waybill.pickup_image_url,
 
         # Items List
         "items": items,
@@ -642,7 +644,24 @@ def upsert_waybill_from_ocr(db: Session, data: dict, fee: float, hub_id: int, us
     }
     filtered = {k: v for k, v in data.items() if k in ALLOWED_FIELDS}
 
-    from core.constants import WaybillStatus
+    from core.state_machine import WaybillStatus
+
+    def apply_ocr_review_status(target):
+        missing_fields = []
+        if not (target.receiver_name or '').strip():
+            missing_fields.append('receiver_name')
+        if not (target.receiver_phone or '').strip():
+            missing_fields.append('receiver_phone')
+        if not (target.receiver_address or '').strip():
+            missing_fields.append('receiver_address')
+        if float(target.actual_weight or 0) <= 0:
+            missing_fields.append('actual_weight')
+
+        target.ocr_status = 'REVIEW' if not missing_fields else 'INCOMPLETE'
+        target.verify_status = 'PENDING'
+        target.verify_error_msg = None if not missing_fields else ','.join(missing_fields)
+        target.status = WaybillStatus.PICKED_PENDING_VERIFY if not missing_fields else WaybillStatus.PENDING_OCR
+        return missing_fields
     
     if waybill:
         # UPSERT: Update existing waybill
@@ -668,9 +687,11 @@ def upsert_waybill_from_ocr(db: Session, data: dict, fee: float, hub_id: int, us
 
         waybill.version += 1
         
-        # Change status to PICKED_UP if not already delivered/cancelled
+        # Move the OCR result into the admin review queue.
         if waybill.status not in [WaybillStatus.DELIVERED, WaybillStatus.CANCELLED]:
-            waybill.status = WaybillStatus.PICKED_UP
+            missing_fields = apply_ocr_review_status(waybill)
+        else:
+            missing_fields = []
             
         db.flush()
         
@@ -702,7 +723,7 @@ def upsert_waybill_from_ocr(db: Session, data: dict, fee: float, hub_id: int, us
         # Log pickup action
         new_log = models.TrackingLogs(
             waybill_id=waybill.waybill_id,
-            status_id=WaybillStatus.PICKED_UP,
+            status_id=waybill.status,
             hub_id=hub_id,
             user_id=user_id,
             system_time=datetime.utcnow(),
@@ -717,8 +738,8 @@ def upsert_waybill_from_ocr(db: Session, data: dict, fee: float, hub_id: int, us
         # UPSERT: Create new waybill
         new_waybill = create_waybill_record(db, data, fee)
         
-        # Also mark as picked up
-        new_waybill.status = WaybillStatus.PICKED_UP
+        # New OCR waybills must also wait for admin review.
+        missing_fields = apply_ocr_review_status(new_waybill)
         db.flush()
         
         # Log creation
@@ -727,7 +748,7 @@ def upsert_waybill_from_ocr(db: Session, data: dict, fee: float, hub_id: int, us
         # Log pickup
         pickup_log = models.TrackingLogs(
             waybill_id=new_waybill.waybill_id,
-            status_id=WaybillStatus.PICKED_UP,
+            status_id=new_waybill.status,
             hub_id=hub_id,
             user_id=user_id,
             system_time=datetime.utcnow(),

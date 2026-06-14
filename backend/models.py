@@ -558,10 +558,47 @@ class BookingRequests(Base):
         return sum(float(item.waybill.estimated_weight or 0) for item in bag.bag_items if item.waybill)
 
     @property
+    def waybill_items(self):
+        source_waybills = []
+        if self.pickup_bag:
+            source_waybills = [
+                item.waybill
+                for item in sorted(self.pickup_bag.bag_items, key=lambda item: item.bag_item_id or 0)
+                if item.waybill
+            ]
+        else:
+            source_waybills = sorted(self.waybills or [], key=lambda waybill: waybill.waybill_id or 0)
+
+        return [
+            {
+                "waybill_id": waybill.waybill_id,
+                "waybill_code": waybill.waybill_code,
+                "status": waybill.status,
+                "receiver_name": waybill.receiver_name,
+                "receiver_phone": waybill.receiver_phone,
+                "receiver_address": waybill.receiver_address,
+            }
+            for waybill in source_waybills
+        ]
+
+    @property
     def latest_request_at(self):
         if not self.logs:
             return None
         return max((log.created_at for log in self.logs if log.created_at), default=None)
+
+    @property
+    def created_at(self):
+        if self.logs:
+            first_log_at = min((log.created_at for log in self.logs if log.created_at), default=None)
+            if first_log_at:
+                return first_log_at
+        return (
+            self.requested_pickup_time
+            or self.confirmed_at
+            or self.pickup_assigned_at
+            or self.dispatched_at
+        )
 
 
 class BookingRequestLogs(Base):

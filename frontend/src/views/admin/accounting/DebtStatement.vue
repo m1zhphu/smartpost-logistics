@@ -302,7 +302,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onActivated } from 'vue';
+import { useRoute } from 'vue-router';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
@@ -312,6 +313,7 @@ import {
 } from '@element-plus/icons-vue';
 
 // --- STATE ---
+const route = useRoute();
 const loading = ref(false);
 const creating = ref(false);
 const waybills = ref([]);
@@ -432,13 +434,55 @@ const generateCode = () => {
   newStatement.value.custom_code = `BK-${date}-${rand}`;
 };
 
-onMounted(generateCode);
+const normalizeListResponse = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+};
+
+const resetVolatileState = () => {
+  loading.value = false;
+  creating.value = false;
+  overrideSubmitting.value = false;
+  loadingAdjustments.value = false;
+  adjustmentsDialogVisible.value = false;
+  overrideDialogVisible.value = false;
+  adjustmentsList.value = [];
+  selectedStmtForAdj.value = null;
+  waybills.value = [];
+  generateCode();
+};
+
+const loadCustomers = async () => {
+  try {
+    const res = await api.get('/api/customers');
+    customers.value = normalizeListResponse(res.data);
+  } catch (err) {
+    customers.value = [];
+    console.error('Lỗi tải khách hàng:', err);
+    ElMessage.error('Không thể tải danh sách khách hàng');
+  }
+};
+
+const initializePage = async () => {
+  resetVolatileState();
+  await loadCustomers();
+};
+
 onMounted(async () => {
   try {
     const res = await api.get('/api/customers');
-    customers.value = res.data;
+    customers.value = normalizeListResponse(res.data);
   } catch (err) {
     console.error('Lỗi tải khách hàng:', err);
+  }
+});
+
+onMounted(initializePage);
+onActivated(() => {
+  if (route.name === 'DebtStatement') {
+    loadCustomers();
   }
 });
 
@@ -456,7 +500,7 @@ const fetchWaybills = async () => {
       size: 1000
     });
     // BE trả về { items: [], total: 0 } cho endpoint /api/waybills
-    const items = res.data.items || res.data;
+    const items = normalizeListResponse(res.data);
     waybills.value = items.map(w => ({ ...w, selected: false }));
   } catch (err) {
     ElMessage.error('Lỗi tải vận đơn');
@@ -552,7 +596,7 @@ const exportStatement = async (stmt, format = 'xlsx') => {
 
 const printStatement = (stmt) => {
   // Tìm thông tin khách hàng
-  const customer = customers.value.find(c => c.customer_id === stmt.customer_id) || {};
+  const customer = normalizeListResponse(customers.value).find(c => c.customer_id === stmt.customer_id) || {};
   const customerName = customer.company_name || 'Khách hàng lẻ';
   const customerPhone = customer.phone_number || 'N/A';
   const customerAddress = customer.address_detail || 'N/A';

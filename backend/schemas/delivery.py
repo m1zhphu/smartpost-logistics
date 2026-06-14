@@ -8,6 +8,9 @@ class AssignShipperRequest(BaseModel):
     waybill_codes: List[str]
     shipper_id: int
 
+class DevelopmentPrepareDeliveryRequest(BaseModel):
+    waybill_codes: List[str] = Field(min_length=1)
+
 class DeliverySuccessRequest(BaseModel):
     waybill_code: str
     actual_cod_collected: float = Field(ge=0)
@@ -216,6 +219,7 @@ class BookingRequestResponse(BaseModel):
     pickup_mode: str = "SINGLE_WAYBILL"
     actual_quantity: int = 0
     materialization_status: Optional[str] = None
+    waybill_items: List[dict] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

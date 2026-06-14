@@ -3,9 +3,12 @@ from sqlalchemy.orm import Session
 from datetime import date, datetime
 from typing import List, Optional
 import pandas as pd
+import logging
 from io import BytesIO
 from fastapi.responses import StreamingResponse
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+from sqlalchemy import and_, or_
+from decimal import Decimal
 
 from core.database import get_db
 from core.security import get_current_user
@@ -14,10 +17,16 @@ from core.realtime import realtime_manager
 from core.product_types import get_product_type_catalog, get_product_type_definition, normalize_product_type
 import schemas.waybills as schema_wb
 import crud.waybills as crud_wb
-from core.permissions import PermissionChecker
+import crud.delivery as crud_delivery
 import models
 
 router = APIRouter(prefix="/api/waybills", tags=["Waybill Management"])
+logger = logging.getLogger(__name__)
+
+
+def _require_ocr_admin_role(current_user: dict):
+    if current_user.get("role_id") not in [1, 2, 3, 7]:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền xử lý vận đơn OCR")
 
 
 @router.get("/product-types")
@@ -248,6 +257,201 @@ def search_waybills(
 
 
 # --- 2.1. TIMELINE VẬN ĐƠN ---
+@router.get("/ocr-reviewed")
+def list_ocr_reviewed_waybills(
+    q: Optional[str] = None,
+    ocr_status: Optional[str] = None,
+    customer_id: Optional[int] = None,
+    hub_id: Optional[int] = None,
+    page: int = 1,
+    size: int = 20,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    _require_ocr_admin_role(current_user)
+    statuses = [ocr_status] if ocr_status else ["REVIEW", "INCOMPLETE"]
+    page = max(1, page)
+    size = min(max(1, size), 100)
+
+    ocr_filter = models.Waybills.ocr_status.in_(statuses)
+    if not ocr_status:
+        # Tuong thich cac don da OCR bang endpoint cu: status da PICKED_UP
+        # nhung ocr_status van bi de PENDING.
+        ocr_filter = or_(
+            ocr_filter,
+            and_(
+                models.Waybills.status.in_(["PICKED_UP", "PICKED_PENDING_VERIFY"]),
+                or_(
+                    models.Waybills.ocr_status.is_(None),
+                    models.Waybills.ocr_status == "PENDING",
+                ),
+                or_(
+                    models.Waybills.verify_status.is_(None),
+                    models.Waybills.verify_status != "VERIFIED",
+                ),
+            ),
+        )
+
+    query = (
+        db.query(models.Waybills)
+        .outerjoin(models.Customers, models.Customers.customer_id == models.Waybills.customer_id)
+        .filter(
+            models.Waybills.is_deleted == False,
+            ocr_filter,
+        )
+    )
+    query = _apply_hub_scope_for_ocr(query, current_user, hub_id)
+
+    if customer_id:
+        query = query.filter(models.Waybills.customer_id == customer_id)
+    if q:
+        keyword = f"%{q.strip()}%"
+        query = query.filter(or_(
+            models.Waybills.waybill_code.ilike(keyword),
+            models.Waybills.receiver_name.ilike(keyword),
+            models.Waybills.receiver_phone.ilike(keyword),
+            models.Waybills.receiver_address.ilike(keyword),
+            models.Customers.customer_code.ilike(keyword),
+            models.Customers.company_name.ilike(keyword),
+            models.Customers.transaction_name.ilike(keyword),
+        ))
+
+    try:
+        total = query.count()
+        rows = (
+            query
+            .order_by(models.Waybills.waybill_id.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+            .all()
+        )
+        logger.info(
+            "OCR queue loaded user_id=%s role_id=%s hub_id=%s total=%s page=%s",
+            current_user.get("user_id"),
+            current_user.get("role_id"),
+            current_user.get("primary_hub_id"),
+            total,
+            page,
+        )
+        return {"items": [_waybill_ocr_payload(row) for row in rows], "total": total, "page": page, "size": size}
+    except Exception:
+        logger.exception(
+            "Không thể tải danh sách OCR user_id=%s hub_id=%s",
+            current_user.get("user_id"),
+            current_user.get("primary_hub_id"),
+        )
+        raise HTTPException(status_code=500, detail="Không thể tải danh sách vận đơn OCR")
+
+
+@router.get("/ocr-reviewed/{waybill_code}")
+def get_ocr_reviewed_waybill(
+    waybill_code: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    _require_ocr_admin_role(current_user)
+    waybill = db.query(models.Waybills).filter(
+        models.Waybills.waybill_code == waybill_code,
+        models.Waybills.is_deleted == False,
+    ).first()
+    if not waybill:
+        raise HTTPException(status_code=404, detail="Khong tim thay van don OCR")
+    if not _can_access_waybill_ocr(current_user, waybill):
+        raise HTTPException(status_code=403, detail="Khong co quyen xem van don OCR nay")
+    return _waybill_ocr_payload(waybill)
+
+
+@router.post("/{waybill_code}/finalize-from-ocr")
+def finalize_waybill_from_ocr(
+    waybill_code: str,
+    data: schema_wb.OcrFinalizeRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    _require_ocr_admin_role(current_user)
+    waybill = db.query(models.Waybills).filter(
+        models.Waybills.waybill_code == waybill_code,
+        models.Waybills.is_deleted == False,
+    ).first()
+    if not waybill:
+        raise HTTPException(status_code=404, detail="Khong tim thay van don OCR")
+    if not _can_access_waybill_ocr(current_user, waybill):
+        raise HTTPException(status_code=403, detail="Khong co quyen hoan thien van don OCR nay")
+    effective_ocr_status = _effective_ocr_status(waybill)
+    if effective_ocr_status not in ["REVIEW", "INCOMPLETE"]:
+        raise HTTPException(status_code=400, detail="Van don khong con nam trong hang cho OCR")
+
+    try:
+        payload = data.model_dump(exclude_unset=True)
+        for field in [
+            "customer_id", "origin_hub_id", "dest_hub_id",
+            "sender_name", "sender_phone", "sender_address",
+            "receiver_name", "receiver_phone", "receiver_address",
+            "service_type", "product_name", "payment_method", "note",
+        ]:
+            if field in payload:
+                setattr(waybill, field, payload[field])
+
+        def decimal_value(value) -> Decimal:
+            return Decimal(str(value or 0))
+
+        weight = decimal_value(data.actual_weight)
+        waybill.actual_weight = weight
+        waybill.estimated_weight = weight
+        waybill.final_weight = weight
+        waybill.length = decimal_value(data.length)
+        waybill.width = decimal_value(data.width)
+        waybill.height = decimal_value(data.height)
+        waybill.cod_amount = decimal_value(data.cod_amount)
+
+        fee = decimal_value(data.shipping_fee)
+        extra_fee = decimal_value(waybill.extra_services_fee)
+        vat_amount = decimal_value(waybill.vat_amount)
+        waybill.estimated_shipping_fee = fee
+        waybill.final_shipping_fee = fee
+        waybill.shipping_fee = fee
+        waybill.total_amount_to_collect = fee + extra_fee + vat_amount + waybill.cod_amount
+
+        item = waybill.waybill_items[0] if waybill.waybill_items else None
+        if not item:
+            item = models.WaybillItems(
+                waybill_id=waybill.waybill_id,
+                parcel_code=f"{waybill.waybill_code}-1",
+                quantity=1,
+            )
+            db.add(item)
+        item.product_name = data.product_name or waybill.product_name or item.product_name
+        item.product_group = normalize_product_type(data.product_group or item.product_group or "PARCEL")
+        item.actual_weight = weight
+        item.length = decimal_value(data.length)
+        item.width = decimal_value(data.width)
+        item.height = decimal_value(data.height)
+        item.declared_value = decimal_value(data.declared_value)
+
+        waybill.status = "CREATED"
+        waybill.ocr_status = "CONVERTED"
+        waybill.verify_status = "VERIFIED"
+        waybill.version = (waybill.version or 1) + 1
+        db.add(models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id=waybill.status,
+            hub_id=waybill.origin_hub_id or current_user.get("primary_hub_id"),
+            user_id=current_user["user_id"],
+            system_time=datetime.utcnow(),
+            note="Admin hoan thien van don tu OCR",
+        ))
+        db.commit()
+        db.refresh(waybill)
+        return _waybill_ocr_payload(waybill)
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        logger.exception("Khong the hoan thien van don OCR waybill_code=%s", waybill_code)
+        raise HTTPException(status_code=500, detail="Khong the luu van don da OCR")
+
+
 @router.get("/{waybill_ref}/timeline", response_model=schema_wb.WaybillTimelineResponse)
 def get_waybill_timeline(
     waybill_ref: str,
@@ -274,14 +478,26 @@ def get_waybill_timeline(
     # Data isolation: Kiểm tra quyền truy cập
     user_role = current_user.get("role_id")
     if user_role != 1:  # Không phải super admin
+        is_owner = bool(
+            current_user.get("customer_id")
+            and waybill.customer_id == current_user.get("customer_id")
+        )
         user_hub_id = current_user.get("primary_hub_id")
-        if waybill.origin_hub_id != user_hub_id and waybill.dest_hub_id != user_hub_id:
+        is_hub_operator = bool(
+            user_hub_id
+            and user_hub_id in [waybill.origin_hub_id, waybill.dest_hub_id, waybill.holding_hub_id]
+        )
+        if not is_owner and not is_hub_operator:
             raise HTTPException(status_code=403, detail="Bạn không có quyền xem vận đơn này")
     
     # Lấy tracking logs sắp xếp theo thời gian
     tracking_logs = db.query(models.TrackingLogs).filter(
         models.TrackingLogs.waybill_id == waybill.waybill_id
     ).order_by(models.TrackingLogs.system_time.asc()).all()
+    latest_delivery = db.query(models.DeliveryResults).filter(
+        models.DeliveryResults.waybill_id == waybill.waybill_id,
+        models.DeliveryResults.pod_image_url.isnot(None),
+    ).order_by(models.DeliveryResults.delivery_id.desc()).first()
     
     # Chuyển đổi thành timeline items
     timeline_items = []
@@ -338,7 +554,10 @@ def get_waybill_timeline(
         waybill_code=waybill.waybill_code,
         status=waybill.status,
         created_at=waybill.created_at if hasattr(waybill, 'created_at') else datetime.utcnow(),
-        timeline=timeline_items
+        timeline=timeline_items,
+        bill_image_url=waybill.bill_image_url,
+        pickup_image_url=waybill.pickup_image_url,
+        pod_image_url=latest_delivery.pod_image_url if latest_delivery else None,
     )
 
 
@@ -389,6 +608,14 @@ async def ocr_pickup_waybill(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    logger.info(
+        "Bắt đầu xác nhận OCR pickup waybill_code=%s user_id=%s hub_id=%s receiver=%s weight=%s",
+        data.waybill_code,
+        current_user.get("user_id"),
+        current_user.get("primary_hub_id"),
+        data.receiver_name,
+        data.actual_weight,
+    )
     """
     API dành riêng cho Shipper dùng OCR:
     - Nếu mã vận đơn tồn tại: Cập nhật thông tin (trọng lượng, cước phí...) và chuyển trạng thái PICKED_UP.
@@ -408,11 +635,23 @@ async def ocr_pickup_waybill(
         waybill = crud_wb.upsert_waybill_from_ocr(db, save_data, data.shipping_fee, origin_id, current_user['user_id'])
         
         db.commit()
-        return {"waybill_code": waybill.waybill_code, "status": waybill.status}
+        db.refresh(waybill)
+        result = _waybill_ocr_payload(waybill)
+        logger.info(
+            "Xác nhận OCR pickup thành công waybill_code=%s status=%s ocr_status=%s missing_fields=%s",
+            waybill.waybill_code,
+            waybill.status,
+            result["ocr_status"],
+            result["missing_fields"],
+        )
+        return result
     except Exception as e:
         db.rollback()
-        import traceback
-        traceback.print_exc()
+        logger.exception(
+            "Xác nhận OCR pickup thất bại waybill_code=%s user_id=%s",
+            data.waybill_code,
+            current_user.get("user_id"),
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- 4. CẬP NHẬT CÂN NẶNG THỰC TẾ ---
@@ -475,7 +714,136 @@ def _bulk_waybill_item(waybill: models.Waybills, sequence_no: int | None = None,
         "ocr_status": waybill.ocr_status,
         "verify_status": waybill.verify_status,
         "price_status": waybill.price_status,
+        "actual_weight": float(waybill.actual_weight or 0),
+        "length": float(waybill.length or 0),
+        "width": float(waybill.width or 0),
+        "height": float(waybill.height or 0),
+        "cod_amount": float(waybill.cod_amount or 0),
+        "service_type": waybill.service_type,
+        "product_name": waybill.product_name,
+        "bill_image_url": waybill.bill_image_url,
     }
+
+
+def _ocr_missing_fields(waybill: models.Waybills) -> list[str]:
+    missing = []
+    if not (waybill.receiver_name or "").strip():
+        missing.append("receiver_name")
+    if not (waybill.receiver_phone or "").strip():
+        missing.append("receiver_phone")
+    if not (waybill.receiver_address or "").strip():
+        missing.append("receiver_address")
+    if float(waybill.actual_weight or 0) <= 0:
+        missing.append("actual_weight")
+    return missing
+
+
+def _effective_ocr_status(waybill: models.Waybills) -> str | None:
+    """Normalize legacy OCR records that were picked up before OCR status was persisted."""
+    if waybill.ocr_status in ["REVIEW", "INCOMPLETE"]:
+        return waybill.ocr_status
+    if (
+        waybill.status in ["PICKED_UP", "PICKED_PENDING_VERIFY"]
+        and waybill.ocr_status in [None, "PENDING"]
+    ):
+        return "REVIEW" if not _ocr_missing_fields(waybill) else "INCOMPLETE"
+    return waybill.ocr_status
+
+
+def _waybill_ocr_payload(waybill: models.Waybills) -> dict:
+    request = waybill.request
+    bag = None
+    if waybill.bag_items:
+        bag = waybill.bag_items[0].bag
+    item = waybill.waybill_items[0] if waybill.waybill_items else None
+    customer = waybill.customer
+    missing_fields = _ocr_missing_fields(waybill)
+    event_time = None
+    if request:
+        event_time = (
+            request.pickup_assigned_at
+            or request.confirmed_at
+            or request.requested_pickup_time
+            or request.dispatched_at
+        )
+    effective_ocr_status = _effective_ocr_status(waybill)
+    return {
+        "waybill_id": waybill.waybill_id,
+        "waybill_code": waybill.waybill_code,
+        "request_id": request.request_id if request else None,
+        "request_code": request.request_code if request else None,
+        "bag_id": bag.bag_id if bag else None,
+        "bag_code": bag.bag_code if bag else None,
+        "customer_id": waybill.customer_id,
+        "customer_code": customer.customer_code if customer else None,
+        "customer_name": (customer.company_name or customer.transaction_name or customer.customer_code) if customer else None,
+        "sender_name": waybill.sender_name,
+        "sender_phone": waybill.sender_phone,
+        "sender_address": waybill.sender_address,
+        "receiver_name": waybill.receiver_name,
+        "receiver_phone": waybill.receiver_phone,
+        "receiver_address": waybill.receiver_address,
+        "receiver_province_id": waybill.receiver_province_id,
+        "receiver_district_id": waybill.receiver_district_id,
+        "receiver_ward_id": waybill.receiver_ward_id,
+        "receiver_province_name": waybill.receiver_province_name,
+        "receiver_district_name": waybill.receiver_district_name,
+        "receiver_ward_name": waybill.receiver_ward_name,
+        "origin_hub_id": waybill.origin_hub_id,
+        "dest_hub_id": waybill.dest_hub_id,
+        "holding_hub_id": waybill.holding_hub_id,
+        "status": waybill.status,
+        "ocr_status": effective_ocr_status,
+        "verify_status": waybill.verify_status,
+        "missing_fields": missing_fields,
+        "is_complete_for_review": len(missing_fields) == 0,
+        "can_finalize_from_ocr": effective_ocr_status in ["REVIEW", "INCOMPLETE"],
+        "actual_weight": float(waybill.actual_weight or 0),
+        "length": float(waybill.length or 0),
+        "width": float(waybill.width or 0),
+        "height": float(waybill.height or 0),
+        "cod_amount": float(waybill.cod_amount or 0),
+        "service_type": waybill.service_type,
+        "payment_method": waybill.payment_method,
+        "product_name": waybill.product_name or (item.product_name if item else None),
+        "product_group": item.product_group if item else None,
+        "declared_value": float(item.declared_value or 0) if item else 0,
+        "bill_image_url": waybill.bill_image_url,
+        "pickup_image_url": waybill.pickup_image_url,
+        "note": waybill.note,
+        "updated_at": event_time,
+        "created_at": event_time,
+    }
+
+
+def _can_access_waybill_ocr(current_user: dict, waybill: models.Waybills) -> bool:
+    if current_user.get("role_id") == 1:
+        return True
+    hub_id = current_user.get("primary_hub_id")
+    if not hub_id:
+        return False
+    return hub_id in [waybill.origin_hub_id, waybill.dest_hub_id, waybill.holding_hub_id]
+
+
+def _apply_hub_scope_for_ocr(query, current_user: dict, hub_id: int | None = None):
+    role_id = current_user.get("role_id")
+    if role_id == 1:
+        if hub_id:
+            return query.filter(or_(
+                models.Waybills.origin_hub_id == hub_id,
+                models.Waybills.dest_hub_id == hub_id,
+                models.Waybills.holding_hub_id == hub_id,
+            ))
+        return query
+
+    user_hub_id = current_user.get("primary_hub_id")
+    if not user_hub_id:
+        raise HTTPException(status_code=403, detail="Tai khoan chua gan buu cuc")
+    return query.filter(or_(
+        models.Waybills.origin_hub_id == user_hub_id,
+        models.Waybills.dest_hub_id == user_hub_id,
+        models.Waybills.holding_hub_id == user_hub_id,
+    ))
 
 
 def _get_bag_waybills(db: Session, bag_id: int | None):
@@ -739,8 +1107,10 @@ def create_customer_pickup_waybill(
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc lay hang")
 
     dest_hub = _find_hub_for_province(db, data.receiver.province_id, data.receiver.province_name)
-    if not dest_hub:
+    if not dest_hub and any([data.receiver.name, data.receiver.phone, data.receiver.address, data.receiver.province_id]):
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc buu cuc phat hang theo tinh/thanh nguoi nhan")
+    if not dest_hub:
+        dest_hub = origin_hub
 
     data.service_type = normalize_service_type(data.service_type)
     shipping_fee, extra_services_fee, vat_amount = _calculate_pickup_estimated_price(db, customer, data, origin_hub, dest_hub)
@@ -843,6 +1213,7 @@ def create_customer_bulk_mail_pickup(
             "customer_code": customer.customer_code,
             "product_type": data.product_type,
             "product_type_label": definition["label"],
+            "service_type": data.service_type,
             "estimated_quantity": data.estimated_quantity,
             "actual_quantity": bag.actual_quantity or 0 if bag else request.actual_quantity or 0,
             "pickup_status": request.status,
@@ -895,6 +1266,7 @@ def list_customer_bulk_mail_pickups(
         "customer_code": customer.customer_code,
         "product_type": request.product_type,
         "product_type_label": get_product_type_definition(request.product_type)["label"],
+        "service_type": first_waybill.service_type if first_waybill else None,
         "estimated_quantity": request.est_quantity or 0,
         "actual_quantity": bag.actual_quantity or 0 if bag else request.actual_quantity or 0,
         "pickup_status": request.status,
@@ -1030,8 +1402,21 @@ def update_mobile_ocr_waybill(
     current_user: dict = Depends(get_current_user),
 ):
     scoped_hub_id = _mobile_ocr_hub_id(current_user, hub_id)
+    logger.info(
+        "Bắt đầu lưu OCR waybill_code=%s user_id=%s hub_id=%s fields=%s",
+        waybill_code,
+        current_user.get("user_id"),
+        scoped_hub_id,
+        sorted(data.model_dump(exclude_unset=True).keys()),
+    )
     waybill = _waybill_hub_scoped_query(db, scoped_hub_id).filter(models.Waybills.waybill_code == waybill_code).first()
     if not waybill:
+        logger.warning(
+            "Không tìm thấy vận đơn OCR waybill_code=%s user_id=%s hub_id=%s",
+            waybill_code,
+            current_user.get("user_id"),
+            scoped_hub_id,
+        )
         raise HTTPException(status_code=404, detail="Khong tim thay van don trong pham vi buu cuc OCR")
 
     update_data = data.model_dump(exclude_unset=True)
@@ -1063,12 +1448,8 @@ def update_mobile_ocr_waybill(
         current_note = waybill.note or ""
         waybill.note = (current_note + "\nOCR: " + update_data["ocr_raw_text"]).strip()[:255]
 
-    complete_for_review = bool(
-        waybill.receiver_name
-        and waybill.receiver_phone
-        and waybill.receiver_address
-        and float(waybill.actual_weight or 0) > 0
-    )
+    missing_fields = _ocr_missing_fields(waybill)
+    complete_for_review = len(missing_fields) == 0
     waybill.ocr_status = "REVIEW" if complete_for_review else "INCOMPLETE"
     waybill.verify_status = "PENDING"
     if waybill.status == "PENDING_OCR":
@@ -1082,9 +1463,26 @@ def update_mobile_ocr_waybill(
         system_time=datetime.utcnow(),
         note="Mobile OCR cap nhat thong tin van don",
     ))
-    db.commit()
-    db.refresh(waybill)
-    return _bulk_waybill_item(waybill)
+    try:
+        db.commit()
+        db.refresh(waybill)
+        response = _waybill_ocr_payload(waybill)
+        logger.info(
+            "Lưu OCR thành công waybill_code=%s ocr_status=%s missing_fields=%s",
+            waybill_code,
+            waybill.ocr_status,
+            response["missing_fields"],
+        )
+        return response
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Lỗi khi lưu OCR waybill_code=%s user_id=%s hub_id=%s",
+            waybill_code,
+            current_user.get("user_id"),
+            scoped_hub_id,
+        )
+        raise HTTPException(status_code=500, detail="Không thể lưu thông tin OCR. Vui lòng kiểm tra log backend")
 
 
 @router.post("/mobile/ocr/bags/{bag_code}/extra-waybills")
@@ -1191,7 +1589,7 @@ def create_admin_pickup_waybill(
     shipping_fee, extra_services_fee, vat_amount = _calculate_pickup_estimated_price(db, customer, data, origin_hub, dest_hub)
     initial_status = "RECEIVED" if target_hub else "PENDING_CONFIRMATION"
     source = (data.source or "HOTLINE").upper()
-    if source not in ["HOTLINE", "CSKH", "ADMIN"]:
+    if source not in ["PORTAL", "HOTLINE", "CSKH", "ADMIN"]:
         source = "HOTLINE"
 
     try:
@@ -1210,6 +1608,13 @@ def create_admin_pickup_waybill(
             initial_status=initial_status,
             log_action="Nhan vien tao pickup thay khach hang",
         )
+        if data.assigned_shipper_id:
+            shipper = crud_delivery.get_active_shipper(db, data.assigned_shipper_id)
+            if not shipper or shipper.primary_hub_id != target_hub.hub_id:
+                raise ValueError("Buu ta khong thuoc van phong tiep nhan")
+            crud_delivery.assign_shipper_to_online_pickup(
+                db, booking, data.assigned_shipper_id, current_user["user_id"], "Gan buu ta khi tao yeu cau"
+            )
         db.commit()
         db.refresh(booking)
         db.refresh(waybill)
@@ -1234,6 +1639,55 @@ def create_admin_pickup_waybill(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/admin/bulk-mail-pickups", response_model=schema_wb.BulkMailPickupResponse)
+def create_admin_bulk_mail_pickup(
+    data: schema_wb.BulkMailPickupCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    _require_pickup_operator(current_user)
+    if not data.customer_id or not data.target_hub_id:
+        raise HTTPException(status_code=400, detail="Thieu khach hang hoac van phong tiep nhan")
+    customer = db.query(models.Customers).filter(models.Customers.customer_id == data.customer_id, models.Customers.status == "ACTIVE").first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Khong tim thay khach hang dang hoat dong")
+    target_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == data.target_hub_id, models.Hubs.status == True).first()
+    if not target_hub or not _can_operate_hub(current_user, data.target_hub_id):
+        raise HTTPException(status_code=403, detail="Khong co quyen tao pickup tai van phong nay")
+    source = (data.source or "HOTLINE").upper()
+    if source not in ["PORTAL", "HOTLINE", "CSKH", "ADMIN"]:
+        raise HTTPException(status_code=400, detail="Nguon tiep nhan khong hop le")
+    data.source = source
+    try:
+        request, bag, waybill = crud_wb.create_bulk_mail_pickup(db, customer, data, current_user["user_id"], target_hub.hub_id)
+        if data.assigned_shipper_id:
+            shipper = crud_delivery.get_active_shipper(db, data.assigned_shipper_id)
+            if not shipper or shipper.primary_hub_id != target_hub.hub_id:
+                raise ValueError("Buu ta khong thuoc van phong tiep nhan")
+            crud_delivery.assign_shipper_to_online_pickup(db, request, data.assigned_shipper_id, current_user["user_id"], "Gan buu ta khi tao tui thu")
+        db.commit()
+        db.refresh(request)
+        waybill_items = _get_bag_waybills(db, bag.bag_id) if bag else ([_bulk_waybill_item(waybill, 1)] if waybill else [])
+        return {
+            "request_id": request.request_id, "request_code": request.request_code,
+            "bag_id": bag.bag_id if bag else None, "bag_code": bag.bag_code if bag else None,
+            "waybill_id": waybill.waybill_id if waybill else None, "waybill_code": waybill.waybill_code if waybill else None,
+            "customer_id": customer.customer_id, "customer_code": customer.customer_code,
+            "product_type": data.product_type, "product_type_label": get_product_type_definition(data.product_type)["label"],
+            "service_type": data.service_type,
+            "estimated_quantity": data.estimated_quantity, "actual_quantity": request.actual_quantity or 0,
+            "pickup_status": request.status, "bag_status": bag.status if bag else None,
+            "materialization_status": request.materialization_status, "created_at": request.created_at,
+            "waybills": waybill_items,
+        }
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/customer/pickups", response_model=List[schema_wb.CustomerPickupSummary])
@@ -1425,6 +1879,11 @@ def get_waybill_tracking(code: str, db: Session = Depends(get_db)):
     if not waybill:
         raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
     logs = crud_wb.get_tracking_logs(db, waybill.waybill_id)
+    latest_delivery = db.query(models.DeliveryResults).filter(
+        models.DeliveryResults.waybill_id == waybill.waybill_id,
+        models.DeliveryResults.pod_image_url.isnot(None),
+    ).order_by(models.DeliveryResults.delivery_id.desc()).first()
+    pod_image_url = latest_delivery.pod_image_url if latest_delivery else None
     pickup_statuses = {"PICKED", "PICKED_PENDING_VERIFY"}
     return {
         "waybill_id": waybill.waybill_id,
@@ -1438,9 +1897,13 @@ def get_waybill_tracking(code: str, db: Session = Depends(get_db)):
                     if log.status_id in pickup_statuses
                     else None
                 ),
+                "pod_image_url": pod_image_url if log.status_id == "DELIVERED" else None,
             }
             for log in logs
         ],
+        "bill_image_url": waybill.bill_image_url,
+        "pickup_image_url": waybill.pickup_image_url,
+        "pod_image_url": pod_image_url,
     }
 
 @router.delete("/{code}")

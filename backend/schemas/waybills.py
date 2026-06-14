@@ -122,7 +122,8 @@ class CustomerPickupCreate(BaseModel):
 class AdminPickupCreate(CustomerPickupCreate):
     customer_id: int
     target_hub_id: Optional[int] = None
-    source: str = Field(default="HOTLINE", description="HOTLINE, CSKH, ADMIN")
+    assigned_shipper_id: Optional[int] = None
+    source: str = Field(default="HOTLINE", description="PORTAL, HOTLINE, CSKH, ADMIN")
 
 
 class BulkMailDraftItemCreate(BaseModel):
@@ -136,21 +137,23 @@ class BulkMailDraftItemCreate(BaseModel):
 
 class BulkMailPickupCreate(BaseModel):
     product_type: str
+    service_type: str = Field(default="STANDARD")
     estimated_quantity: int = Field(ge=1, le=10000)
     sender: CustomerPickupAddress
     receiver: Optional[CustomerPickupAddress] = None
     draft_items: List[BulkMailDraftItemCreate] = Field(default_factory=list)
     pickup_time: Optional[datetime] = None
     target_hub_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    assigned_shipper_id: Optional[int] = None
+    source: str = Field(default="PORTAL", description="PORTAL, HOTLINE, CSKH, ADMIN")
+    payment_method: str = Field(default="SENDER_DEBT")
     note: Optional[str] = None
 
     @field_validator("product_type", mode="before")
     @classmethod
     def validate_bulk_product_type(cls, value):
-        normalized = normalize_product_type(value)
-        if normalized not in {"DOCUMENT", "PARCEL"}:
-            raise ValueError("Pickup hàng loạt chỉ hỗ trợ thư từ/tài liệu hoặc bưu phẩm, bưu kiện")
-        return normalized
+        return normalize_product_type(value)
 
     @model_validator(mode="after")
     def validate_draft_items(self):
@@ -173,6 +176,7 @@ class BulkMailPickupResponse(BaseModel):
     customer_code: str
     product_type: str
     product_type_label: str
+    service_type: Optional[str] = None
     estimated_quantity: int
     actual_quantity: int = 0
     pickup_status: str
@@ -204,6 +208,36 @@ class MobileOcrWaybillUpdate(BaseModel):
     bill_image_url: Optional[str] = None
     note: Optional[str] = None
     ocr_raw_text: Optional[str] = None
+
+
+class OcrFinalizeRequest(BaseModel):
+    customer_id: Optional[int] = None
+    origin_hub_id: Optional[int] = None
+    dest_hub_id: Optional[int] = None
+    sender_name: Optional[str] = None
+    sender_phone: Optional[str] = None
+    sender_address: Optional[str] = None
+    receiver_name: str
+    receiver_phone: str
+    receiver_address: str
+    actual_weight: float = Field(gt=0)
+    length: Optional[float] = Field(default=None, ge=0)
+    width: Optional[float] = Field(default=None, ge=0)
+    height: Optional[float] = Field(default=None, ge=0)
+    cod_amount: Optional[float] = Field(default=0, ge=0)
+    service_type: Optional[str] = None
+    product_name: Optional[str] = None
+    product_group: Optional[str] = None
+    declared_value: Optional[float] = Field(default=0, ge=0)
+    payment_method: Optional[str] = None
+    note: Optional[str] = None
+    extra_services: Optional[List[str]] = Field(default_factory=list)
+    shipping_fee: Optional[float] = Field(default=0, ge=0)
+
+    @field_validator("product_group", mode="before")
+    @classmethod
+    def validate_finalize_product_group(cls, value):
+        return normalize_product_type(value) if value else value
 
 
 class MobileOcrExtraWaybillCreate(BaseModel):
@@ -295,6 +329,9 @@ class CustomerPickupSummary(BaseModel):
     # Weights
     estimated_weight: Optional[float] = None
     actual_weight: Optional[float] = None
+    ocr_status: Optional[str] = None
+    bill_image_url: Optional[str] = None
+    pickup_image_url: Optional[str] = None
 
     # Items list
     items: List[CustomerPickupSummaryItem] = []
@@ -378,6 +415,9 @@ class WaybillTimelineResponse(BaseModel):
     status: str
     created_at: datetime
     timeline: List[WaybillTimelineItem]
+    bill_image_url: Optional[str] = None
+    pickup_image_url: Optional[str] = None
+    pod_image_url: Optional[str] = None
     
     class Config:
         from_attributes = True

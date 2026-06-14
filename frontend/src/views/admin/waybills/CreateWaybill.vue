@@ -412,16 +412,20 @@ import {
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth'; 
 import * as XLSX from 'xlsx';
 
 const auth = useAuthStore(); 
 const router = useRouter();
+const route = useRoute();
 const formRef = ref(null);
 const phoneInputRef = ref(null); 
 const excelInput = ref(null);
 const loading = ref(false);
+const ocrSourceWaybillCode = ref('');
+const ocrPrefillLoading = ref(false);
+const isOcrFinalizeMode = computed(() => route.query.source === 'ocr' && !!ocrSourceWaybillCode.value);
 
 const ADDR_API = 'https://provinces.open-api.vn/api';
 const provinces = ref([]);
@@ -760,6 +764,52 @@ watch(() => [
     waybillForm.packing_type
 ], fetchFee, { deep: true });
 
+const loadOcrPrefill = async () => {
+  if (!ocrSourceWaybillCode.value) return;
+  ocrPrefillLoading.value = true;
+  try {
+    const res = await api.get(`/api/waybills/ocr-reviewed/${ocrSourceWaybillCode.value}`);
+    const data = res.data || {};
+    waybillForm.customer_id = data.customer_id || waybillForm.customer_id;
+    waybillForm.origin_hub_id = data.origin_hub_id || waybillForm.origin_hub_id;
+    waybillForm.dest_hub_id = data.dest_hub_id || waybillForm.dest_hub_id;
+    waybillForm.sender_name = data.sender_name || waybillForm.sender_name;
+    waybillForm.sender_phone = data.sender_phone || waybillForm.sender_phone;
+    waybillForm.sender.address_detail = data.sender_address || waybillForm.sender.address_detail;
+    waybillForm.receiver_name = data.receiver_name || '';
+    waybillForm.receiver_phone = data.receiver_phone || '';
+    waybillForm.receiver.address_detail = data.receiver_address || '';
+    waybillForm.receiver.province_id = data.receiver_province_id || null;
+    waybillForm.receiver.district_id = data.receiver_district_id || null;
+    waybillForm.receiver.ward_id = data.receiver_ward_id || null;
+    if (waybillForm.receiver.province_id) {
+      receiverDistricts.value = await fetchDistrictsForProvince(waybillForm.receiver.province_id);
+    }
+    if (waybillForm.receiver.district_id) {
+      receiverWards.value = await fetchWardsForDistrict(waybillForm.receiver.district_id);
+    }
+    waybillForm.items = [{
+      product_group: data.product_group || 'PARCEL',
+      product_name: data.product_name || '',
+      weight: Number(data.actual_weight || 0.5),
+      length: Number(data.length || 0),
+      width: Number(data.width || 0),
+      height: Number(data.height || 0),
+      quantity: 1,
+      declared_value: Number(data.declared_value || 0),
+    }];
+    waybillForm.service_type = data.service_type || waybillForm.service_type || 'CPN';
+    waybillForm.payment_method = data.payment_method || waybillForm.payment_method;
+    waybillForm.cod_amount = Number(data.cod_amount || 0);
+    waybillForm.note = data.note || '';
+    ElMessage.success(`Đã tải dữ liệu OCR cho ${data.waybill_code}`);
+  } catch (error) {
+    ElMessage.error(error.response?.data?.detail || 'Không tải được dữ liệu OCR');
+  } finally {
+    ocrPrefillLoading.value = false;
+  }
+};
+
 const saveWaybill = async () => {
   if (!formRef.value) return;
   
@@ -779,7 +829,7 @@ const saveWaybill = async () => {
       return;
     }
 
-    if (totalFee.value <= 0) {
+    if (!isOcrFinalizeMode.value && totalFee.value <= 0) {
       ElMessage.error('Tuyến đường này chưa được cấu hình giá cước');
       return;
     }
@@ -822,12 +872,19 @@ const saveWaybill = async () => {
         shipping_fee: totalFee.value
       };
 
-      const response = await api.post('/api/waybills', payload, {
-         headers: { 'Idempotency-Key': `wb-create-${Date.now()}` }
-      });
+      const response = isOcrFinalizeMode.value
+        ? await api.post(`/api/waybills/${ocrSourceWaybillCode.value}/finalize-from-ocr`, payload)
+        : await api.post('/api/waybills', payload, {
+           headers: { 'Idempotency-Key': `wb-create-${Date.now()}` }
+        });
 
       ElMessage({ message: `Đã tạo vận đơn thành công: ${response.data.waybill_code}`, type: 'success' });
       
+      if (isOcrFinalizeMode.value) {
+        router.push('/admin/waybills/ocr-reviewed');
+        return;
+      }
+
       // Reset form receiver and items
       waybillForm.receiver_name = '';
       waybillForm.receiver_phone = '';
@@ -891,6 +948,11 @@ onMounted(async () => {
   } catch (e) {
   } finally {
     servicesLoading.value = false;
+  }
+
+  if (route.query.source === 'ocr' && route.query.waybill_code) {
+    ocrSourceWaybillCode.value = String(route.query.waybill_code);
+    await loadOcrPrefill();
   }
 });
 

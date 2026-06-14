@@ -41,7 +41,7 @@
 
             <el-row :gutter="24">
               <!-- Left side of form: Input fields -->
-              <el-col :xs="24" :sm="24" :md="16">
+              <el-col :xs="24" :sm="24" :md="isBulkMail ? 24 : 16">
                 <el-form :model="form" label-position="top">
                   <div class="pickup-mode-bar mb-4">
                     <div>
@@ -265,10 +265,9 @@
                     <el-row :gutter="16">
                       <el-col :xs="24" :sm="12">
                         <el-form-item label="Loại bưu gửi" required>
-                          <el-radio-group v-model="form.bulk_product_type">
-                            <el-radio-button label="DOCUMENT">Thư từ/Tài liệu</el-radio-button>
-                            <el-radio-button label="PARCEL">Bưu phẩm/Bưu kiện</el-radio-button>
-                          </el-radio-group>
+                          <el-select v-model="form.bulk_product_type" class="w-full" filterable>
+                            <el-option v-for="type in productTypes" :key="type.code" :label="type.label" :value="type.code" />
+                          </el-select>
                         </el-form-item>
                       </el-col>
                       <el-col :xs="24" :sm="12">
@@ -327,7 +326,7 @@
                       </el-select>
                     </el-form-item>
                     <el-form-item label="Dịch vụ vận chuyển" required>
-                      <el-radio-group v-if="!isBulkMail" v-model="form.service_type" class="shipping-service-group" :class="{ 'is-express': isExpressService }" @change="debouncedSimulate">
+                      <el-radio-group v-model="form.service_type" class="shipping-service-group" :class="{ 'is-express': isExpressService }" @change="debouncedSimulate">
                         <el-radio-button label="TK">Tiết kiệm (TK)</el-radio-button>
                         <el-radio-button label="CPN">Chuyển phát nhanh (CPN)</el-radio-button>
                         <el-radio-button label="HT">Hỏa tốc (HT)</el-radio-button>
@@ -405,7 +404,7 @@
               </el-col>
 
               <!-- Right side: Real-time estimated billing details -->
-              <el-col :xs="24" :sm="24" :md="8">
+              <el-col v-if="!isBulkMail" :xs="24" :sm="24" :md="8">
                 <el-card class="billing-summary-card mb-4 sticky-card" v-loading="simulateLoading">
                   <template #header>
                     <div class="billing-header text-primary fw-bold text-center">
@@ -588,13 +587,12 @@ const savedDraftsList = ref([]);
 // Available Extra Services List
 const availableServices = ref([]);
 const pickupModeOptions = [
-  { label: 'Hàng hóa', value: 'SINGLE_WAYBILL' },
   { label: 'Thư từ/Bưu phẩm hàng loạt', value: 'BULK_MAIL' }
 ];
 
 // Form model
 const form = reactive({
-  pickup_mode: 'SINGLE_WAYBILL',
+  pickup_mode: 'BULK_MAIL',
   bulk_product_type: 'DOCUMENT',
   bulk_estimated_quantity: 1,
   bulk_draft_items: [
@@ -918,7 +916,7 @@ const addToQueue = () => {
       ElMessage.warning('Vui lòng điền đủ thông tin lấy hàng.');
       return;
     }
-    if (!['DOCUMENT', 'PARCEL'].includes(form.bulk_product_type) || Number(form.bulk_estimated_quantity) < 1) {
+    if (!productTypes.value.some(type => type.code === form.bulk_product_type) || Number(form.bulk_estimated_quantity) < 1) {
       ElMessage.warning('Vui lòng chọn loại bưu gửi và nhập số lượng dự kiến.');
       return;
     }

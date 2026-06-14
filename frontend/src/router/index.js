@@ -84,6 +84,11 @@ const adminRoutes = [
         name: 'CreateWaybill',
         component: () => import('../views/admin/waybills/CreateWaybill.vue'),
       },
+      {
+        path: 'waybills/ocr-reviewed',
+        name: 'Đơn đã OCR',
+        component: () => import('../views/admin/waybills/OcrReviewedList.vue'),
+      },
       // Warehouse
       {
         path: 'warehouse/scan-in',
@@ -119,6 +124,12 @@ const adminRoutes = [
       },
       // Delivery
       {
+        path: 'delivery/development-ready',
+        name: 'DevelopmentDeliveryReady',
+        component: () => import('../views/admin/delivery/DevelopmentDeliveryReady.vue'),
+        meta: { requiresAuth: true, title: 'Giả lập chuẩn bị giao' }
+      },
+      {
         path: 'delivery/assign',
         name: 'AssignShipper',
         component: () => import('../views/admin/delivery/AssignShipper.vue'),
@@ -128,6 +139,12 @@ const adminRoutes = [
         name: 'PickupManagement',
         component: () => import('../views/admin/delivery/PickupManagement.vue'),
         meta: { requiresAuth: true, title: 'Điều phối lấy hàng (Pickup)' }
+      },
+      {
+        path: 'delivery/pickup-create',
+        name: 'Thêm mới yêu cầu',
+        component: () => import('../views/admin/delivery/CreatePickupRequest.vue'),
+        meta: { requiresAuth: true, title: 'Thêm mới yêu cầu' }
       },
       // Accounting & Pricing
       {
@@ -237,6 +254,22 @@ const customerRoutes = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [...publicRoutes, ...adminRoutes, ...customerRoutes],
+  scrollBehavior() {
+    return { top: 0 };
+  },
+});
+
+router.onError((error) => {
+  const message = String(error?.message || error || '');
+  const isChunkLoadError = /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk|ChunkLoadError/i.test(message);
+  if (isChunkLoadError && !sessionStorage.getItem('route-reload-retried')) {
+    sessionStorage.setItem('route-reload-retried', '1');
+    window.location.reload();
+  }
+});
+
+router.afterEach(() => {
+  sessionStorage.removeItem('route-reload-retried');
 });
 
 // 4. Navigation Guard

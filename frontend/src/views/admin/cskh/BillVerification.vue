@@ -278,6 +278,7 @@ import { ref, onMounted, reactive, computed } from 'vue';
 import { Refresh, Money, Printer, Memo, Warning, Check, Close, Picture, SuccessFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
+import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
 
 const tableData = ref([]);
 const loading = ref(false);
@@ -336,12 +337,7 @@ const handleVerifyFromCompare = (action) => {
 };
 
 // URL helper for images
-const getMediaUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  return `${baseUrl}${path}`;
-};
+const getMediaUrl = resolveMediaUrl;
 
 // Mo tem van don goc trong tab moi de CSKH doi chieu
 const openPrintLabel = (waybillCode) => {

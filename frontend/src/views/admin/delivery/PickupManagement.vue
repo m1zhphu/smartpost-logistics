@@ -64,17 +64,24 @@
               :data="groupedPending" 
               v-loading="loading" 
               class="modern-table" 
-              @selection-change="handleSelectionChange"
               stripe
             >
-              <el-table-column type="selection" width="55" align="center" />
               <el-table-column type="expand">
                 <template #default="{ row }">
                   <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
                     <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
                       <el-icon><List /></el-icon> Danh sách đơn chi tiết ({{ row.requests.length }} đơn)
                     </h4>
-                    <el-table :data="row.requests" class="modern-table inner-table" size="small" border stripe>
+                    <el-table
+                      :data="row.requests"
+                      class="modern-table inner-table"
+                      size="small"
+                      border
+                      stripe
+                      row-key="request_id"
+                      @selection-change="selection => handlePendingRequestSelectionChange(row, selection)"
+                    >
+                      <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
                       <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
                         <template #default="scope">
                           <el-link type="warning" class="fw-bold" @click="viewRequestDetails(scope.row)">
@@ -84,9 +91,16 @@
                       </el-table-column>
                       <el-table-column label="Mã Vận Đơn" width="140">
                         <template #default="scope">
-                          <span v-if="getWaybillCode(scope.row)" class="code-badge info text-xs" style="background: rgba(67, 24, 255, 0.1); color: #4318ff;">
-                            {{ getWaybillCode(scope.row) }}
-                          </span>
+                          <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list">
+                            <span
+                              v-for="code in getWaybillCodes(scope.row)"
+                              :key="code"
+                              class="code-badge info text-xs"
+                              style="background: rgba(67, 24, 255, 0.1); color: #4318ff;"
+                            >
+                              {{ code }}
+                            </span>
+                          </div>
                           <span v-else class="text-muted text-xs">Chưa có</span>
                         </template>
                       </el-table-column>
@@ -105,7 +119,7 @@
                       </el-table-column>
                       <el-table-column label="Đơn/Túi" width="90" align="center">
                         <template #default="scope">
-                          <span v-if="scope.row.bag_code" class="text-xs fw-bold">{{ scope.row.bag_item_count }} đơn</span>
+                          <span v-if="scope.row.bag_code" class="text-xs fw-bold">{{ getBagItemCount(scope.row) }} đơn</span>
                           <span v-else class="text-muted text-xs">---</span>
                         </template>
                       </el-table-column>
@@ -222,9 +236,16 @@
                       </el-table-column>
                       <el-table-column label="Mã Vận Đơn" width="140">
                         <template #default="scope">
-                          <span v-if="getWaybillCode(scope.row)" class="code-badge info text-xs" style="background: rgba(67, 24, 255, 0.1); color: #4318ff;">
-                            {{ getWaybillCode(scope.row) }}
-                          </span>
+                          <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list">
+                            <span
+                              v-for="code in getWaybillCodes(scope.row)"
+                              :key="code"
+                              class="code-badge info text-xs"
+                              style="background: rgba(67, 24, 255, 0.1); color: #4318ff;"
+                            >
+                              {{ code }}
+                            </span>
+                          </div>
                           <span v-else class="text-muted text-xs">Chưa có</span>
                         </template>
                       </el-table-column>
@@ -243,7 +264,7 @@
                       </el-table-column>
                       <el-table-column label="Đơn/Túi" width="90" align="center">
                         <template #default="scope">
-                          <span v-if="scope.row.bag_code" class="text-xs fw-bold">{{ scope.row.bag_item_count }} đơn</span>
+                          <span v-if="scope.row.bag_code" class="text-xs fw-bold">{{ getBagItemCount(scope.row) }} đơn</span>
                           <span v-else class="text-muted text-xs">---</span>
                         </template>
                       </el-table-column>
@@ -365,9 +386,17 @@
                       </el-table-column>
                       <el-table-column label="Mã Vận Đơn" width="140">
                         <template #default="scope">
-                          <span v-if="getWaybillCode(scope.row)" class="code-badge info text-xs" style="background: rgba(67, 24, 255, 0.1); color: #4318ff;">
-                            {{ getWaybillCode(scope.row) }}
-                          </span>
+                          <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list">
+                            <span
+                              v-for="code in getWaybillCodes(scope.row)"
+                              :key="code"
+                              class="code-badge info text-xs"
+                              style="background: rgba(67, 24, 255, 0.1); color: #4318ff;"
+                            >
+                              {{ code }}
+                            </span>
+                          </div>
+                          <span v-else class="text-muted text-xs">Chưa có</span>
                         </template>
                       </el-table-column>
                       <el-table-column label="Văn phòng nhận" width="150" show-overflow-tooltip>
@@ -985,6 +1014,7 @@ import { useRoute } from 'vue-router';
 import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check, Close, User, Box, DocumentAdd, List } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
+import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
 import { formatVietnamDateTime } from '@/utils/dateTime';
 import * as XLSX from 'xlsx';
 import { useAuthStore } from '@/stores/auth';
@@ -1195,12 +1225,7 @@ const uploadHeaders = computed(() => {
   return authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {};
 });
 
-const getFullImageUrl = (url) => {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  const base = import.meta.env.VITE_API_URL || '';
-  return `${base}${url}`;
-};
+const getFullImageUrl = resolveMediaUrl;
 
 // Lấy tên bưu cục từ hub_id (vì BookingRequestResponse không có target_hub_name)
 const getHubName = (hubId) => {
@@ -1253,6 +1278,24 @@ const getWaybillCode = (row) => {
     }
   }
   return '';
+};
+
+const getWaybillCodes = (row) => {
+  if (!row) return [];
+  const items = Array.isArray(row.waybill_items)
+    ? row.waybill_items
+    : (Array.isArray(row.waybills) ? row.waybills : []);
+  const codes = items
+    .map(item => item?.waybill_code || item?.bill_code || item?.code)
+    .filter(Boolean);
+  const primaryCode = getWaybillCode(row);
+  if (primaryCode) codes.unshift(primaryCode);
+  return [...new Set(codes)];
+};
+
+const getBagItemCount = (row) => {
+  const codes = getWaybillCodes(row);
+  return row?.bag_item_count || row?.waybill_count || codes.length || row?.est_quantity || row?.expected_quantity || 0;
 };
 
 const getCustomerName = (row) => {
@@ -1325,16 +1368,12 @@ const filteredAssigned = computed(() => {
   });
 });
 
-const handleSelectionChange = (groups) => {
-  const selectedRequests = [];
-  groups.forEach(g => {
-    if (g.requests) {
-      selectedRequests.push(...g.requests);
-    } else {
-      selectedRequests.push(g);
-    }
-  });
-  multipleSelection.value = selectedRequests;
+const handlePendingRequestSelectionChange = (group, selection) => {
+  const groupRequestIds = new Set((group.requests || []).map(req => req.request_id));
+  const selectedIds = new Set((selection || []).map(req => req.request_id));
+  const selectionsFromOtherGroups = multipleSelection.value.filter(req => !groupRequestIds.has(req.request_id));
+  const selectionsFromThisGroup = (group.requests || []).filter(req => selectedIds.has(req.request_id));
+  multipleSelection.value = [...selectionsFromOtherGroups, ...selectionsFromThisGroup];
 };
 
 const groupRequestsByCustomer = (requests) => {
@@ -2095,6 +2134,7 @@ watch(
 .code-badge.warning { background: rgba(245, 158, 11, 0.1); color: #D97706; }
 .code-badge.success { background: rgba(16, 185, 129, 0.1); color: #059669; }
 .code-badge.info { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
+.waybill-chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .sender-info {
   display: flex;

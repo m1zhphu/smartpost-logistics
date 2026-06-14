@@ -16,7 +16,58 @@
                 </div>
               </template>
               
-              <el-table :data="pickupsList" v-loading="listLoading" stripe class="modern-table">
+              <el-table :data="pickupsList" v-loading="listLoading" stripe class="modern-table" :row-class-name="customerOrderRowClass">
+                <el-table-column type="expand" width="48">
+                  <template #default="{ row }">
+                    <div v-if="row.pickup_mode === 'BULK_MAIL'" class="bulk-waybill-panel">
+                      <div class="bulk-waybill-title">
+                        Chi tiết từng vận đơn trong túi
+                        <span v-if="row.bag_code" class="code-badge success">{{ row.bag_code }}</span>
+                      </div>
+                      <el-table v-if="getPickupWaybills(row).length" :data="getPickupWaybills(row)" size="small" border class="bulk-waybill-table">
+                        <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="170">
+                          <template #default="{ row: waybill }">
+                            <span class="code-badge info">{{ waybill.waybill_code }}</span>
+                          </template>
+                        </el-table-column>
+                        <el-table-column label="Người nhận" min-width="190">
+                          <template #default="{ row: waybill }">
+                            <div class="bulk-recipient-name">{{ waybill.receiver_name || 'Chưa cập nhật' }}</div>
+                            <div class="text-xs text-muted">{{ waybill.receiver_phone || '---' }}</div>
+                          </template>
+                        </el-table-column>
+                        <el-table-column label="Trạng thái đơn" min-width="180">
+                          <template #default="{ row: waybill }">
+                            <el-tag :type="getWaybillStatusType(waybill.status)" size="small">{{ getWaybillStatusLabel(waybill.status) }}</el-tag>
+                          </template>
+                        </el-table-column>
+                        <el-table-column label="Dịch vụ" width="120" align="center">
+                          <template #default="{ row: waybill }"><el-tag :type="waybill.service_type === 'HT' ? 'danger' : 'info'" size="small" effect="dark">{{ getServiceTypeLabel(waybill.service_type) }}</el-tag></template>
+                        </el-table-column>
+                        <el-table-column label="OCR" width="120" align="center">
+                          <template #default="{ row: waybill }">
+                            <el-tag :type="getOcrStatusType(waybill.ocr_status)" size="small" effect="plain">{{ getOcrStatusLabel(waybill.ocr_status) }}</el-tag>
+                          </template>
+                        </el-table-column>
+                        <el-table-column label="Khối lượng / COD" min-width="150" align="right">
+                          <template #default="{ row: waybill }">
+                            <div>{{ Number(waybill.actual_weight || 0).toLocaleString() }} kg</div>
+                            <div class="text-xs text-muted">COD {{ Number(waybill.cod_amount || 0).toLocaleString() }}đ</div>
+                          </template>
+                        </el-table-column>
+                        <el-table-column label="Thao tác" width="110" align="center" fixed="right">
+                          <template #default="{ row: waybill }">
+                            <el-button type="primary" link @click.stop="openBulkWaybillDetail(row, waybill)">Xem đơn</el-button>
+                          </template>
+                        </el-table-column>
+                      </el-table>
+                      <el-empty v-else description="Chưa có mã vận đơn trong túi" :image-size="80" />
+                    </div>
+                    <div v-else class="bulk-waybill-panel">
+                      <span class="text-muted text-xs">Yêu cầu đơn lẻ không có danh sách túi thư.</span>
+                    </div>
+                  </template>
+                </el-table-column>
                 <el-table-column prop="request_code" label="Mã Yêu Cầu" width="130">
                   <template #default="{ row }">
                     <span class="code-badge warning">{{ row.request_code }}</span>
@@ -24,7 +75,7 @@
                 </el-table-column>
                 <el-table-column label="Mã Vận Đơn / Túi" width="170">
                   <template #default="{ row }">
-                    <span class="code-badge success">{{ row.waybill_code || row.bag_code || '---' }}</span>
+                    <span class="code-badge success">{{ row.pickup_mode === 'BULK_MAIL' ? (row.bag_code || row.waybill_code || '---') : (row.waybill_code || row.bag_code || '---') }}</span>
                   </template>
                 </el-table-column>
                 <el-table-column label="Ngày tạo" width="150">
@@ -34,8 +85,8 @@
                 </el-table-column>
                 <el-table-column label="Trạng thái" width="140">
                   <template #default="{ row }">
-                    <el-tag :type="getPickupStatusType(row.pickup_status)" size="small">
-                      {{ getPickupStatusLabel(row.pickup_status) }}
+                    <el-tag :type="getCustomerOrderStatusType(row)" size="small">
+                      {{ getCustomerOrderStatusLabel(row) }}
                     </el-tag>
                   </template>
                 </el-table-column>
@@ -46,7 +97,7 @@
                 </el-table-column>
                 <el-table-column label="Cước phí" width="140" align="right">
                   <template #default="{ row }">
-                    <div v-if="row.pickup_mode === 'BULK_MAIL' && !row.waybill_code">
+                    <div v-if="row.pickup_mode === 'BULK_MAIL'">
                       <div class="fw-bold text-warning">Chờ xử lý</div>
                       <span class="text-xs text-muted">OCR/cân đo</span>
                     </div>
@@ -101,6 +152,18 @@
                   <span class="label">Mã túi thư:</span>
                   <span class="value fw-bold text-success">{{ selectedPickup.bag_code }}</span>
                 </div>
+                <div v-if="selectedPickup.pickup_mode === 'BULK_MAIL' && getPickupWaybillCodes(selectedPickup).length" class="detail-grid-item full-width">
+                  <span class="label">Mã vận đơn trong túi:</span>
+                  <span class="value bulk-waybill-grid compact">
+                    <span
+                      v-for="code in getPickupWaybillCodes(selectedPickup)"
+                      :key="code"
+                      class="code-badge info bulk-waybill-code"
+                    >
+                      {{ code }}
+                    </span>
+                  </span>
+                </div>
                 <div v-if="selectedPickup.pickup_mode === 'BULK_MAIL'" class="detail-grid-item">
                   <span class="label">Số lượng bưu gửi:</span>
                   <span class="value fw-bold">{{ selectedPickup.estimated_quantity || 0 }}</span>
@@ -126,8 +189,8 @@
                 <div class="detail-grid-item">
                   <span class="label">Trạng thái lấy hàng:</span>
                   <span class="value">
-                    <el-tag :type="getPickupStatusType(selectedPickup.pickup_status)" size="small">
-                      {{ getPickupStatusLabel(selectedPickup.pickup_status) }}
+                    <el-tag :type="getCustomerOrderStatusType(selectedPickup)" size="small">
+                      {{ getCustomerOrderStatusLabel(selectedPickup) }}
                     </el-tag>
                   </span>
                 </div>
@@ -183,6 +246,39 @@
                   </div>
                 </el-col>
               </el-row>
+
+              <template v-if="selectedPickup.bill_image_url || selectedPickup.pickup_image_url || selectedPickup.pod_image_url">
+                <el-divider content-position="left"><el-icon><Picture /></el-icon> Hình ảnh OCR / lấy hàng</el-divider>
+                <div class="pickup-image-grid">
+                  <div v-if="selectedPickup.bill_image_url" class="pickup-image-card">
+                    <div class="pickup-image-title">Ảnh vận đơn OCR</div>
+                    <el-image
+                      :src="getMediaUrl(selectedPickup.bill_image_url)"
+                      :preview-src-list="[getMediaUrl(selectedPickup.bill_image_url)]"
+                      fit="cover"
+                      preview-teleported
+                    />
+                  </div>
+                  <div v-if="selectedPickup.pickup_image_url" class="pickup-image-card">
+                    <div class="pickup-image-title">Ảnh lấy hàng</div>
+                    <el-image
+                      :src="getMediaUrl(selectedPickup.pickup_image_url)"
+                      :preview-src-list="[getMediaUrl(selectedPickup.pickup_image_url)]"
+                      fit="cover"
+                      preview-teleported
+                    />
+                  </div>
+                  <div v-if="selectedPickup.pod_image_url" class="pickup-image-card">
+                    <div class="pickup-image-title">Ảnh giao hàng (POD)</div>
+                    <el-image
+                      :src="getMediaUrl(selectedPickup.pod_image_url)"
+                      :preview-src-list="[getMediaUrl(selectedPickup.pod_image_url)]"
+                      fit="cover"
+                      preview-teleported
+                    />
+                  </div>
+                </div>
+              </template>
 
               <!-- Items Section -->
               <el-divider content-position="left"><el-icon><Box /></el-icon> Hàng hóa</el-divider>
@@ -333,11 +429,12 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
+import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
 import { formatVietnamDateTime } from '@/utils/dateTime';
 import { 
   User, Service, Phone, Message, Close, 
   Search, DocumentAdd, Location, List, Edit, Lock,
-  Box, Setting, CircleCheck, InfoFilled, FolderOpened, Upload, ArrowLeft, Refresh, Warning, Money
+  Box, Setting, CircleCheck, InfoFilled, FolderOpened, Upload, ArrowLeft, Refresh, Warning, Money, Picture
 } from '@element-plus/icons-vue';
 
 // ---- Dynamic Address API (provinces.open-api.vn) ----
@@ -1010,20 +1107,49 @@ const fetchPickupsList = async () => {
       api.get('/api/waybills/customer/pickups'),
       api.get('/api/waybills/customer/bulk-mail-pickups')
     ]);
-    const regularRows = (waybillRes.data || []).map(row => ({ ...row, pickup_mode: row.pickup_mode || 'SINGLE_WAYBILL' }));
-    const existingRequestIds = new Set(regularRows.map(row => row.request_id));
-    const bulkRows = (bulkRes.data || [])
-      .filter(row => !existingRequestIds.has(row.request_id))
-      .map(row => ({
-        ...row,
-        pickup_mode: 'BULK_MAIL',
-        hub_name: row.hub_name || 'Đang xử lý...',
-        price_status: 'PENDING_OCR',
-        estimated_total_amount: 0,
-        final_total_amount: null,
-        waybill_status: row.waybill_code ? 'CREATED' : null
-      }));
-    pickupsList.value = [...regularRows, ...bulkRows].sort((a, b) => {
+    const normalizeBulkRow = (row) => ({
+      ...row,
+      pickup_mode: 'BULK_MAIL',
+      hub_name: row.hub_name || 'Đang xử lý...',
+      price_status: 'PENDING_OCR',
+      estimated_total_amount: 0,
+      final_total_amount: null,
+      waybill_status: row.waybill_code ? 'CREATED' : null
+    });
+
+    const bulkRows = (bulkRes.data || []).map(normalizeBulkRow);
+    const bulkRequestIds = new Set(bulkRows.map(row => row.request_id).filter(Boolean));
+    const bulkBagCodes = new Set(bulkRows.map(row => row.bag_code).filter(Boolean));
+    const fallbackBulkMap = new Map();
+    const regularRows = (waybillRes.data || [])
+      .filter(row => {
+        const isBulkChild = row.pickup_mode === 'BULK_MAIL'
+          || (row.request_id && bulkRequestIds.has(row.request_id))
+          || (row.bag_code && bulkBagCodes.has(row.bag_code));
+        if (!isBulkChild) return true;
+
+        const key = row.request_id || row.bag_code;
+        if (!bulkRequestIds.has(row.request_id) && key && !fallbackBulkMap.has(key)) {
+          fallbackBulkMap.set(key, normalizeBulkRow({
+            ...row,
+            waybills: (waybillRes.data || [])
+              .filter(item => (row.request_id && item.request_id === row.request_id) || (row.bag_code && item.bag_code === row.bag_code))
+              .map(item => ({
+                waybill_id: item.waybill_id,
+                waybill_code: item.waybill_code,
+                status: item.waybill_status || item.status,
+                receiver_name: item.receiver_name,
+                receiver_phone: item.receiver_phone,
+                receiver_address: item.receiver_address
+              })),
+            estimated_quantity: row.estimated_quantity || row.est_quantity || row.bag_item_count,
+          }));
+        }
+        return false;
+      })
+      .map(row => ({ ...row, pickup_mode: row.pickup_mode || 'SINGLE_WAYBILL' }));
+    const fallbackBulkRows = [...fallbackBulkMap.values()];
+    pickupsList.value = [...regularRows, ...bulkRows, ...fallbackBulkRows].sort((a, b) => {
       return new Date(b.created_at || 0) - new Date(a.created_at || 0);
     });
   } catch (err) {
@@ -1038,7 +1164,7 @@ const openDetail = async (row) => {
   activeDetailTab.value = 'general';
   detailDialogVisible.value = true;
   
-  if (row.waybill_code) {
+  if (row.waybill_code && row.pickup_mode !== 'BULK_MAIL') {
     timelineLoading.value = true;
     pickupTimeline.value = [];
     try {
@@ -1057,6 +1183,12 @@ const openDetail = async (row) => {
     try {
       const res = await api.get(`/api/waybills/${row.waybill_code}/timeline`);
       pickupTimeline.value = res.data?.timeline || [];
+      selectedPickup.value = {
+        ...selectedPickup.value,
+        bill_image_url: res.data?.bill_image_url || selectedPickup.value?.bill_image_url,
+        pickup_image_url: res.data?.pickup_image_url || selectedPickup.value?.pickup_image_url,
+        pod_image_url: res.data?.pod_image_url || selectedPickup.value?.pod_image_url
+      };
     } catch (err) {
       console.error('Error fetching timeline:', err);
     } finally {
@@ -1066,6 +1198,54 @@ const openDetail = async (row) => {
     selectedPickup.value = row;
     pickupTimeline.value = [];
   }
+};
+
+const getPickupWaybillCodes = (row) => {
+  if (!row) return [];
+  const items = Array.isArray(row.waybills)
+    ? row.waybills
+    : (Array.isArray(row.waybill_items) ? row.waybill_items : []);
+  const codes = items
+    .map(item => item?.waybill_code || item?.bill_code || item?.code)
+    .filter(Boolean);
+  if (row.waybill_code) codes.unshift(row.waybill_code);
+  return [...new Set(codes)];
+};
+
+const getPickupWaybills = (row) => {
+  if (!row) return [];
+  return Array.isArray(row.waybills)
+    ? row.waybills.filter(item => item?.waybill_code)
+    : [];
+};
+
+const openBulkWaybillDetail = (pickup, waybill) => {
+  openDetail({
+    ...pickup,
+    ...waybill,
+    pickup_mode: 'SINGLE_WAYBILL',
+    pickup_status: pickup.pickup_status,
+    waybill_status: waybill.status,
+    request_code: pickup.request_code,
+    bag_code: pickup.bag_code,
+  });
+};
+
+const getOcrStatusLabel = (status) => {
+  const labels = {
+    PENDING: 'Chờ OCR',
+    INCOMPLETE: 'Thiếu thông tin',
+    REVIEW: 'Chờ hoàn thiện',
+    CONVERTED: 'Đã tạo đơn',
+    SUCCESS: 'Thành công',
+  };
+  return labels[status] || status || 'Chờ OCR';
+};
+
+const getOcrStatusType = (status) => {
+  if (['CONVERTED', 'SUCCESS'].includes(status)) return 'success';
+  if (status === 'INCOMPLETE') return 'danger';
+  return 'warning';
 };
 
 const getDiffMessage = (row) => {
@@ -1086,6 +1266,8 @@ const getDiffAlertType = (row) => {
 const formatDate = (val) => {
   return formatVietnamDateTime(val);
 };
+
+const getMediaUrl = resolveMediaUrl;
 
 const getPickupStatusLabel = (status) => {
   switch (status) {
@@ -1110,6 +1292,26 @@ const getPickupStatusType = (status) => {
     default: return 'info';
   }
 };
+
+const getCustomerOrderStatusLabel = (row) => {
+  if (row?.ocr_status === 'CONVERTED' || row?.waybill_status === 'CREATED') {
+    return 'Đơn đã được tạo';
+  }
+  if (['REVIEW', 'INCOMPLETE', 'PENDING'].includes(row?.ocr_status)
+      || ['PENDING_OCR', 'PICKED_PENDING_VERIFY'].includes(row?.waybill_status)) {
+    return 'Đang xác nhận hoàn thiện thông tin';
+  }
+  return getPickupStatusLabel(row?.pickup_status);
+};
+
+const getCustomerOrderStatusType = (row) => {
+  if (row?.ocr_status === 'CONVERTED' || row?.waybill_status === 'CREATED') return 'success';
+  if (['REVIEW', 'INCOMPLETE', 'PENDING'].includes(row?.ocr_status)
+      || ['PENDING_OCR', 'PICKED_PENDING_VERIFY'].includes(row?.waybill_status)) return 'warning';
+  return getPickupStatusType(row?.pickup_status);
+};
+
+const customerOrderRowClass = ({ row }) => ['HT', 'EXPRESS'].includes(row?.service_type) ? 'urgent-order-row' : '';
 
 const getServiceTypeLabel = (serviceType) => {
   switch ((serviceType || '').toUpperCase()) {

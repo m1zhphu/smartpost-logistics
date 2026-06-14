@@ -408,6 +408,17 @@
                     preview-teleported
                   />
                 </div>
+                <div v-if="activity.pod_image_url" class="pickup-proof">
+                  <span class="pickup-proof-label">Ảnh xác nhận giao hàng (POD)</span>
+                  <el-image
+                    class="pickup-proof-image"
+                    :src="resolveMediaUrl(activity.pod_image_url)"
+                    :preview-src-list="[resolveMediaUrl(activity.pod_image_url)]"
+                    :initial-index="0"
+                    fit="cover"
+                    preview-teleported
+                  />
+                </div>
                 <div v-if="activity.hub_name" class="status-location">
                    <el-icon><LocationInformation /></el-icon>
                    <span>{{ activity.hub_name }}</span>
@@ -744,6 +755,7 @@ import {
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
+import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
 import moment from 'moment';
 import { useAuthStore } from '@/stores/auth';
 
@@ -1037,12 +1049,7 @@ const viewTracking = async (code) => {
   }
 };
 
-const getMediaUrl = (path) => {
-  if (!path) return '';
-  if (/^https?:\/\//i.test(path)) return path;
-  const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-  return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
-};
+const getMediaUrl = resolveMediaUrl;
 
 const handlePrint = (code) => {
   const baseUrl = import.meta.env.VITE_API_URL || '';

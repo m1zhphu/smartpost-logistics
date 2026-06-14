@@ -11,6 +11,7 @@ import crud.waybills as crud_wb
 import models
 from core.push import send_expo_push_notification
 from core.realtime import realtime_manager
+from sqlalchemy import or_
 
 router = APIRouter(prefix="/api/delivery", tags=["Delivery Operations"])
 
@@ -33,6 +34,104 @@ def _can_operate_hub(current_user: dict, hub_id: int | None) -> bool:
 def _require_pickup_operator(current_user: dict):
     if current_user.get("role_id") not in [1, 2, 3, 7]:
         raise HTTPException(status_code=403, detail="Khong co quyen thao tac yeu cau pickup")
+
+
+def _require_delivery_simulation_operator(current_user: dict):
+    if current_user.get("role_id") not in [1, 2, 7]:
+        raise HTTPException(status_code=403, detail="Khong co quyen gia lap chuan bi giao hang")
+
+
+@router.get("/development/ocr-ready")
+def list_ocr_ready_for_delivery(
+    q: str = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    _require_delivery_simulation_operator(current_user)
+    query = db.query(models.Waybills).filter(
+        models.Waybills.is_deleted == False,
+        models.Waybills.status == WaybillStatus.CREATED,
+        models.Waybills.ocr_status == "CONVERTED",
+        models.Waybills.verify_status == "VERIFIED",
+    )
+    if current_user.get("role_id") != 1:
+        hub_id = current_user.get("primary_hub_id")
+        query = query.filter(or_(
+            models.Waybills.dest_hub_id == hub_id,
+            models.Waybills.origin_hub_id == hub_id,
+            models.Waybills.holding_hub_id == hub_id,
+        ))
+    if q:
+        keyword = f"%{q.strip()}%"
+        query = query.filter(or_(
+            models.Waybills.waybill_code.ilike(keyword),
+            models.Waybills.receiver_name.ilike(keyword),
+            models.Waybills.receiver_phone.ilike(keyword),
+        ))
+    rows = query.order_by(models.Waybills.waybill_id.desc()).limit(500).all()
+    return [{
+        "waybill_id": row.waybill_id,
+        "waybill_code": row.waybill_code,
+        "receiver_name": row.receiver_name,
+        "receiver_phone": row.receiver_phone,
+        "receiver_address": row.receiver_address,
+        "service_type": row.service_type,
+        "payment_method": row.payment_method,
+        "cod_amount": float(row.cod_amount or 0),
+        "shipping_fee": float(row.shipping_fee or 0),
+        "total_amount_to_collect": float(row.total_amount_to_collect or 0),
+        "origin_hub_id": row.origin_hub_id,
+        "dest_hub_id": row.dest_hub_id,
+        "holding_hub_id": row.holding_hub_id,
+        "ocr_status": row.ocr_status,
+        "verify_status": row.verify_status,
+        "status": row.status,
+        "bill_image_url": row.bill_image_url,
+        "pickup_image_url": row.pickup_image_url,
+    } for row in rows]
+
+
+@router.post("/development/prepare-delivery")
+def prepare_ocr_waybills_for_delivery(
+    data: schema_delivery.DevelopmentPrepareDeliveryRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    _require_delivery_simulation_operator(current_user)
+    prepared = []
+    try:
+        for code in data.waybill_codes:
+            waybill = crud_delivery.get_waybill_by_code(db, code)
+            if not waybill:
+                raise HTTPException(status_code=404, detail=f"Khong tim thay van don {code}")
+            if waybill.ocr_status != "CONVERTED" or waybill.verify_status != "VERIFIED":
+                raise HTTPException(status_code=400, detail=f"Van don {code} chua hoan tat OCR/xac thuc")
+            validate_state_transition(waybill.status, WaybillStatus.IN_HUB)
+            destination_hub_id = waybill.dest_hub_id or waybill.origin_hub_id or waybill.holding_hub_id
+            if not destination_hub_id:
+                raise HTTPException(status_code=400, detail=f"Van don {code} chua co buu cuc giao")
+            if current_user.get("role_id") != 1 and destination_hub_id != current_user.get("primary_hub_id"):
+                raise HTTPException(status_code=403, detail=f"Van don {code} khong thuoc buu cuc cua ban")
+            waybill.status = WaybillStatus.IN_HUB
+            waybill.dest_hub_id = destination_hub_id
+            waybill.holding_hub_id = destination_hub_id
+            waybill.holding_shipper_id = None
+            waybill.version = (waybill.version or 1) + 1
+            db.add(models.TrackingLogs(
+                waybill_id=waybill.waybill_id,
+                status_id=WaybillStatus.IN_HUB,
+                hub_id=destination_hub_id,
+                user_id=current_user["user_id"],
+                system_time=datetime.utcnow(),
+                note="Gia lap giai doan phat trien: bo qua quan ly kho, don san sang phan cong giao hang",
+            ))
+            prepared.append(code)
+        db.commit()
+        realtime_manager.publish(["admin"], "delivery.development_prepared", {"waybill_codes": prepared})
+        return {"status": "READY_FOR_ASSIGNMENT", "count": len(prepared), "waybill_codes": prepared}
+    except Exception:
+        db.rollback()
+        raise
 
 @router.get("/pending-assign")
 def get_pending_assign_waybills(

@@ -198,7 +198,8 @@ const menuData = computed(() => {
       children: [
         { title: 'VẬN ĐƠN', items: [
           { label: 'Tạo mới Vận đơn', path: '/admin/waybills/create' },
-          { label: 'Tra cứu & Quản lý', path: '/admin/waybills' }
+          { label: 'Tra cứu & Quản lý', path: '/admin/waybills' },
+          { label: 'Đơn đã OCR', path: '/admin/waybills/ocr-reviewed' }
         ]}
       ]
     },
@@ -226,12 +227,14 @@ const menuData = computed(() => {
         ]}
       ] : [
         { title: 'LẤY HÀNG (PICKUP)', items: [
+          ...([1, 2, 7].includes(role) ? [{ label: 'Thêm mới yêu cầu', path: '/admin/delivery/pickup-create' }] : []),
           ...(role === 1 ? [{ label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' }] : []),
           { label: 'Chờ bưu cục xác nhận', path: '/admin/delivery/pickup-management?tab=dispatch-hub' },
           { label: 'Chờ gán bưu tá', path: '/admin/delivery/pickup-management?tab=received' },
           { label: 'Đang đi lấy', path: '/admin/delivery/pickup-management?tab=assigned' }
         ]},
         { title: 'GIAO HÀNG', items: [
+          ...([1, 2, 7].includes(role) ? [{ label: 'Giả lập chuẩn bị giao', path: '/admin/delivery/development-ready' }] : []),
           { label: 'Phân công Shipper', path: '/admin/delivery/assign' }
         ]}
       ]

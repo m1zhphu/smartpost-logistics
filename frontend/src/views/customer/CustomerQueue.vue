@@ -460,6 +460,8 @@ const submitSelectedDrafts = async () => {
         );
         await api.post('/api/waybills/customer/bulk-mail-pickups', {
           product_type: draft.bulk_product_type,
+          service_type: draft.service_type || 'TK',
+          payment_method: draft.payment_method || 'SENDER_DEBT',
           estimated_quantity: Number(draft.bulk_estimated_quantity),
           sender: {
             name: draft.sender.name,
