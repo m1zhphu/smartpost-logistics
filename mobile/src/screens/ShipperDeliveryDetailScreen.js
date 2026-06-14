@@ -19,7 +19,7 @@ import {
   confirmDelivery,
   getDeliveryTasks,
   reportDeliveryFailure,
-  uploadPickupImage,
+  uploadPodImage,
 } from "../services/deliveryService";
 import {
   formatCurrency,
@@ -35,6 +35,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [podImageUrl, setPodImageUrl] = useState("");
   const [podPreview, setPodPreview] = useState("");
   const [codCollected, setCodCollected] = useState("0");
@@ -63,34 +64,43 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       quality: 0.8,
     });
     if (result.canceled || !result.assets?.length) return;
     const asset = result.assets[0];
-    setPodPreview(asset.uri);
-    const upload = await uploadPickupImage({
-      uri: asset.uri,
-      name: asset.fileName || `pod-${Date.now()}.jpg`,
-      type: asset.mimeType || "image/jpeg",
-    });
-    const uploaded = upload.data?.image_url || upload.data?.file_url;
-    if (upload.success && uploaded) {
-      setPodImageUrl(uploaded);
-      Toast.show({ type: "success", text1: "Đã tải ảnh POD" });
-    } else {
-      setPodPreview("");
-      setPodImageUrl("");
-      Toast.show({
-        type: "error",
-        text1: "Upload ảnh thất bại",
-        text2: upload.message,
+    setUploadingImage(true);
+    setPodPreview("");
+    setPodImageUrl("");
+    try {
+      const upload = await uploadPodImage({
+        uri: asset.uri,
+        name: asset.fileName || `pod-${Date.now()}.jpg`,
+        type: asset.mimeType || "image/jpeg",
       });
+      const uploaded = upload.data?.image_url || upload.data?.file_url;
+      if (upload.success && uploaded) {
+        setPodPreview(asset.uri);
+        setPodImageUrl(uploaded);
+        Toast.show({ type: "success", text1: "Đã tải ảnh POD" });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Upload ảnh thất bại",
+          text2: upload.message || "Máy chủ không trả về đường dẫn ảnh",
+        });
+      }
+    } finally {
+      setUploadingImage(false);
     }
   };
 
   const handleConfirm = () => {
+    if (uploadingImage) {
+      Toast.show({ type: "info", text1: "Ảnh POD đang được tải lên" });
+      return;
+    }
     if (!podImageUrl) {
       Toast.show({
         type: "error",
@@ -265,10 +275,15 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
           <TouchableOpacity
             style={styles.imageBtn}
             onPress={handlePickImage}
+            disabled={uploadingImage}
             activeOpacity={0.8}
           >
-            <Ionicons name="camera-outline" size={18} color={PRIMARY} />
-            <Text style={styles.imageBtnText}>Chụp ảnh POD</Text>
+            {uploadingImage ? (
+              <ActivityIndicator size="small" color={PRIMARY} />
+            ) : (
+              <Ionicons name="camera-outline" size={18} color={PRIMARY} />
+            )}
+            <Text style={styles.imageBtnText}>{uploadingImage ? "Đang tải ảnh..." : "Chụp ảnh POD"}</Text>
           </TouchableOpacity>
           {podPreview ? (
             <Text style={styles.previewHint}>Đã chọn ảnh</Text>
@@ -305,7 +320,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
         <TouchableOpacity
           style={[styles.okBtn, submitting && { opacity: 0.7 }]}
           onPress={handleConfirm}
-          disabled={submitting}
+          disabled={submitting || uploadingImage}
           activeOpacity={0.8}
         >
           <Text style={styles.okText}>

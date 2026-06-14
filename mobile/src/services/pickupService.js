@@ -18,6 +18,11 @@ const getErrorMessage = (error) => {
     return error.message;
 };
 
+const getMissingFields = (error) => {
+    const data = error.response?.data;
+    return data?.missing_fields || data?.detail?.missing_fields || [];
+};
+
 // Customer APIs
 export const createCustomerPickup = async (data) => {
     try {
@@ -344,11 +349,33 @@ export const getOcrBagWaybills = async (bagCode) => {
 };
 
 export const patchOcrWaybill = async (waybillCode, data) => {
+    console.log('[OCR] Bắt đầu xác nhận vận đơn', {
+        waybillCode,
+        fields: Object.keys(data || {}),
+        hasBillImage: Boolean(data?.bill_image_url),
+    });
     try {
         const response = await apiClient.patch(ADMIN_ENDPOINTS.OCR_UPDATE_WAYBILL(waybillCode), data);
+        console.log('[OCR] Xác nhận vận đơn thành công', {
+            waybillCode,
+            ocrStatus: response.data?.ocr_status,
+            missingFields: response.data?.missing_fields || [],
+        });
         return { success: true, data: response.data };
     } catch (error) {
-        return { success: false, message: getErrorMessage(error) };
+        console.error('[OCR] Xác nhận vận đơn thất bại', {
+            waybillCode,
+            status: error.response?.status,
+            response: error.response?.data,
+            message: error.message,
+        });
+        return {
+            success: false,
+            message: getErrorMessage(error),
+            status: error.response?.status,
+            data: error.response?.data,
+            missing_fields: getMissingFields(error),
+        };
     }
 };
 

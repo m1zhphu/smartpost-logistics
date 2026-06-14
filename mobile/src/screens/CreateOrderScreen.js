@@ -38,6 +38,13 @@ export default function CreateOrderScreen({ route, navigation }) {
   const { user } = useUser();
   const isShipper = user?.role_id === 4 || user?.is_shipper;
 
+  const normalizedBagCode = (() => {
+    const value = String(bag_code || '').trim();
+    if (!value) return null;
+    if (/^https?:\/\//i.test(value)) return null;
+    return value === String(trackingNumber || '').trim() ? null : value;
+  })();
+
   const [rName, setRName] = useState(receiverData?.name || "");
   const [rPhone, setRPhone] = useState(receiverData?.phone || "");
   const [rAddress, setRAddress] = useState(receiverData?.address || "");
@@ -182,7 +189,7 @@ export default function CreateOrderScreen({ route, navigation }) {
       bank_branch: bank_branch.trim(),
       unit_code: unit_code.trim(),
       customer_id: customer_id || null,
-      bag_code: bag_code || null,
+      bag_code: normalizedBagCode,
     };
 
     if (!isShipper) {

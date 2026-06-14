@@ -43,6 +43,21 @@ export const confirmDelivery = async (waybillCode, actualCodCollected, note, pod
     }
 };
 
+export const uploadPodImage = async (file) => {
+    try {
+        const formData = new FormData();
+        formData.append('file', {
+            uri: file.uri,
+            name: file.name || `pod-${Date.now()}.jpg`,
+            type: file.type || 'image/jpeg'
+        });
+        const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_POD_IMAGE, formData);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
 export const reportDeliveryFailure = async (waybillCode, reasonCode, note) => {
     try {
         const payload = {

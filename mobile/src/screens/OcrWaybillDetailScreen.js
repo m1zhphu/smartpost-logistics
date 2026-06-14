@@ -219,32 +219,32 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
   };
 
   const handleSave = async () => {
-    if (!form.receiver_name.trim() || !form.receiver_phone.trim()) {
-      Toast.show({
-        type: "error",
-        text1: "Thiếu thông tin cơ bản",
-        text2: "Vui lòng nhập tên và SDT người nhận.",
-      });
-      return;
-    }
-
     setSaving(true);
     const result = await patchOcrWaybill(waybillCode, buildPayload());
     setSaving(false);
 
     if (!result.success) {
+      const missingText = result.missing_fields?.length
+        ? `\nCòn thiếu: ${result.missing_fields.join(", ")}`
+        : "";
+      const message = `${result.message || "Không xác định được lỗi"}${missingText}`;
       Toast.show({
         type: "error",
         text1: "Không lưu được OCR",
-        text2: result.message,
+        text2: message,
       });
+      Alert.alert("Không lưu được OCR", message);
       return;
     }
 
+    const missingFields = result.data?.missing_fields || [];
+    const isIncomplete = missingFields.length > 0 || result.data?.ocr_status === "INCOMPLETE";
     Toast.show({
-      type: "success",
-      text1: "Đã cập nhật vận đơn",
-      text2: `Trạng thái OCR: ${result.data?.ocr_status || "REVIEW"}`,
+      type: isIncomplete ? "info" : "success",
+      text1: isIncomplete ? "Đã lưu OCR, còn thiếu thông tin" : "Đã cập nhật vận đơn",
+      text2: isIncomplete
+        ? `Còn thiếu: ${missingFields.join(", ")}`
+        : `Trạng thái OCR: ${result.data?.ocr_status || "REVIEW"}`,
     });
     navigation.goBack();
   };

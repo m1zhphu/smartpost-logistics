@@ -2,11 +2,31 @@ import { CUSTOMER_ENDPOINTS } from '../constants/customerEndpoints';
 import { apiClient } from '../context/UserContext';
 
 export const submitShipment = async (payload) => {
+    console.log('[OCR Pickup] Bắt đầu gửi xác nhận', {
+        apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+        waybillCode: payload?.waybill_code,
+        bagCode: payload?.bag_code,
+        customerId: payload?.customer_id,
+        receiverName: payload?.receiver_name,
+        actualWeight: payload?.actual_weight,
+    });
     try {
         // Updated to use the new OCR Upsert endpoint for Shipper
         const response = await apiClient.post('/api/waybills/ocr-pickup', payload);
+        console.log('[OCR Pickup] Backend đã lưu thành công', {
+            waybillCode: response.data?.waybill_code,
+            status: response.data?.status,
+            ocrStatus: response.data?.ocr_status,
+            missingFields: response.data?.missing_fields || [],
+        });
         return { success: true, data: response.data };
     } catch (error) {
+        console.error('[OCR Pickup] Backend lưu thất bại', {
+            waybillCode: payload?.waybill_code,
+            status: error.response?.status,
+            response: error.response?.data,
+            message: error.message,
+        });
         if (error.response?.status === 409) {
             return {
                 success: false,
