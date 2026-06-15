@@ -26,13 +26,14 @@ export const getDeliveryTasks = async () => {
     }
 };
 
-export const confirmDelivery = async (waybillCode, actualCodCollected, note, podImageUrl = null) => {
+export const confirmDelivery = async (waybillCode, actualCodCollected, note, podImageUrl = null, podImageUrls = []) => {
     try {
         const payload = {
             waybill_code: waybillCode,
             actual_cod_collected: actualCodCollected,
             note: note || '',
-            pod_image_url: podImageUrl
+            pod_image_url: podImageUrl,
+            pod_image_urls: podImageUrls
         };
         const response = await apiClient.post(ADMIN_ENDPOINTS.CONFIRM_DELIVERY, payload, {
             headers: buildIdempotencyHeaders('mobile-shipper-delivery-success')
@@ -52,6 +53,23 @@ export const uploadPodImage = async (file) => {
             type: file.type || 'image/jpeg'
         });
         const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_POD_IMAGE, formData);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const uploadBatchPodImages = async (files) => {
+    try {
+        const formData = new FormData();
+        files.forEach((file, index) => {
+            formData.append('files', {
+                uri: file.uri,
+                name: file.fileName || file.name || `pod-${Date.now()}-${index}.jpg`,
+                type: file.mimeType || file.type || 'image/jpeg'
+            });
+        });
+        const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_POD_IMAGE_BATCH, formData);
         return { success: true, data: response.data };
     } catch (error) {
         return { success: false, message: getErrorMessage(error) };

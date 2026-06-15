@@ -14,6 +14,7 @@ import {
   getShipperPickupDetail,
   sendGpsLocation,
   uploadPickupImage,
+  uploadBatchPickupImages,
 } from "../services/pickupService";
 import {
   formatCurrency,
@@ -37,8 +38,8 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const [pickupImageUrl, setPickupImageUrl] = useState("");
-  const [pickupImagePreview, setPickupImagePreview] = useState("");
+  const [pickupImages, setPickupImages] = useState([]);
+  const [pickupPreviews, setPickupPreviews] = useState([]);
   const [pickedNote, setPickedNote] = useState(
     "Đã lấy hàng từ khách và chuẩn bị mang về bưu cục",
   );
@@ -56,8 +57,13 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
     const result = await getShipperPickupDetail(requestCode);
     if (result.success) {
       setDetail(result.data);
-      setPickupImageUrl(result.data?.pickup_image_url || "");
-      setPickupImagePreview(result.data?.pickup_image_url || "");
+      const images = result.data?.pickup_image_urls?.length
+        ? result.data.pickup_image_urls
+        : result.data?.pickup_image_url
+          ? [result.data.pickup_image_url]
+          : [];
+      setPickupImages(images);
+      setPickupPreviews(images);
       const expectedQty = result.data?.expected_quantity ?? result.data?.est_quantity ?? "";
       let initialQty = expectedQty;
       if (result.data?.actual_quantity) {
@@ -132,28 +138,25 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
     }
   };
 
-  const uploadSelectedImage = async (asset) => {
+  const uploadSelectedImages = async (assets) => {
     setUploadingImage(true);
-    setPickupImagePreview(asset.uri);
-    const result = await uploadPickupImage({
-      uri: asset.uri,
-      name: asset.fileName || `pickup-${Date.now()}.jpg`,
-      type: asset.mimeType || "image/jpeg",
-    });
+    const newPreviews = [...pickupPreviews, ...assets.map(a => a.uri)];
+    setPickupPreviews(newPreviews);
+    
+    const result = await uploadBatchPickupImages(assets);
     setUploadingImage(false);
 
-    const uploadedUrl = result.data?.image_url || result.data?.file_url;
-    if (result.success && uploadedUrl) {
-      setPickupImageUrl(uploadedUrl);
-      setPickupImagePreview(asset.uri);
+    if (result.success && (result.data?.image_urls || result.data?.file_urls || result.data?.image_url)) {
+      const newUrls = result.data?.image_urls || result.data?.file_urls || [result.data?.image_url];
+      setPickupImages(prev => [...prev, ...newUrls].filter(Boolean));
       Toast.show({
         type: "success",
         text1: "Đã tải ảnh pickup thành công",
       });
       return;
     }
-    setPickupImagePreview("");
-    setPickupImageUrl("");
+    
+    setPickupPreviews(pickupImages);
     Toast.show({
       type: "error",
       text1: "Upload ảnh thất bại",
@@ -177,25 +180,32 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       return;
     }
 
+    const remaining = 5 - pickupImages.length;
+    if (remaining <= 0) {
+      Toast.show({ type: "error", text1: "Đã đạt tối đa 5 ảnh" });
+      return;
+    }
+
     const result =
       mode === "camera"
         ? await ImagePicker.launchCameraAsync({
             mediaTypes: ["images"],
-            allowsEditing: true,
+            allowsEditing: false,
             quality: 0.8,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ["images"],
-            allowsEditing: true,
+            allowsMultipleSelection: true,
+            selectionLimit: remaining,
             quality: 0.8,
           });
 
     if (result.canceled || !result.assets?.length) return;
-    await uploadSelectedImage(result.assets[0]);
+    await uploadSelectedImages(result.assets);
   };
 
   const handleConfirmPicked = async () => {
-    if (!pickupImageUrl) {
+    if (pickupImages.length === 0) {
       Toast.show({
         type: "error",
         text1: "Thiếu ảnh xác nhận",
@@ -241,11 +251,12 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           const note = noteParts.join("\n");
           const result = isBulkMail
             ? await confirmPickupWithBagCount(requestCode, {
-                imageUrl: pickupImageUrl,
+                imageUrl: pickupImages[0],
+                imageUrls: pickupImages,
                 note,
                 actualQuantity: parsedActualQuantity,
               })
-            : await confirmPickup(requestCode, pickupImageUrl, note);
+            : await confirmPickup(requestCode, pickupImages[0], note, pickupImages);
           setSubmitting(false);
 
           if (result.success) {
@@ -644,11 +655,30 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               />
             </View>
 
-            {pickupImagePreview ? (
-              <Image
-                source={{ uri: getDisplayImageUrl(pickupImagePreview) }}
-                style={styles.previewImage}
-              />
+            {pickupPreviews.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.previewScroll}>
+                {pickupPreviews.map((uri, index) => (
+                  <View key={index} style={styles.previewImageContainer}>
+                    <Image
+                      source={{ uri: getDisplayImageUrl(uri) }}
+                      style={styles.previewImageSmall}
+                    />
+                    <TouchableOpacity 
+                      style={styles.removeImageBtn}
+                      onPress={() => {
+                        const newPreviews = [...pickupPreviews];
+                        newPreviews.splice(index, 1);
+                        setPickupPreviews(newPreviews);
+                        const newImages = [...pickupImages];
+                        newImages.splice(index, 1);
+                        setPickupImages(newImages);
+                      }}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
             ) : (
               <View style={styles.placeholderBox}>
                 <Ionicons name="image-outline" size={32} color="#94A3B8" />

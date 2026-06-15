@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { ActivityIndicator, FlatList, Image, Modal, Pressable, Text, TextInput, TouchableOpacity, View, DeviceEventEmitter, Platform } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Modal, Pressable, Text, TextInput, TouchableOpacity, View, DeviceEventEmitter, Platform, ScrollView } from 'react-native';
 import styles from "../styles/AdminPickupFlowScreenStyles";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +20,7 @@ import {
   getOnlinePickupRequests,
   rejectHubDispatchRequest,
   uploadPickupImage,
+  uploadBatchPickupImages,
 } from "../services/pickupService";
 import {
   formatDateTime,
@@ -77,8 +78,8 @@ export default function AdminPickupFlowScreen({ navigation, route }) {
   const [rejectNote, setRejectNote] = useState("");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [pickedModalVisible, setPickedModalVisible] = useState(false);
-  const [pickedImageUrl, setPickedImageUrl] = useState("");
-  const [pickedImagePreview, setPickedImagePreview] = useState("");
+  const [pickedImageUrls, setPickedImageUrls] = useState([]);
+  const [pickedImagePreviews, setPickedImagePreviews] = useState([]);
   const [pickedNote, setPickedNote] = useState("Đã lấy hàng thành công");
   const [uploadingPickedImage, setUploadingPickedImage] = useState(false);
 
@@ -340,34 +341,28 @@ export default function AdminPickupFlowScreen({ navigation, route }) {
 
   const openPickedModal = (item) => {
     setSelectedRequest(item);
-    setPickedImageUrl("");
-    setPickedImagePreview("");
+    setPickedImageUrls([]);
+    setPickedImagePreviews([]);
     setPickedNote("Đã lấy hàng thành công");
     setPickedModalVisible(true);
   };
 
-  const uploadPickedImage = async (asset) => {
+  const uploadPickedImages = async (assets) => {
     setUploadingPickedImage(true);
-    setPickedImagePreview(asset.uri);
+    const newPreviews = [...pickedImagePreviews, ...assets.map(a => a.uri)];
+    setPickedImagePreviews(newPreviews);
 
-    const result = await uploadPickupImage({
-      uri: asset.uri,
-      name: asset.fileName || `pickup-${Date.now()}.jpg`,
-      type: asset.mimeType || "image/jpeg",
-    });
+    const result = await uploadBatchPickupImages(assets);
 
-    const uploadedUrl = result.data?.image_url || result.data?.file_url;
-
-    if (result.success && uploadedUrl) {
-      setPickedImageUrl(uploadedUrl);
-      setPickedImagePreview(asset.uri);
+    if (result.success && (result.data?.image_urls || result.data?.file_urls || result.data?.image_url)) {
+      const newUrls = result.data?.image_urls || result.data?.file_urls || [result.data?.image_url];
+      setPickedImageUrls(prev => [...prev, ...newUrls].filter(Boolean));
       Toast.show({
         type: "success",
         text1: "Đã tải ảnh biên nhận lên thành công",
       });
     } else {
-      setPickedImageUrl("");
-      setPickedImagePreview("");
+      setPickedImagePreviews(pickedImageUrls);
       Toast.show({
         type: "error",
         text1: "Upload ảnh thất bại",
@@ -389,25 +384,32 @@ export default function AdminPickupFlowScreen({ navigation, route }) {
       return;
     }
 
+    const remaining = 5 - pickedImageUrls.length;
+    if (remaining <= 0) {
+      Toast.show({ type: "error", text1: "Đã đạt tối đa 5 ảnh" });
+      return;
+    }
+
     const result =
       mode === "camera"
         ? await ImagePicker.launchCameraAsync({
             mediaTypes: ["images"],
-            allowsEditing: true,
+            allowsEditing: false,
             quality: 0.8,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ["images"],
-            allowsEditing: true,
+            allowsMultipleSelection: true,
+            selectionLimit: remaining,
             quality: 0.8,
           });
 
     if (result.canceled || !result.assets?.length) return;
-    await uploadPickedImage(result.assets[0]);
+    await uploadPickedImages(result.assets);
   };
 
   const submitPicked = async () => {
-    if (!selectedRequest || !pickedImageUrl) {
+    if (!selectedRequest || pickedImageUrls.length === 0) {
       Toast.show({ type: "error", text1: "Vui lòng tải ảnh biên nhận trước" });
       return;
     }
@@ -417,7 +419,8 @@ export default function AdminPickupFlowScreen({ navigation, route }) {
       await apiClient.post(
         `/api/delivery/pickup-requests/${selectedRequest.request_code}/picked`,
         {
-          pickup_image_url: pickedImageUrl,
+          pickup_image_url: pickedImageUrls[0],
+          pickup_image_urls: pickedImageUrls,
           note:
             pickedNote.trim() ||
             "Xác nhận bưu tá đã lấy hàng thành công trên mobile",
@@ -750,18 +753,37 @@ export default function AdminPickupFlowScreen({ navigation, route }) {
                 <Text style={styles.secondaryActionText}>Chọn ảnh</Text>
               </TouchableOpacity>
             </View>
-            {pickedImagePreview ? (
-              <Image
-                source={{ uri: pickedImagePreview }}
-                style={{
-                  width: "100%",
-                  height: 180,
-                  borderRadius: 16,
-                  marginBottom: 12,
-                }}
-                resizeMode="cover"
-              />
-            ) : null}
+            {pickedImagePreviews.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {pickedImagePreviews.map((uri, index) => (
+                  <View key={index} style={{ marginRight: 10, position: 'relative' }}>
+                    <Image
+                      source={{ uri }}
+                      style={{
+                        width: 100,
+                        height: 100,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: "#E2E8F0",
+                      }}
+                    />
+                    <TouchableOpacity 
+                      style={{ position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 12 }}
+                      onPress={() => {
+                        const newPreviews = [...pickedImagePreviews];
+                        newPreviews.splice(index, 1);
+                        setPickedImagePreviews(newPreviews);
+                        const newImages = [...pickedImageUrls];
+                        newImages.splice(index, 1);
+                        setPickedImageUrls(newImages);
+                      }}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
             <TextInput
               value={pickedNote}
               onChangeText={setPickedNote}
@@ -782,7 +804,7 @@ export default function AdminPickupFlowScreen({ navigation, route }) {
                 style={styles.primaryActionWrap}
                 onPress={submitPicked}
                 activeOpacity={0.8}
-                disabled={!pickedImageUrl || submitting}
+                disabled={pickedImageUrls.length === 0 || submitting}
               >
                 <Text style={styles.primaryActionText}>Đã lấy hàng</Text>
               </TouchableOpacity>

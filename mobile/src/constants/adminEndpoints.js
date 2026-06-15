@@ -13,8 +13,10 @@ export const ADMIN_ENDPOINTS = {
   CONFIRM_PICKED: (requestCode) => `${API_BASE_URL}/api/delivery/pickup-requests/${requestCode}/picked`,
   SEND_GPS_LOCATION: `${API_BASE_URL}/api/delivery/mobile/shipper/location`,
   UPLOAD_PICKUP_IMAGE: `${API_BASE_URL}/api/upload/bill?is_pickup=true`,
+  UPLOAD_PICKUP_IMAGE_BATCH: `${API_BASE_URL}/api/upload/bill/batch?is_pickup=true`,
   UPLOAD_BILL_IMAGE: `${API_BASE_URL}/api/upload/bill`,
   UPLOAD_POD_IMAGE: `${API_BASE_URL}/api/upload/pod`,
+  UPLOAD_POD_IMAGE_BATCH: `${API_BASE_URL}/api/upload/pod/batch`,
   ADMIN_REGISTER_PUSH_TOKEN_URL: `${API_BASE_URL}/api/users/register-push-token`,
   TOGGLE_AVAILABILITY: `${API_BASE_URL}/api/delivery/mobile/shipper/availability`,
   

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Platform, Image } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
@@ -12,6 +12,7 @@ import {
   getDeliveryTasks,
   reportDeliveryFailure,
   uploadPodImage,
+  uploadBatchPodImages,
 } from "../services/deliveryService";
 import {
   formatCurrency,
@@ -29,8 +30,8 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [podImageUrl, setPodImageUrl] = useState("");
-  const [podPreview, setPodPreview] = useState("");
+  const [podImages, setPodImages] = useState([]);
+  const [podPreviews, setPodPreviews] = useState([]);
   const [codCollected, setCodCollected] = useState("0");
   const [note, setNote] = useState("Đã giao hàng thành công");
 
@@ -50,43 +51,61 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
     setLoading(false);
   };
 
-  const handlePickImage = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (perm.status !== "granted") {
-      CustomAlert.alert("Thiếu quyền", "Vui lòng cấp quyền camera để chụp POD.");
+  const uploadSelectedImages = async (assets) => {
+    setUploadingImage(true);
+    const newPreviews = [...podPreviews, ...assets.map(a => a.uri)];
+    setPodPreviews(newPreviews);
+    
+    const result = await uploadBatchPodImages(assets);
+    setUploadingImage(false);
+
+    if (result.success && (result.data?.image_urls || result.data?.file_urls || result.data?.image_url)) {
+      const newUrls = result.data?.image_urls || result.data?.file_urls || [result.data?.image_url];
+      setPodImages(prev => [...prev, ...newUrls].filter(Boolean));
+      Toast.show({ type: "success", text1: "Đã tải ảnh POD" });
+    } else {
+      setPodPreviews(podImages);
+      Toast.show({
+        type: "error",
+        text1: "Upload ảnh thất bại",
+        text2: result.message || "Máy chủ không trả về đường dẫn ảnh",
+      });
+    }
+  };
+
+  const handlePickImage = async (mode) => {
+    const permission =
+      mode === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permission.status !== "granted") {
+      CustomAlert.alert("Thiếu quyền", "Vui lòng cấp quyền để tải ảnh POD.");
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets?.length) return;
-    const asset = result.assets[0];
-    setUploadingImage(true);
-    setPodPreview("");
-    setPodImageUrl("");
-    try {
-      const upload = await uploadPodImage({
-        uri: asset.uri,
-        name: asset.fileName || `pod-${Date.now()}.jpg`,
-        type: asset.mimeType || "image/jpeg",
-      });
-      const uploaded = upload.data?.image_url || upload.data?.file_url;
-      if (upload.success && uploaded) {
-        setPodPreview(asset.uri);
-        setPodImageUrl(uploaded);
-        Toast.show({ type: "success", text1: "Đã tải ảnh POD" });
-      } else {
-        Toast.show({
-          type: "error",
-          text1: "Upload ảnh thất bại",
-          text2: upload.message || "Máy chủ không trả về đường dẫn ảnh",
-        });
-      }
-    } finally {
-      setUploadingImage(false);
+    
+    const remaining = 5 - podImages.length;
+    if (remaining <= 0) {
+      Toast.show({ type: "error", text1: "Đã đạt tối đa 5 ảnh" });
+      return;
     }
+
+    const result =
+      mode === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            allowsEditing: false,
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsMultipleSelection: true,
+            selectionLimit: remaining,
+            quality: 0.8,
+          });
+
+    if (result.canceled || !result.assets?.length) return;
+    await uploadSelectedImages(result.assets);
   };
 
   const handleConfirm = () => {
@@ -94,7 +113,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
       Toast.show({ type: "info", text1: "Ảnh POD đang được tải lên" });
       return;
     }
-    if (!podImageUrl) {
+    if (podImages.length === 0) {
       Toast.show({
         type: "error",
         text1: "Thiếu ảnh POD",
@@ -112,7 +131,8 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
             waybillCode,
             Number(codCollected || 0),
             note,
-            podImageUrl,
+            podImages[0],
+            podImages
           );
           setSubmitting(false);
           if (result.success) {
@@ -265,22 +285,54 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>XÁC NHẬN GIAO</Text>
-          <TouchableOpacity
-            style={styles.imageBtn}
-            onPress={handlePickImage}
-            disabled={uploadingImage}
-            activeOpacity={0.8}
-          >
-            {uploadingImage ? (
-              <ActivityIndicator size="small" color={PRIMARY} />
-            ) : (
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+            <TouchableOpacity
+              style={[styles.imageBtn, { flex: 1, marginBottom: 0 }]}
+              onPress={() => handlePickImage('camera')}
+              disabled={uploadingImage}
+            >
               <Ionicons name="camera-outline" size={18} color={PRIMARY} />
-            )}
-            <Text style={styles.imageBtnText}>{uploadingImage ? "Đang tải ảnh..." : "Chụp ảnh POD"}</Text>
-          </TouchableOpacity>
-          {podPreview ? (
-            <Text style={styles.previewHint}>Đã chọn ảnh</Text>
-          ) : null}
+              <Text style={styles.imageBtnText}>Chụp ảnh</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.imageBtn, { flex: 1, marginBottom: 0 }]}
+              onPress={() => handlePickImage('library')}
+              disabled={uploadingImage}
+            >
+              <Ionicons name="images-outline" size={18} color={PRIMARY} />
+              <Text style={styles.imageBtnText}>Chọn ảnh</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {uploadingImage && (
+            <ActivityIndicator size="small" color={PRIMARY} style={{ marginBottom: 10 }} />
+          )}
+
+          {podPreviews.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.previewScroll}>
+              {podPreviews.map((uri, index) => (
+                <View key={index} style={styles.previewImageContainer}>
+                  <Image
+                    source={{ uri }}
+                    style={styles.previewImageSmall}
+                  />
+                  <TouchableOpacity 
+                    style={styles.removeImageBtn}
+                    onPress={() => {
+                      const newPreviews = [...podPreviews];
+                      newPreviews.splice(index, 1);
+                      setPodPreviews(newPreviews);
+                      const newImages = [...podImages];
+                      newImages.splice(index, 1);
+                      setPodImages(newImages);
+                    }}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
           <TextInput
             value={codCollected}
             onChangeText={setCodCollected}

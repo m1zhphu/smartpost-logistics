@@ -214,10 +214,11 @@ export const getShipperPickupDetail = async (requestCode) => {
     }
 };
 
-export const confirmPickup = async (requestCode, imageUrl, note) => {
+export const confirmPickup = async (requestCode, imageUrl, note, imageUrls = []) => {
     try {
         const response = await apiClient.post(ADMIN_ENDPOINTS.CONFIRM_PICKED(requestCode), {
             pickup_image_url: imageUrl,
+            pickup_image_urls: imageUrls,
             note: note || ''
         }, {
             headers: buildIdempotencyHeaders('mobile-shipper-picked')
@@ -228,10 +229,11 @@ export const confirmPickup = async (requestCode, imageUrl, note) => {
     }
 };
 
-export const confirmPickupWithBagCount = async (requestCode, { imageUrl, note, actualQuantity }) => {
+export const confirmPickupWithBagCount = async (requestCode, { imageUrl, note, actualQuantity, imageUrls = [] }) => {
     try {
         const response = await apiClient.post(ADMIN_ENDPOINTS.CONFIRM_PICKED(requestCode), {
             pickup_image_url: imageUrl,
+            pickup_image_urls: imageUrls,
             note: note || '',
             actual_quantity: actualQuantity,
         }, {
@@ -254,6 +256,25 @@ export const uploadPickupImage = async (file) => {
 
         // React Native must generate the multipart boundary automatically.
         const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_PICKUP_IMAGE, formData);
+
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+export const uploadBatchPickupImages = async (files) => {
+    try {
+        const formData = new FormData();
+        files.forEach((file, index) => {
+            formData.append('files', {
+                uri: file.uri,
+                name: file.fileName || file.name || `pickup-${Date.now()}-${index}.jpg`,
+                type: file.mimeType || file.type || 'image/jpeg'
+            });
+        });
+
+        const response = await apiClient.post(ADMIN_ENDPOINTS.UPLOAD_PICKUP_IMAGE_BATCH, formData);
 
         return { success: true, data: response.data };
     } catch (error) {

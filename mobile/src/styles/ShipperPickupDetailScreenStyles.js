@@ -182,6 +182,29 @@ export default StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
+  previewScroll: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  previewImageContainer: {
+    marginRight: 10,
+    position: 'relative',
+  },
+  previewImageSmall: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
 
   noteInputContainer: {
     marginTop: 16,
