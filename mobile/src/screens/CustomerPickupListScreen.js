@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  Alert,
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
@@ -47,7 +42,7 @@ export default function CustomerPickupListScreen({ navigation }) {
 
   const openPickupDetail = (waybillCode) => {
     if (!waybillCode) {
-      Alert.alert(
+      CustomAlert.alert(
         "Chưa có vận đơn chi tiết",
         "Yêu cầu này đang chờ hệ thống khởi tạo vận đơn chi tiết. Bạn vui lòng thử lại sau.",
       );
@@ -92,7 +87,7 @@ export default function CustomerPickupListScreen({ navigation }) {
       activeOpacity={0.7}
     >
       <View style={styles.headerButtonInner}>
-        <Ionicons name={icon} size={20} color="#FFFFFF" />
+        <Ionicons name={icon} size={18} color="#FFFFFF" />
       </View>
     </TouchableOpacity>
   );

@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-  Platform,
-  DeviceEventEmitter,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Platform, DeviceEventEmitter } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
@@ -97,7 +89,7 @@ export default function ShipperSelfAssignPickupScreen({ navigation }) {
       return;
     }
 
-    Alert.alert("Tự điều phối nhận hàng", "Bạn muốn điều phối nhận hàng?", [
+    CustomAlert.alert("Tự điều phối nhận hàng", "Bạn muốn điều phối nhận hàng?", [
       { text: "Huỷ", style: "cancel" },
       {
         text: "Đồng ý",

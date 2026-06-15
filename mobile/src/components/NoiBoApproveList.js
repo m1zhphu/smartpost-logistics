@@ -1,18 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  Modal,
-  TextInput,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { CustomAlert } from './CustomAlert';
+
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { inventoryService } from "../services/inventory";
 import Toast from "react-native-toast-message";
@@ -93,7 +82,7 @@ export default function NoiBoApproveList({ navigation, currentAction }) {
   const openActionModal = async (bill, type) => {
     const isConnected = await checkNetworkConnectionWithoutToast();
     if (!isConnected) {
-      return Alert.alert(
+      return CustomAlert.alert(
         "Mất kết nối WiFi hoặc 4G/5G",
         "Vui lòng kiểm tra lại mạng trước khi thao tác!",
       );
@@ -107,12 +96,12 @@ export default function NoiBoApproveList({ navigation, currentAction }) {
 
   const submitAction = async () => {
     if (actionType === "REJECT" && !actionNote.trim()) {
-      return Alert.alert("Yêu cầu bắt buộc", "Vui lòng nhập lý do từ chối");
+      return CustomAlert.alert("Yêu cầu bắt buộc", "Vui lòng nhập lý do từ chối");
     }
 
     const isConnected = await checkNetworkConnectionWithoutToast();
     if (!isConnected) {
-      return Alert.alert(
+      return CustomAlert.alert(
         "Mất kết nối WiFi hoặc 4G/5G",
         "Không thể gửi yêu cầu do rớt mạng. Vui lòng thử lại!",
       );
@@ -139,7 +128,7 @@ export default function NoiBoApproveList({ navigation, currentAction }) {
         loadPendingBills();
       }, 350);
     } catch (error) {
-      Alert.alert(
+      CustomAlert.alert(
         "Lỗi xử lý",
         error.response?.data?.detail ||
           "Có lỗi xảy ra từ máy chủ, vui lòng thử lại sau.",

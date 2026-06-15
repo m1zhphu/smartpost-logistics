@@ -1,22 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  Alert,
-  Dimensions,
-  Modal,
-  Linking,
-  Animated,
-  Easing,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  FlatList,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet, Dimensions, Modal, Linking, Animated, Easing, TextInput, ScrollView, KeyboardAvoidingView, FlatList } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -224,7 +209,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
   };
   const handleLogout = () => {
     setShowMenu(false);
-    Alert.alert("Đăng xuất", "Bạn có muốn thoát không?", [
+    CustomAlert.alert("Đăng xuất", "Bạn có muốn thoát không?", [
       { text: "Hủy", style: "cancel" },
       {
         text: "Đồng ý",
@@ -267,7 +252,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
   //     const mailUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   //     Linking.openURL(mailUrl).catch(() => {
-  //         Alert.alert("Lỗi", "Không thể mở ứng dụng Mail. Vui lòng gửi thủ công tới: " + email);
+  //         CustomAlert.alert("Lỗi", "Không thể mở ứng dụng Mail. Vui lòng gửi thủ công tới: " + email);
   //     });
   // };
 
@@ -1350,7 +1335,6 @@ export default function ShipperCameraScreen({ route, navigation }) {
           pointerEvents: "box-none",
         }}
       >
-        <Toast position="top" topOffset={Platform.OS === "android" ? 40 : 60} />
       </View>
     </View>
   );

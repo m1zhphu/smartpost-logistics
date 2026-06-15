@@ -1,14 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  Animated,
-  Easing,
-  Modal,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { Animated, Easing, Modal, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -180,7 +173,7 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
       if (isSubmittingRef.current || !hasMeaningfulContent) return;
       e.preventDefault();
-      Alert.alert(
+      CustomAlert.alert(
         "Lưu ý",
         "Bạn đang tạo yêu cầu lấy hàng. Nếu thoát bây giờ, dữ liệu chưa lưu sẽ mất.",
         [
@@ -547,7 +540,7 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
       return;
     }
 
-    Alert.alert("Phục hồi nháp", "Bạn có một yêu cầu đang soạn dở. Tiếp tục không?", [
+    CustomAlert.alert("Phục hồi nháp", "Bạn có một yêu cầu đang soạn dở. Tiếp tục không?", [
       {
         text: "Bỏ qua",
         style: "cancel",

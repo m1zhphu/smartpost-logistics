@@ -1,18 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  FlatList,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  AppState,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { CustomAlert } from './CustomAlert';
+
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, KeyboardAvoidingView, Platform, AppState, ActivityIndicator } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useUser, apiClient } from "../context/UserContext";
@@ -201,7 +190,7 @@ export default function GlobalChat() {
             setIsBanned(true);
           }
           setMessages([]);
-          Alert.alert("Hệ thống", data.message);
+          CustomAlert.alert("Hệ thống", data.message);
         }
       };
 
@@ -290,7 +279,7 @@ export default function GlobalChat() {
 
   const sendMessage = () => {
     if (!isNetworkAlive) {
-      Alert.alert("Mất kết nối", "Vui lòng kiểm tra lại mạng Wifi/4G.");
+      CustomAlert.alert("Mất kết nối", "Vui lòng kiểm tra lại mạng Wifi/4G.");
       return;
     }
     if (
@@ -298,7 +287,7 @@ export default function GlobalChat() {
       !ws.current ||
       ws.current.readyState !== WebSocket.OPEN
     ) {
-      Alert.alert(
+      CustomAlert.alert(
         "Đang kết nối",
         "Hệ thống đang kết nối lại, vui lòng đợi vài giây.",
       );
@@ -327,7 +316,7 @@ export default function GlobalChat() {
     if (msg.is_deleted) return;
 
     if (!isNetworkAlive) {
-      Alert.alert(
+      CustomAlert.alert(
         "Mất kết nối WiFi hoặc 4G/5G",
         "Bạn cần có mạng để thực hiện thao tác với tin nhắn này.",
       );
@@ -349,7 +338,7 @@ export default function GlobalChat() {
               { ignore401: true },
             );
           } catch (e) {
-            Alert.alert("Lỗi", "Không thể xóa tin nhắn lúc này.");
+            CustomAlert.alert("Lỗi", "Không thể xóa tin nhắn lúc này.");
           }
         },
       });
@@ -360,7 +349,7 @@ export default function GlobalChat() {
         text: "Cấm user này chat (Admin)",
         style: "destructive",
         onPress: () => {
-          Alert.alert(
+          CustomAlert.alert(
             "Xác nhận cấm",
             `Bạn có chắc chắn muốn cấm tài khoản "${msg.sender_name}" gửi tin nhắn trên toàn hệ thống không?`,
             [
@@ -382,12 +371,12 @@ export default function GlobalChat() {
                       `https://warehouse.speedlight.com.vn/api/chat/${msg.id}`,
                       { ignore401: true },
                     );
-                    Alert.alert(
+                    CustomAlert.alert(
                       "Thành công",
                       `Đã khóa quyền chat của ${msg.sender_name}.`,
                     );
                   } catch (e) {
-                    Alert.alert("Lỗi", "Không thể thao tác lúc này.");
+                    CustomAlert.alert("Lỗi", "Không thể thao tác lúc này.");
                   }
                 },
               },
@@ -408,12 +397,12 @@ export default function GlobalChat() {
               { ignore401: true },
             );
             setMessages((prev) => prev.filter((m) => m.id !== msg.id));
-            Alert.alert(
+            CustomAlert.alert(
               "Đã báo cáo",
               "Tin nhắn này đã bị báo cáo và ẩn khỏi màn hình của bạn.",
             );
           } catch (e) {
-            Alert.alert("Lỗi", "Không thể gửi báo cáo lúc này.");
+            CustomAlert.alert("Lỗi", "Không thể gửi báo cáo lúc này.");
           }
         },
       });
@@ -430,19 +419,19 @@ export default function GlobalChat() {
             setMessages((prev) =>
               prev.filter((m) => m.user_id !== msg.user_id),
             );
-            Alert.alert(
+            CustomAlert.alert(
               "Thành công",
               "Bạn sẽ không thấy tin nhắn của người này nữa.",
             );
           } catch (e) {
-            Alert.alert("Lỗi", "Không thể ẩn người dùng này.");
+            CustomAlert.alert("Lỗi", "Không thể ẩn người dùng này.");
           }
         },
       });
     }
 
     buttons.push({ text: "Hủy", style: "cancel" });
-    Alert.alert("Tùy chọn tin nhắn", `Từ: ${msg.sender_name}`, buttons);
+    CustomAlert.alert("Tùy chọn tin nhắn", `Từ: ${msg.sender_name}`, buttons);
   };
 
   if (userType && userType !== "employee") return null;

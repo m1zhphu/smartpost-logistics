@@ -1,18 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  DeviceEventEmitter,
-  Platform,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { ActivityIndicator, FlatList, Image, Modal, Pressable, Text, TextInput, TouchableOpacity, View, DeviceEventEmitter, Platform } from 'react-native';
 import styles from "../styles/AdminPickupFlowScreenStyles";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -262,7 +251,7 @@ export default function AdminPickupFlowScreen({ navigation, route }) {
   };
 
   const handleAccept = (item) => {
-    Alert.alert(
+    CustomAlert.alert(
       "Xác nhận tiếp nhận",
       `Xác nhận văn phòng nhận pickup ${item.request_code}?`,
       [

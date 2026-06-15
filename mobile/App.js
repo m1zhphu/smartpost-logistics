@@ -1,5 +1,6 @@
 // App.js
 import React from 'react';
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from './src/screens/HomeScreen';
@@ -21,6 +22,7 @@ import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
+import { CustomAlert } from './src/components/CustomAlert';
 
 // New Pickup Screens
 import CustomerCreatePickupScreen from './src/screens/CustomerCreatePickupScreen';
@@ -146,7 +148,8 @@ export default function App() {
             <Stack.Screen name="OcrWaybillDetail" component={OcrWaybillDetailScreen} />
           </Stack.Navigator>
         </NavigationContainer>
-        <Toast config={toastConfig} />
+        <Toast config={toastConfig} position="top" topOffset={60} />
+        <CustomAlert ref={(ref) => CustomAlert.setRef(ref)} />
       </QueueProvider>
     </UserProvider>
   );

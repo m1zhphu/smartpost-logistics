@@ -14,6 +14,7 @@ export const CUSTOMER_ENDPOINTS = {
 
   // Profile Update (New)
   UPDATE_PROFILE: `${API_BASE_URL}/api/customers/me`, // Placeholder for backend implementation
+  DELETE_CUSTOMER_ME: `${API_BASE_URL}/api/customers/me`,
 
   // Pickup (Online)
   CREATE_PICKUP: `${API_BASE_URL}/api/waybills/customer/pickups`,

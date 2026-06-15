@@ -1,16 +1,7 @@
 import React, { useState, useRef } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import styles from "../styles/CreateOrderScreenStyles";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -194,7 +185,7 @@ export default function CreateOrderScreen({ route, navigation }) {
     };
 
     if (!isShipper) {
-      Alert.alert(
+      CustomAlert.alert(
         "Tính năng đang phát triển",
         "Tính năng tạo đơn từ OCR dành cho Kho đang chờ cập nhật endpoint của Kho.",
       );

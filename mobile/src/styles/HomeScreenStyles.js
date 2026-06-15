@@ -1,177 +1,197 @@
 import { StyleSheet, Platform } from "react-native";
 import { COLORS } from "../constants/colors";
 
-const HomeScreenStyles = StyleSheet.create({
+const PRIMARY = COLORS.primary || "#1B5E20";
+
+export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#F0F2F5",
   },
-
   header: {
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 55 : 44,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 25,
-    paddingTop: Platform.OS === "ios" ? 55 : 35,
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: 42,
-    borderBottomRightRadius: 42,
-    shadowColor: "#ebebeb",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    zIndex: 10,
+    alignItems: "flex-start",
   },
-
   headerTextGroup: {
     flex: 1,
   },
-
   greeting: {
-    fontSize: Platform.OS === "ios" ? 14 : 11,
-    color: "rgba(255,255,255,0.7)",
-    letterSpacing: 0.5,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.65)",
+    marginBottom: 3,
   },
-
   userName: {
-    fontSize: Platform.OS === "ios" ? 18 : 12,
+    fontSize: 18,
     fontWeight: "800",
-    color: "#FFFFFF",
-    marginTop: 4,
-    marginBottom: 8,
+    color: "#fff",
+    letterSpacing: -0.3,
   },
-
-  roleBadge: {
+  rolePill: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.15)",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    alignSelf: "flex-start",
+    marginTop: 8,
   },
-
   roleDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 6,
+    marginRight: 5,
   },
-
   roleText: {
-    fontSize: Platform.OS === "ios" ? 13 : 10,
-    color: "#FFFFFF",
+    fontSize: 11,
+    color: "#fff",
     fontWeight: "600",
   },
-
-  headerActions: {
+  headerBtns: {
     flexDirection: "row",
-    alignItems: "center",
+    gap: 8,
   },
-
-  appleCircleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  headerBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.18)",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
   },
-
-  menuButtonSpacing: {
-    marginLeft: 12,
+  notifWrap: {
+    position: "relative",
   },
-
-  appleBadge: {
+  notifDot: {
     position: "absolute",
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    top: -3,
+    right: -3,
+    width: 10,
+    height: 10,
     backgroundColor: "#EF4444",
-    justifyContent: "center",
-    alignItems: "center",
+    borderRadius: 5,
     borderWidth: 2,
-    borderColor: COLORS.primary,
-  },
-
-  appleBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "900",
-  },
-
-  content: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-    padding: 16,
-  },
-
-  rowWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-
-  gridCard: {
-    width: "48%",
-    minHeight: 160,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#64748B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-
-  cardBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 16,
-    marginBottom: 14,
-  },
-
-  cardBadgeText: {
-    fontSize: 10,
-    fontWeight: "900",
-  },
-
-  gridIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    borderColor: PRIMARY,
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 2,
+  },
+  scrollContent: {
+    paddingTop: 14,
+    paddingBottom: 40,
+  },
+  bannerWrap: {
+    paddingHorizontal: 12,
     marginBottom: 14,
   },
-
-  gridCardTitle: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#0F172A",
-    lineHeight: 20,
+  banner: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: "#E8EDF2",
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
   },
-
-  gridCardDesc: {
-    fontSize: 12,
+  bannerIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  bannerTextGroup: {
+    flex: 1,
+  },
+  bannerTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 3,
+  },
+  bannerSub: {
+    fontSize: 11,
     color: "#64748B",
-    marginTop: 6,
     fontWeight: "600",
   },
-
+  bannerArrow: {
+    marginLeft: "auto",
+  },
+  sec: {
+    paddingHorizontal: 12,
+    marginBottom: 14,
+  },
+  secHdr: {
+    marginBottom: 10,
+  },
+  secTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  gcard: {
+    width: "48%",
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: "#E8EDF2",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    position: "relative",
+    overflow: "hidden",
+  },
+  gcardBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+    borderRadius: 8,
+  },
+  gcardBadgeText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+  },
+  gcardIco: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  gcardTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A",
+    lineHeight: 18,
+    marginBottom: 3,
+  },
+  gcardDesc: {
+    fontSize: 10,
+    color: "#94A3B8",
+    fontWeight: "600",
+  },
   fab: {
     position: "absolute",
     right: 20,
@@ -188,66 +208,41 @@ const HomeScreenStyles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-
   menuOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.1)",
-    alignItems: "flex-end",
-    paddingTop: Platform.OS === "ios" ? 96 : 76,
-    paddingRight: 16,
   },
-
   dropdownMenu: {
-    width: 230,
+    position: "absolute",
+    top: Platform.OS === "ios" ? 100 : 80,
+    right: 20,
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderRadius: 16,
+    width: 220,
+    paddingVertical: 8,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-
   menuIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: "#F1F5F9",
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
-
-  menuText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#0F172A",
-    fontWeight: "700",
-  },
-
-  menuDivider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-  },
-
-  logoutMenuIconBox: {
-    backgroundColor: "#FEF2F2",
-  },
-
-  logoutMenuText: {
-    color: "#EF4444",
-    fontWeight: "700",
-  },
+  menuText: { flex: 1, fontSize: 14, fontWeight: "600", color: "#374151" },
+  menuDivider: { height: 1, backgroundColor: "#F3F4F6", marginHorizontal: 16 },
+  logoutMenuIconBox: { backgroundColor: "#FEF2F2" },
+  logoutMenuText: { color: "#EF4444", fontWeight: "700" },
 });
-
-export default HomeScreenStyles;

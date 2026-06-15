@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  Alert,
-  ActivityIndicator,
-  TextInput,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../context/UserContext";
@@ -40,7 +34,7 @@ export default function CustomerRecipientsScreen({ navigation, route }) {
   };
 
   const handleDelete = (id) => {
-    Alert.alert("Xóa địa chỉ", "Bạn có chắc chắn muốn xóa địa chỉ này?", [
+    CustomAlert.alert("Xóa địa chỉ", "Bạn có chắc chắn muốn xóa địa chỉ này?", [
       { text: "Hủy", style: "cancel" },
       {
         text: "Xóa",
