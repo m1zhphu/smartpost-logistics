@@ -64,7 +64,7 @@ export default function ShipperPickupListScreen({ navigation }) {
       style={styles.headerButton}
       activeOpacity={0.7}
     >
-      <Ionicons name={icon} size={20} color="#FFF" />
+      <Ionicons name={icon} size={18} color="#FFF" />
     </TouchableOpacity>
   );
 

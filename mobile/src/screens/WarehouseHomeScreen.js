@@ -1,5 +1,7 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Platform, Alert, ActivityIndicator, RefreshControl, Pressable, Modal } from 'react-native';
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Platform, ActivityIndicator, RefreshControl, Pressable, Modal } from 'react-native';
 import styles from '../styles/WarehouseHomeScreenStyles';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../context/UserContext';
@@ -186,7 +188,7 @@ export default function WarehouseHomeScreen({ navigation }) {
     };
 
     const handleLogout = () => {
-        Alert.alert(
+        CustomAlert.alert(
             "Xác nhận đăng xuất",
             "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?",
             [
@@ -201,7 +203,7 @@ export default function WarehouseHomeScreen({ navigation }) {
     };
 
     const handleReturnVehicle = () => {
-        Alert.alert(
+        CustomAlert.alert(
             "Xác nhận Trả Xe",
             `Bạn đã hoàn tất giao hàng và muốn trả xe [${user.bien_so_xe}] về kho?`,
             [
@@ -479,4 +481,4 @@ export default function WarehouseHomeScreen({ navigation }) {
         </View>
     );
 }
-
+

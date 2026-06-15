@@ -1,16 +1,7 @@
 import React, { useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Platform,
-  TextInput,
-  KeyboardAvoidingView,
-  Image,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput, KeyboardAvoidingView, Image, ActivityIndicator } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -91,7 +82,7 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permission.status !== "granted") {
-      Alert.alert(
+      CustomAlert.alert(
         "Thiếu quyền",
         mode === "camera"
           ? "Vui lòng cấp quyền camera để chụp ảnh bill."
@@ -234,7 +225,7 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
         text1: "Không lưu được OCR",
         text2: message,
       });
-      Alert.alert("Không lưu được OCR", message);
+      CustomAlert.alert("Không lưu được OCR", message);
       return;
     }
 

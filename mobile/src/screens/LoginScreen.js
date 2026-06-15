@@ -273,7 +273,6 @@ export default function LoginScreen({ navigation }) {
                 </TouchableOpacity>
             </Modal>
 
-            <Toast />
         </ImageBackground>
     );
 }

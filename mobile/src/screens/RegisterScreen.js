@@ -324,7 +324,6 @@ export default function RegisterScreen({ navigation }) {
                 </View>
             </Modal>
 
-            <Toast />
         </ImageBackground>
     );
 }

@@ -1,23 +1,18 @@
-import React, { useState } from "react";
-import {
-  Alert,
-  Modal,
-  Pressable,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, { useState, useEffect } from "react";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { Modal, Pressable, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 
-import { COLORS } from "../constants/colors";
 import { useQueue } from "../context/QueueContext";
 import { useUser } from "../context/UserContext";
 import GlobalChat from "../components/GlobalChat";
 import NotificationModal from "../components/NotificationModal";
 import styles from "../styles/HomeScreenStyles";
+import { getShipperAssignedPickups } from "../services/pickupService";
 
 export default function HomeScreen({ navigation }) {
   const {
@@ -33,13 +28,30 @@ export default function HomeScreen({ navigation }) {
 
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [pendingPickupsCount, setPendingPickupsCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPickups = async () => {
+      if (!isShipperRole) return;
+      const result = await getShipperAssignedPickups();
+      if (result.success && result.data) {
+        // Lọc các đơn đang chờ xử lý
+        const pending = result.data.filter(p => p.pickup_status === 'ASSIGNED' || p.pickup_status === 'PENDING');
+        setPendingPickupsCount(pending.length);
+      }
+    };
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchPickups();
+    });
+    return unsubscribe;
+  }, [navigation, isShipperRole]);
 
   const roleId = user?.role_id || roles?.[0]?.role_id;
   const isShipperRole = roleId === 4;
   const isPickupOperator = [1, 2, 3, 7].includes(roleId);
 
   const handleLogout = () => {
-    Alert.alert(
+    CustomAlert.alert(
       "Xác nhận đăng xuất",
       "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?",
       [
@@ -58,25 +70,21 @@ export default function HomeScreen({ navigation }) {
 
   const handleFeaturePress = async (screenName) => {
     const userType = await AsyncStorage.getItem("user_type");
-
     if (userType === "employee") {
-      Alert.alert(
+      CustomAlert.alert(
         "Tính năng chưa phát triển",
         "Tính năng này đang được phát triển cho hệ thống kho và sẽ sớm ra mắt.",
       );
       return;
     }
-
     navigation.navigate(screenName);
   };
 
   const handleToggleOnline = () => {
     if (!isShipperRole) return;
-
     const nextStatus = !user?.is_online;
     const note = nextStatus ? "Bắt đầu ca làm" : "Kết thúc ca làm";
-
-    Alert.alert(
+    CustomAlert.alert(
       "Trạng thái hoạt động",
       `Bạn có muốn ${nextStatus ? "bật" : "tắt"} online?`,
       [
@@ -88,16 +96,9 @@ export default function HomeScreen({ navigation }) {
               const { shipperService } = require("../services/shipper");
               await shipperService.toggleAvailability(nextStatus, note);
               toggleUserOnlineStatus(nextStatus);
-
-              Toast.show({
-                type: "success",
-                text1: "Đã cập nhật trạng thái",
-              });
+              Toast.show({ type: "success", text1: "Đã cập nhật trạng thái" });
             } catch (error) {
-              Toast.show({
-                type: "error",
-                text1: "Không thể cập nhật trạng thái",
-              });
+              Toast.show({ type: "error", text1: "Không thể cập nhật trạng thái" });
             }
           },
         },
@@ -105,208 +106,147 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  const MenuItem = ({
-    title,
-    desc,
-    icon,
-    color,
-    bgColor,
-    badgeText,
-    onPress,
-  }) => (
-    <TouchableOpacity
-      style={styles.gridCard}
-      onPress={onPress}
-      activeOpacity={0.7}
-      disabled={isMenuVisible || isNotifModalVisible}
-    >
-      <View style={[styles.cardBadge, { backgroundColor: bgColor }]}>
-        <Text style={[styles.cardBadgeText, { color }]}>{badgeText}</Text>
+  const GCard = ({ badgeText, badgeColor, badgeBg, icon, iconColor, iconBg, title, desc, onPress }) => (
+    <TouchableOpacity style={styles.gcard} activeOpacity={0.7} onPress={onPress}>
+      <View style={[styles.gcardBadge, { backgroundColor: badgeBg }]}>
+        <Text style={[styles.gcardBadgeText, { color: badgeColor }]}>{badgeText}</Text>
       </View>
-
-      <View style={[styles.gridIconBox, { backgroundColor: bgColor }]}>
-        <Ionicons name={icon} size={28} color={color} />
+      <View style={[styles.gcardIco, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={22} color={iconColor} />
       </View>
-
-      <Text style={styles.gridCardTitle} numberOfLines={2}>
-        {title}
-      </Text>
-
-      <Text style={styles.gridCardDesc} numberOfLines={1}>
-        {desc}
-      </Text>
+      <Text style={styles.gcardTitle} numberOfLines={2}>{title}</Text>
+      <Text style={styles.gcardDesc}>{desc}</Text>
     </TouchableOpacity>
   );
-
-  const renderRoleMenus = () => {
-    if (isPickupOperator && !isShipperRole) {
-      return (
-        <>
-          <View style={styles.rowWrapper}>
-            <MenuItem
-              title="Chờ điều phối"
-              desc="Yêu cầu cần gán"
-              icon="git-network-outline"
-              color="#0284C7"
-              bgColor="#E0F2FE"
-              badgeText="ĐIỀU PHỐI"
-              onPress={() =>
-                navigation.navigate("AdminPickupFlow", {
-                  initialTab: "pending",
-                })
-              }
-            />
-
-            <MenuItem
-              title="Hub xác nhận"
-              desc="Xác nhận chuyển"
-              icon="business-outline"
-              color="#10B981"
-              bgColor="#D1FAE5"
-              badgeText="ĐIỀU PHỐI"
-              onPress={() =>
-                navigation.navigate("AdminPickupFlow", {
-                  initialTab: "dispatch",
-                })
-              }
-            />
-          </View>
-
-          <View style={styles.rowWrapper}>
-            <MenuItem
-              title="Chờ gán bưu tá"
-              desc="Phân bổ nhân sự"
-              icon="person-add-outline"
-              color="#D97706"
-              bgColor="#FEF3C7"
-              badgeText="ĐIỀU PHỐI"
-              onPress={() =>
-                navigation.navigate("AdminPickupFlow", {
-                  initialTab: "assign",
-                })
-              }
-            />
-
-            <MenuItem
-              title="OCR Túi thư"
-              desc="Mở túi, OCR bill"
-              icon="scan-outline"
-              color="#7C3AED"
-              bgColor="#F5F3FF"
-              badgeText="OCR"
-              onPress={() => navigation.navigate("OcrPickupCustomer")}
-            />
-          </View>
-
-          <View style={styles.rowWrapper}>
-            <MenuItem
-              title="Tracking"
-              desc="Tra cứu hành trình"
-              icon="search-outline"
-              color="#8B5CF6"
-              bgColor="#EDE9FE"
-              badgeText="CÔNG CỤ"
-              onPress={() => handleFeaturePress("ShipperTracking")}
-            />
-          </View>
-        </>
-      );
-    }
-
-    return (
-      <View style={styles.rowWrapper}>
-        <MenuItem
-          title="Đơn lấy hàng"
-          desc="Danh sách cần lấy"
-          icon="cube-outline"
-          color="#0284C7"
-          bgColor="#E0F2FE"
-          badgeText="NGHIỆP VỤ"
-          onPress={() => handleFeaturePress("ShipperPickupList")}
-        />
-
-        <MenuItem
-          title="Giao hàng"
-          desc="Danh sách cần giao"
-          icon="paper-plane-outline"
-          color="#D97706"
-          bgColor="#FEF3C7"
-          badgeText="NGHIỆP VỤ"
-          onPress={() => handleFeaturePress("ShipperDeliveryList")}
-        />
-      </View>
-    );
-  };
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* HEADER */}
       <View style={styles.header}>
-        <View style={styles.headerTextGroup}>
-          <Text style={styles.greeting}>Xin chào,</Text>
-
-          <Text style={styles.userName}>
-            {user?.full_name || user?.username || "Nhân viên"}
-          </Text>
-
-          <TouchableOpacity
-            onPress={handleToggleOnline}
-            activeOpacity={isShipperRole ? 0.7 : 1}
-            style={styles.roleBadge}
-          >
-            <View
-              style={[
-                styles.roleDot,
-                {
-                  backgroundColor: isShipperRole
-                    ? user?.is_online
-                      ? "#10B981"
-                      : "#9CA3AF"
-                    : "#38BDF8",
-                },
-              ]}
-            />
-
-            <Text style={styles.roleText}>
-              {isShipperRole
-                ? user?.is_online
-                  ? "Đang Online"
-                  : "Đang Offline"
-                : "Điều phối pickup online"}
+        <View style={styles.headerTop}>
+          <View style={styles.headerTextGroup}>
+            <Text style={styles.greeting}>Xin chào,</Text>
+            <Text style={styles.userName} numberOfLines={1}>
+              {user?.full_name || user?.username || "---"}
             </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity onPress={handleToggleOnline} activeOpacity={isShipperRole ? 0.7 : 1} style={styles.rolePill}>
+              <View
+                style={[
+                  styles.roleDot,
+                  { backgroundColor: isShipperRole ? (user?.is_online ? "#10B981" : "#9CA3AF") : "#38BDF8" }
+                ]}
+              />
+              <Text style={styles.roleText}>
+                {isShipperRole ? (user?.is_online ? "Đang Online" : "Đang Offline") : "Điều phối online"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={() => setIsNotifModalVisible(true)}
-            style={styles.appleCircleBtn}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="notifications" size={20} color="#FFF" />
-
-            {unreadCount > 0 && (
-              <View style={styles.appleBadge}>
-                <Text style={styles.appleBadgeText}>
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setIsMenuVisible(true)}
-            style={[styles.appleCircleBtn, styles.menuButtonSpacing]}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="options-outline" size={20} color="#FFF" />
-          </TouchableOpacity>
+          <View style={styles.headerBtns}>
+            <View style={styles.notifWrap}>
+              <TouchableOpacity
+                onPress={() => setIsNotifModalVisible(true)}
+                style={styles.headerBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="notifications-outline" size={18} color="#FFF" />
+              </TouchableOpacity>
+              {unreadCount > 0 && <View style={styles.notifDot} />}
+            </View>
+            <TouchableOpacity
+              onPress={() => setIsMenuVisible(true)}
+              style={styles.headerBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="menu-outline" size={18} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
-      <View style={styles.content}>{renderRoleMenus()}</View>
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* BANNER CẢNH BÁO */}
+        {pendingPickupsCount > 0 && (
+          <View style={styles.bannerWrap}>
+            <View style={[styles.banner, { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" }]}>
+              <View style={[styles.bannerIcon, { backgroundColor: "#FEF3C7" }]}>
+                <Ionicons name="warning-outline" size={24} color="#D97706" />
+              </View>
+              <View style={styles.bannerTextGroup}>
+                <Text style={styles.bannerTitle}>{pendingPickupsCount} đơn chờ xử lý</Text>
+                <Text style={styles.bannerSub}>Bạn có yêu cầu lấy hàng cần xác nhận</Text>
+              </View>
+              <View style={styles.bannerArrow}>
+                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+              </View>
+            </View>
+          </View>
+        )}
 
+        {/* NGHIỆP VỤ */}
+        <View style={styles.sec}>
+          <View style={styles.secHdr}>
+            <Text style={styles.secTitle}>Nghiệp vụ</Text>
+          </View>
+          <View style={styles.grid}>
+            <GCard
+              badgeText="NGHIỆP VỤ" badgeColor="#0369A1" badgeBg="#E0F2FE"
+              icon="cube-outline" iconColor="#0284C7" iconBg="#E0F2FE"
+              title="Đơn lấy hàng" desc="Danh sách cần lấy"
+              onPress={() => handleFeaturePress("ShipperPickupList")}
+            />
+            <GCard
+              badgeText="NGHIỆP VỤ" badgeColor="#92400E" badgeBg="#FEF3C7"
+              icon="paper-plane-outline" iconColor="#D97706" iconBg="#FEF3C7"
+              title="Giao hàng" desc="Danh sách cần giao"
+              onPress={() => handleFeaturePress("ShipperDeliveryList")}
+            />
+          </View>
+        </View>
+
+        {/* ĐIỀU PHỐI (Nếu là operator) */}
+        {isPickupOperator && !isShipperRole && (
+          <View style={styles.sec}>
+            <View style={styles.secHdr}>
+              <Text style={styles.secTitle}>Điều phối</Text>
+            </View>
+            <View style={styles.grid}>
+              <GCard
+                badgeText="ĐIỀU PHỐI" badgeColor="#0369A1" badgeBg="#E0F2FE"
+                icon="git-network-outline" iconColor="#0284C7" iconBg="#E0F2FE"
+                title="Chờ điều phối" desc="Yêu cầu cần gán"
+                onPress={() => navigation.navigate("AdminPickupFlow", { initialTab: "pending" })}
+              />
+              <GCard
+                badgeText="ĐIỀU PHỐI" badgeColor="#065F46" badgeBg="#D1FAE5"
+                icon="business-outline" iconColor="#10B981" iconBg="#D1FAE5"
+                title="Hub xác nhận" desc="Xác nhận chuyển"
+                onPress={() => navigation.navigate("AdminPickupFlow", { initialTab: "dispatch" })}
+              />
+              <GCard
+                badgeText="ĐIỀU PHỐI" badgeColor="#92400E" badgeBg="#FEF3C7"
+                icon="person-add-outline" iconColor="#D97706" iconBg="#FEF3C7"
+                title="Gán bưu tá" desc="Phân bổ nhân sự"
+                onPress={() => navigation.navigate("AdminPickupFlow", { initialTab: "assign" })}
+              />
+              <GCard
+                badgeText="OCR" badgeColor="#5B21B6" badgeBg="#EDE9FE"
+                icon="scan-outline" iconColor="#8B5CF6" iconBg="#EDE9FE"
+                title="OCR Túi thư" desc="Mở túi, scan bill"
+                onPress={() => navigation.navigate("OcrPickupCustomer")}
+              />
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* FAB Shipper Camera */}
       {isShipperRole && (
         <TouchableOpacity
           style={styles.fab}
@@ -317,6 +257,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       )}
 
+      {/* MODALS */}
       <NotificationModal
         visible={isNotifModalVisible}
         onClose={() => setIsNotifModalVisible(false)}
@@ -328,17 +269,8 @@ export default function HomeScreen({ navigation }) {
         animationType="fade"
         onRequestClose={() => setIsMenuVisible(false)}
       >
-        <Pressable
-          style={styles.menuOverlay}
-          onPress={(event) => {
-            event.stopPropagation();
-            setIsMenuVisible(false);
-          }}
-        >
-          <Pressable
-            style={styles.dropdownMenu}
-            onPress={(event) => event.stopPropagation()}
-          >
+        <Pressable style={styles.menuOverlay} onPress={() => setIsMenuVisible(false)}>
+          <Pressable style={styles.dropdownMenu} onPress={(e) => e.stopPropagation()}>
             {isWarehouseStaff() && (
               <>
                 <TouchableOpacity
@@ -347,19 +279,12 @@ export default function HomeScreen({ navigation }) {
                     setIsMenuVisible(false);
                     navigation.replace("WarehouseHome");
                   }}
-                  activeOpacity={0.7}
                 >
                   <View style={styles.menuIconBox}>
-                    <Ionicons
-                      name="swap-horizontal-outline"
-                      size={20}
-                      color="#4B5563"
-                    />
+                    <Ionicons name="swap-horizontal-outline" size={18} color="#4B5563" />
                   </View>
-
                   <Text style={styles.menuText}>Giao diện Kho</Text>
                 </TouchableOpacity>
-
                 <View style={styles.menuDivider} />
               </>
             )}
@@ -370,15 +295,11 @@ export default function HomeScreen({ navigation }) {
                 setIsMenuVisible(false);
                 handleLogout();
               }}
-              activeOpacity={0.7}
             >
               <View style={[styles.menuIconBox, styles.logoutMenuIconBox]}>
-                <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                <Ionicons name="log-out-outline" size={18} color="#EF4444" />
               </View>
-
-              <Text style={[styles.menuText, styles.logoutMenuText]}>
-                Đăng xuất
-              </Text>
+              <Text style={[styles.menuText, styles.logoutMenuText]}>Đăng xuất</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>

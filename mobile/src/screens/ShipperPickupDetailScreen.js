@@ -1,20 +1,7 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  Linking,
-  Alert,
-  Image,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Modal,
-  Pressable,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Linking, Image, TextInput, KeyboardAvoidingView, Platform, Modal, Pressable } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
@@ -112,7 +99,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   const handleSendLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
+      CustomAlert.alert(
         "Quyền truy cập",
         "Vui lòng cấp quyền truy cập vị trí để gửi GPS.",
       );
@@ -181,7 +168,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permission.status !== "granted") {
-      Alert.alert(
+      CustomAlert.alert(
         "Thiếu quyền",
         mode === "camera"
           ? "Vui lòng cấp quyền camera để chụp ảnh pickup."
@@ -241,7 +228,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
       }
     }
 
-    Alert.alert("Xác nhận", "Bạn có chắc chắn đã lấy hàng thành công?", [
+    CustomAlert.alert("Xác nhận", "Bạn có chắc chắn đã lấy hàng thành công?", [
       { text: "Hủy", style: "cancel" },
       {
         text: "Đồng ý",

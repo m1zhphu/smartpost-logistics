@@ -1,15 +1,7 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Platform,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
@@ -61,7 +53,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
   const handlePickImage = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (perm.status !== "granted") {
-      Alert.alert("Thiếu quyền", "Vui lòng cấp quyền camera để chụp POD.");
+      CustomAlert.alert("Thiếu quyền", "Vui lòng cấp quyền camera để chụp POD.");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -110,7 +102,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
       });
       return;
     }
-    Alert.alert("Xác nhận giao hàng", "Xác nhận đơn này đã giao thành công?", [
+    CustomAlert.alert("Xác nhận giao hàng", "Xác nhận đơn này đã giao thành công?", [
       { text: "Hủy", style: "cancel" },
       {
         text: "Đồng ý",
@@ -139,7 +131,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
   };
 
   const handleFail = async () => {
-    Alert.alert("Báo thất bại", "Bạn muốn báo giao không thành công?", [
+    CustomAlert.alert("Báo thất bại", "Bạn muốn báo giao không thành công?", [
       { text: "Hủy", style: "cancel" },
       {
         text: "Báo thất bại",

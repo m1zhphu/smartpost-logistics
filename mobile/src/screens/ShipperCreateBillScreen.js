@@ -1,16 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  TextInput,
-  FlatList,
-  Alert,
-  Dimensions,
-  Platform,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, FlatList, Dimensions, Platform } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -140,7 +131,7 @@ export default function ShipperCreateBillScreen({ route, navigation }) {
 
   const handleSave = () => {
     if (scannedList.length === 0) {
-      Alert.alert(
+      CustomAlert.alert(
         "Lưu ý",
         "Danh sách rỗng, vui lòng quét hoặc nhập mã bill trước khi lưu.",
       );

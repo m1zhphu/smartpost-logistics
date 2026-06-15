@@ -1,18 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Modal,
-  FlatList,
-  Alert,
-} from "react-native";
+import { CustomAlert } from '../components/CustomAlert';
+
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, FlatList } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import {
   SafeAreaView,
@@ -581,7 +570,7 @@ export default function WarehouseActionScreen({ route, navigation }) {
           (c) => c.id_ton_kho === item.id && c.loai_khach === itemMode,
         )
       ) {
-        Alert.alert(
+        CustomAlert.alert(
           "Trùng lặp",
           "Mặt hàng này đã có trong danh sách hàng hoá nội bộ",
           [{ text: "Hủy", style: "cancel" }],
@@ -2855,7 +2844,6 @@ export default function WarehouseActionScreen({ route, navigation }) {
           pointerEvents: "box-none",
         }}
       >
-        <Toast position="top" topOffset={Platform.OS === "android" ? 40 : 60} />
       </View>
     </KeyboardAvoidingView>
   );

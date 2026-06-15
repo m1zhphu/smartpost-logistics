@@ -1,14 +1,7 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  Platform,
-} from "react-native";
+import { CustomAlert } from './CustomAlert';
+
+import { View, Text, StyleSheet, Modal, FlatList, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { notificationService } from "../services/notification";
 import { COLORS } from "../constants/colors";
@@ -34,7 +27,7 @@ export default function NotificationModal({ visible, onClose }) {
     const isConnected = await checkNetworkConnectionWithoutToast();
     if (!isConnected) {
       setIsNetworkError(true);
-      Alert.alert("Không có mạng", "Vui lòng kiểm tra lại Wifi hoặc 4G/5G");
+      CustomAlert.alert("Không có mạng", "Vui lòng kiểm tra lại Wifi hoặc 4G/5G");
       return;
     }
 
