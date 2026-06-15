@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
+import json
 import models
 from core.state_machine import WaybillStatus
 
@@ -151,7 +152,38 @@ def save_shipper_location(db: Session, shipper_id: int, latitude: float, longitu
         "note": note
     }
 
-def confirm_delivery_record(db: Session, waybill: models.Waybills, actual_cod: float, pod_url: str, user_id: int, hub_id: int, note: str):
+def _normalize_image_urls(primary_url: str | None = None, image_urls: list[str] | None = None) -> list[str]:
+    urls = []
+    for url in image_urls or []:
+        if url and url not in urls:
+            urls.append(url)
+    if primary_url and primary_url not in urls:
+        urls.insert(0, primary_url)
+    return urls[:5]
+
+
+def _read_image_urls(stored_urls: str | None, primary_url: str | None = None) -> list[str]:
+    image_urls = []
+    if stored_urls:
+        try:
+            parsed = json.loads(stored_urls)
+            if isinstance(parsed, list):
+                image_urls = parsed
+        except Exception:
+            image_urls = [url.strip() for url in stored_urls.split(",") if url.strip()]
+    return _normalize_image_urls(primary_url, image_urls)
+
+
+def confirm_delivery_record(
+    db: Session,
+    waybill: models.Waybills,
+    actual_cod: float,
+    pod_url: str,
+    user_id: int,
+    hub_id: int,
+    note: str,
+    pod_urls: list[str] | None = None,
+):
     """Cập nhật trạng thái giao thành công và thực thu COD"""
     waybill.status = WaybillStatus.DELIVERED
     waybill.version += 1
@@ -161,8 +193,10 @@ def confirm_delivery_record(db: Session, waybill: models.Waybills, actual_cod: f
     ).order_by(models.DeliveryResults.delivery_id.desc()).first()
     
     if delivery_record:
+        all_pod_urls = _normalize_image_urls(pod_url, pod_urls)
         delivery_record.actual_cod_collected = actual_cod
-        delivery_record.pod_image_url = pod_url
+        delivery_record.pod_image_url = all_pod_urls[0] if all_pod_urls else pod_url
+        delivery_record.pod_image_urls = json.dumps(all_pod_urls) if all_pod_urls else None
         delivery_record.status = WaybillStatus.DELIVERED
         delivery_record.delivery_time = datetime.utcnow()
         delivery_record.note = f"Giao thành công bởi Shipper ID {delivery_record.shipper_id}"
@@ -388,6 +422,7 @@ def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
         "service_type": waybill.service_type if waybill else None,
         "note": db_req.notes or (waybill.note if waybill else None),
         "pickup_image_url": waybill.pickup_image_url if waybill else None,
+        "pickup_image_urls": _read_image_urls(waybill.pickup_image_urls, waybill.pickup_image_url) if waybill else [],
         "price_status": waybill.price_status if waybill else None,
         "estimated_shipping_fee": float((waybill.estimated_shipping_fee or waybill.shipping_fee or 0) if waybill else 0),
         "estimated_total_amount": float((waybill.estimated_total_amount or 0) if waybill else 0),
@@ -630,6 +665,7 @@ def mark_online_pickup_picked(
     db_req: models.BookingRequests,
     user_id: int,
     pickup_image_url: str = None,
+    pickup_image_urls: list[str] | None = None,
     note: str = None,
     actual_quantity: int | None = None,
 ):
@@ -645,9 +681,11 @@ def mark_online_pickup_picked(
         if actual_quantity is not None:
             db_req.pickup_bag.actual_quantity = actual_quantity
 
+    all_pickup_urls = _normalize_image_urls(pickup_image_url, pickup_image_urls)
     for item in waybills:
         item.status = WaybillStatus.PICKED_PENDING_VERIFY if item.ocr_status not in ["PENDING", "INCOMPLETE"] else WaybillStatus.PENDING_OCR
-        item.pickup_image_url = pickup_image_url or item.pickup_image_url
+        item.pickup_image_url = all_pickup_urls[0] if all_pickup_urls else item.pickup_image_url
+        item.pickup_image_urls = json.dumps(all_pickup_urls) if all_pickup_urls else item.pickup_image_urls
         item.version = (item.version or 1) + 1
         db.add(models.TrackingLogs(
             waybill_id=item.waybill_id,

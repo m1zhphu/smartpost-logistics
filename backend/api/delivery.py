@@ -12,6 +12,7 @@ import models
 from core.push import send_expo_push_notification
 from core.realtime import realtime_manager
 from sqlalchemy import or_
+import json
 
 router = APIRouter(prefix="/api/delivery", tags=["Delivery Operations"])
 
@@ -39,6 +40,28 @@ def _require_pickup_operator(current_user: dict):
 def _require_delivery_simulation_operator(current_user: dict):
     if current_user.get("role_id") not in [1, 2, 7]:
         raise HTTPException(status_code=403, detail="Khong co quyen gia lap chuan bi giao hang")
+
+
+def _merge_image_urls(primary_url: str | None = None, image_urls: list[str] | None = None) -> list[str]:
+    urls = []
+    for url in image_urls or []:
+        if url and url not in urls:
+            urls.append(url)
+    if primary_url and primary_url not in urls:
+        urls.insert(0, primary_url)
+    return urls[:5]
+
+
+def _read_image_urls(stored_urls: str | None, primary_url: str | None = None) -> list[str]:
+    image_urls = []
+    if stored_urls:
+        try:
+            parsed = json.loads(stored_urls)
+            if isinstance(parsed, list):
+                image_urls = parsed
+        except Exception:
+            image_urls = [url.strip() for url in stored_urls.split(",") if url.strip()]
+    return _merge_image_urls(primary_url, image_urls)
 
 
 @router.get("/development/ocr-ready")
@@ -88,6 +111,7 @@ def list_ocr_ready_for_delivery(
         "status": row.status,
         "bill_image_url": row.bill_image_url,
         "pickup_image_url": row.pickup_image_url,
+        "pickup_image_urls": _read_image_urls(row.pickup_image_urls, row.pickup_image_url),
     } for row in rows]
 
 
@@ -342,10 +366,18 @@ async def confirm_delivery_success(
     try:
         crud_delivery.confirm_delivery_record(
             db, waybill, data.actual_cod_collected, data.pod_image_url, 
-            current_user['user_id'], current_user.get('primary_hub_id'), data.note
+            current_user['user_id'], current_user.get('primary_hub_id'), data.note,
+            pod_urls=data.pod_image_urls,
         )
         db.commit()
-        res = {"status": "DELIVERED", "cod": data.actual_cod_collected, "waybill_code": data.waybill_code}
+        pod_images = _merge_image_urls(data.pod_image_url, data.pod_image_urls)
+        res = {
+            "status": "DELIVERED",
+            "cod": data.actual_cod_collected,
+            "waybill_code": data.waybill_code,
+            "pod_image_url": pod_images[0] if pod_images else data.pod_image_url,
+            "pod_image_urls": pod_images[:5],
+        }
         commit_idempotency(idem_key, res)
         return res
     except Exception as e:
@@ -864,6 +896,7 @@ def mark_pickup_request_picked(
             db_req,
             current_user["user_id"],
             pickup_image_url=data.pickup_image_url,
+            pickup_image_urls=data.pickup_image_urls,
             note=data.note,
             actual_quantity=data.actual_quantity,
         )
@@ -878,6 +911,8 @@ def mark_pickup_request_picked(
             "request_code": code,
             "waybill_code": waybill.waybill_code if waybill else None,
             "waybill_status": waybill.status if waybill else None,
+            "pickup_image_url": waybill.pickup_image_url if waybill else data.pickup_image_url,
+            "pickup_image_urls": _merge_image_urls(data.pickup_image_url, data.pickup_image_urls),
         }
     except Exception as e:
         db.rollback()

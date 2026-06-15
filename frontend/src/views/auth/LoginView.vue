@@ -92,12 +92,13 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { ElMessage } from 'element-plus';
 import api from '../../api/axios';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const formRef = ref(null);
 const loading = ref(false);
@@ -228,7 +229,8 @@ const handleLogin = async () => {
         duration: 1500
       });
       
-      await router.push('/customer/dashboard');
+      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '';
+      await router.push(redirect && redirect.startsWith('/') ? redirect : '/customer/dashboard');
       
     } catch (error) {
       const msg = error.response?.data?.detail || 'Sai tài khoản hoặc mật khẩu';

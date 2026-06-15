@@ -238,6 +238,12 @@ const customerRoutes = [
         meta: { title: 'Yêu cầu của tôi' }
       },
       {
+        path: 'orders/:waybill_code',
+        name: 'CustomerOrderDetail',
+        component: () => import('../views/customer/CustomerOrders.vue'),
+        meta: { title: 'Chi tiet yeu cau' }
+      },
+      {
         path: 'recipients',
         name: 'CustomerRecipients',
         component: () => import('../views/customer/CustomerRecipients.vue'),
@@ -279,14 +285,19 @@ router.beforeEach((to, from) => {
   const auth = useAuthStore();
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    const redirect = encodeURIComponent(to.fullPath);
     if (to.path.startsWith('/admin')) {
-      return '/admin/login';
+      return `/admin/login?redirect=${redirect}`;
     }
-    return '/login';
+    return `/login?redirect=${redirect}`;
   }
 
   // Nếu đã đăng nhập và đang cố vào trang login/admin-login/setup-admin
   if ((to.path === '/login' || to.path === '/admin/login' || to.path === '/setup-admin') && auth.isAuthenticated) {
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '';
+    if (redirect && redirect.startsWith('/')) {
+      return redirect;
+    }
     if (auth.isCustomer) {
       return '/customer/dashboard';
     }

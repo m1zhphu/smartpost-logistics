@@ -753,6 +753,7 @@ class Waybills(Base):
     # Bill verification and OCR
     bill_image_url: Mapped[Optional[str]] = mapped_column(String(255))
     pickup_image_url: Mapped[Optional[str]] = mapped_column(String(255))
+    pickup_image_urls: Mapped[Optional[str]] = mapped_column(Text)
     ocr_status: Mapped[Optional[str]] = mapped_column(String(50), server_default=text("'PENDING'"))
     verify_status: Mapped[Optional[str]] = mapped_column(String(50), server_default=text("'PENDING'"))
     verify_error_msg: Mapped[Optional[str]] = mapped_column(String(255))
@@ -851,6 +852,7 @@ class DeliveryResults(Base):
     shipper_id: Mapped[Optional[int]] = mapped_column(Integer)
     actual_cod_collected: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2))
     pod_image_url: Mapped[Optional[str]] = mapped_column(String(255))
+    pod_image_urls: Mapped[Optional[str]] = mapped_column(Text)
     delivery_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
     status: Mapped[Optional[str]] = mapped_column(String(50))
 

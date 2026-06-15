@@ -335,6 +335,7 @@ class CustomerPickupSummary(BaseModel):
     ocr_status: Optional[str] = None
     bill_image_url: Optional[str] = None
     pickup_image_url: Optional[str] = None
+    pickup_image_urls: List[str] = Field(default_factory=list)
 
     # Items list
     items: List[CustomerPickupSummaryItem] = []
@@ -420,7 +421,9 @@ class WaybillTimelineResponse(BaseModel):
     timeline: List[WaybillTimelineItem]
     bill_image_url: Optional[str] = None
     pickup_image_url: Optional[str] = None
+    pickup_image_urls: List[str] = Field(default_factory=list)
     pod_image_url: Optional[str] = None
+    pod_image_urls: List[str] = Field(default_factory=list)
     
     class Config:
         from_attributes = True

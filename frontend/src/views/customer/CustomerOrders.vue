@@ -1237,6 +1237,23 @@ const openBulkWaybillDetail = (pickup, waybill) => {
   });
 };
 
+const openRouteWaybillDetail = async () => {
+  const routeCode = route.params.waybill_code || route.query.waybill_code;
+  if (!routeCode) return;
+  const code = String(routeCode).trim();
+  const row = pickupsList.value.find(item => item.waybill_code === code);
+  await openDetail(row || { waybill_code: code, pickup_mode: 'SINGLE_WAYBILL' });
+};
+
+watch(
+  () => [route.params.waybill_code, route.query.waybill_code],
+  () => {
+    if (pickupsList.value.length) {
+      openRouteWaybillDetail();
+    }
+  }
+);
+
 const getOcrStatusLabel = (status) => {
   const labels = {
     PENDING: 'Chờ OCR',
@@ -1564,7 +1581,8 @@ onMounted(async () => {
     };
   }
 
-  fetchPickupsList();
+  await fetchPickupsList();
+  await openRouteWaybillDetail();
   fetchAvailableServices();
   fetchHubs();
   window.addEventListener('realtime-pickup-event', handleRealtimeEvent);

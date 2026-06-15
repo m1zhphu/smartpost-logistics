@@ -1,5 +1,5 @@
 # File: schemas/delivery.py
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional
 from datetime import datetime
 from core.product_types import normalize_product_type
@@ -15,7 +15,27 @@ class DeliverySuccessRequest(BaseModel):
     waybill_code: str
     actual_cod_collected: float = Field(ge=0)
     pod_image_url: Optional[str] = None
+    pod_image_urls: Optional[List[str]] = Field(default=None, max_length=5)
     note: str = "Giao hàng thành công"
+
+    @field_validator("pod_image_urls")
+    @classmethod
+    def validate_pod_image_urls(cls, value):
+        if value is not None and len(value) > 5:
+            raise ValueError("Chi duoc cap nhat toi da 5 anh giao hang")
+        return value
+
+    @model_validator(mode="after")
+    def validate_total_pod_images(self):
+        urls = []
+        for url in self.pod_image_urls or []:
+            if url and url not in urls:
+                urls.append(url)
+        if self.pod_image_url and self.pod_image_url not in urls:
+            urls.insert(0, self.pod_image_url)
+        if len(urls) > 5:
+            raise ValueError("Chi duoc cap nhat toi da 5 anh giao hang")
+        return self
 
 class DeliveryFailureRequest(BaseModel):
     waybill_code: str
@@ -66,8 +86,28 @@ class HubDispatchRejectRequest(BaseModel):
 
 class PickupPickedRequest(BaseModel):
     pickup_image_url: Optional[str] = None
+    pickup_image_urls: Optional[List[str]] = Field(default=None, max_length=5)
     note: Optional[str] = None
     actual_quantity: Optional[int] = None
+
+    @field_validator("pickup_image_urls")
+    @classmethod
+    def validate_pickup_image_urls(cls, value):
+        if value is not None and len(value) > 5:
+            raise ValueError("Chi duoc cap nhat toi da 5 anh lay hang")
+        return value
+
+    @model_validator(mode="after")
+    def validate_total_pickup_images(self):
+        urls = []
+        for url in self.pickup_image_urls or []:
+            if url and url not in urls:
+                urls.append(url)
+        if self.pickup_image_url and self.pickup_image_url not in urls:
+            urls.insert(0, self.pickup_image_url)
+        if len(urls) > 5:
+            raise ValueError("Chi duoc cap nhat toi da 5 anh lay hang")
+        return self
 
 class ShipperAvailabilityRequest(BaseModel):
     is_online: bool
@@ -118,6 +158,7 @@ class MobilePickupTaskResponse(BaseModel):
     service_type: Optional[str] = None
     note: Optional[str] = None
     pickup_image_url: Optional[str] = None
+    pickup_image_urls: List[str] = Field(default_factory=list)
     price_status: Optional[str] = None
     estimated_shipping_fee: float = 0
     estimated_total_amount: float = 0

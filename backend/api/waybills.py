@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from sqlalchemy import and_, or_
 from decimal import Decimal
+import json
 
 from core.database import get_db
 from core.security import get_current_user
@@ -22,6 +23,20 @@ import models
 
 router = APIRouter(prefix="/api/waybills", tags=["Waybill Management"])
 logger = logging.getLogger(__name__)
+
+
+def _read_image_urls(stored_urls: str | None, primary_url: str | None = None) -> list[str]:
+    urls = []
+    if stored_urls:
+        try:
+            parsed = json.loads(stored_urls)
+            if isinstance(parsed, list):
+                urls.extend(url for url in parsed if url)
+        except Exception:
+            urls.extend(url.strip() for url in stored_urls.split(",") if url.strip())
+    if primary_url and primary_url not in urls:
+        urls.insert(0, primary_url)
+    return urls[:5]
 
 
 def _require_ocr_admin_role(current_user: dict):
@@ -239,6 +254,7 @@ def search_waybills(
                 "action_by": action_by,
                 "bill_image_url": w.bill_image_url,
                 "pickup_image_url": w.pickup_image_url,
+                "pickup_image_urls": _read_image_urls(w.pickup_image_urls, w.pickup_image_url),
                 "ocr_status": w.ocr_status,
                 "verify_status": w.verify_status,
                 "verify_error_msg": w.verify_error_msg
@@ -557,7 +573,12 @@ def get_waybill_timeline(
         timeline=timeline_items,
         bill_image_url=waybill.bill_image_url,
         pickup_image_url=waybill.pickup_image_url,
+        pickup_image_urls=_read_image_urls(waybill.pickup_image_urls, waybill.pickup_image_url),
         pod_image_url=latest_delivery.pod_image_url if latest_delivery else None,
+        pod_image_urls=_read_image_urls(
+            latest_delivery.pod_image_urls if latest_delivery else None,
+            latest_delivery.pod_image_url if latest_delivery else None,
+        ),
     )
 
 
@@ -810,6 +831,7 @@ def _waybill_ocr_payload(waybill: models.Waybills) -> dict:
         "declared_value": float(item.declared_value or 0) if item else 0,
         "bill_image_url": waybill.bill_image_url,
         "pickup_image_url": waybill.pickup_image_url,
+        "pickup_image_urls": _read_image_urls(waybill.pickup_image_urls, waybill.pickup_image_url),
         "note": waybill.note,
         "updated_at": event_time,
         "created_at": event_time,
@@ -1918,6 +1940,11 @@ def get_waybill_tracking(code: str, db: Session = Depends(get_db)):
         models.DeliveryResults.pod_image_url.isnot(None),
     ).order_by(models.DeliveryResults.delivery_id.desc()).first()
     pod_image_url = latest_delivery.pod_image_url if latest_delivery else None
+    pod_image_urls = _read_image_urls(
+        latest_delivery.pod_image_urls if latest_delivery else None,
+        pod_image_url,
+    )
+    pickup_image_urls = _read_image_urls(waybill.pickup_image_urls, waybill.pickup_image_url)
     pickup_statuses = {"PICKED", "PICKED_PENDING_VERIFY"}
     return {
         "waybill_id": waybill.waybill_id,
@@ -1931,13 +1958,21 @@ def get_waybill_tracking(code: str, db: Session = Depends(get_db)):
                     if log.status_id in pickup_statuses
                     else None
                 ),
+                "pickup_image_urls": (
+                    pickup_image_urls
+                    if log.status_id in pickup_statuses
+                    else []
+                ),
                 "pod_image_url": pod_image_url if log.status_id == "DELIVERED" else None,
+                "pod_image_urls": pod_image_urls if log.status_id == "DELIVERED" else [],
             }
             for log in logs
         ],
         "bill_image_url": waybill.bill_image_url,
         "pickup_image_url": waybill.pickup_image_url,
+        "pickup_image_urls": pickup_image_urls,
         "pod_image_url": pod_image_url,
+        "pod_image_urls": pod_image_urls,
     }
 
 @router.delete("/{code}")

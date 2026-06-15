@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date
 import secrets
 import string
+import json
 import models
 from core.state_machine import WaybillStatus
 from typing import Optional, List
@@ -9,6 +10,20 @@ from schemas.waybills import WaybillFilter
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from core.product_types import get_product_type_definition, normalize_product_type
+
+
+def _read_image_urls(stored_urls: str | None, primary_url: str | None = None) -> list[str]:
+    urls = []
+    if stored_urls:
+        try:
+            parsed = json.loads(stored_urls)
+            if isinstance(parsed, list):
+                urls.extend(url for url in parsed if url)
+        except Exception:
+            urls.extend(url.strip() for url in stored_urls.split(",") if url.strip())
+    if primary_url and primary_url not in urls:
+        urls.insert(0, primary_url)
+    return urls[:5]
 
 
 def generate_waybill_code(db: Session) -> str:
@@ -553,6 +568,7 @@ def customer_pickup_payload(request: models.BookingRequests, waybill: models.Way
         "ocr_status": waybill.ocr_status,
         "bill_image_url": waybill.bill_image_url,
         "pickup_image_url": waybill.pickup_image_url,
+        "pickup_image_urls": _read_image_urls(waybill.pickup_image_urls, waybill.pickup_image_url),
 
         # Items List
         "items": items,
