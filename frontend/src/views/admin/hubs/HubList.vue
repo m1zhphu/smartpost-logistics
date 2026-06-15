@@ -207,14 +207,14 @@
             <el-col :span="12">
               <el-form-item label="Phân cấp" prop="hub_type">
                 <el-select v-model="hubForm.hub_type" class="w-full" placeholder="Chọn phân cấp">
-                  <el-option label="Trung tâm (Center)" value="CENTER">
-                    <span style="color: #FFB547; font-weight: bold;">Trung tâm (Center)</span>
+                  <el-option label="Trung tâm" value="CENTER">
+                    <span style="color: #FFB547; font-weight: bold;">Trung tâm</span>
                   </el-option>
-                  <el-option label="Bưu cục (Hub)" value="HUB">
-                    <span style="color: #4318FF; font-weight: bold;">Bưu cục (Hub)</span>
+                  <el-option label="Bưu cục" value="HUB">
+                    <span style="color: #4318FF; font-weight: bold;">Bưu cục</span>
                   </el-option>
-                  <el-option label="Điểm nhận (Station)" value="STATION">
-                    <span style="color: #05CD99; font-weight: bold;">Điểm nhận (Station)</span>
+                  <el-option label="Điểm nhận" value="STATION">
+                    <span style="color: #05CD99; font-weight: bold;">Điểm nhận</span>
                   </el-option>
                 </el-select>
               </el-form-item>

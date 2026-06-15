@@ -85,7 +85,7 @@
             </div>
 
             <div class="cod-container mt-4">
-              <div class="cod-label"><el-icon><Money /></el-icon> THU KHÁCH (COD)</div>
+              <div class="cod-label"><el-icon><Money /></el-icon> THU KHÁCH</div>
               <div class="cod-amount">{{ formatMoney(task.cod_amount || task.total_amount_to_collect || 0) }} đ</div>
             </div>
           </div>

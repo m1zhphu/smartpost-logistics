@@ -72,9 +72,9 @@
                     <template #default="{ row }">
                       <div style="display: flex; flex-direction: column; gap: 4px;">
                         <span class="code-badge warning">{{ row.waybill_code }}</span>
-                        <span v-if="row.verify_status === 'VERIFIED'" class="verify-badge verified"><el-icon><CircleCheckFilled /></el-icon> Verified</span>
-                        <span v-else-if="row.verify_status === 'MISMATCH'" class="verify-badge mismatch"><el-icon><WarningFilled /></el-icon> Mismatch</span>
-                        <span v-else class="verify-badge pending"><el-icon><Clock /></el-icon> Pending</span>
+                        <span v-if="row.verify_status === 'VERIFIED'" class="verify-badge verified"><el-icon><CircleCheckFilled /></el-icon> Đã xác thực</span>
+                        <span v-else-if="row.verify_status === 'MISMATCH'" class="verify-badge mismatch"><el-icon><WarningFilled /></el-icon> Sai lệch</span>
+                        <span v-else class="verify-badge pending"><el-icon><Clock /></el-icon> Chờ duyệt</span>
                       </div>
                     </template>
                   </el-table-column>
@@ -463,7 +463,7 @@ const handleScan = async (codeToScan) => {
         ElMessageBox.alert(
           `<div style="text-align: center;">
              <span style="font-size: 48px; color: #EE5D50; margin-bottom: 12px; display: inline-block;">⚠️</span><br>
-             <b style="font-size: 18px; color: #EE5D50;">Lỗi: Đơn hàng chưa được xác thực (VERIFY). Không thể nhập kho/xuất kho!</b><br>
+             <b style="font-size: 18px; color: #EE5D50;">Lỗi: Đơn hàng chưa được xác thực. Không thể nhập kho/xuất kho!</b><br>
              <span style="font-size: 14px; color: #4B5563; margin-top: 8px; display: inline-block;">${errorMsg}</span>
            </div>`, 
           'LỖI XÁC THỰC', 

@@ -2,7 +2,7 @@
   <div class="audit-logs-page">
     <div class="page-header flex-between mb-4">
       <div class="title-section">
-        <h2 class="misa-title">Nhật ký Hệ thống (Audit Logs)</h2>
+        <h2 class="misa-title">Nhật ký Hệ thống</h2>
         <p class="text-muted">Ghi lại toàn bộ thao tác can thiệp dữ liệu của Admin</p>
       </div>
       <div class="actions">
@@ -17,7 +17,7 @@
             {{ formatTime(row.timestamp) }}
           </template>
         </el-table-column>
-        <el-table-column prop="admin_id" label="Admin ID" width="100" />
+        <el-table-column prop="admin_id" label="Mã Admin" width="100" />
         <el-table-column prop="target_table" label="Đối tượng" width="130">
           <template #default="{ row }">
             <el-tag size="small" type="info">{{ row.target_table }}</el-tag>

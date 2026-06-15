@@ -10,7 +10,7 @@
               <el-icon><Location /></el-icon>
             </div>
             <div>
-              <h2 class="page-title">Điều phối lấy hàng (Pickup)</h2>
+              <h2 class="page-title">Điều phối lấy hàng</h2>
               <p class="page-subtitle">Xác nhận văn phòng, điều phối bưu tá và xác nhận kết quả lấy hàng online/hotline</p>
             </div>
           </div>

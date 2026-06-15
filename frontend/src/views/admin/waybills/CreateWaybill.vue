@@ -51,7 +51,7 @@
                 <el-icon><Shop /></el-icon><span>Thông tin Người gửi</span>
               </div>
 
-              <el-form-item label="Khách hàng đã đăng ký (Shop)" prop="customer_id" class="mb-12">
+              <el-form-item label="Khách hàng đã đăng ký" prop="customer_id" class="mb-12">
                 <el-select 
                   v-model="waybillForm.customer_id" 
                   placeholder="Tìm tên shop hoặc mã KH (Không bắt buộc)..." 
@@ -118,7 +118,7 @@
 
               <el-row :gutter="16">
                 <el-col :span="12">
-                  <el-form-item label="Bưu cục gửi (Origin Hub)" prop="origin_hub_id" class="mb-0">
+                  <el-form-item label="Bưu cục gửi" prop="origin_hub_id" class="mb-0">
                     <el-select v-model="waybillForm.origin_hub_id" placeholder="Hệ thống tự động map..." filterable class="w-full" :disabled="auth.user?.role_id !== 1">
                       <template #prefix><el-icon><LocationInformation /></el-icon></template>
                       <el-option v-for="hub in hubs" :key="hub.hub_id" :label="hub.hub_code + ' - ' + hub.hub_name" :value="hub.hub_id" />
@@ -126,7 +126,7 @@
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="Bưu cục nhận (Dest Hub)" prop="dest_hub_id" class="mb-0">
+                  <el-form-item label="Bưu cục nhận" prop="dest_hub_id" class="mb-0">
                     <el-select v-model="waybillForm.dest_hub_id" placeholder="Hệ thống tự động map..." filterable class="w-full">
                       <template #prefix><el-icon><Location /></el-icon></template>
                       <el-option v-for="hub in hubs" :key="hub.hub_id" :label="hub.hub_code + ' - ' + hub.hub_name" :value="hub.hub_id" />
@@ -274,18 +274,18 @@
                 <el-col :span="12">
                   <el-form-item label="Dịch vụ vận chuyển" prop="service_type" class="mb-12">
                     <el-select v-model="waybillForm.service_type" placeholder="Dịch vụ..." class="w-full">
-                      <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
-                      <el-option label="Tiết kiệm (TK)" value="TK" />
-                      <el-option label="Hỏa tốc (HT)" value="HT" />
+                      <el-option label="Chuyển phát nhanh" value="CPN" />
+                      <el-option label="Tiết kiệm" value="TK" />
+                      <el-option label="Hỏa tốc" value="HT" />
                     </el-select>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
                   <el-form-item label="Người trả phí" prop="payment_method" class="mb-12">
                     <el-select v-model="waybillForm.payment_method" class="w-full">
-                      <el-option label="Shop trả cước cuối tháng (SENDER_DEBT)" value="SENDER_DEBT" />
-                      <el-option label="Shop trả cước ngay khi gửi (SENDER_PAY)" value="SENDER_PAY" />
-                      <el-option label="Người nhận thanh toán cước (RECEIVER_PAY)" value="RECEIVER_PAY" />
+                      <el-option label="Shop trả cước cuối tháng" value="SENDER_DEBT" />
+                      <el-option label="Shop trả cước ngay khi gửi" value="SENDER_PAY" />
+                      <el-option label="Người nhận thanh toán cước" value="RECEIVER_PAY" />
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -293,7 +293,7 @@
 
               <el-row :gutter="16">
                 <el-col :span="12">
-                  <el-form-item label="Tiền thu hộ (COD)" prop="cod_amount" class="mb-12">
+                  <el-form-item label="Tiền thu hộ" prop="cod_amount" class="mb-12">
                     <el-input-number 
                       v-model="waybillForm.cod_amount" 
                       :min="0" :step="1000" 
@@ -319,9 +319,9 @@
                 <el-col :span="12">
                   <el-form-item label="Ghi chú giao" class="mb-12">
                     <el-select v-model="waybillForm.delivery_note_option" class="w-full">
-                      <el-option label="Cho xem hàng, không thử (CHO_XEM_HANG)" value="CHO_XEM_HANG" />
-                      <el-option label="Cho thử hàng (CHO_THU_HANG)" value="CHO_THU_HANG" />
-                      <el-option label="Không cho xem hàng (KHONG_CHO_XEM_HANG)" value="KHONG_CHO_XEM_HANG" />
+                      <el-option label="Cho xem hàng, không thử" value="CHO_XEM_HANG" />
+                      <el-option label="Cho thử hàng" value="CHO_THU_HANG" />
+                      <el-option label="Không cho xem hàng" value="KHONG_CHO_XEM_HANG" />
                     </el-select>
                   </el-form-item>
                 </el-col>

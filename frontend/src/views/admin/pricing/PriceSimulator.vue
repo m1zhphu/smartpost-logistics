@@ -30,7 +30,7 @@
             <!-- Tuyến đường gửi / nhận -->
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="Bưu cục gửi (Origin Hub)">
+                <el-form-item label="Bưu cục gửi">
                   <el-select 
                     v-model="selectedOriginHubId" 
                     placeholder="Chọn bưu cục gửi..." 
@@ -54,7 +54,7 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="Bưu cục nhận (Destination Hub)">
+                <el-form-item label="Bưu cục nhận">
                   <el-select 
                     v-model="selectedDestHubId" 
                     placeholder="Chọn bưu cục nhận..." 
@@ -142,20 +142,20 @@
               <el-radio-group v-model="simForm.service_type" class="w-full service-radio-group">
                 <el-radio-button label="STANDARD" class="flex-1">
                   <div class="flex-col-center">
-                    <span class="service-name">Tiêu chuẩn (STANDARD)</span>
+                    <span class="service-name">Tiêu chuẩn</span>
                     <span class="service-desc">SLA: 24h - 48h</span>
                   </div>
                 </el-radio-button>
                 <el-radio-button label="EXPRESS" class="flex-1">
                   <div class="flex-col-center">
-                    <span class="service-name">Hỏa tốc (EXPRESS)</span>
+                    <span class="service-name">Hỏa tốc</span>
                     <span class="service-desc">SLA: 4h - 8h khẩn cấp</span>
                   </div>
                 </el-radio-button>
               </el-radio-group>
             </el-form-item>
 
-            <el-form-item label="Dịch vụ tiện ích gia tăng (Checkboxes)">
+            <el-form-item label="Dịch vụ tiện ích gia tăng">
               <div v-loading="loadingServices" class="services-checkbox-container w-full">
                 <el-checkbox-group v-model="simForm.extra_services" class="checkbox-grid">
                   <div 
@@ -234,7 +234,7 @@
                   <div class="flex-between font-sm">
                     <span class="text-muted">Gói dịch vụ:</span>
                     <el-tag size="small" :type="simForm.service_type === 'EXPRESS' ? 'danger' : 'primary'">
-                      {{ simForm.service_type === 'EXPRESS' ? 'HỎA TỐC (EXPRESS)' : 'TIÊU CHUẨN (STANDARD)' }}
+                      {{ simForm.service_type === 'EXPRESS' ? 'HỎA TỐC' : 'TIÊU CHUẨN' }}
                     </el-tag>
                   </div>
                 </div>

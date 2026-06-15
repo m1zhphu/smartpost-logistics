@@ -42,9 +42,9 @@
           <el-col :xs="24" :sm="12" :lg="5" class="filter-col">
             <div class="filter-label">Trạng thái</div>
             <el-select v-model="filters.status" placeholder="Tất cả trạng thái" clearable class="w-full modern-select" @change="fetchBags">
-              <el-option label="Đang mở (Open)" value="OPEN" />
-              <el-option label="Đã chốt (Closed)" value="CLOSED" />
-              <el-option label="Đã xuất bến (Manifested)" value="MANIFESTED" />
+              <el-option label="Đang mở" value="OPEN" />
+              <el-option label="Đã chốt" value="CLOSED" />
+              <el-option label="Đã xuất bến" value="MANIFESTED" />
             </el-select>
           </el-col>
           
@@ -85,7 +85,7 @@
           <el-table-column type="index" label="STT" width="70" align="center" />
           
           <!-- Mã túi -->
-          <el-table-column prop="bag_code" label="Mã Túi (Bag Code)" min-width="180">
+          <el-table-column prop="bag_code" label="Mã Túi" min-width="180">
             <template #default="{ row }">
               <span class="code-badge primary">{{ row.bag_code }}</span>
             </template>

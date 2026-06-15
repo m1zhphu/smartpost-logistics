@@ -78,7 +78,7 @@
         
         <el-row :gutter="20">
           <el-col :span="10">
-            <el-form-item label="Mã hệ thống (Code)" prop="service_code">
+            <el-form-item label="Mã hệ thống" prop="service_code">
               <el-input 
                 v-model="serviceForm.service_code" 
                 placeholder="VD: CO_CHECK" 

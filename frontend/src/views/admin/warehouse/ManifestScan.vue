@@ -65,7 +65,7 @@
                     </el-input>
                   </el-form-item>
 
-                  <el-form-item label="Bưu cục đích đến (To Hub)" required>
+                  <el-form-item label="Bưu cục đích đến" required>
                     <el-select v-model="toHubId" placeholder="Chọn bưu cục xe sẽ chạy tới..." class="w-full modern-select" filterable :disabled="isLocked">
                       <template #prefix><el-icon><Location /></el-icon></template>
                       <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
@@ -224,7 +224,7 @@
                      </template>
                   </el-table-column>
                   
-                  <el-table-column prop="bag_code" label="Mã Túi (Theo Manifest)">
+                  <el-table-column prop="bag_code" label="Mã Túi">
                      <template #default="{ row }">
                        <span class="code-badge" :class="row.is_scanned ? 'success' : 'default'">{{ row.bag_code }}</span>
                      </template>
@@ -241,7 +241,7 @@
           <div class="content-card compact-card scanner-container">
              <el-input 
                 v-model="barcode" 
-                placeholder="QUÉT MÃ TÚI (BAG) VÀO ĐÂY..." 
+                placeholder="QUÉT MÃ TÚI VÀO ĐÂY..." 
                 ref="barcodeRef"
                 :disabled="!isLocked || loading"
                 @keyup.enter="handleScan(barcode)"
@@ -279,7 +279,7 @@
              >
                 <el-table-column type="index" width="50" align="center" label="#" />
                 
-                <el-table-column prop="bag_code" label="Mã Túi (Bag)" min-width="160">
+                <el-table-column prop="bag_code" label="Mã Túi" min-width="160">
                    <template #default="{ row }">
                       <span class="code-badge success">{{ row.bag_code }}</span>
                    </template>
@@ -590,7 +590,7 @@ const submitManifest = async () => {
             ElMessageBox.alert(
               `<div style="text-align: center;">
                  <span style="font-size: 48px; color: #EE5D50; margin-bottom: 12px; display: inline-block;">⚠️</span><br>
-                 <b style="font-size: 18px; color: #EE5D50;">Lỗi: Đơn hàng trong túi chưa được xác thực (VERIFY). Không thể xuất kho!</b><br>
+                 <b style="font-size: 18px; color: #EE5D50;">Lỗi: Đơn hàng trong túi chưa được xác thực. Không thể xuất kho!</b><br>
                  <span style="font-size: 14px; color: #4B5563; margin-top: 8px; display: inline-block;">${errorStr}</span>
                </div>`, 
               'LỖI XÁC THỰC', 

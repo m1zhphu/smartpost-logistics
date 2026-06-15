@@ -10,8 +10,8 @@
               <el-icon><UserFilled /></el-icon>
             </div>
             <div>
-              <h2 class="page-title">Quản lý Nhân sự (Staff)</h2>
-              <p class="page-subtitle">Hệ thống phân quyền: Admin, Quản lý, Kho, Shipper, Kế toán, CSKH</p>
+              <h2 class="page-title">Quản lý Nhân sự</h2>
+              <p class="page-subtitle">Hệ thống phân quyền: Quản trị viên, Quản lý, Kho, Bưu tá, Kế toán, CSKH</p>
             </div>
           </div>
         </div>
@@ -51,7 +51,7 @@
               <el-option label="Quản trị hệ thống" :value="1" />
               <el-option label="Quản lý bưu cục" :value="2" />
               <el-option label="Nhân viên kho" :value="3" />
-              <el-option label="Tài xế (Shipper)" :value="4" />
+              <el-option label="Bưu tá" :value="4" />
               <el-option label="Kế toán" :value="5" />
               <el-option label="CSKH" :value="7" />
             </el-select>
@@ -339,7 +339,7 @@
                   <el-option v-if="userForm.role_id === 1" label="Quản trị hệ thống" :value="1" />
                   <el-option label="Quản lý bưu cục" :value="2" />
                   <el-option label="Nhân viên kho" :value="3" />
-                  <el-option label="Tài xế (Shipper)" :value="4" />
+                  <el-option label="Bưu tá" :value="4" />
                   <el-option label="Kế toán bưu cục" :value="5" />
                   <el-option label="CSKH" :value="7" />
                 </el-select>
@@ -849,11 +849,11 @@ const getRoleType = (id) => {
 
 const getRoleName = (id) => {
   const map = {
-    1: 'SUPER_ADMIN',
-    2: 'HUB_MANAGER',
-    3: 'WAREHOUSE_STAFF',
-    4: 'SHIPPER',
-    5: 'ACCOUNTANT',
+    1: 'Quản trị hệ thống',
+    2: 'Quản lý bưu cục',
+    3: 'Nhân viên kho',
+    4: 'Bưu tá',
+    5: 'Kế toán',
     7: 'CSKH'
   };
   return map[id] || 'N/A';

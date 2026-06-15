@@ -248,23 +248,23 @@
                     </el-form-item>
                     <el-form-item label="Dịch vụ vận chuyển" required>
                       <el-radio-group v-model="form.service_type" @change="debouncedSimulate">
-                        <el-radio-button label="STANDARD">Chuẩn (STANDARD)</el-radio-button>
-                        <el-radio-button label="FAST">Nhanh (FAST)</el-radio-button>
-                        <el-radio-button label="EXPRESS">Hỏa tốc (EXPRESS)</el-radio-button>
+                        <el-radio-button label="STANDARD">Chuẩn</el-radio-button>
+                        <el-radio-button label="FAST">Nhanh</el-radio-button>
+                        <el-radio-button label="EXPRESS">Hỏa tốc</el-radio-button>
                       </el-radio-group>
                     </el-form-item>
                     <el-row :gutter="20">
                       <el-col :xs="24" :sm="12">
-                        <el-form-item label="Số tiền thu hộ (COD)">
+                        <el-form-item label="Số tiền thu hộ">
                           <el-input-number v-model="form.cod_amount" :min="0" :step="10000" class="w-full" @change="debouncedSimulate" />
                         </el-form-item>
                       </el-col>
                       <el-col :xs="24" :sm="12">
                         <el-form-item label="Phương thức thanh toán">
                           <el-select v-model="form.payment_method" class="w-full">
-                            <el-option label="Shop trả cước cuối tháng (SENDER_DEBT)" value="SENDER_DEBT" />
-                            <el-option label="Shop trả cước ngay khi gửi (SENDER_PAY)" value="SENDER_PAY" />
-                            <el-option label="Người nhận thanh toán cước (RECEIVER_PAY)" value="RECEIVER_PAY" />
+                            <el-option label="Shop trả cước cuối tháng" value="SENDER_DEBT" />
+                            <el-option label="Shop trả cước ngay khi gửi" value="SENDER_PAY" />
+                            <el-option label="Người nhận thanh toán cước" value="RECEIVER_PAY" />
                           </el-select>
                         </el-form-item>
                       </el-col>
@@ -273,9 +273,9 @@
                       <el-col :xs="24" :sm="12">
                         <el-form-item label="Ghi chú khi giao">
                           <el-select v-model="form.delivery_note_option" class="w-full">
-                            <el-option label="Cho xem hàng, không thử (CHO_XEM_HANG)" value="CHO_XEM_HANG" />
-                            <el-option label="Cho thử hàng (CHO_THU_HANG)" value="CHO_THU_HANG" />
-                            <el-option label="Không cho xem hàng (KHONG_CHO_XEM_HANG)" value="KHONG_CHO_XEM_HANG" />
+                            <el-option label="Cho xem hàng, không thử" value="CHO_XEM_HANG" />
+                            <el-option label="Cho thử hàng" value="CHO_THU_HANG" />
+                            <el-option label="Không cho xem hàng" value="KHONG_CHO_XEM_HANG" />
                           </el-select>
                         </el-form-item>
                       </el-col>

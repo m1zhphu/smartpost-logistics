@@ -156,7 +156,7 @@
             <div class="info-alert mt-24">
               <el-icon class="info-icon"><InfoFilled /></el-icon>
               <div class="info-content">
-                Hệ thống chỉ thống kê các đơn hàng có trạng thái <b class="text-success fw-bold">ĐÃ GIAO (DELIVERED)</b>. 
+                Hệ thống chỉ thống kê các đơn hàng có trạng thái <b class="text-success fw-bold">ĐÃ GIAO</b>. 
                 Các đơn thất bại hoặc đang giao sẽ được chốt vào ca sau.
               </div>
             </div>

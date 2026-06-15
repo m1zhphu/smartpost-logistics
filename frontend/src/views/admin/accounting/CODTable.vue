@@ -62,8 +62,8 @@
               class="w-full modern-select" 
               @change="fetchData"
             >
-              <el-option label="Chưa đối soát (DELIVERED)" value="DELIVERED" />
-              <el-option label="Đã chốt bảng kê (SETTLED)" value="SETTLED" />
+              <el-option label="Chưa đối soát" value="DELIVERED" />
+              <el-option label="Đã chốt bảng kê" value="SETTLED" />
             </el-select>
           </el-col>
           
@@ -155,7 +155,7 @@
           </el-table-column>
 
           <!-- Khách hàng / Shop -->
-          <el-table-column label="Khách hàng gửi (Shop)" min-width="220">
+          <el-table-column label="Khách hàng gửi" min-width="220">
             <template #default="{ row }">
               <div class="customer-info">
                 <span class="fw-bold text-dark flex-center gap-1">

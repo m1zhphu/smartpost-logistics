@@ -126,9 +126,9 @@
             <div class="filter-wrapper">
               <div class="filter-inputs">
                 <el-select v-model="filter.service_type" placeholder="Tất cả dịch vụ" clearable class="modern-select w-200">
-                  <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
-                  <el-option label="Tiết kiệm (TK)" value="TK" />
-                  <el-option label="Hỏa tốc / hàng đặc biệt (HT)" value="HT" />
+                  <el-option label="Chuyển phát nhanh" value="CPN" />
+                  <el-option label="Tiết kiệm" value="TK" />
+                  <el-option label="Hỏa tốc / hàng đặc biệt" value="HT" />
                 </el-select>
                 <el-select v-model="filterProvinceId" placeholder="Lọc theo tỉnh/thành" clearable filterable class="modern-select w-260">
                   <el-option v-for="province in provinces" :key="province.id" :label="province.name" :value="province.id" />
@@ -522,9 +522,9 @@
             
             <el-form-item label="Loại dịch vụ áp dụng" prop="service_type">
               <el-select v-model="ruleForm.service_type" placeholder="Chọn loại dịch vụ" class="w-full modern-select">
-                <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
-                <el-option label="Tiết kiệm (TK)" value="TK" />
-                <el-option label="Hỏa tốc / hàng đặc biệt (HT)" value="HT" />
+                <el-option label="Chuyển phát nhanh" value="CPN" />
+                <el-option label="Tiết kiệm" value="TK" />
+                <el-option label="Hỏa tốc / hàng đặc biệt" value="HT" />
               </el-select>
             </el-form-item>
 
@@ -833,7 +833,7 @@
           
           <el-row :gutter="24">
             <el-col :span="10">
-              <el-form-item label="Mã hệ thống (Code)" prop="service_code">
+              <el-form-item label="Mã hệ thống" prop="service_code">
                 <el-input v-model="serviceForm.service_code" placeholder="VD: CO_CHECK" :disabled="!!serviceForm.id" class="uppercase">
                   <template #prefix><el-icon><Key /></el-icon></template>
                 </el-input>
@@ -1139,9 +1139,9 @@ const packingRulesForm = {
 
 const getServiceLabel = (type) => {
   const map = {
-    'CPN': 'Chuyển phát nhanh trong nước (CPN)',
-    'TK': 'Chuyển phát tiết kiệm (TK)',
-    'HT': 'Hỏa tốc / hàng đặc biệt (HT)'
+    'CPN': 'Chuyển phát nhanh trong nước',
+    'TK': 'Chuyển phát tiết kiệm',
+    'HT': 'Hỏa tốc / hàng đặc biệt'
   };
   return map[type] || type;
 };

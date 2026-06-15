@@ -4,7 +4,7 @@
       <div class="setup-header">
         <el-icon class="setup-icon"><Management /></el-icon>
         <h1>Thiết lập Quản trị viên</h1>
-        <p>Chào mừng đến với SmartPost. Hãy tạo tài khoản Quản trị tối cao (Super Admin) để bắt đầu sử dụng hệ thống.</p>
+        <p>Chào mừng đến với SmartPost. Hãy tạo tài khoản Quản trị tối cao để bắt đầu sử dụng hệ thống.</p>
       </div>
 
       <el-form :model="setupForm" :rules="rules" ref="formRef" label-position="top">

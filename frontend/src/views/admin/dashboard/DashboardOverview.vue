@@ -23,7 +23,7 @@
             <h1>Hệ thống SmartPost</h1>
             <span class="live-badge">
               <span class="ping"></span>
-              Live
+              Trực tiếp
             </span>
           </div>
           <p class="subtitle">Tổng quan hiệu suất bưu cục của bạn hôm nay</p>

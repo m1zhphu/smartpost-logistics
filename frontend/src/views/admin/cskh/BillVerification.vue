@@ -84,7 +84,7 @@
     </el-dialog>
 
     <!-- Dialog Đối chiếu Side-by-Side AI OCR -->
-    <el-dialog v-model="compareDialogVisible" title="ĐỐI CHIẾU AI OCR VẬN ĐƠN" width="850px" destroy-on-close>
+    <el-dialog v-model="compareDialogVisible" title="ĐỐI CHIẾU CHI TIẾT VẬN ĐƠN" width="850px" destroy-on-close>
       <div v-if="selectedWaybill" class="compare-layout">
         <!-- Cột trái: Ảnh Bill & Kiện hàng -->
         <div class="compare-image-side">
@@ -188,10 +188,10 @@
       <template #footer>
         <div class="dialog-footer flex justify-end gap-3" style="display: flex; justify-content: flex-end; gap: 12px;">
           <el-button type="danger" @click="handleVerifyFromCompare('MISMATCH')">
-            <el-icon class="mr-1"><Close /></el-icon> Từ chối duyệt (Mismatch)
+            <el-icon class="mr-1"><Close /></el-icon> Từ chối duyệt
           </el-button>
           <el-button type="success" @click="handleVerifyFromCompare('VERIFIED')">
-            <el-icon class="mr-1"><Check /></el-icon> Phê duyệt (Verified)
+            <el-icon class="mr-1"><Check /></el-icon> Phê duyệt
           </el-button>
         </div>
       </template>
@@ -202,7 +202,7 @@
       <el-form label-position="top" class="p-4 modern-simulator-form">
         <el-row :gutter="15">
           <el-col :span="24">
-            <el-form-item label="Bưu cục gửi (Origin Hub)">
+            <el-form-item label="Bưu cục gửi">
               <el-select v-model="selectedOriginHubId" placeholder="Chọn bưu cục gửi..." class="w-full" filterable @change="onOriginChange">
                 <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
               </el-select>
@@ -210,7 +210,7 @@
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item label="Bưu cục nhận (Destination Hub)">
+            <el-form-item label="Bưu cục nhận">
               <el-select v-model="selectedDestHubId" placeholder="Chọn bưu cục nhận..." class="w-full" filterable @change="onDestChange">
                 <el-option v-for="hub in hubs" :key="hub.hub_id" :label="`${hub.hub_code} - ${hub.hub_name}`" :value="hub.hub_id" />
               </el-select>

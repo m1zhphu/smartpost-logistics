@@ -8,7 +8,7 @@
             <el-icon><List /></el-icon>
           </div>
           <div>
-            <h1 class="page-title">Tra cứu & Lịch sử Chuyến xe (Manifest)</h1>
+            <h1 class="page-title">Tra cứu & Lịch sử Chuyến xe</h1>
             <p class="page-subtitle">Quản lý các chuyến xe trung chuyển đang tới và tra cứu thông tin hành trình túi hàng</p>
           </div>
         </div>
@@ -69,7 +69,7 @@
               <div class="card-header">
                 <span class="header-title flex-center gap-2">
                   <el-icon class="text-warning"><Search /></el-icon>
-                  Tra cứu chi tiết Chuyến xe (Manifest)
+                  Tra cứu chi tiết Chuyến xe
                 </span>
               </div>
             </template>
@@ -271,7 +271,7 @@ const printManifest = () => {
       </head>
       <body onload="window.print(); window.close();">
         <div class="header">
-          <div class="title">BẢNG KÊ CHUYẾN XE (MANIFEST)</div>
+          <div class="title">BẢNG KÊ CHUYẾN XE</div>
           <div>Mã số: <strong>${manifestDetail.value.manifest_code}</strong></div>
         </div>
         

@@ -86,7 +86,7 @@
                 </template>
               </el-table-column>
               
-              <el-table-column label="Thu hộ (COD)" width="120" align="right">
+              <el-table-column label="Thu hộ" width="120" align="right">
                 <template #default="{ row }">
                   <span class="fw-bold text-danger">
                     {{ row.cod_amount ? row.cod_amount.toLocaleString() + ' đ' : '0 đ' }}

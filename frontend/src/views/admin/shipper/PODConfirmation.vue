@@ -41,7 +41,7 @@
             </div>
 
             <div class="cod-box mt-5" v-if="waybill">
-              <div class="cod-label">CẦN THU KHÁCH (COD)</div>
+              <div class="cod-label">CẦN THU KHÁCH</div>
               <div class="cod-amount">{{ formatCurrency(waybill.cod_amount || waybill.total_amount_to_collect || 0) }}</div>
             </div>
           </el-card>
@@ -51,7 +51,7 @@
           <el-card shadow="hover" class="action-card">
             
             <div class="pod-upload-section mb-5">
-              <label class="section-label">Ảnh bằng chứng (POD) <span class="text-danger">*</span></label>
+              <label class="section-label">Ảnh xác nhận giao hàng <span class="text-danger">*</span></label>
               
               <div class="upload-area" :class="{ 'has-image': preview }">
                 <input

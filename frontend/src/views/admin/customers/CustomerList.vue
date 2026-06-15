@@ -1260,7 +1260,7 @@ const openDialog = async (row) => {
     Object.assign(customerForm, {
       id: targetRow.customer_id || targetRow.id,
       customer_code: targetRow.customer_code,
-      customer_type: targetRow.customer_type === 'SHOP' ? 'PERSONAL' : (targetRow.customer_type || 'PERSONAL'),
+      customer_type: targetRow.customer_type === 'COMPANY' ? 'COMPANY' : 'PERSONAL',
       status: targetRow.status || 'ACTIVE',
       staff_in_charge_id: targetRow.staff_in_charge_id || null,
       policy_id: targetRow.policy_id || null,

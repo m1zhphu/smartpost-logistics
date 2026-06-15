@@ -36,8 +36,8 @@
               <div class="filter-item">
                 <label>TRẠNG THÁI ĐƠN</label>
                 <el-select v-model="filters.status" class="w-full">
-                  <el-option label="Đã giao thành công (DELIVERED)" value="DELIVERED" />
-                  <el-option label="Đã trả hàng (RETURNED)" value="RETURNED" />
+                  <el-option label="Đã giao thành công" value="DELIVERED" />
+                  <el-option label="Đã trả hàng" value="RETURNED" />
                 </el-select>
               </div>
             </el-col>

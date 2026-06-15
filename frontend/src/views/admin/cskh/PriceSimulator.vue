@@ -16,12 +16,12 @@
           <el-form label-position="top">
             <el-row :gutter="10">
               <el-col :span="12">
-                <el-form-item label="Tỉnh/Thành phố gửi (ID)">
+                <el-form-item label="ID Tỉnh/Thành phố gửi">
                   <el-input-number v-model="simForm.origin_province_id" class="w-full" :min="1" :controls="false" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="Tỉnh/Thành phố nhận (ID)">
+                <el-form-item label="ID Tỉnh/Thành phố nhận">
                   <el-input-number v-model="simForm.dest_province_id" class="w-full" :min="1" :controls="false" />
                 </el-form-item>
               </el-col>

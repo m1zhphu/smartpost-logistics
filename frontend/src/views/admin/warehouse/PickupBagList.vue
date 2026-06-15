@@ -90,13 +90,13 @@
           <el-col :xs="24" :sm="12" :lg="7" class="filter-col">
             <div class="filter-label">Trạng thái túi</div>
             <el-select v-model="filters.status" placeholder="Tất cả trạng thái" clearable class="w-full modern-select" @change="fetchBags">
-              <el-option label="Mới tạo (CREATED)" value="CREATED" />
-              <el-option label="Bưu tá đã lấy (PICKED)" value="PICKED" />
-              <el-option label="Đã về kho (INBOUND)" value="INBOUND" />
-              <el-option label="Đã mở túi (OPENED)" value="OPENED" />
-              <el-option label="Đang đối soát (PROCESSING)" value="PROCESSING" />
-              <el-option label="Đã đối soát (VERIFIED)" value="VERIFIED" />
-              <el-option label="Đã đóng / Hoàn tất (CLOSED)" value="CLOSED" />
+              <el-option label="Mới tạo" value="CREATED" />
+              <el-option label="Bưu tá đã lấy" value="PICKED" />
+              <el-option label="Đã về kho" value="INBOUND" />
+              <el-option label="Đã mở túi" value="OPENED" />
+              <el-option label="Đang đối soát" value="PROCESSING" />
+              <el-option label="Đã đối soát" value="VERIFIED" />
+              <el-option label="Đã đóng / Hoàn tất" value="CLOSED" />
             </el-select>
           </el-col>
           
@@ -128,7 +128,7 @@
           <el-table-column type="index" label="STT" width="60" align="center" />
           
           <!-- Mã túi -->
-          <el-table-column prop="bag_code" label="Mã Túi (Bag Code)" min-width="170">
+          <el-table-column prop="bag_code" label="Mã Túi" min-width="170">
             <template #default="{ row }">
               <span class="code-badge primary">{{ row.bag_code }}</span>
             </template>
@@ -750,7 +750,7 @@ const handleCloseBag = async (bag) => {
   btnLoading.value = true;
   try {
     await api.post(`/api/scans/pickup-bags/${bag.bag_code}/close`);
-    ElMessage.success(`Đã hoàn tất đóng túi ${bag.bag_code}! Toàn bộ đơn hàng đã chuyển sang trạng thái Nhập kho (IN_HUB)`);
+    ElMessage.success(`Đã hoàn tất đóng túi ${bag.bag_code}! Toàn bộ đơn hàng đã chuyển sang trạng thái Nhập kho`);
     fetchBags();
   } catch (err) {
     ElMessage.error(err.response?.data?.detail || 'Lỗi chốt đóng túi.');
@@ -931,7 +931,7 @@ const submitCloseAndLockBag = async () => {
   scanLoading.value = true;
   try {
     await api.post(`/api/scans/pickup-bags/${scanningBag.value.bag_code}/close`);
-    ElMessage.success(`Chốt túi ${scanningBag.value.bag_code} thành công! Toàn bộ đơn hàng đã chuyển sang Nhập kho (IN_HUB)`);
+    ElMessage.success(`Chốt túi ${scanningBag.value.bag_code} thành công! Toàn bộ đơn hàng đã chuyển sang Nhập kho`);
     scanDialogVisible.value = false;
     fetchBags();
   } catch (err) {

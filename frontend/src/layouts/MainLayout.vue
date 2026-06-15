@@ -79,7 +79,7 @@
                       <el-icon style="vertical-align: middle; margin-right: 2px;"><Location /></el-icon>
                       <span style="vertical-align: middle;">{{ userHubName }}</span>
                     </span>
-                    <span class="text-xs text-muted" v-else>{{ isAdmin ? 'Administrator' : 'Nhân viên' }}</span>
+                    <span class="text-xs text-muted" v-else>{{ isAdmin ? 'Quản trị viên' : 'Nhân viên' }}</span>
                  </div>
                  <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
                </div>
@@ -172,13 +172,13 @@ const menuData = computed(() => {
   const role = user.value?.role_id;
   
   const allMenus = [
-    { id: 'dashboard', icon: Monitor, label: 'Dashboard', path: '/admin/dashboard', roles: [1, 2, 5, 7] },
+    { id: 'dashboard', icon: Monitor, label: 'Bảng điều khiển', path: '/admin/dashboard', roles: [1, 2, 5, 7] },
     { 
       id: 'system', icon: Management, label: 'Hệ thống', roles: [1, 2], // Chỉ Admin
       children: [
         { title: 'HỆ THỐNG', items: [
-          { label: 'Bưu cục (Hubs)', path: '/admin/hubs' },
-          { label: 'Nhân sự (Staff)', path: '/admin/users' },
+          { label: 'Bưu cục', path: '/admin/hubs' },
+          { label: 'Nhân sự', path: '/admin/users' },
         ]}
       ]
     },
@@ -226,7 +226,7 @@ const menuData = computed(() => {
           { label: 'Nhiệm vụ của tôi', path: '/admin/delivery/my-tasks' }
         ]}
       ] : [
-        { title: 'LẤY HÀNG (PICKUP)', items: [
+        { title: 'LẤY HÀNG', items: [
           ...([1, 2, 7].includes(role) ? [{ label: 'Thêm mới yêu cầu', path: '/admin/delivery/pickup-create' }] : []),
           ...(role === 1 ? [{ label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' }] : []),
           { label: 'Chờ bưu cục xác nhận', path: '/admin/delivery/pickup-management?tab=dispatch-hub' },
@@ -243,7 +243,7 @@ const menuData = computed(() => {
       id: 'accounting', icon: Money, label: 'Kế toán', roles: [1, 2, 5], // Admin, Manager, Kế toán
       children: [
         { title: 'KẾ TOÁN', items: [
-          { label: 'Tạo Bảng Kê (Debt/COD)', path: '/admin/accounting/statements' },
+          { label: 'Tạo Bảng Kê', path: '/admin/accounting/statements' },
           { label: 'Đối soát COD - Shop', path: '/admin/accounting/cod' },
           { label: 'Chốt ca Shipper', path: '/admin/accounting/confirm-cash' }
         ]}
@@ -285,7 +285,39 @@ const menuData = computed(() => {
 });
 
 const currentPageTitle = computed(() => {
-  return route.name || 'Bảng điều khiển';
+  const titleMap = {
+    'Dashboard': 'Bảng điều khiển',
+    'UserList': 'Quản lý nhân sự',
+    'AuditLogs': 'Nhật ký hệ thống',
+    'WaybillList': 'Danh sách vận đơn',
+    'CreateWaybill': 'Tạo vận đơn',
+    'ScanIn': 'Quét nhập kho',
+    'Bagging': 'Đóng túi',
+    'ManifestScan': 'Lên/Xuống xe',
+    'ManifestList': 'Lịch sử chuyến xe',
+    'BagList': 'Danh sách túi hàng',
+    'PickupBagList': 'Túi gom lấy hàng',
+    'DevelopmentDeliveryReady': 'Giả lập chuẩn bị giao',
+    'AssignShipper': 'Phân công Shipper',
+    'PickupManagement': 'Điều phối lấy hàng',
+    'CODTable': 'Đối soát COD - Shop',
+    'DebtStatement': 'Tạo Bảng Kê',
+    'PricingRules': 'Cấu hình Giá',
+    'ConfirmCash': 'Chốt ca Shipper',
+    'PriceSimulator': 'Mô phỏng giá cước',
+    'ShipperTasks': 'Nhiệm vụ của tôi',
+    'ShipperPOD': 'Xác nhận giao hàng (POD)',
+    'ServiceConfig': 'Cấu hình dịch vụ',
+    'BillVerification': 'Duyệt Bill & Báo giá',
+    'CustomerDashboard': 'Bảng điều khiển',
+    'CustomerCreatePickup': 'Tạo yêu cầu lấy hàng',
+    'CustomerDrafts': 'Bản nháp',
+    'CustomerQueue': 'Hàng chờ tạo đơn',
+    'CustomerOrders': 'Yêu cầu của tôi',
+    'CustomerRecipients': 'Sổ địa chỉ người nhận',
+    'CustomerProfile': 'Thông tin cá nhân'
+  };
+  return titleMap[route.name] || route.name || 'Bảng điều khiển';
 });
 
 const handleLogout = () => {

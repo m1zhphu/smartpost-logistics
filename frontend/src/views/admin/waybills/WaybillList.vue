@@ -46,7 +46,7 @@
           <el-col :span="6">
             <div class="sla-card on-time">
               <div class="sla-info">
-                <span class="sla-title">Đúng hạn (ON TIME)</span>
+                <span class="sla-title">Đúng hạn</span>
                 <span class="sla-value">{{ slaStats.on_time }}</span>
               </div>
             </div>
@@ -54,7 +54,7 @@
           <el-col :span="6">
             <div class="sla-card warning">
               <div class="sla-info">
-                <span class="sla-title">Sắp trễ (WARNING)</span>
+                <span class="sla-title">Sắp trễ</span>
                 <span class="sla-value">{{ slaStats.warning }}</span>
               </div>
             </div>
@@ -62,7 +62,7 @@
           <el-col :span="6">
             <div class="sla-card overdue">
               <div class="sla-info">
-                <span class="sla-title">Quá hạn (OVERDUE)</span>
+                <span class="sla-title">Quá hạn</span>
                 <span class="sla-value">{{ slaStats.overdue }}</span>
               </div>
             </div>
@@ -90,14 +90,14 @@
           <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Trạng thái</div>
             <el-select v-model="statusFilter" placeholder="Tất cả trạng thái" clearable class="w-full modern-select">
-              <el-option label="Mới tạo (CREATED)" value="CREATED" />
-              <el-option label="Chờ OCR (PENDING_OCR)" value="PENDING_OCR" />
-              <el-option label="Chờ duyệt OCR (PICKED_PENDING_VERIFY)" value="PICKED_PENDING_VERIFY" />
-              <el-option label="Trong kho (IN_HUB)" value="IN_HUB" />
-              <el-option label="Đang đi giao (DELIVERING)" value="DELIVERING" />
-              <el-option label="Giao thành công (DELIVERED)" value="DELIVERED" />
-              <el-option label="Đã đối soát (SETTLED)" value="SETTLED" />
-              <el-option label="Đã hủy (CANCELLED)" value="CANCELLED" />
+              <el-option label="Mới tạo" value="CREATED" />
+              <el-option label="Chờ OCR" value="PENDING_OCR" />
+              <el-option label="Chờ duyệt OCR" value="PICKED_PENDING_VERIFY" />
+              <el-option label="Trong kho" value="IN_HUB" />
+              <el-option label="Đang đi giao" value="DELIVERING" />
+              <el-option label="Giao thành công" value="DELIVERED" />
+              <el-option label="Đã đối soát" value="SETTLED" />
+              <el-option label="Đã hủy" value="CANCELLED" />
             </el-select>
           </el-col>
           
@@ -117,8 +117,8 @@
           <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Trạng thái COD</div>
             <el-select v-model="codStatusFilter" placeholder="Tất cả trạng thái COD" clearable class="w-full modern-select">
-              <el-option label="Đã thu COD (PAID)" value="PAID" />
-              <el-option label="Chưa thu COD (UNPAID)" value="UNPAID" />
+              <el-option label="Đã thu COD" value="PAID" />
+              <el-option label="Chưa thu COD" value="UNPAID" />
             </el-select>
           </el-col>
         </el-row>
@@ -154,20 +154,20 @@
           <el-col :xs="24" :sm="12" :lg="9" class="filter-col">
             <div class="filter-label">Dịch vụ vận chuyển</div>
             <el-select v-model="serviceTypeFilter" placeholder="Tất cả dịch vụ" clearable class="w-full modern-select">
-              <el-option label="Chuyển phát nhanh (CPN)" value="CPN" />
-              <el-option label="Tiết kiệm (TK)" value="TK" />
-              <el-option label="Hỏa tốc (HT)" value="HT" />
-              <el-option label="Phát trước 9h (PT9H)" value="PT9H" />
-              <el-option label="Quốc tế (QT)" value="QT" />
+              <el-option label="Chuyển phát nhanh" value="CPN" />
+              <el-option label="Tiết kiệm" value="TK" />
+              <el-option label="Hỏa tốc" value="HT" />
+              <el-option label="Phát trước 9h" value="PT9H" />
+              <el-option label="Quốc tế" value="QT" />
             </el-select>
           </el-col>
           
           <el-col :xs="24" :sm="12" :lg="9" class="filter-col">
             <div class="filter-label">Kiểm soát SLA</div>
             <el-select v-model="slaStatusFilter" placeholder="Tất cả trạng thái SLA" clearable class="w-full modern-select">
-              <el-option label="Đúng hạn (ON_TIME)" value="ON_TIME" />
-              <el-option label="Sắp trễ (WARNING)" value="WARNING" />
-              <el-option label="Quá hạn (OVERDUE)" value="OVERDUE" />
+              <el-option label="Đúng hạn" value="ON_TIME" />
+              <el-option label="Sắp trễ" value="WARNING" />
+              <el-option label="Quá hạn" value="OVERDUE" />
             </el-select>
           </el-col>
         </el-row>
@@ -657,7 +657,7 @@
             <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.6;">
               Tải mẫu file Excel hoặc chuẩn bị file của bạn với các cột bắt buộc: 
               <b>Họ tên, Số điện thoại, Địa chỉ nhận hàng, Khối lượng (kg)</b>. 
-              Các cột tự chọn khác: <i>COD, Dịch vụ (CPN/TK/HT), Tên hàng, Ghi chú, Dài, Rộng, Cao, Mã KH, Mã bưu cục nhận</i>.
+              Các cột tự chọn khác: <i>COD, Dịch vụ, Tên hàng, Ghi chú, Dài, Rộng, Cao, Mã KH, Mã bưu cục nhận</i>.
             </p>
             <div style="margin-top: 8px; text-align: right;">
               <el-link type="primary" :underline="false" @click="downloadTemplate" style="font-size: 13px; font-weight: 600;">
@@ -1168,10 +1168,10 @@ const getVerifyClass = (status) => {
 
 const getVerifyLabel = (status) => {
   const map = {
-    'VERIFIED': '\u{1F7E2} Verified',
-    'MISMATCH': '\u{1F534} Mismatch',
+    'VERIFIED': '🟢 Đã xác thực',
+    'MISMATCH': '🔴 Sai lệch',
   };
-  return map[status] || '\u{1F7E0} Pending';
+  return map[status] || '🟠 Chờ duyệt';
 };
 
 const formatTime = (t) => moment(t).format('DD/MM/YYYY HH:mm');

@@ -10,7 +10,7 @@
 
     <el-alert
       title="Chức năng dùng trong giai đoạn phát triển"
-      description="Chỉ đơn đã OCR thành công, bill Verified và đang ở trạng thái Mới tạo mới được chuyển. Mỗi lần chuyển đều lưu hành trình; luồng kho hiện hữu không bị thay đổi."
+      description="Chỉ đơn đã OCR thành công, vận đơn đã xác thực và đang ở trạng thái Mới tạo mới được chuyển. Mỗi lần chuyển đều lưu hành trình; luồng kho hiện hữu không bị thay đổi."
       type="warning"
       show-icon
       :closable="false"
@@ -52,7 +52,7 @@
             </div>
             <div class="status-tags">
               <el-tag type="success" size="small">OCR thành công</el-tag>
-              <el-tag type="success" size="small" effect="plain">Verified</el-tag>
+              <el-tag type="success" size="small" effect="plain">Đã xác thực</el-tag>
             </div>
           </template>
         </el-table-column>
