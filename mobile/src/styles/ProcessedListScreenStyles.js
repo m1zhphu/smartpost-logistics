@@ -190,9 +190,10 @@ export default StyleSheet.create({
   retryBtnText: { color: "#475569", fontSize: 13, fontWeight: "800" },
 
   // Modal Xem Ảnh (Vẫn giữ nền tối để xem ảnh rõ nét)
+  // Modal Xem Ảnh
   modalOverlayImage: {
     flex: 1,
-    backgroundColor: "rgba(23, 42, 150, 0.95)",
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
     justifyContent: "center",
     alignItems: "center",
   },

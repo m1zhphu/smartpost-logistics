@@ -6,6 +6,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import CreateOrderScreen from './src/screens/CreateOrderScreen';
 import SuccessScreen from './src/screens/SuccessScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import SplashScreen from './src/screens/SplashScreen';
 import OrderDetailScreen from './src/screens/OrderDetailScreen';
 import ProcessedListScreen from './src/screens/ProcessedListScreen';
 import TutorialScreen from './src/screens/TutorialScreen';
@@ -95,7 +96,8 @@ export default function App() {
       <QueueProvider>
         {/* Quan trọng: Gán ref vào đây */}
         <NavigationContainer ref={navigationRef}>
-          <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
+          <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
+            <Stack.Screen name="Splash" component={SplashScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />

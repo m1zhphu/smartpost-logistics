@@ -33,61 +33,9 @@ export default function LoginScreen({ navigation }) {
     const [userType, setUserType] = useState("customer");
     const [showRoleModal, setShowRoleModal] = useState(false);
 
-    const { loginUserAndFetchProfile, isWarehouseStaff, autoLogin } = useUser();
+    const { loginUserAndFetchProfile, isWarehouseStaff } = useUser();
     const { clearQueue } = useQueue();
 
-    useEffect(() => {
-        const attemptAutoLogin = async () => {
-            setLoading(true);
-            try {
-                const result = await autoLogin();
-                if (result && result.success) {
-                    const tutorialDone = await AsyncStorage.getItem("tutorial_done");
-                    const isTutorialCompleted = tutorialDone === "true";
-
-                    let nextScreen = "Tutorial";
-
-                    if (isTutorialCompleted) {
-                        const userRoles = result.profileData.roles || [];
-                        const latestPermissions = [];
-
-                        userRoles.forEach((role) => {
-                            (role.permissions || []).forEach((p) => {
-                                if (!latestPermissions.includes(p.code)) {
-                                    latestPermissions.push(p.code);
-                                }
-                            });
-                        });
-
-                        const hasWarehousePerms = isWarehouseStaff(latestPermissions);
-
-                        if (result.userType === "customer") {
-                            nextScreen = "CustomerHome";
-                        } else if (result.userType === "admin") {
-                            nextScreen = "Home";
-                        } else if (hasWarehousePerms) {
-                            nextScreen = "WarehouseHome";
-                        } else {
-                            nextScreen = "Home";
-                        }
-                    }
-
-                    navigation.dispatch(
-                        CommonActions.reset({
-                            index: 0,
-                            routes: [{ name: nextScreen }],
-                        })
-                    );
-                } else {
-                    setLoading(false);
-                }
-            } catch (error) {
-                setLoading(false);
-            }
-        };
-
-        attemptAutoLogin();
-    }, []);
 
     const handleLogin = async () => {
         const isConnected = await checkNetworkConnection();
