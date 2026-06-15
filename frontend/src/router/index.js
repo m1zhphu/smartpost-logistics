@@ -127,7 +127,7 @@ const adminRoutes = [
         path: 'delivery/development-ready',
         name: 'DevelopmentDeliveryReady',
         component: () => import('../views/admin/delivery/DevelopmentDeliveryReady.vue'),
-        meta: { requiresAuth: true, title: 'Giả lập chuẩn bị giao' }
+        meta: { requiresAuth: true, title: '' }
       },
       {
         path: 'delivery/assign',

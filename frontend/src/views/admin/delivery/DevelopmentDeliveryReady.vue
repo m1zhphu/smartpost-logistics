@@ -2,7 +2,7 @@
   <div class="ready-page">
     <header class="page-header">
       <div>
-        <h2>Giả lập chuẩn bị giao</h2>
+        <h2>Đơn chuẩn bị giao</h2>
         <p>Đưa đơn đã OCR và xác thực sang bước phân công giao hàng, tạm bỏ qua nghiệp vụ kho.</p>
       </div>
       <el-button :icon="Refresh" :loading="loading" @click="loadWaybills">Làm mới</el-button>

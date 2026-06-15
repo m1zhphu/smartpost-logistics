@@ -234,7 +234,7 @@ const menuData = computed(() => {
           { label: 'Đang đi lấy', path: '/admin/delivery/pickup-management?tab=assigned' }
         ]},
         { title: 'GIAO HÀNG', items: [
-          ...([1, 2, 7].includes(role) ? [{ label: 'Giả lập chuẩn bị giao', path: '/admin/delivery/development-ready' }] : []),
+          ...([1, 2, 7].includes(role) ? [{ label: 'Đơn chuẩn bị giao', path: '/admin/delivery/development-ready' }] : []),
           { label: 'Phân công Shipper', path: '/admin/delivery/assign' }
         ]}
       ]
@@ -297,7 +297,7 @@ const currentPageTitle = computed(() => {
     'ManifestList': 'Lịch sử chuyến xe',
     'BagList': 'Danh sách túi hàng',
     'PickupBagList': 'Túi gom lấy hàng',
-    'DevelopmentDeliveryReady': 'Giả lập chuẩn bị giao',
+    'DevelopmentDeliveryReady': 'Đơn chuẩn bị giao',
     'AssignShipper': 'Phân công Shipper',
     'PickupManagement': 'Điều phối lấy hàng',
     'CODTable': 'Đối soát COD - Shop',
