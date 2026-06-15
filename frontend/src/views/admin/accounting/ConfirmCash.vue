@@ -39,95 +39,97 @@
               <el-tag type="primary" effect="light" round class="fw-bold px-3">{{ shipperReports.length }} người</el-tag>
             </div>
 
-            <el-table 
-              :data="shipperReports" 
-              v-loading="loading" 
-              class="modern-table"
-              style="width: 100%"
-            >
-              <!-- Expandable Row -->
-              <el-table-column type="expand">
-                <template #default="{ row }">
-                  <div class="expand-detail-box">
-                    <p class="detail-title">Chi tiết các mã vận đơn ({{ row.delivered_count }} đơn):</p>
-                    <div class="waybill-tags">
-                      <span 
-                        v-for="code in row.waybill_codes" 
-                        :key="code" 
-                        class="code-badge default"
-                      >
-                        {{ code }}
-                      </span>
+            <div class="confirm-cash-table-scroll">
+              <el-table 
+                :data="shipperReports" 
+                v-loading="loading" 
+                class="modern-table"
+                style="width: 100%; min-width: 810px; max-width: none;"
+              >
+                <!-- Expandable Row -->
+                <el-table-column type="expand">
+                  <template #default="{ row }">
+                    <div class="expand-detail-box">
+                      <p class="detail-title">Chi tiết các mã vận đơn ({{ row.delivered_count }} đơn):</p>
+                      <div class="waybill-tags">
+                        <span 
+                          v-for="code in row.waybill_codes" 
+                          :key="code" 
+                          class="code-badge default"
+                        >
+                          {{ code }}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </template>
-              </el-table-column>
+                  </template>
+                </el-table-column>
 
-              <!-- Thông tin Shipper -->
-              <el-table-column label="Thông tin Shipper" min-width="200">
-                <template #default="{ row }">
-                  <div class="shipper-profile">
-                    <div class="avatar-circle bg-primary">
-                      {{ row.shipper_name?.charAt(0) || 'S' }}
+                <!-- Thông tin Shipper -->
+                <el-table-column label="Thông tin Shipper" min-width="200">
+                  <template #default="{ row }">
+                    <div class="shipper-profile">
+                      <div class="avatar-circle bg-primary">
+                        {{ row.shipper_name?.charAt(0) || 'S' }}
+                      </div>
+                      <div class="shipper-details">
+                        <span class="fw-bold text-dark">{{ row.shipper_name }}</span>
+                        <span class="text-xs text-muted font-mono mt-1">ID: {{ row.shipper_id }}</span>
+                      </div>
                     </div>
-                    <div class="shipper-details">
-                      <span class="fw-bold text-dark">{{ row.shipper_name }}</span>
-                      <span class="text-xs text-muted font-mono mt-1">ID: {{ row.shipper_id }}</span>
+                  </template>
+                </el-table-column>
+
+                <!-- Đã giao -->
+                <el-table-column label="Giao T.Công" width="110" align="center">
+                  <template #default="{ row }">
+                    <div class="modern-tag tag-success">
+                      {{ row.delivered_count }} đơn
                     </div>
-                  </div>
-                </template>
-              </el-table-column>
+                  </template>
+                </el-table-column>
 
-              <!-- Đã giao -->
-              <el-table-column label="Giao T.Công" width="110" align="center">
-                <template #default="{ row }">
-                  <div class="modern-tag tag-success">
-                    {{ row.delivered_count }} đơn
-                  </div>
-                </template>
-              </el-table-column>
+                <!-- COD Phải thu -->
+                <el-table-column label="Hệ thống yêu cầu" min-width="160" align="right">
+                  <template #default="{ row }">
+                    <span class="amount-expected">{{ formatMoney(row.expected_cod) }} đ</span>
+                  </template>
+                </el-table-column>
 
-              <!-- COD Phải thu -->
-              <el-table-column label="Hệ thống yêu cầu" min-width="160" align="right">
-                <template #default="{ row }">
-                  <span class="amount-expected">{{ formatMoney(row.expected_cod) }} đ</span>
-                </template>
-              </el-table-column>
+                <!-- Thực nộp -->
+                <el-table-column label="Thực nộp (đ)" min-width="160" align="center">
+                  <template #default="{ row }">
+                    <el-input-number 
+                      v-model="row.actual_cash" 
+                      :controls="false" 
+                      class="w-full modern-price-input actual-input"
+                      :min="0"
+                      :precision="0"
+                      :step="1000"
+                      :formatter="val => val ? val.toLocaleString('vi-VN') : '0'" 
+                      :parser="val => val.replace(/[^\d]/g, '')" 
+                    />
+                  </template>
+                </el-table-column>
 
-              <!-- Thực nộp -->
-              <el-table-column label="Thực nộp (đ)" min-width="160" align="center">
-                <template #default="{ row }">
-                  <el-input-number 
-                    v-model="row.actual_cash" 
-                    :controls="false" 
-                    class="w-full modern-price-input actual-input"
-                    :min="0"
-                    :precision="0"
-                    :step="1000"
-                    :formatter="val => val ? val.toLocaleString('vi-VN') : '0'" 
-                    :parser="val => val.replace(/[^\d]/g, '')" 
-                  />
+                <!-- Thao tác -->
+                <el-table-column label="Thao tác" width="130" align="center">
+                  <template #default="{ row }">
+                    <button 
+                      class="btn-primary w-full justify-center fw-800" 
+                      @click="confirmShipper(row)" 
+                      :disabled="row.confirming || (row.expected_cod === 0 && row.delivered_count === 0)"
+                    >
+                      <el-icon class="is-loading mr-1" v-if="row.confirming"><Loading /></el-icon>
+                      <span>CHỐT CA</span>
+                    </button>
+                  </template>
+                </el-table-column>
+                
+                <template #empty>
+                  <el-empty description="Tuyệt vời! Không còn Shipper nào cần chốt ca hiện tại." :image-size="100" />
                 </template>
-              </el-table-column>
-
-              <!-- Thao tác -->
-              <el-table-column label="Thao tác" width="130" align="center">
-                <template #default="{ row }">
-                  <button 
-                    class="btn-primary w-full justify-center fw-800" 
-                    @click="confirmShipper(row)" 
-                    :disabled="row.confirming || (row.expected_cod === 0 && row.delivered_count === 0)"
-                  >
-                    <el-icon class="is-loading mr-1" v-if="row.confirming"><Loading /></el-icon>
-                    <span>CHỐT CA</span>
-                  </button>
-                </template>
-              </el-table-column>
-              
-              <template #empty>
-                <el-empty description="Tuyệt vời! Không còn Shipper nào cần chốt ca hiện tại." :image-size="100" />
-              </template>
-            </el-table>
+              </el-table>
+            </div>
 
           </div>
         </el-col>

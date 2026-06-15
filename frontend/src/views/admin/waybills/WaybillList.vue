@@ -1,6 +1,6 @@
 <template>
-  <div class="modern-waybill-management">
-    <div class="page-container">
+  <div class="modern-waybill-management" style="min-width: 0; width: 100%;">
+    <div class="page-container" style="min-width: 0; width: 100%;">
       
       <!-- Header Section -->
       <header class="page-header animate-fade-in">
@@ -174,178 +174,180 @@
       </div>
 
       <!-- Main Table Card -->
-      <div class="content-card table-wrapper animate-fade-in-up">
+      <div class="content-card table-wrapper animate-fade-in-up" style="min-width: 0; width: 100%; overflow: hidden;">
         <div class="card-header-inner mb-4 flex-between">
           <h3 class="inner-title">Danh sách Vận đơn</h3>
           <el-tag type="primary" effect="light" round class="fw-bold">Tổng: {{ total }} bản ghi</el-tag>
         </div>
 
-        <el-table 
-          :data="waybills" 
-          v-loading="loading" 
-          class="modern-table"
-          :row-class-name="tableRowClassName"
-          style="width: 100%"
-        >
-          <!-- Mã vận đơn -->
-          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="160">
-            <template #default="{ row }">
-               <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
-                 <span class="fw-bold">{{ row.waybill_code }}</span>
-                 <!-- Cảnh báo chưa kiểm duyệt ảnh bill OCR -->
-                 <el-tag v-if="row.verify_status !== 'VERIFIED'" type="danger" size="small" effect="dark" class="verify-badge animate-pulse" style="font-size: 10px; font-weight: 700; border-radius: 4px; border: none; letter-spacing: 0.3px; padding: 2px 6px;">
-                   ⚠️ CHƯA DUYỆT OCR
-                 </el-tag>
-                 <el-tag v-else type="success" size="small" effect="plain" class="verify-badge" style="font-size: 10px; font-weight: 600; border-radius: 4px; padding: 2px 6px;">
-                   ✓ ĐÃ DUYỆT OCR
-                 </el-tag>
-               </div>
-            </template>
-          </el-table-column>
-          
-          <!-- Thông tin Người nhận -->
-          <el-table-column label="Thông tin Người nhận" min-width="260">
-            <template #default="{ row }">
-              <div class="recipient-profile">
-                <div class="avatar-circle bg-info">
-                  <el-icon><User /></el-icon>
-                </div>
-                <div class="recipient-details">
-                  <div class="name-phone">
-                    <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
-                    <span class="phone-tag"><el-icon><Phone /></el-icon>{{ row.receiver_phone }}</span>
+        <div class="waybill-table-scroll">
+          <el-table 
+            :data="waybills" 
+            v-loading="loading" 
+            class="modern-table"
+            :row-class-name="tableRowClassName"
+            style="width: 100%; min-width: 1600px; max-width: none;"
+          >
+            <!-- Mã vận đơn -->
+            <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="270">
+              <template #default="{ row }">
+                 <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+                   <span class="fw-bold">{{ row.waybill_code }}</span>
+                   <!-- Cảnh báo chưa kiểm duyệt ảnh bill OCR -->
+                   <el-tag v-if="row.verify_status !== 'VERIFIED'" type="danger" size="small" effect="dark" class="verify-badge animate-pulse" style="font-size: 10px; font-weight: 700; border-radius: 4px; border: none; letter-spacing: 0.3px; padding: 2px 6px;">
+                     ⚠️ CHƯA DUYỆT OCR
+                   </el-tag>
+                   <el-tag v-else type="success" size="small" effect="plain" class="verify-badge" style="font-size: 10px; font-weight: 600; border-radius: 4px; padding: 2px 6px;">
+                     ✓ ĐÃ DUYỆT OCR
+                   </el-tag>
+                 </div>
+              </template>
+            </el-table-column>
+            
+            <!-- Thông tin Người nhận -->
+            <el-table-column label="Thông tin Người nhận" min-width="260">
+              <template #default="{ row }">
+                <div class="recipient-profile">
+                  <div class="avatar-circle bg-info">
+                    <el-icon><User /></el-icon>
                   </div>
-                  <span class="address-text" :title="row.receiver_address">
-                    <el-icon class="mr-1"><Location /></el-icon>{{ row.receiver_address }}
-                  </span>
+                  <div class="recipient-details">
+                    <div class="name-phone">
+                      <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
+                      <span class="phone-tag"><el-icon><Phone /></el-icon>{{ row.receiver_phone }}</span>
+                    </div>
+                    <span class="address-text" :title="row.receiver_address">
+                      <el-icon class="mr-1"><Location /></el-icon>{{ row.receiver_address }}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- Trạng thái -->
-          <el-table-column prop="status" label="Trạng thái" min-width="150" align="center">
-            <template #default="{ row }">
-              <div class="modern-tag" :class="getStatusClass(row.status)">
-                <span class="dot"></span>
-                {{ getStatusLabel(row.status) }}
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- SLA & Đơn vị giữ -->
-          <el-table-column label="SLA & Đơn vị giữ" min-width="180">
-            <template #default="{ row }">
-              <div class="sla-holding">
-                <el-tag :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" class="mb-1">
-                  {{ row.sla_status || 'ON_TIME' }}
-                </el-tag>
-                <div class="text-xs mt-1" style="font-size: 11px; color: #6b7280; margin-top: 4px;">
-                  <b>Đang giữ:</b> 
-                  {{ row.holding_hub ? row.holding_hub.hub_name : (row.holding_shipper ? row.holding_shipper.full_name : '---') }}
+              </template>
+            </el-table-column>
+  
+            <!-- Trạng thái -->
+            <el-table-column prop="status" label="Trạng thái" min-width="150" align="center">
+              <template #default="{ row }">
+                <div class="modern-tag" :class="getStatusClass(row.status)">
+                  <span class="dot"></span>
+                  {{ getStatusLabel(row.status) }}
                 </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- Xác thực Bill -->
-          <el-table-column label="Xác thực Bill" min-width="140" align="center">
-            <template #default="{ row }">
-              <div class="modern-tag" :class="getVerifyClass(row.verify_status)">
-                {{ getVerifyLabel(row.verify_status) }}
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- Tài chính -->
-          <el-table-column label="Tài chính (VNĐ)" min-width="200" align="right">
-            <template #default="{ row }">
-              <div class="finance-display">
-                <div class="finance-line">
-                  <span class="label">Cước phí:</span>
-                  <span class="value text-primary">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
+              </template>
+            </el-table-column>
+  
+            <!-- SLA & Đơn vị giữ -->
+            <el-table-column label="SLA & Đơn vị giữ" min-width="180">
+              <template #default="{ row }">
+                <div class="sla-holding">
+                  <el-tag :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" class="mb-1">
+                    {{ row.sla_status || 'ON_TIME' }}
+                  </el-tag>
+                  <div class="text-xs mt-1" style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                    <b>Đang giữ:</b> 
+                    {{ row.holding_hub ? row.holding_hub.hub_name : (row.holding_shipper ? row.holding_shipper.full_name : '---') }}
+                  </div>
                 </div>
-                <!-- Hiển thị phụ phí nếu có -->
-                <div class="finance-line" v-if="(row.extra_services_fee || 0) > 0">
-                  <span class="label">Phụ phí:</span>
-                  <span class="value text-warning">{{ formatCurrencyManual(row.extra_services_fee) }}</span>
+              </template>
+            </el-table-column>
+  
+            <!-- Xác thực Bill -->
+            <el-table-column label="Xác thực Bill" min-width="140" align="center">
+              <template #default="{ row }">
+                <div class="modern-tag" :class="getVerifyClass(row.verify_status)">
+                  {{ getVerifyLabel(row.verify_status) }}
                 </div>
-                <!-- Tính toán Tổng thu an toàn để tránh NaN -->
-                <div class="finance-line total-row">
-                  <span class="label">Tổng thu:</span>
-                  <span class="value fw-bold">
-                    {{ formatCurrencyManual(
-                      row.total_amount_to_collect || 
-                      ((row.shipping_fee || 0) + (row.extra_services_fee || 0)) * 1.08
-                    ) }}
-                  </span>
+              </template>
+            </el-table-column>
+  
+            <!-- Tài chính -->
+            <el-table-column label="Tài chính (VNĐ)" min-width="200" align="right">
+              <template #default="{ row }">
+                <div class="finance-display">
+                  <div class="finance-line">
+                    <span class="label">Cước phí:</span>
+                    <span class="value text-primary">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
+                  </div>
+                  <!-- Hiển thị phụ phí nếu có -->
+                  <div class="finance-line" v-if="(row.extra_services_fee || 0) > 0">
+                    <span class="label">Phụ phí:</span>
+                    <span class="value text-warning">{{ formatCurrencyManual(row.extra_services_fee) }}</span>
+                  </div>
+                  <!-- Tính toán Tổng thu an toàn để tránh NaN -->
+                  <div class="finance-line total-row">
+                    <span class="label">Tổng thu:</span>
+                    <span class="value fw-bold">
+                      {{ formatCurrencyManual(
+                        row.total_amount_to_collect || 
+                        ((row.shipping_fee || 0) + (row.extra_services_fee || 0)) * 1.08
+                      ) }}
+                    </span>
+                  </div>
+                  <div class="finance-line highlight">
+                    <span class="label">Thu hộ (COD):</span>
+                    <span class="value">{{ formatCurrencyManual(row.cod_amount || 0) }}</span>
+                  </div>
                 </div>
-                <div class="finance-line highlight">
-                  <span class="label">Thu hộ (COD):</span>
-                  <span class="value">{{ formatCurrencyManual(row.cod_amount || 0) }}</span>
+              </template>
+            </el-table-column>
+  
+            <!-- Nguồn / Đích -->
+            <el-table-column label="Hành trình (Nguồn → Đích)" min-width="260">
+              <template #default="{ row }">
+                <div class="hub-route">
+                  <span class="hub-item origin">{{ row.origin_hub?.hub_name || '---' }}</span>
+                  <el-icon class="route-arrow"><Right /></el-icon>
+                  <span class="hub-item dest">{{ row.dest_hub?.hub_name || '---' }}</span>
                 </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- Nguồn / Đích -->
-          <el-table-column label="Hành trình (Nguồn → Đích)" min-width="220">
-            <template #default="{ row }">
-              <div class="hub-route">
-                <span class="hub-item origin">{{ row.origin_hub?.hub_name || '---' }}</span>
-                <el-icon class="route-arrow"><Right /></el-icon>
-                <span class="hub-item dest">{{ row.dest_hub?.hub_name || '---' }}</span>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="180" align="center">
-            <template #default="{ row }">
-              <div class="action-buttons">
-                <button class="icon-btn edit" @click="handlePrint(row.waybill_code)" title="In tem vận đơn">
-                  <el-icon><Printer /></el-icon>
-                </button>
-                <button class="icon-btn success" @click="viewTracking(row.waybill_code)" title="Theo dõi hành trình">
-                  <el-icon><Van /></el-icon>
-                </button>
-                
-                <el-dropdown trigger="click" placement="bottom-end">
-                  <button class="icon-btn secondary" title="Thêm thao tác">
-                    <el-icon><MoreFilled /></el-icon>
+              </template>
+            </el-table-column>
+  
+            <!-- Thao tác -->
+            <el-table-column label="Thao tác" min-width="180" align="center">
+              <template #default="{ row }">
+                <div class="action-buttons">
+                  <button class="icon-btn edit" @click="handlePrint(row.waybill_code)" title="In tem vận đơn">
+                    <el-icon><Printer /></el-icon>
                   </button>
-                  <template #dropdown>
-                    <el-dropdown-menu class="modern-dropdown">
-                      <el-dropdown-item @click="openEditDialog(row)">
-                        <el-icon><Edit /></el-icon> Hiệu chỉnh thông tin
-                      </el-dropdown-item>
-                      <el-dropdown-item @click="openOverrideDialog(row)" class="text-warning">
-                        <el-icon><Money /></el-icon> Sửa giá vận đơn
-                      </el-dropdown-item>
-                      <el-dropdown-item 
-                        @click="handleUpdateStatus(row.waybill_code)"
-                        :disabled="row.status === 'DELIVERED' || row.status === 'SETTLED'"
-                        class="text-success"
-                      >
-                      </el-dropdown-item>
-                      <el-dropdown-item 
-                        v-if="row.status !== 'DELIVERED' && row.status !== 'SETTLED' && row.status !== 'CANCELLED'"
-                        @click="handleDelete(row.waybill_code)"
-                        class="text-danger"
-                      >
-                        <el-icon><Delete /></el-icon> Hủy vận đơn
-                      </el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
+                  <button class="icon-btn success" @click="viewTracking(row.waybill_code)" title="Theo dõi hành trình">
+                    <el-icon><Van /></el-icon>
+                  </button>
+                  
+                  <el-dropdown trigger="click" placement="bottom-end">
+                    <button class="icon-btn secondary" title="Thêm thao tác">
+                      <el-icon><MoreFilled /></el-icon>
+                    </button>
+                    <template #dropdown>
+                      <el-dropdown-menu class="modern-dropdown">
+                        <el-dropdown-item @click="openEditDialog(row)">
+                          <el-icon><Edit /></el-icon> Hiệu chỉnh thông tin
+                        </el-dropdown-item>
+                        <el-dropdown-item @click="openOverrideDialog(row)" class="text-warning">
+                          <el-icon><Money /></el-icon> Sửa giá vận đơn
+                        </el-dropdown-item>
+                        <el-dropdown-item 
+                          @click="handleUpdateStatus(row.waybill_code)"
+                          :disabled="row.status === 'DELIVERED' || row.status === 'SETTLED'"
+                          class="text-success"
+                        >
+                        </el-dropdown-item>
+                        <el-dropdown-item 
+                          v-if="row.status !== 'DELIVERED' && row.status !== 'SETTLED' && row.status !== 'CANCELLED'"
+                          @click="handleDelete(row.waybill_code)"
+                          class="text-danger"
+                        >
+                          <el-icon><Delete /></el-icon> Hủy vận đơn
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+              </template>
+            </el-table-column>
+            
+            <template #empty>
+              <el-empty description="Không tìm thấy vận đơn nào phù hợp" :image-size="100" />
             </template>
-          </el-table-column>
-          
-          <template #empty>
-            <el-empty description="Không tìm thấy vận đơn nào phù hợp" :image-size="100" />
-          </template>
-        </el-table>
+          </el-table>
+        </div>
 
         <!-- Pagination -->
         <div class="pagination-wrapper mt-24 flex-between">

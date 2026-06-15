@@ -186,6 +186,7 @@
   flex-direction: column;
   transition: all 0.3s;
   background-color: var(--sp-bg-app);
+  min-width: 0;
 }
 
 /* Header */

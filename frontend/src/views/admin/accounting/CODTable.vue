@@ -1,6 +1,6 @@
 <template>
-  <div class="modern-cod-page">
-    <div class="page-container">
+  <div class="modern-cod-page" style="min-width: 0; width: 100%;">
+    <div class="page-container" style="min-width: 0; width: 100%;">
 
       <!-- Header Section -->
       <header class="page-header animate-fade-in">
@@ -128,27 +128,28 @@
       </el-collapse-transition>
 
       <!-- Main Table Card -->
-      <div class="content-card table-wrapper animate-fade-in-up">
+      <div class="content-card table-wrapper animate-fade-in-up" style="min-width: 0; width: 100%; overflow: hidden;">
         <div class="card-header-inner mb-4 flex-between">
           <h3 class="inner-title">Danh sách Vận đơn đối soát</h3>
           <el-tag type="info" effect="light" round class="fw-bold px-3">{{ codList.length }} đơn</el-tag>
         </div>
 
-        <el-table
-          ref="multipleTableRef"
-          :data="codList"
-          v-loading="loading"
-          class="modern-table border-table"
-          show-summary
-          :summary-method="calculateSummaries"
-          @selection-change="handleSelectionChange"
-          style="width: 100%"
-        >
+        <div class="cod-table-scroll">
+          <el-table
+            ref="multipleTableRef"
+            :data="codList"
+            v-loading="loading"
+            class="modern-table border-table"
+            show-summary
+            :summary-method="calculateSummaries"
+            @selection-change="handleSelectionChange"
+            style="width: 100%; min-width: 1400px; max-width: none;"
+          >
           <!-- Checkbox -->
           <el-table-column type="selection" width="55" :selectable="canSelectRow" align="center" />
 
           <!-- Mã vận đơn -->
-          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="150">
+          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="220">
             <template #default="{ row }">
               <span class="code-badge primary">{{ row.waybill_code }}</span>
             </template>
@@ -201,7 +202,7 @@
           </el-table-column>
 
           <!-- Trạng thái -->
-          <el-table-column label="Trạng thái" width="140" align="center">
+          <el-table-column label="Trạng thái" min-width="160" align="center">
             <template #default="{ row }">
               <div class="modern-tag" :class="row.status === 'SETTLED' ? 'tag-success' : 'tag-warning'">
                 <span class="dot"></span>
@@ -211,7 +212,7 @@
           </el-table-column>
 
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="120" align="center">
+          <el-table-column label="Thao tác" min-width="140" align="center">
             <template #default="{ row }">
               <el-button
                 size="small"
@@ -231,6 +232,7 @@
           </template>
         </el-table>
       </div>
+    </div>
 
     </div>
 

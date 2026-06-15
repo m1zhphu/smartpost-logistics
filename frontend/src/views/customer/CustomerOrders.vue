@@ -1,9 +1,9 @@
 <template>
-  <div class="customer-portal">
-    <div class="portal-container">
-      <el-row :gutter="24" class="portal-content">
-        <el-col :span="24">
-          <div >
+  <div class="customer-portal" style="min-width: 0;">
+    <div class="portal-container" style="min-width: 0;">
+      <el-row :gutter="24" class="portal-content" style="min-width: 0;">
+        <el-col :span="24" style="min-width: 0;">
+          <div style="min-width: 0; width: 100%;">
             <el-card class="recent-waybills-card mt-20 animate-fade-in">
               <template #header>
                 <div class="flex-between">
@@ -16,7 +16,8 @@
                 </div>
               </template>
               
-              <el-table :data="pickupsList" v-loading="listLoading" stripe class="modern-table" :row-class-name="customerOrderRowClass">
+              <div class="customer-orders-table-scroll">
+                <el-table style="width: 100%; min-width: 1200px;" :data="pickupsList" v-loading="listLoading" stripe class="modern-table customer-orders-table" :row-class-name="customerOrderRowClass">
                 <el-table-column type="expand" width="48">
                   <template #default="{ row }">
                     <div v-if="row.pickup_mode === 'BULK_MAIL'" class="bulk-waybill-panel">
@@ -24,43 +25,47 @@
                         Chi tiết từng vận đơn trong túi
                         <span v-if="row.bag_code" class="code-badge success">{{ row.bag_code }}</span>
                       </div>
-                      <el-table v-if="getPickupWaybills(row).length" :data="getPickupWaybills(row)" size="small" border class="bulk-waybill-table">
-                        <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="170">
-                          <template #default="{ row: waybill }">
-                            <span class="code-badge info">{{ waybill.waybill_code }}</span>
-                          </template>
-                        </el-table-column>
-                        <el-table-column label="Người nhận" min-width="190">
-                          <template #default="{ row: waybill }">
-                            <div class="bulk-recipient-name">{{ waybill.receiver_name || 'Chưa cập nhật' }}</div>
-                            <div class="text-xs text-muted">{{ waybill.receiver_phone || '---' }}</div>
-                          </template>
-                        </el-table-column>
-                        <el-table-column label="Trạng thái đơn" min-width="180">
-                          <template #default="{ row: waybill }">
-                            <el-tag :type="getWaybillStatusType(waybill.status)" size="small">{{ getWaybillStatusLabel(waybill.status) }}</el-tag>
-                          </template>
-                        </el-table-column>
-                        <el-table-column label="Dịch vụ" width="120" align="center">
-                          <template #default="{ row: waybill }"><el-tag :type="waybill.service_type === 'HT' ? 'danger' : 'info'" size="small" effect="dark">{{ getServiceTypeLabel(waybill.service_type) }}</el-tag></template>
-                        </el-table-column>
-                        <el-table-column label="OCR" width="120" align="center">
-                          <template #default="{ row: waybill }">
-                            <el-tag :type="getOcrStatusType(waybill.ocr_status)" size="small" effect="plain">{{ getOcrStatusLabel(waybill.ocr_status) }}</el-tag>
-                          </template>
-                        </el-table-column>
-                        <el-table-column label="Khối lượng / COD" min-width="150" align="right">
-                          <template #default="{ row: waybill }">
-                            <div>{{ Number(waybill.actual_weight || 0).toLocaleString() }} kg</div>
-                            <div class="text-xs text-muted">COD {{ Number(waybill.cod_amount || 0).toLocaleString() }}đ</div>
-                          </template>
-                        </el-table-column>
-                        <el-table-column label="Thao tác" width="110" align="center" fixed="right">
-                          <template #default="{ row: waybill }">
-                            <el-button type="primary" link @click.stop="openBulkWaybillDetail(row, waybill)">Xem đơn</el-button>
-                          </template>
-                        </el-table-column>
-                      </el-table>
+                      <div v-if="getPickupWaybills(row).length" class="bulk-waybill-table-scroll">
+                        <div class="table-scroll-wrapper">
+                          <el-table style="width: 100%; min-width: 1250px;" :data="getPickupWaybills(row)" size="small" border class="bulk-waybill-table">
+                          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="230">
+                            <template #default="{ row: waybill }">
+                              <span class="code-badge info">{{ waybill.waybill_code }}</span>
+                            </template>
+                          </el-table-column>
+                          <el-table-column label="Người nhận" min-width="210">
+                            <template #default="{ row: waybill }">
+                              <div class="bulk-recipient-name">{{ waybill.receiver_name || 'Chưa cập nhật' }}</div>
+                              <div class="text-xs text-muted">{{ waybill.receiver_phone || '---' }}</div>
+                            </template>
+                          </el-table-column>
+                          <el-table-column label="Trạng thái đơn" min-width="180">
+                            <template #default="{ row: waybill }">
+                              <el-tag :type="getWaybillStatusType(waybill.status)" size="small">{{ getWaybillStatusLabel(waybill.status) }}</el-tag>
+                            </template>
+                          </el-table-column>
+                          <el-table-column label="Dịch vụ" min-width="180" align="center">
+                            <template #default="{ row: waybill }"><el-tag :type="waybill.service_type === 'HT' ? 'danger' : 'info'" size="small" effect="dark">{{ getServiceTypeLabel(waybill.service_type) }}</el-tag></template>
+                          </el-table-column>
+                          <el-table-column label="OCR" min-width="140" align="center">
+                            <template #default="{ row: waybill }">
+                              <el-tag :type="getOcrStatusType(waybill.ocr_status)" size="small" effect="plain">{{ getOcrStatusLabel(waybill.ocr_status) }}</el-tag>
+                            </template>
+                          </el-table-column>
+                          <el-table-column label="Khối lượng / COD" min-width="160" align="right">
+                            <template #default="{ row: waybill }">
+                              <div>{{ Number(waybill.actual_weight || 0).toLocaleString() }} kg</div>
+                              <div class="text-xs text-muted">COD {{ Number(waybill.cod_amount || 0).toLocaleString() }}đ</div>
+                            </template>
+                          </el-table-column>
+                          <el-table-column label="Thao tác" min-width="140" align="center">
+                            <template #default="{ row: waybill }">
+                              <el-button type="primary" link @click.stop="openBulkWaybillDetail(row, waybill)">Xem đơn</el-button>
+                            </template>
+                          </el-table-column>
+                          </el-table>
+                        </div>
+                      </div>
                       <el-empty v-else description="Chưa có mã vận đơn trong túi" :image-size="80" />
                     </div>
                     <div v-else class="bulk-waybill-panel">
@@ -68,34 +73,34 @@
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column prop="request_code" label="Mã Yêu Cầu" width="130">
+                <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="160">
                   <template #default="{ row }">
                     <span class="code-badge warning">{{ row.request_code }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Mã Vận Đơn / Túi" width="170">
+                <el-table-column label="Mã Vận Đơn / Túi" min-width="210">
                   <template #default="{ row }">
                     <span class="code-badge success">{{ row.pickup_mode === 'BULK_MAIL' ? (row.bag_code || row.waybill_code || '---') : (row.waybill_code || row.bag_code || '---') }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Ngày tạo" width="150">
+                <el-table-column label="Ngày tạo" min-width="160">
                   <template #default="{ row }">
                     <span class="text-xs">{{ formatDate(row.created_at) }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Trạng thái" width="140">
+                <el-table-column label="Trạng thái" min-width="160">
                   <template #default="{ row }">
                     <el-tag :type="getCustomerOrderStatusType(row)" size="small">
                       {{ getCustomerOrderStatusLabel(row) }}
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="Bưu cục nhận" min-width="160" show-overflow-tooltip>
+                <el-table-column label="Bưu cục nhận" min-width="200" show-overflow-tooltip>
                   <template #default="{ row }">
                     <span>{{ row.hub_name || 'Đang xử lý...' }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Cước phí" width="140" align="right">
+                <el-table-column label="Cước phí" min-width="160" align="right">
                   <template #default="{ row }">
                     <div v-if="row.pickup_mode === 'BULK_MAIL'">
                       <div class="fw-bold text-warning">Chờ xử lý</div>
@@ -111,7 +116,7 @@
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column label="Thao tác" width="130" align="center" fixed="right">
+                <el-table-column label="Thao tác" min-width="130" align="center">
                   <template #default="{ row }">
                     <el-button type="primary" size="small" plain @click="openDetail(row)">
                       Xem chi tiết
@@ -121,7 +126,8 @@
                 <template #empty>
                   <el-empty description="Bạn chưa tạo đơn gửi hàng nào hoặc chưa có lịch sử vận đơn" :image-size="100" />
                 </template>
-              </el-table>
+                </el-table>
+              </div>
             </el-card>
           </div>
         </el-col>

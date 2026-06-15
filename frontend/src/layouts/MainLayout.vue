@@ -203,7 +203,7 @@ const menuData = computed(() => {
         ]}
       ]
     },
-    { id: 'scan-in', icon: Box, label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in', roles: [1, 2, 3] },
+    // { id: 'scan-in', icon: Box, label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in', roles: [1, 2, 3] },
     /*
     {
       id: 'warehouse', icon: Box, label: 'Kho hàng', roles: [1, 2, 3], // Admin, Manager, Kho

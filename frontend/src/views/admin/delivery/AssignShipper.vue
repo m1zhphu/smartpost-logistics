@@ -53,51 +53,54 @@
               </div>
             </div>
 
-            <el-table
-              :data="filteredWaybills"
-              v-loading="loading"
-              @selection-change="handleSelection"
-              class="modern-table compact-table borderless"
-              height="600px"
-              ref="tableRef"
-            >
-              <el-table-column type="selection" width="50" align="center" />
-              
-              <el-table-column prop="waybill_code" label="Mã Vận Đơn" width="140">
-                <template #default="{ row }">
-                  <span class="code-badge default">{{ row.waybill_code }}</span>
+            <div class="pickup-table-scroll">
+              <el-table
+                style="width: 100%; min-width: 750px;"
+                :data="filteredWaybills"
+                v-loading="loading"
+                @selection-change="handleSelection"
+                class="modern-table compact-table borderless"
+                height="600px"
+                ref="tableRef"
+              >
+                <el-table-column type="selection" width="50" align="center" />
+                
+                <el-table-column prop="waybill_code" label="Mã Vận Đơn" min-width="180">
+                  <template #default="{ row }">
+                    <span class="code-badge default">{{ row.waybill_code }}</span>
+                  </template>
+                </el-table-column>
+                
+                <el-table-column label="Thông tin Nhận" min-width="180" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <div class="recipient-info">
+                      <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
+                      <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.receiver_phone }}</span>
+                    </div>
+                  </template>
+                </el-table-column>
+                
+                <el-table-column prop="receiver_address" label="Địa chỉ" min-width="250" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <span class="address-text">
+                      <el-icon class="mr-1"><Location /></el-icon>{{ row.receiver_address }}
+                    </span>
+                  </template>
+                </el-table-column>
+                
+                <el-table-column label="Thu hộ" width="120" align="right">
+                  <template #default="{ row }">
+                    <span class="fw-bold text-danger">
+                      {{ row.cod_amount ? row.cod_amount.toLocaleString() + ' đ' : '0 đ' }}
+                    </span>
+                  </template>
+                </el-table-column>
+                
+                <template #empty>
+                  <el-empty description="Không có đơn nào chờ phân công" :image-size="80" />
                 </template>
-              </el-table-column>
-              
-              <el-table-column label="Thông tin Nhận" min-width="180" show-overflow-tooltip>
-                <template #default="{ row }">
-                  <div class="recipient-info">
-                    <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
-                    <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.receiver_phone }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              
-              <el-table-column prop="receiver_address" label="Địa chỉ" min-width="160" show-overflow-tooltip>
-                <template #default="{ row }">
-                  <span class="address-text">
-                    <el-icon class="mr-1"><Location /></el-icon>{{ row.receiver_address }}
-                  </span>
-                </template>
-              </el-table-column>
-              
-              <el-table-column label="Thu hộ" width="120" align="right">
-                <template #default="{ row }">
-                  <span class="fw-bold text-danger">
-                    {{ row.cod_amount ? row.cod_amount.toLocaleString() + ' đ' : '0 đ' }}
-                  </span>
-                </template>
-              </el-table-column>
-              
-              <template #empty>
-                <el-empty description="Không có đơn nào chờ phân công" :image-size="80" />
-              </template>
-            </el-table>
+              </el-table>
+            </div>
 
           </div>
         </el-col>
@@ -317,3 +320,14 @@ onMounted(fetchData);
 </script>
 
 <style scoped src="@/styles/admin/delivery/AssignShipper.css"></style>
+
+<style scoped>
+.pickup-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-gutter: stable;
+}
+</style>

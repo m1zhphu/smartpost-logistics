@@ -283,3 +283,17 @@
     border-top: 1px dashed var(--sp-border);
   }
 }
+
+/* Horizontal scroll container for Debt table list */
+.debt-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-gutter: stable;
+}
+
+.debt-table-scroll :deep(.el-table) {
+  max-width: none !important;
+}

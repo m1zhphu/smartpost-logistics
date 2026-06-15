@@ -60,27 +60,31 @@
               </div>
             </div>
 
-            <el-table 
-              :data="groupedPending" 
-              v-loading="loading" 
-              class="modern-table" 
-              stripe
-            >
-              <el-table-column type="expand">
-                <template #default="{ row }">
-                  <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
-                    <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                      <el-icon><List /></el-icon> Danh sách đơn chi tiết ({{ row.requests.length }} đơn)
-                    </h4>
-                    <el-table
-                      :data="row.requests"
-                      class="modern-table inner-table"
-                      size="small"
-                      border
-                      stripe
-                      row-key="request_id"
-                      @selection-change="selection => handlePendingRequestSelectionChange(row, selection)"
-                    >
+            <div class="pickup-table-scroll">
+              <el-table 
+                style="width: 100%; min-width: 1250px;"
+                :data="groupedPending" 
+                v-loading="loading" 
+                class="modern-table" 
+                stripe
+              >
+                <el-table-column type="expand">
+                  <template #default="{ row }">
+                    <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
+                      <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                        <el-icon><List /></el-icon> Danh sách đơn chi tiết ({{ row.requests.length }} đơn)
+                      </h4>
+                      <div class="inner-table-scroll">
+                        <el-table
+                          style="width: 100%; min-width: 1200px;"
+                          :data="row.requests"
+                          class="modern-table inner-table"
+                          size="small"
+                          border
+                          stripe
+                          row-key="request_id"
+                          @selection-change="selection => handlePendingRequestSelectionChange(row, selection)"
+                        >
                       <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
                       <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
                         <template #default="scope">
@@ -89,7 +93,7 @@
                           </el-link>
                         </template>
                       </el-table-column>
-                      <el-table-column label="Mã Vận Đơn" width="140">
+                      <el-table-column label="Mã Vận Đơn" min-width="210">
                         <template #default="scope">
                           <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list">
                             <span
@@ -137,15 +141,16 @@
                           <span v-else class="text-muted text-xs">---</span>
                         </template>
                       </el-table-column>
-                      <el-table-column label="Thao tác" width="120" align="center" fixed="right">
+                      <el-table-column label="Thao tác" width="120" align="center">
                         <template #default="scope">
                           <el-button type="info" size="small" plain @click="viewRequestDetails(scope.row)">Chi tiết</el-button>
                         </template>
                       </el-table-column>
-                    </el-table>
-                  </div>
-                </template>
-              </el-table-column>
+                        </el-table>
+                      </div>
+                    </div>
+                  </template>
+                </el-table-column>
               
               <el-table-column label="Khách hàng / Shop" min-width="200">
                 <template #default="{ row }">
@@ -163,7 +168,7 @@
                   <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="Địa chỉ lấy hàng" min-width="250" show-overflow-tooltip prop="pickup_address" />
+              <el-table-column label="Địa chỉ lấy hàng" min-width="320" prop="pickup_address" />
               <el-table-column label="Tổng số đơn" width="120" align="center">
                 <template #default="{ row }">
                   <el-tag type="warning" effect="dark" size="large" style="font-weight: bold; font-size: 14px;">{{ row.requests.length }}</el-tag>
@@ -179,6 +184,7 @@
                 <el-empty description="Không có yêu cầu nào chờ xác nhận văn phòng" :image-size="100" />
               </template>
             </el-table>
+          </div>
           </el-tab-pane>
 
           <!-- TAB NEW: CHỜ BƯU CỤC XÁC NHẬN (DISPATCHED_TO_HUB) -->
@@ -235,27 +241,31 @@
               </div>
             </div>
 
-            <el-table 
-              :data="groupedDispatch" 
-              v-loading="loading" 
-              class="modern-table" 
-              stripe
-            >
-              <el-table-column type="expand">
-                <template #default="{ row }">
-                  <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
-                    <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                      <el-icon><List /></el-icon> Danh sách đơn chi tiết đang điều phối ({{ row.requests.length }} đơn)
-                    </h4>
-                    <el-table 
-                      :data="row.requests" 
-                      class="modern-table inner-table" 
-                      size="small" 
-                      border 
-                      stripe
-                      row-key="request_id"
-                      @selection-change="selection => handleDispatchRequestSelectionChange(row, selection)"
-                    >
+            <div class="pickup-table-scroll">
+              <el-table 
+                style="width: 100%; min-width: 1250px;"
+                :data="groupedDispatch" 
+                v-loading="loading" 
+                class="modern-table" 
+                stripe
+              >
+                <el-table-column type="expand">
+                  <template #default="{ row }">
+                    <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
+                      <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                        <el-icon><List /></el-icon> Danh sách đơn chi tiết đang điều phối ({{ row.requests.length }} đơn)
+                      </h4>
+                      <div class="inner-table-scroll">
+                        <el-table 
+                          style="width: 100%; min-width: 1200px;"
+                          :data="row.requests" 
+                          class="modern-table inner-table" 
+                          size="small" 
+                          border 
+                          stripe
+                          row-key="request_id"
+                          @selection-change="selection => handleDispatchRequestSelectionChange(row, selection)"
+                        >
                       <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
                       <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
                         <template #default="scope">
@@ -264,7 +274,7 @@
                           </el-link>
                         </template>
                       </el-table-column>
-                      <el-table-column label="Mã Vận Đơn" width="140">
+                      <el-table-column label="Mã Vận Đơn" min-width="210">
                         <template #default="scope">
                           <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list">
                             <span
@@ -310,7 +320,7 @@
                           <span class="text-xs">{{ formatDate(scope.row.dispatched_at) }}</span>
                         </template>
                       </el-table-column>
-                      <el-table-column label="Thao tác" width="220" align="center" fixed="right">
+                      <el-table-column label="Thao tác" width="220" align="center">
                         <template #default="scope">
                           <div class="flex justify-center gap-2">
                             <el-button type="success" size="small" plain @click="handleAcceptDispatch(scope.row)">
@@ -322,10 +332,11 @@
                           </div>
                         </template>
                       </el-table-column>
-                    </el-table>
-                  </div>
-                </template>
-              </el-table-column>
+                        </el-table>
+                      </div>
+                    </div>
+                  </template>
+                </el-table-column>
               
               <el-table-column label="Khách hàng / Shop" min-width="200">
                 <template #default="{ row }">
@@ -343,7 +354,7 @@
                   <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="Địa chỉ lấy hàng" min-width="250" show-overflow-tooltip prop="pickup_address" />
+              <el-table-column label="Địa chỉ lấy hàng" min-width="320" prop="pickup_address" />
               <el-table-column label="Tổng số đơn" width="120" align="center">
                 <template #default="{ row }">
                   <el-tag type="warning" effect="dark" size="large" style="font-weight: bold; font-size: 14px;">{{ row.requests.length }}</el-tag>
@@ -354,7 +365,7 @@
                   <span class="fw-bold" style="color: #4318ff;">{{ row.total_weight.toFixed(1) }} kg</span>
                 </template>
               </el-table-column>
-              <el-table-column label="Thao tác chung" width="260" align="center" fixed="right">
+              <el-table-column label="Thao tác chung" min-width="310" align="center">
                 <template #default="{ row }">
                   <div class="flex justify-center gap-2">
                     <el-button type="success" size="small" @click="handleGroupAcceptDispatch(row)">
@@ -371,6 +382,7 @@
                 <el-empty description="Không có yêu cầu nào đang chờ bưu cục xác nhận" :image-size="100" />
               </template>
             </el-table>
+          </div>
           </el-tab-pane>
 
           <!-- TAB 2: ĐÃ TIẾP NHẬN & CHỜ GÁN BƯU TÁ -->
@@ -418,110 +430,116 @@
               </div>
             </div>
 
-            <el-table 
-              :data="groupedReceived" 
-              v-loading="loading" 
-              class="modern-table" 
-              stripe
-            >
-              <el-table-column type="expand">
-                <template #default="{ row }">
-                  <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
-                    <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                      <el-icon><List /></el-icon> Danh sách đơn chi tiết chờ lấy ({{ row.requests.length }} đơn)
-                    </h4>
-                    <el-table 
-                      :data="row.requests" 
-                      class="modern-table inner-table" 
-                      size="small" 
-                      border 
-                      stripe
-                      row-key="request_id"
-                      @selection-change="selection => handleReceivedRequestSelectionChange(row, selection)"
-                    >
-                      <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
-                      <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
-                        <template #default="scope">
-                          <el-link type="success" class="fw-bold" @click="viewRequestDetails(scope.row)">
-                            {{ scope.row.request_code }}
-                          </el-link>
-                        </template>
-                      </el-table-column>
-                      <el-table-column label="Mã Vận Đơn" width="140">
-                        <template #default="scope">
-                          <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list">
-                            <span
-                              v-for="code in getWaybillCodes(scope.row)"
-                              :key="code"
-                              class="code-badge info text-xs"
-                              style="background: rgba(67, 24, 255, 0.1); color: #4318ff;"
-                            >
-                              {{ code }}
-                            </span>
-                          </div>
-                          <span v-else class="text-muted text-xs">Chưa có</span>
-                        </template>
-                      </el-table-column>
-                      <el-table-column label="Văn phòng nhận" width="150" show-overflow-tooltip>
-                        <template #default="scope">
-                          <span class="fw-bold text-primary">{{ scope.row.target_hub_name || getHubName(scope.row.target_hub_id) || 'N/A' }}</span>
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="notes" label="Ghi chú khách" min-width="120" show-overflow-tooltip />
-                      <el-table-column label="Thao tác" width="220" align="center" fixed="right">
-                        <template #default="scope">
-                          <div class="flex justify-center gap-2">
-                            <el-button type="info" size="small" plain @click="viewRequestDetails(scope.row)">Chi tiết</el-button>
-                            <el-button type="primary" size="small" plain @click="openAssignShipperDialog(scope.row)">
-                              <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá
-                            </el-button>
-                          </div>
-                        </template>
-                      </el-table-column>
-                    </el-table>
-                  </div>
-                </template>
-              </el-table-column>
-              
-              <el-table-column label="Khách hàng / Shop" min-width="200">
-                <template #default="{ row }">
-                  <div class="sender-info">
-                    <span class="fw-bold text-dark">
-                      {{ row.customer_name }}
-                      <span class="text-xs text-muted" v-if="row.customer_code">({{ row.customer_code }})</span>
-                    </span>
-                    <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.customer_phone }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column label="Nguồn" width="110" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="Địa chỉ lấy hàng" min-width="250" show-overflow-tooltip prop="pickup_address" />
-              <el-table-column label="Tổng số đơn" width="120" align="center">
-                <template #default="{ row }">
-                  <el-tag type="primary" effect="dark" size="large" style="font-weight: bold; font-size: 14px;">{{ row.requests.length }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="Tổng khối lượng" width="140" align="center">
-                <template #default="{ row }">
-                  <span class="fw-bold" style="color: #4318ff;">{{ row.total_weight.toFixed(1) }} kg</span>
-                </template>
-              </el-table-column>
-              <el-table-column label="Thao tác chung" width="160" align="center" fixed="right">
-                <template #default="{ row }">
-                  <el-button type="primary" size="small" @click="openGroupAssignShipperDialog(row)">
-                    <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá tất cả
-                  </el-button>
-                </template>
-              </el-table-column>
+            <div class="pickup-table-scroll">
+              <el-table 
+                style="width: 100%; min-width: 1250px;"
+                :data="groupedReceived" 
+                v-loading="loading" 
+                class="modern-table" 
+                stripe
+              >
+                <el-table-column type="expand">
+                  <template #default="{ row }">
+                    <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
+                      <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                        <el-icon><List /></el-icon> Danh sách đơn chi tiết chờ lấy ({{ row.requests.length }} đơn)
+                      </h4>
+                      <div class="inner-table-scroll">
+                        <el-table 
+                          style="width: 100%; min-width: 1200px;"
+                          :data="row.requests" 
+                          class="modern-table inner-table" 
+                          size="small" 
+                          border 
+                          stripe
+                          row-key="request_id"
+                          @selection-change="selection => handleReceivedRequestSelectionChange(row, selection)"
+                        >
+                          <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
+                          <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
+                            <template #default="scope">
+                              <el-link type="success" class="fw-bold" @click="viewRequestDetails(scope.row)">
+                                {{ scope.row.request_code }}
+                              </el-link>
+                            </template>
+                          </el-table-column>
+                          <el-table-column label="Mã Vận Đơn" min-width="210">
+                            <template #default="scope">
+                              <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list">
+                                <span
+                                  v-for="code in getWaybillCodes(scope.row)"
+                                  :key="code"
+                                  class="code-badge info text-xs"
+                                  style="background: rgba(67, 24, 255, 0.1); color: #4318ff;"
+                                >
+                                  {{ code }}
+                                </span>
+                              </div>
+                              <span v-else class="text-muted text-xs">Chưa có</span>
+                            </template>
+                          </el-table-column>
+                          <el-table-column label="Văn phòng nhận" width="150" show-overflow-tooltip>
+                            <template #default="scope">
+                              <span class="fw-bold text-primary">{{ scope.row.target_hub_name || getHubName(scope.row.target_hub_id) || 'N/A' }}</span>
+                            </template>
+                          </el-table-column>
+                          <el-table-column prop="notes" label="Ghi chú khách" min-width="120" show-overflow-tooltip />
+                          <el-table-column label="Thao tác" width="220" align="center">
+                            <template #default="scope">
+                              <div class="flex justify-center gap-2">
+                                <el-button type="info" size="small" plain @click="viewRequestDetails(scope.row)">Chi tiết</el-button>
+                                <el-button type="primary" size="small" plain @click="openAssignShipperDialog(scope.row)">
+                                  <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá
+                                </el-button>
+                              </div>
+                            </template>
+                          </el-table-column>
+                        </el-table>
+                      </div>
+                    </div>
+                  </template>
+                </el-table-column>
+                
+                <el-table-column label="Khách hàng / Shop" min-width="200">
+                  <template #default="{ row }">
+                    <div class="sender-info">
+                      <span class="fw-bold text-dark">
+                        {{ row.customer_name }}
+                        <span class="text-xs text-muted" v-if="row.customer_code">({{ row.customer_code }})</span>
+                      </span>
+                      <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.customer_phone }}</span>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Nguồn" width="110" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Địa chỉ lấy hàng" min-width="320" prop="pickup_address" />
+                <el-table-column label="Tổng số đơn" width="120" align="center">
+                  <template #default="{ row }">
+                    <el-tag type="primary" effect="dark" size="large" style="font-weight: bold; font-size: 14px;">{{ row.requests.length }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Tổng khối lượng" width="140" align="center">
+                  <template #default="{ row }">
+                    <span class="fw-bold" style="color: #4318ff;">{{ row.total_weight.toFixed(1) }} kg</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Thao tác chung" min-width="200" align="center">
+                  <template #default="{ row }">
+                    <el-button type="primary" size="small" @click="openGroupAssignShipperDialog(row)">
+                      <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá tất cả
+                    </el-button>
+                  </template>
+                </el-table-column>
 
-              <template #empty>
-                <el-empty description="Không có yêu cầu lấy hàng nào tại văn phòng của bạn" :image-size="100" />
-              </template>
-            </el-table>
+                <template #empty>
+                  <el-empty description="Không có yêu cầu lấy hàng nào tại văn phòng của bạn" :image-size="100" />
+                </template>
+              </el-table>
+            </div>
           </el-tab-pane>
 
           <!-- TAB 3: ĐANG ĐI LẤY -->
@@ -560,12 +578,14 @@
               </div>
             </div>
 
-            <el-table 
-              :data="filteredAssigned" 
-              v-loading="loading" 
-              class="modern-table" 
-              stripe
-            >
+            <div class="pickup-table-scroll">
+              <el-table 
+                style="width: 100%; min-width: 1250px;"
+                :data="filteredAssigned" 
+                v-loading="loading" 
+                class="modern-table" 
+                stripe
+              >
               <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
                 <template #default="{ row }">
                   <div class="flex flex-col gap-1">
@@ -589,7 +609,7 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="Địa chỉ lấy hàng" min-width="220" show-overflow-tooltip>
+              <el-table-column label="Địa chỉ lấy hàng" min-width="320">
                 <template #default="{ row }">
                   <span class="address-text">{{ row.pickup_address }}</span>
                 </template>
@@ -608,7 +628,7 @@
                   <span class="text-xs">{{ formatDate(row.pickup_assigned_at || row.created_at) }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="Thao tác" width="260" align="center" fixed="right">
+              <el-table-column label="Thao tác" width="260" align="center">
                 <template #default="{ row }">
                   <div class="flex justify-center gap-2">
                     <el-button 
@@ -634,6 +654,7 @@
                 <el-empty description="Không có đơn hàng nào đang trong quá trình đi lấy" :image-size="100" />
               </template>
             </el-table>
+          </div>
           </el-tab-pane>
 
         </el-tabs>
@@ -2360,11 +2381,7 @@ watch(
 .address-text {
   font-size: 12px;
   color: var(--sp-text-muted, #64748b);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 280px;
-  display: inline-block;
+  line-height: 1.4;
 }
 
 .search-wrapper {
@@ -2529,4 +2546,32 @@ watch(
   max-width: 65%;
   word-break: break-word;
 }
+
+.pickup-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-gutter: stable;
+}
+
+.pickup-table-scroll :deep(.modern-table) {
+  min-width: 1250px;
+  max-width: none !important;
+}
+
+.inner-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+}
+
+.inner-table-scroll :deep(.inner-table) {
+  min-width: 1200px;
+  max-width: none !important;
+}
+
 </style>

@@ -191,3 +191,17 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   .stat-divider { display: none; }
   .selection-action-bar .btn-success { width: 100%; justify-content: center; }
 }
+
+/* Horizontal scroll container for COD table list */
+.cod-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-gutter: stable;
+}
+
+.cod-table-scroll :deep(.el-table) {
+  max-width: none !important;
+}

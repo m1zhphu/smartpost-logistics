@@ -126,10 +126,10 @@
                   <div class="action-icon"><el-icon><Plus /></el-icon></div>
                   <span>Tạo đơn</span>
                 </div>
-                <div @click="$router.push('/admin/warehouse/scan-in')" class="action-item info">
+                <!-- <div @click="$router.push('/admin/warehouse/scan-in')" class="action-item info">
                   <div class="action-icon"><el-icon><List /></el-icon></div>
                   <span>Nhập kho</span>
-                </div>
+                </div> -->
                 <div @click="$router.push('/admin/accounting/cod')" class="action-item warning">
                   <div class="action-icon"><el-icon><Wallet /></el-icon></div>
                   <span>Đối soát</span>

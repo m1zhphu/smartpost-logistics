@@ -90,11 +90,13 @@ const adminRoutes = [
         component: () => import('../views/admin/waybills/OcrReviewedList.vue'),
       },
       // Warehouse
+      /*
       {
         path: 'warehouse/scan-in',
         name: 'ScanIn',
         component: () => import('../views/admin/warehouse/ScanIn.vue'),
       },
+      */
       {
         path: 'warehouse/bagging',
         name: 'Bagging',

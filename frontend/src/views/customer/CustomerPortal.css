@@ -290,6 +290,7 @@
   border-radius: 16px;
   border: 1px solid var(--sp-border, #e2e8f0);
   box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
 }
 
 .mt-20 {
@@ -673,7 +674,27 @@
   --el-table-header-bg-color: #F8FAFC;
   --el-table-header-text-color: var(--sp-text-muted, #a3b1cc);
   --el-table-text-color: var(--sp-text-main, #1b2559);
+  width: 100%;
 }
+
+.customer-orders-table-scroll,
+.bulk-waybill-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+}
+
+.customer-orders-table-scroll {
+  scrollbar-gutter: stable;
+}
+
+.customer-orders-table-scroll :deep(.customer-orders-table),
+.bulk-waybill-table-scroll :deep(.bulk-waybill-table) {
+  min-width: 1200px;
+}
+
 :deep(.modern-table th.el-table__cell) {
   font-weight: 700;
   font-size: 12px;
@@ -946,7 +967,7 @@
 .bulk-recipient-list { margin-top: 16px; }
 .bulk-recipient-row { padding: 14px; margin-top: 10px; border: 1px solid #dfe5ec; background: #f8fafc; }
 .bulk-recipient-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; color: #174f36; }
-.bulk-waybill-panel { padding: 16px 28px; background: #f8fafc; border-radius: 8px; margin: 8px 0; }
+.bulk-waybill-panel { padding: 16px 28px; background: #f8fafc; border-radius: 8px; margin: 8px 0; min-width: 0; }
 .bulk-waybill-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 800; color: #123524; }
 .bulk-waybill-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .bulk-waybill-grid.compact { display: inline-flex; vertical-align: top; }
@@ -1000,6 +1021,7 @@
 .bulk-waybill-table {
   margin-top: 12px;
   width: 100%;
+  min-width: 1040px;
 }
 
 .bulk-waybill-table .el-table__cell {
@@ -1010,6 +1032,7 @@
   color: #1f2937;
   font-weight: 700;
 }
+
 .modern-table :deep(.urgent-order-row > td.el-table__cell) {
   background: #fff1f2 !important;
   border-top: 1px solid #fda4af;
@@ -1018,4 +1041,34 @@
 
 .modern-table :deep(.urgent-order-row > td.el-table__cell:first-child) {
   border-left: 4px solid #dc2626;
+}
+
+/* Table scroll wrapper to allow horizontal scrolling */
+.table-scroll-wrapper {
+  width: 100%;
+  overflow: visible;
+}
+
+.table-scroll-wrapper table,
+.table-scroll-wrapper :deep(table) {
+  min-width: 1250px;
+  width: 100%;
+  table-layout: auto;
+}
+
+.table-scroll-wrapper th:last-child,
+.table-scroll-wrapper :deep(th:last-child),
+.table-scroll-wrapper td:last-child,
+.table-scroll-wrapper :deep(td:last-child) {
+  min-width: 140px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.table-scroll-wrapper .btn,
+.table-scroll-wrapper :deep(.btn),
+.table-scroll-wrapper button,
+.table-scroll-wrapper :deep(button),
+.table-scroll-wrapper :deep(.el-button) {
+  white-space: nowrap;
 }

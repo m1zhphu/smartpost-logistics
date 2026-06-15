@@ -85,6 +85,8 @@
   --el-table-header-bg-color: #F8FAFC;
   --el-table-header-text-color: var(--sp-text-muted);
   --el-table-text-color: var(--sp-text-main);
+  width: 100%;
+  overflow-x: auto;
 }
 :deep(.modern-table th.el-table__cell) { font-weight: 700; font-size: 12px; text-transform: uppercase; padding: 12px 0; border-bottom: 2px solid var(--sp-bg-app) !important; }
 :deep(.modern-table td.el-table__cell) { padding: 12px 0; border-bottom: 1px solid var(--sp-bg-app) !important; }
@@ -184,6 +186,9 @@
   background-color: var(--sp-primary);
   height: 3px;
   border-radius: 3px;
+}
+:deep(.el-tab-pane) {
+  overflow-x: auto;
 }
 
 .animate-fade-in { animation: fadeIn 0.4s ease-out; }

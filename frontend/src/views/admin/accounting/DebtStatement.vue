@@ -60,50 +60,52 @@
             </div>
           </template>
 
-          <el-table :data="waybills" style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
-            <el-table-column type="selection" width="55" />
-            <el-table-column property="waybill_code" label="MÃ VẬN ĐƠN" width="150" />
-            <el-table-column property="receiver_name" label="NGƯỜI NHẬN" min-width="150" />
-            <el-table-column label="CƯỚC PHÍ" align="right">
-              <template #default="{ row }">
-                <span class="text-primary fw-bold">{{ formatCurrencyManual(row.shipping_fee) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="COD" align="right">
-              <template #default="{ row }">
-                <span>{{ formatCurrencyManual(row.cod_amount) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="TRẠNG THÁI" width="120">
-              <template #default="{ row }">
-                <el-tag :type="row.status === 'DELIVERED' ? 'success' : 'info'" size="small">
-                  {{ row.status }}
-                </el-tag>
-              </template>
-            </el-table-column>
+          <div class="debt-table-scroll">
+            <el-table :data="waybills" style="width: 100%; min-width: 800px; max-width: none;" v-loading="loading" @selection-change="handleSelectionChange">
+              <el-table-column type="selection" width="55" />
+              <el-table-column property="waybill_code" label="MÃ VẬN ĐƠN" min-width="200" />
+              <el-table-column property="receiver_name" label="NGƯỜI NHẬN" min-width="150" />
+              <el-table-column label="CƯỚC PHÍ" align="right">
+                <template #default="{ row }">
+                  <span class="text-primary fw-bold">{{ formatCurrencyManual(row.shipping_fee) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="COD" align="right">
+                <template #default="{ row }">
+                  <span>{{ formatCurrencyManual(row.cod_amount) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="TRẠNG THÁI" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === 'DELIVERED' ? 'success' : 'info'" size="small">
+                    {{ row.status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
 
-            <!-- THAO TÁC -->
-            <el-table-column label="THAO TÁC" width="110" align="center">
-              <template #default="{ row }">
-                <el-button 
-                  size="small" 
-                  type="primary" 
-                  plain 
-                  icon="Edit"
-                  @click="openOverrideDialog(row)"
-                  style="padding: 4px 8px; font-size: 11px;"
-                >
-                  Sửa cước
-                </el-button>
+              <!-- THAO TÁC -->
+              <el-table-column label="THAO TÁC" width="110" align="center">
+                <template #default="{ row }">
+                  <el-button 
+                    size="small" 
+                    type="primary" 
+                    plain 
+                    icon="Edit"
+                    @click="openOverrideDialog(row)"
+                    style="padding: 4px 8px; font-size: 11px;"
+                  >
+                    Sửa cước
+                  </el-button>
+                </template>
+              </el-table-column>
+              
+              <template #empty>
+                <div class="empty-state">
+                  <el-empty description="Chọn bộ lọc và bấm Tải danh sách" />
+                </div>
               </template>
-            </el-table-column>
-            
-            <template #empty>
-              <div class="empty-state">
-                <el-empty description="Chọn bộ lọc và bấm Tải danh sách" />
-              </div>
-            </template>
-          </el-table>
+            </el-table>
+          </div>
         </el-card>
       </div>
 

@@ -43,7 +43,7 @@
 
     <el-card shadow="never">
       <el-table :data="rows" v-loading="loading" border stripe>
-        <el-table-column label="Mã vận đơn" min-width="160">
+        <el-table-column label="Mã vận đơn" min-width="240">
           <template #default="{ row }">
             <el-tag type="success">{{ row.waybill_code }}</el-tag>
             <div class="muted">{{ row.request_code || '---' }}</div>
@@ -68,7 +68,7 @@
             <div class="muted">{{ row.actual_weight || 0 }} kg - COD {{ formatMoney(row.cod_amount) }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="Anh" width="150">
+        <el-table-column label="Ảnh" width="150">
           <template #default="{ row }">
             <div class="image-actions">
               <el-link v-if="row.bill_image_url" type="primary" :href="imageUrl(row.bill_image_url)" target="_blank">Bill</el-link>

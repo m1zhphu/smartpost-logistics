@@ -187,3 +187,17 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   .list-card { overflow: hidden; }
   :deep(.el-table__body-wrapper) { overflow-x: auto; }
 }
+
+/* Horizontal scroll container for ConfirmCash table list */
+.confirm-cash-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-gutter: stable;
+}
+
+.confirm-cash-table-scroll :deep(.el-table) {
+  max-width: none !important;
+}
