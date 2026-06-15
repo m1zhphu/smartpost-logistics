@@ -43,7 +43,7 @@
               <!-- Left side of form: Input fields -->
               <el-col :xs="24" :sm="24" :md="isBulkMail ? 24 : 16">
                 <el-form :model="form" label-position="top">
-                  <div class="pickup-mode-bar mb-4">
+                  <!-- <div class="pickup-mode-bar mb-4">
                     <div>
                       <div class="pickup-mode-title">Hình thức gửi hàng</div>
                       <div class="pickup-mode-hint">Chọn gửi một đơn hàng đầy đủ hoặc tạo một túi gồm nhiều thư/bưu phẩm.</div>
@@ -53,7 +53,7 @@
                         {{ option.label }}
                       </el-radio-button>
                     </el-radio-group>
-                  </div>
+                  </div> -->
                   
                   <!-- SENDER & RECEIVER INFO -->
                   <el-row :gutter="20">
