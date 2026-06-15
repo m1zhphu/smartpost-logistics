@@ -31,6 +31,7 @@ import { customerService } from "../services/customer";
 import {
   getOcrCustomerPickups,
   getOcrCustomers,
+  getOcrBagWaybills,
 } from "../services/pickupService";
 import styles from "../styles/ShipperCameraScreenStyles";
 import { useQueue } from "../context/QueueContext";
@@ -67,7 +68,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
   const focusAnim = useRef(new Animated.Value(0)).current;
 
   // --- OCR CONFIG STATES ---
-  const [ocrConfig, setOcrConfig] = useState({ customer: null, bagCode: "" });
+  const [ocrConfig, setOcrConfig] = useState({ customer: null, bagCode: "", waybillCode: "" });
   const [showOcrConfig, setShowOcrConfig] = useState(false);
 
   // Customer Selection
@@ -80,6 +81,11 @@ export default function ShipperCameraScreen({ route, navigation }) {
   const [bags, setBags] = useState([]);
   const [showBagModal, setShowBagModal] = useState(false);
   const [isLoadingBags, setIsLoadingBags] = useState(false);
+
+  // Waybill Selection
+  const [waybills, setWaybills] = useState([]);
+  const [showWaybillModal, setShowWaybillModal] = useState(false);
+  const [isLoadingWaybills, setIsLoadingWaybills] = useState(false);
 
   // Scanning
   const [isScanningBag, setIsScanningBag] = useState(false);
@@ -118,23 +124,44 @@ export default function ShipperCameraScreen({ route, navigation }) {
   };
 
   const handleSelectCustomer = (customer) => {
-    setOcrConfig((prev) => ({ ...prev, customer: customer, bagCode: "" }));
+    setOcrConfig((prev) => ({ ...prev, customer: customer, bagCode: "", waybillCode: "" }));
     setShowCustomerModal(false);
     setShowOcrConfig(true);
     fetchBagsData(customer.customer_id);
   };
 
+  const fetchWaybillsData = async (bagCode) => {
+    if (!bagCode) return;
+    setIsLoadingWaybills(true);
+    try {
+      const res = await getOcrBagWaybills(bagCode);
+      setWaybills(res.success ? res.data?.waybills || [] : []);
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Lỗi tải danh sách mã vận đơn" });
+    } finally {
+      setIsLoadingWaybills(false);
+    }
+  };
+
   const handleSelectBag = (bagCode) => {
-    setOcrConfig((prev) => ({ ...prev, bagCode: bagCode }));
+    setOcrConfig((prev) => ({ ...prev, bagCode: bagCode, waybillCode: "" }));
     setShowBagModal(false);
+    setShowOcrConfig(true);
+    fetchWaybillsData(bagCode);
+  };
+
+  const handleSelectWaybill = (waybillCode) => {
+    setOcrConfig((prev) => ({ ...prev, waybillCode: waybillCode }));
+    setShowWaybillModal(false);
     setShowOcrConfig(true);
   };
 
   const handleBarcodeScanned = ({ data }) => {
     if (isScanningBag) {
-      setOcrConfig((prev) => ({ ...prev, bagCode: data }));
+      setOcrConfig((prev) => ({ ...prev, bagCode: data, waybillCode: "" }));
       setIsScanningBag(false);
       setShowOcrConfig(true);
+      fetchWaybillsData(data);
     }
   };
 
@@ -311,6 +338,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
           customer_id: ocrConfig.customer?.customer_id,
           customer_name: ocrConfig.customer?.customer_name,
           bag_code: ocrConfig.bagCode,
+          waybill_code: ocrConfig.waybillCode,
         });
       } else {
         const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
@@ -374,6 +402,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
           customer_id: ocrConfig.customer?.customer_id,
           customer_name: ocrConfig.customer?.customer_name,
           bag_code: ocrConfig.bagCode,
+          waybill_code: ocrConfig.waybillCode,
         });
         // processQueueItem(newItem);
       }
@@ -954,6 +983,49 @@ export default function ShipperCameraScreen({ route, navigation }) {
                 </TouchableOpacity>
               )}
 
+              <Text
+                style={{ fontSize: 14, fontWeight: "600", marginBottom: 8 }}
+              >
+                3. Mã Vận Đơn (Tùy chọn)
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 15,
+                }}
+              >
+                <TextInput
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: "#ddd",
+                    borderRadius: 8,
+                    padding: 12,
+                    backgroundColor: "#f9f9f9",
+                    marginRight: 10,
+                  }}
+                  placeholder="Nhập mã vận đơn..."
+                  value={ocrConfig.waybillCode}
+                  onChangeText={(t) =>
+                    setOcrConfig((prev) => ({ ...prev, waybillCode: t }))
+                  }
+                />
+              </View>
+              {ocrConfig.bagCode && (
+                <TouchableOpacity
+                  style={{ alignSelf: "flex-start", marginBottom: 20 }}
+                  onPress={() => {
+                    setShowOcrConfig(false);
+                    setShowWaybillModal(true);
+                  }}
+                >
+                  <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+                    + Chọn từ danh sách mã đơn trong túi
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 style={{
                   backgroundColor: COLORS.primary,
@@ -1159,6 +1231,104 @@ export default function ShipperCameraScreen({ route, navigation }) {
                     <Text style={{ color: "#666", marginTop: 4 }}>
                       Số bill hiện tại: {item.actual_quantity || 0}
                     </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+              )}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* Modal Chọn Waybill */}
+      <Modal
+        visible={showWaybillModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          setShowWaybillModal(false);
+          setShowOcrConfig(true);
+        }}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 16,
+              backgroundColor: "white",
+              borderBottomWidth: 1,
+              borderBottomColor: "#eee",
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                setShowWaybillModal(false);
+                setShowOcrConfig(true);
+              }}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                flex: 1,
+                textAlign: "center",
+                marginRight: 32,
+              }}
+            >
+              Chọn Mã Vận Đơn
+            </Text>
+          </View>
+          {isLoadingWaybills ? (
+            <ActivityIndicator
+              size="large"
+              color={COLORS.primary}
+              style={{ marginTop: 20 }}
+            />
+          ) : waybills.length === 0 ? (
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Text style={{ color: "#666" }}>
+                Không có mã vận đơn nào trong túi này
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={waybills}
+              keyExtractor={(item) =>
+                item.waybill_id ? item.waybill_id.toString() : item.waybill_code
+              }
+              contentContainerStyle={{ padding: 16 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "white",
+                    padding: 16,
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                  onPress={() => handleSelectWaybill(item.waybill_code)}
+                >
+                  <View>
+                    <Text
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: 16,
+                        color: COLORS.primary,
+                      }}
+                    >
+                      {item.waybill_code}
+                    </Text>
+                    {item.receiver_name && (
+                      <Text style={{ color: "#666", marginTop: 4 }}>
+                        Người nhận: {item.receiver_name}
+                      </Text>
+                    )}
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#ccc" />
                 </TouchableOpacity>

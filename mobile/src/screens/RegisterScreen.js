@@ -133,6 +133,7 @@ export default function RegisterScreen({ navigation }) {
                 enableOnAndroid={true}
                 extraScrollHeight={Platform.OS === 'ios' ? 40 : 0}
                 keyboardShouldPersistTaps="handled"
+                bounces={false}
                 style={styles.container}
             >
 

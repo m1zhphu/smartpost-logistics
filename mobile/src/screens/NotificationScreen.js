@@ -13,6 +13,7 @@ import { COLORS } from "../constants/colors";
 import { useUser } from "../context/UserContext";
 import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import styles from "../styles/NotificationScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
@@ -22,15 +23,23 @@ export default function NotificationScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { setUnreadCount } = useUser();
+  const { setNotifications: setGlobalNotifications } = useUser();
 
   const loadNotifications = async () => {
     try {
+      const uType = await AsyncStorage.getItem("user_type");
+      if (uType === "customer" || uType === "admin") {
+        setNotifications([]);
+        setLoading(false);
+        return;
+      }
       const res = await notificationService.getUnread();
-      const data = res.data.data || res.data;
-      setNotifications(data);
+      const data = res.data?.data || res.data;
+      setNotifications(data || []);
 
-      setUnreadCount(data.length);
+      if (setGlobalNotifications) {
+        setGlobalNotifications(data || []);
+      }
     } catch (error) {
       Toast.show({
         type: "error",
@@ -55,7 +64,9 @@ export default function NotificationScreen({ navigation }) {
   const handleMarkAsRead = async (id) => {
     try {
       setNotifications((prev) => prev.filter((item) => item.id !== id));
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      if (setGlobalNotifications) {
+        setGlobalNotifications((prev) => prev.filter((item) => item.id !== id));
+      }
       await notificationService.markAsRead(id);
     } catch (error) {
       loadNotifications();

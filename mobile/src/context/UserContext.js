@@ -428,8 +428,16 @@ export const UserProvider = ({ children }) => {
                         });
                     }
                     setPermissions(perms);
+                    setPermissions(perms);
                     setRoles([{ role_id: decoded.role_id }]);
                     
+                    if (userType === 'customer' && profileData.role_id !== 6) {
+                        throw new Error("Tài khoản nội bộ không được phép đăng nhập dành cho Khách hàng.");
+                    }
+                    if (userType !== 'customer' && profileData.role_id === 6) {
+                        throw new Error("Tài khoản Khách hàng không được phép đăng nhập dành cho Nội bộ.");
+                    }
+
                     return profileData;
                 } catch (err) {
                     console.error("Lỗi lấy hồ sơ:", err);
@@ -446,6 +454,14 @@ export const UserProvider = ({ children }) => {
                         accessible_hub_ids: decoded.accessible_hub_ids || [],
                     };
                     setUser(mockProfileData);
+
+                    if (userType === 'customer' && mockProfileData.role_id !== 6) {
+                        throw new Error("Tài khoản nội bộ không được phép đăng nhập dành cho Khách hàng.");
+                    }
+                    if (userType !== 'customer' && mockProfileData.role_id === 6) {
+                        throw new Error("Tài khoản Khách hàng không được phép đăng nhập dành cho Nội bộ.");
+                    }
+
                     return mockProfileData;
                 }
             }
@@ -567,25 +583,36 @@ export const UserProvider = ({ children }) => {
 
         if (logoutTimer.current) clearTimeout(logoutTimer.current);
 
-        // try {
-        //     const currentToken = await AsyncStorage.getItem('access_token');
-        //     const uType = await AsyncStorage.getItem('user_type') || 'employee';
-        //     if (currentToken) {
-        //         if (uType === 'customer' || uType === 'admin') {
-        //             await apiClient.post(
-        //                 `${API_BASE_URL}/api/users/register-push-token`,
-        //                 { push_token: null },
-        //                 { headers: { Authorization: `Bearer ${currentToken}` } }
-        //             );
-        //         } else {
-        //             await apiClient.put(
-        //                 `${WAREHOUSE_API_URL}/api/users/update-push-token`,
-        //                 { token: null },
-        //                 { headers: { Authorization: `Bearer ${currentToken}` } }
-        //             );
-        //         }
-        //     }
-        // } catch (err) { ... }
+        if (logoutTimer.current) clearTimeout(logoutTimer.current);
+
+        try {
+            const currentToken = await AsyncStorage.getItem('access_token');
+            const uType = await AsyncStorage.getItem('user_type') || 'employee';
+            if (currentToken) {
+                if (uType === 'customer' || uType === 'admin') {
+                    await apiClient.post(
+                        `${API_BASE_URL}/api/users/register-push-token`,
+                        { push_token: null },
+                        { headers: { Authorization: `Bearer ${currentToken}` }, ignore401: true }
+                    ).catch(() => {});
+                } else {
+                    await apiClient.put(
+                        `${WAREHOUSE_API_URL}/api/users/update-push-token`,
+                        { token: null },
+                        { headers: { Authorization: `Bearer ${currentToken}` }, ignore401: true }
+                    ).catch(() => {});
+                }
+
+                // Set offline for admin/shipper
+                if (user && user.is_shipper && uType === 'admin') {
+                    await apiClient.post(
+                        ADMIN_ENDPOINTS.TOGGLE_AVAILABILITY,
+                        { is_online: false, note: "Bưu tá đăng xuất" },
+                        { headers: { Authorization: `Bearer ${currentToken}` }, ignore401: true }
+                    ).catch(() => {});
+                }
+            }
+        } catch (err) { console.log("Logout error", err); }
 
         setToken(null);
         setUser(null);

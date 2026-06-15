@@ -93,7 +93,10 @@ export default function LoginScreen({ navigation }) {
         const isConnected = await checkNetworkConnection();
         if (!isConnected) return;
 
-        if (!username || !password) {
+        const trimmedUsername = username.trim();
+        const trimmedPassword = password.trim();
+
+        if (!trimmedUsername || !trimmedPassword) {
             Toast.show({ type: 'error', text1: 'Thiếu thông tin', text2: 'Vui lòng nhập đủ!' });
             return;
         }
@@ -101,7 +104,7 @@ export default function LoginScreen({ navigation }) {
         setLoading(true);
         try {
             // Lấy dữ liệu profile nóng hổi từ API
-            const result = await loginUserAndFetchProfile(username, password, userType);
+            const result = await loginUserAndFetchProfile(trimmedUsername, trimmedPassword, userType);
 
             const tutorialDone = await AsyncStorage.getItem("tutorial_done");
             const isTutorialCompleted = tutorialDone === "true";
@@ -138,9 +141,12 @@ export default function LoginScreen({ navigation }) {
             );
         } catch (error) {
             console.error("Login error:", error);
-            let errorMsg = "Sai tài khoản hoặc mật khẩu";
+            let errorMsg = error.message || "Sai tài khoản hoặc mật khẩu";
             if (error.response) {
-                if (error.response.status === 401) {
+                const detail = error.response.data?.detail;
+                if (detail && typeof detail === 'string') {
+                    errorMsg = detail;
+                } else if (error.response.status === 401) {
                     errorMsg = "Sai tài khoản hoặc mật khẩu (401)";
                 } else if (error.response.status === 502) {
                     errorMsg = "Hệ thống đang bảo trì hoặc lỗi kết nối (502). Vui lòng thử lại sau.";
@@ -287,8 +293,16 @@ export default function LoginScreen({ navigation }) {
             </KeyboardAwareScrollView>
 
             <Modal visible={showRoleModal} transparent animationType="slide">
-                <View style={styles.roleModalOverlay}>
-                    <View style={styles.roleModalContent}>
+                <TouchableOpacity 
+                    style={styles.roleModalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setShowRoleModal(false)}
+                >
+                    <TouchableOpacity 
+                        activeOpacity={1} 
+                        style={styles.roleModalContent}
+                    >
+                        <View style={styles.dragHandle} />
                         <Text style={styles.roleModalTitle}>Chọn vai trò đăng nhập</Text>
                         {USER_TYPES.map(role => (
                             <TouchableOpacity
@@ -307,8 +321,8 @@ export default function LoginScreen({ navigation }) {
                         <TouchableOpacity style={styles.roleCloseBtn} onPress={() => setShowRoleModal(false)}>
                             <Text style={styles.roleCloseText}>Đóng</Text>
                         </TouchableOpacity>
-                    </View>
-                </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
 
             <Toast />

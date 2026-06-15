@@ -13,16 +13,15 @@ import { StatusBar } from "expo-status-bar";
 import { useUser } from "../context/UserContext";
 import { COLORS } from "../constants/colors";
 import styles from "../styles/CustomerHomeScreenStyles";
+import NotificationModal from "../components/NotificationModal";
 
 export default function CustomerHomeScreen({ navigation }) {
-  const { user, logout } = useUser();
+  const { user, unreadCount, logout } = useUser();
 
   // State quản lý Menu và Thông báo
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isNotificationVisible, setIsNotificationVisible] = useState(false);
   const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
-
-  // Giả lập biến đếm thông báo chưa đọc, bạn có thể lấy từ context nếu có
-  const unreadCount = 2;
 
   const handleLogout = () => {
     Alert.alert(
@@ -94,7 +93,7 @@ export default function CustomerHomeScreen({ navigation }) {
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {/* 1. Nút Thông Báo */}
           <TouchableOpacity
-            onPress={() => navigation.navigate("Notification")}
+            onPress={() => setIsNotificationVisible(true)}
             style={styles.appleCircleBtn}
             activeOpacity={0.7}
           >
@@ -251,6 +250,11 @@ export default function CustomerHomeScreen({ navigation }) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <NotificationModal
+        visible={isNotificationVisible}
+        onClose={() => setIsNotificationVisible(false)}
+      />
     </View>
   );
 }

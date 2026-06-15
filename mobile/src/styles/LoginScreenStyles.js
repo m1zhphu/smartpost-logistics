@@ -122,7 +122,7 @@ const LoginStyles = StyleSheet.create({
     // Modal Select Role
     roleModalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'transparent',
         justifyContent: 'flex-end',
     },
     roleModalContent: {
@@ -166,6 +166,14 @@ const LoginStyles = StyleSheet.create({
         fontSize: 16,
         color: '#666',
         fontWeight: 'bold',
+    },
+    dragHandle: {
+        width: 40,
+        height: 5,
+        backgroundColor: '#ccc',
+        borderRadius: 3,
+        alignSelf: 'center',
+        marginBottom: 15,
     }
 });
 
