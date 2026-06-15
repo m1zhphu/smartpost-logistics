@@ -123,6 +123,7 @@ const productTypes = ref([
   { code: 'FOOD', label: 'Thực phẩm' },
   { code: 'HIGH_VALUE', label: 'Giá trị cao' }
 ]);
+const normalizeBulkProductType = (value) => ['DOCUMENT', 'PARCEL'].includes(value) ? value : 'PARCEL';
 
 const fetchProductTypes = async () => {
   try {
@@ -459,7 +460,7 @@ const submitSelectedDrafts = async () => {
           firstMail.receiver_name || firstMail.receiver_phone || firstMail.receiver_address
         );
         await api.post('/api/waybills/customer/bulk-mail-pickups', {
-          product_type: draft.bulk_product_type,
+          product_type: normalizeBulkProductType(draft.bulk_product_type),
           service_type: draft.service_type || 'TK',
           payment_method: draft.payment_method || 'SENDER_DEBT',
           estimated_quantity: Number(draft.bulk_estimated_quantity),

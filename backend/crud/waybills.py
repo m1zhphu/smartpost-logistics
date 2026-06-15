@@ -260,6 +260,7 @@ def create_waybill_record(db: Session, data: dict, fee: float):
     l = data.get('length')
     w = data.get('width')
     h = data.get('height')
+    conv_w = (float(l) * float(w) * float(h)) / 5000 if l and w and h else 0.0
     # Lấy waybill_code từ payload (nếu OCR gửi), nếu không có thì tự động sinh
     final_waybill_code = data.get('waybill_code')
     if not final_waybill_code or str(final_waybill_code).strip() == "":

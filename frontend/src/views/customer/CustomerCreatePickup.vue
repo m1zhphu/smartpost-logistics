@@ -266,7 +266,7 @@
                       <el-col :xs="24" :sm="12">
                         <el-form-item label="Loại bưu gửi" required>
                           <el-select v-model="form.bulk_product_type" class="w-full" filterable>
-                            <el-option v-for="type in productTypes" :key="type.code" :label="type.label" :value="type.code" />
+                            <el-option v-for="type in bulkProductTypes" :key="type.code" :label="type.label" :value="type.code" />
                           </el-select>
                         </el-form-item>
                       </el-col>
@@ -648,6 +648,7 @@ watch(form, () => {
 
 const hubsList = ref([]);
 const isBulkMail = computed(() => form.pickup_mode === 'BULK_MAIL');
+const bulkProductTypes = computed(() => productTypes.value.filter(type => ['DOCUMENT', 'PARCEL'].includes(type.code)));
 const isSingleBulkMail = computed(() => isBulkMail.value && Number(form.bulk_estimated_quantity) === 1);
 const bulkMailInstruction = computed(() => isSingleBulkMail.value
   ? 'Bạn có thể nhập trước thông tin người nhận hoặc để trống để hệ thống OCR bổ sung sau.'

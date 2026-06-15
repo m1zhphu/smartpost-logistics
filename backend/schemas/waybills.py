@@ -153,7 +153,10 @@ class BulkMailPickupCreate(BaseModel):
     @field_validator("product_type", mode="before")
     @classmethod
     def validate_bulk_product_type(cls, value):
-        return normalize_product_type(value)
+        product_type = normalize_product_type(value)
+        if product_type not in {"DOCUMENT", "PARCEL"}:
+            return "PARCEL"
+        return product_type
 
     @model_validator(mode="after")
     def validate_draft_items(self):
