@@ -993,11 +993,7 @@ const downloadTemplate = () => {
 };
 
 const mapStandardProvinceToHubProvince = (provinceId) => {
-  const pId = Number(provinceId);
-  if (pId === 79) return 59;
-  if (pId === 1) return 29;
-  if (pId === 48) return 15;
-  return pId;
+  return Number(provinceId);
 };
 
 const parseVietnameseAddress = (addressStr, fallbackProvinceName) => {

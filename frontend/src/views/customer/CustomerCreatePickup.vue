@@ -637,6 +637,15 @@ const form = reactive({
   target_hub_id: null
 });
 
+const isDirty = ref(false);
+const isLoaded = ref(false);
+
+watch(form, () => {
+  if (isLoaded.value) {
+    isDirty.value = true;
+  }
+}, { deep: true });
+
 const hubsList = ref([]);
 const isBulkMail = computed(() => form.pickup_mode === 'BULK_MAIL');
 const isSingleBulkMail = computed(() => isBulkMail.value && Number(form.bulk_estimated_quantity) === 1);
@@ -893,6 +902,8 @@ const saveDraft = () => {
   localStorage.setItem('customer_pickup_drafts', JSON.stringify(savedDraftsList.value));
   ElMessage.success('Đã lưu bản nháp thành công!');
 
+  isDirty.value = false;
+
   if (resumeDraftId) {
     router.replace({ query: {} });
   }
@@ -971,7 +982,9 @@ const addToQueue = () => {
 
   // Auto save to recipient book
   saveToAddressBook(form.receiver);
-  
+
+  isLoaded.value = false;
+
   form.receiver.name = '';
   form.receiver.phone = '';
   form.receiver.province_id = null;
@@ -984,6 +997,17 @@ const addToQueue = () => {
   form.items = [{ product_group: 'PARCEL', product_name: '', weight: 0.5, length: 0, width: 0, height: 0, quantity: 1, declared_value: 0 }];
   form.cod_amount = 0;
   form.note = '';
+
+  // Reset bulk mail items
+  form.bulk_estimated_quantity = 1;
+  form.bulk_draft_items = [
+    { local_id: Date.now(), receiver_name: '', receiver_phone: '', receiver_address: '', customer_reference_code: '', note: '' }
+  ];
+
+  setTimeout(() => {
+    isLoaded.value = true;
+    isDirty.value = false;
+  }, 100);
 
   if (resumeDraftId) {
     router.replace({ query: {} });
@@ -1196,30 +1220,7 @@ const saveToAddressBook = (receiver) => {
 };
 
 const hasUnsavedData = () => {
-  if (!showCreateForm.value) return false;
-  
-  const hasReceiverInfo = !!(
-    form.receiver.name ||
-    form.receiver.phone ||
-    form.receiver.province_id ||
-    form.receiver.district_id ||
-    form.receiver.ward_id ||
-    form.receiver.address_detail
-  );
-  
-  const hasItemsInfo = form.items.some(item => 
-    item.product_name || 
-    (item.weight !== 0.5 && item.weight !== 0) || 
-    item.length > 0 || 
-    item.width > 0 || 
-    item.height > 0 || 
-    item.quantity > 1 || 
-    item.declared_value > 0
-  );
-  
-  const hasOtherInfo = form.cod_amount > 0 || form.note || form.extra_services.length > 0;
-  
-  return hasReceiverInfo || hasItemsInfo || hasOtherInfo;
+  return isDirty.value && showCreateForm.value;
 };
 
 const promptSaveDraft = () => {
@@ -1369,8 +1370,40 @@ onMounted(async () => {
     };
   }
 
+  const isProfileComplete = 
+    customerInfo.value.phone_number &&
+    customerInfo.value.province_id &&
+    customerInfo.value.district_id &&
+    customerInfo.value.address_detail;
+
+  if (!isProfileComplete) {
+    try {
+      await ElMessageBox.confirm(
+        'Tài khoản của bạn chưa cập nhật đầy đủ thông tin địa chỉ lấy hàng (Số điện thoại, Tỉnh/Thành, Quận/Huyện, Địa chỉ chi tiết). Vui lòng cập nhật đầy đủ thông tin tài khoản để tiếp tục tạo đơn.',
+        'Cảnh báo: Thiếu thông tin địa chỉ lấy hàng',
+        {
+          confirmButtonText: 'Cập nhật ngay',
+          cancelButtonText: 'Hủy',
+          type: 'warning',
+          showClose: false,
+          closeOnClickModal: false,
+          closeOnPressEscape: false
+        }
+      );
+      router.push('/customer/profile');
+    } catch (e) {
+      router.push('/customer/dashboard');
+    }
+    return;
+  }
+
   fetchAvailableServices();
   fetchHubs();
+
+  setTimeout(() => {
+    isLoaded.value = true;
+    isDirty.value = false;
+  }, 500);
 });
 
 onUnmounted(() => {

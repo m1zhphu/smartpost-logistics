@@ -1,10 +1,10 @@
 /* Base Layout - Premium Glassmorphism & Soft Gradients */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 .modern-waybill-create {
   min-height: calc(100vh - 64px);
   background: radial-gradient(120% 120% at 50% 10%, #f6f8fd 0%, #edf1f9 100%);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   color: #1e293b;
   padding: 32px;
 }

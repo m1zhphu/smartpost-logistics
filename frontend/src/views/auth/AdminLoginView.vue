@@ -34,7 +34,7 @@
         </el-form-item>
         
         <el-button 
-          type="warning" 
+          type="primary" 
           class="login-btn" 
           :loading="loading" 
           @click="handleLogin"
@@ -42,7 +42,7 @@
       </el-form>
 
       <div class="login-actions justify-center mt-20">
-        <router-link to="/login" class="login-link text-warning">Đăng nhập tài khoản khách hàng</router-link>
+        <router-link to="/login" class="login-link text-primary">Đăng nhập tài khoản khách hàng</router-link>
       </div>
       
       <div class="login-logo-bottom">
@@ -154,12 +154,13 @@ export default {
   margin-top: 4px;
   font-size: 0.9rem;
 }
-.text-warning {
-  color: #e6a23c;
+.text-primary {
+  color: #388E3C;
   text-decoration: none;
   font-weight: 600;
 }
-.text-warning:hover {
+.text-primary:hover {
+  color: #2F7C31;
   text-decoration: underline;
 }
 .justify-center {
