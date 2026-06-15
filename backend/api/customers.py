@@ -170,6 +170,27 @@ def update_my_customer_profile(
         "customer": _customer_response_payload(customer),
     }
 
+@router.delete("/me")
+def delete_my_customer_account(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Soft delete the currently authenticated customer account."""
+    customer = _get_current_customer(db, current_user)
+    customer, result = crud_customers.delete_customer_record(db, customer)
+    if result == "INACTIVE":
+        return {
+            "message": "Tai khoan da co phat sinh nghiep vu nen he thong da chuyen sang trang thai ngung hoat dong.",
+            "id": customer.customer_id,
+            "customer_id": customer.customer_id,
+            "status": customer.status,
+            "action": "INACTIVATED",
+        }
+    return {
+        "message": "Da xoa mem tai khoan khach hang",
+        "id": customer.customer_id,
+        "customer_id": customer.customer_id,
+        "status": customer.status,
+        "action": "DELETED",
+    }
+
 @router.post("")
 def create_customer(data: CustomerCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """API tạo khách hàng mới phục vụ Master Data"""
