@@ -79,7 +79,7 @@
                       <el-icon style="vertical-align: middle; margin-right: 2px;"><Location /></el-icon>
                       <span style="vertical-align: middle;">{{ userHubName }}</span>
                     </span>
-                    <span class="text-xs text-muted" v-else>{{ isAdmin ? 'Quản trị viên' : 'Nhân viên' }}</span>
+                    <span class="text-xs text-muted" v-else>{{ userRoleLabel }}</span>
                  </div>
                  <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
                </div>
@@ -90,6 +90,9 @@
                       <div class="fw-bold text-dark">{{ user?.full_name || 'Quản trị viên' }}</div>
                       <div class="text-xs text-muted">@{{ user?.username || 'admin' }} <span v-if="userHubName">| {{ userHubName }}</span></div>
                    </div>
+                   <el-dropdown-item @click="goToProfile">
+                      <el-icon><User /></el-icon> Thông tin cá nhân
+                   </el-dropdown-item>
                    <el-dropdown-item divided @click="handleLogout" class="text-danger">
                       <el-icon><Close /></el-icon> Đăng xuất
                    </el-dropdown-item>
@@ -131,6 +134,26 @@ const authStore = useAuthStore();
 const { user, isAdmin } = storeToRefs(authStore);
 
 const isSidebarCollapsed = ref(true);
+
+const userRoleLabel = computed(() => {
+  if (authStore.isCustomer) return 'Khách hàng';
+  if (authStore.isAdmin) return 'Quản trị viên';
+  const role = user.value?.role_id;
+  if (role === 2) return 'Quản lý bưu cục';
+  if (role === 3) return 'Nhân viên kho';
+  if (role === 4) return 'Bưu tá (Shipper)';
+  if (role === 5) return 'Kế toán';
+  if (role === 7) return 'CSKH';
+  return 'Nhân viên';
+});
+
+const goToProfile = () => {
+  if (authStore.isCustomer) {
+    router.push('/customer/profile');
+  } else {
+    router.push('/admin/profile');
+  }
+};
 
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value;

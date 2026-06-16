@@ -51,22 +51,39 @@
           <el-card shadow="hover" class="action-card">
             
             <div class="pod-upload-section mb-5">
-              <label class="section-label">Ảnh xác nhận giao hàng <span class="text-danger">*</span></label>
-              
-              <div class="upload-area" :class="{ 'has-image': preview }">
+              <label class="section-label">
+                Ảnh xác nhận giao hàng <span class="text-danger">*</span>
+                <span class="text-xs text-gray-400 ml-1">(Tối đa 5 ảnh)</span>
+              </label>
+
+              <div v-if="podImageUrls.length > 0" class="pod-thumb-gallery mb-3">
+                <div
+                  v-for="(url, idx) in podImageUrls"
+                  :key="'pod-thumb-' + idx"
+                  class="pod-thumb-item"
+                >
+                  <img :src="url" class="pod-thumb-img" />
+                  <button class="pod-thumb-remove" @click.prevent="removePodImage(idx)">✕</button>
+                  <span v-if="idx === 0" class="pod-thumb-label">Chính</span>
+                </div>
+              </div>
+
+              <div v-if="podImageUrls.length < 5" class="upload-area" :class="{ 'compact': podImageUrls.length > 0 }">
                 <input
                   type="file"
                   accept="image/*"
                   capture="environment"
+                  multiple
                   class="file-input"
                   @change="handleFile"
                 />
-                <div v-if="!preview" class="upload-placeholder">
+                <div class="upload-placeholder">
                   <el-icon class="camera-icon"><CameraFilled /></el-icon>
-                  <p class="upload-text">Chạm để chụp ảnh / Tải lên</p>
-                  <p class="upload-hint">Bắt buộc phải có ảnh bằng chứng giao hàng</p>
+                  <p class="upload-text">
+                    {{ podImageUrls.length === 0 ? 'Chạm để chụp ảnh / Tải lên' : `Thêm ảnh (còn ${5 - podImageUrls.length} slot)` }}
+                  </p>
+                  <p class="upload-hint" v-if="podImageUrls.length === 0">Bắt buộc phải có ảnh bằng chứng giao hàng</p>
                 </div>
-                <img v-else :src="preview" class="preview-img" />
               </div>
             </div>
 
@@ -87,7 +104,7 @@
                 class="btn-success w-full mb-3"
                 :loading="loading"
                 @click="submitPOD"
-                :disabled="!imageFile"
+                :disabled="podImageUrls.length === 0"
               >
                 <el-icon class="mr-2"><CircleCheckFilled /></el-icon> GIAO THÀNH CÔNG
               </el-button>
@@ -116,49 +133,94 @@ import { useRouter, useRoute } from 'vue-router';
 import { CameraFilled, Back, CircleCheckFilled, WarningFilled, Document, PhoneFilled, Location } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
 const loading = ref(false);
 const loadingInfo = ref(false);
 const note = ref('');
-const preview = ref(null);
-const imageFile = ref(null);
 const waybill = ref(null);
+const podImageUrls = ref([]);
 
 const formatCurrency = (val) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
 
-const handleFile = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    imageFile.value = file;
-    const reader = new FileReader();
-    reader.onload = (f) => preview.value = f.target.result;
-    reader.readAsDataURL(file);
-  }
-};
+const handleFile = async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
 
-const submitPOD = async () => {
-  if (!imageFile.value) return ElMessage.warning('Vui lòng chụp ảnh bằng chứng giao hàng!');
+  const remaining = 5 - podImageUrls.value.length;
+  const toProcess = files.slice(0, remaining);
+
+  if (files.length > remaining) {
+    ElMessage.warning(`Chỉ được tải tối đa 5 ảnh. Đã bỏ bớt ${files.length - remaining} ảnh.`);
+  }
+
+  const validFiles = toProcess.filter(f => {
+    if (!f.type.startsWith('image/')) {
+      ElMessage.error(`${f.name}: Chỉ chấp nhận file ảnh!`);
+      return false;
+    }
+    if (f.size / 1024 / 1024 > 5) {
+      ElMessage.error(`${f.name}: Ảnh phải nhỏ hơn 5MB!`);
+      return false;
+    }
+    return true;
+  });
+
+  if (!validFiles.length) return;
+
   loading.value = true;
   try {
     const formData = new FormData();
-    formData.append('file', imageFile.value);
-    let podUrl = '';
-    try {
-      const uploadRes = await api.post('/api/upload/pod', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      podUrl = uploadRes.data.url || uploadRes.data.file_url || '';
-    } catch {
-      podUrl = 'uploaded_locally'; 
+    validFiles.forEach(f => formData.append('files', f));
+
+    const uploadRes = await api.post('/api/upload/pod/batch', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...(authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {})
+      }
+    });
+
+    const urls = uploadRes.data?.image_urls || [];
+    if (uploadRes.data?.image_url && urls.length === 0) {
+      urls.push(uploadRes.data.image_url);
     }
 
+    urls.forEach(url => {
+      if (podImageUrls.value.length < 5) {
+        podImageUrls.value.push(url);
+      }
+    });
+
+    if (urls.length > 0) {
+      ElMessage.success(`Đã tải lên ${urls.length} ảnh thành công!`);
+    }
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Lỗi khi tải ảnh lên. Vui lòng thử lại.');
+  } finally {
+    loading.value = false;
+    e.target.value = '';
+  }
+};
+
+const removePodImage = (idx) => {
+  podImageUrls.value.splice(idx, 1);
+};
+
+const submitPOD = async () => {
+  if (podImageUrls.value.length === 0) {
+    return ElMessage.warning('Vui lòng chụp ảnh bằng chứng giao hàng!');
+  }
+  loading.value = true;
+  try {
     await api.post('/api/delivery/confirm-success', {
       waybill_code: route.params.id,
-      actual_cod_collected: waybill.value?.cod_amount || waybill.value?.total_amount_to_collect || 0, 
-      pod_image_url: podUrl,
+      actual_cod_collected: waybill.value?.cod_amount || waybill.value?.total_amount_to_collect || 0,
+      pod_image_url: podImageUrls.value[0],
+      pod_image_urls: podImageUrls.value,
       note: note.value
     });
 
@@ -180,7 +242,6 @@ const FAILURE_REASONS = [
 ];
 
 const reportFailure = async () => {
-  // Tạo danh sách radio để chọn lý do thay vì gõ tay
   let htmlString = '<div style="text-align: left; margin-bottom: 15px;">Vui lòng chọn lý do giao thất bại:</div>';
   htmlString += '<div class="reason-radio-group" style="display: flex; flex-direction: column; gap: 10px; text-align: left;">';
   
@@ -206,7 +267,6 @@ const reportFailure = async () => {
     });
 
     if (action === 'confirm') {
-      // Lấy giá trị radio đã chọn bằng DOM (Hơi trick một chút cho ElMessageBox html)
       const selectedRadio = document.querySelector('input[name="fail_reason"]:checked');
       const selectedReason = selectedRadio ? selectedRadio.value : 'OTHER';
 
@@ -240,3 +300,70 @@ onMounted(async () => {
 </script>
 
 <style scoped src="@/styles/admin/shipper/PODConfirmation.css"></style>
+
+<style scoped>
+/* Batch upload gallery */
+.pod-thumb-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pod-thumb-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.pod-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pod-thumb-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.2s;
+}
+.pod-thumb-remove:hover { background: #dc2626; }
+.pod-thumb-label {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  background: rgba(67,24,255,0.8);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+.upload-area.compact {
+  min-height: 64px;
+  padding: 10px;
+}
+.upload-area.compact .camera-icon {
+  font-size: 24px;
+}
+.upload-area.compact .upload-text {
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+</style>

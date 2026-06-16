@@ -805,7 +805,7 @@
       <el-dialog 
         v-model="pickedDialogVisible" 
         title="Xác nhận lấy hàng thành công (Hồ sơ biên nhận)" 
-        width="480px"
+        width="520px"
         destroy-on-close
       >
         <el-form :model="pickedForm" label-position="top" v-loading="dialogLoading">
@@ -813,29 +813,49 @@
             <el-input v-model="pickedForm.request_code" disabled class="fw-bold" />
           </el-form-item>
           
-          <el-form-item label="ẢNH BIÊN NHẬN THỰC ĐỊA (BẮT BUỘC)" required>
-            <div class="flex-center flex-column gap-2 border-dashed p-4 rounded text-center upload-container">
+          <el-form-item required>
+            <template #label>
+              <span>ẢNH BIÊN NHẬN THỰC ĐỊA (BẮT BUỘC)</span>
+              <span class="text-xs text-muted ml-2">(Tối đa 5 ảnh)</span>
+            </template>
+            <!-- Gallery ảnh đã upload -->
+            <div v-if="pickedForm.pickup_image_urls.length > 0" class="pickup-batch-gallery mb-2">
+              <div
+                v-for="(imgUrl, idx) in pickedForm.pickup_image_urls"
+                :key="'batch-' + idx"
+                class="pickup-batch-thumb"
+              >
+                <img :src="getFullImageUrl(imgUrl)" class="receipt-preview-sm" />
+                <button class="remove-thumb-btn" @click.prevent="removePickupImage(idx)">
+                  <el-icon><Close /></el-icon>
+                </button>
+                <span v-if="idx === 0" class="thumb-label-first">Chính</span>
+              </div>
+            </div>
+            <!-- Upload button —hiện khi chưa đủ 5 ảnh -->
+            <div v-if="pickedForm.pickup_image_urls.length < 5" class="upload-container border-dashed p-3 rounded text-center">
               <el-upload
                 class="receipt-uploader"
-                :action="uploadUrl"
+                :action="batchPickupUploadUrl"
                 :headers="uploadHeaders"
-                name="file"
+                name="files"
+                multiple
+                :limit="5 - pickedForm.pickup_image_urls.length"
                 :show-file-list="false"
-                :on-success="handleUploadSuccess"
-                :before-upload="beforeUpload"
+                :on-success="handleBatchUploadSuccess"
+                :before-upload="beforeUploadBatch"
                 v-loading="uploadLoading"
+                accept="image/*"
               >
-                <div v-if="pickedForm.pickup_image_url" class="relative group preview-wrapper">
-                  <img :src="getFullImageUrl(pickedForm.pickup_image_url)" class="receipt-preview" />
-                  <div class="upload-overlay">Thay đổi ảnh</div>
-                </div>
-                <div v-else class="upload-placeholder">
+                <div class="upload-placeholder">
                   <el-icon class="receipt-uploader-icon"><Plus /></el-icon>
-                  <div class="text-xs text-muted mt-2">Nhấp để chọn tải ảnh biên nhận</div>
+                  <div class="text-xs text-muted mt-1">
+                    {{ pickedForm.pickup_image_urls.length === 0 ? 'Nhấp để chọn ảnh biên nhận' : `Thêm ảnh (còn ${5 - pickedForm.pickup_image_urls.length} slot)` }}
+                  </div>
                 </div>
               </el-upload>
             </div>
-            <div class="helper-text mt-1">Chỉ chấp nhận JPG/PNG dung lượng dưới 5MB.</div>
+            <div class="helper-text mt-1">Chỉ chấp nhận JPG/PNG dung lượng dưới 5MB mỗi ảnh.</div>
           </el-form-item>
 
           <el-form-item label="GHI CHÚ XÁC NHẬN">
@@ -850,7 +870,7 @@
         <template #footer>
           <div class="flex justify-end gap-2">
             <el-button @click="pickedDialogVisible = false">Hủy</el-button>
-            <el-button type="success" :disabled="!pickedForm.pickup_image_url || dialogLoading" @click="submitPicked">
+            <el-button type="success" :disabled="!pickedForm.pickup_image_urls.length || dialogLoading" @click="submitPicked">
               Đã Lấy Hàng
             </el-button>
           </div>
@@ -1043,15 +1063,19 @@
               </el-row>
 
               <!-- Nếu đơn đã lấy thành công và có ảnh biên nhận -->
-              <div v-if="selectedRequest.status === 'PICKED' || selectedRequest.pickup_image_url" class="mt-2">
+              <div v-if="selectedRequest.status === 'PICKED' || selectedRequest.pickup_image_url || selectedRequest.pickup_image_urls?.length" class="mt-2">
                 <h4 class="section-title"><el-icon class="mr-1"><Check /></el-icon> Biên nhận thực địa</h4>
-                <div class="info-card flex gap-4 items-center">
-                  <div v-if="selectedRequest.pickup_image_url">
-                    <el-image 
-                      style="width: 100px; height: 100px; border-radius: 4px; border: 1px solid var(--border-color, #e2e8f0);" 
-                      :src="getFullImageUrl(selectedRequest.pickup_image_url)" 
-                      :preview-src-list="[getFullImageUrl(selectedRequest.pickup_image_url)]"
-                      fit="cover" 
+                <div class="info-card flex gap-4 items-start">
+                  <!-- Gallery ảnh pickup - tối đa 5 ảnh -->
+                  <div v-if="getPickupImages(selectedRequest).length > 0" class="pickup-proof-gallery flex gap-2 flex-wrap">
+                    <el-image
+                      v-for="(imgUrl, imgIdx) in getPickupImages(selectedRequest)"
+                      :key="'picked-' + imgIdx"
+                      style="width: 100px; height: 100px; border-radius: 4px; border: 1px solid var(--border-color, #e2e8f0);"
+                      :src="getFullImageUrl(imgUrl)"
+                      :preview-src-list="getPickupImages(selectedRequest).map(u => getFullImageUrl(u))"
+                      :initial-index="imgIdx"
+                      fit="cover"
                     />
                   </div>
                   <div>
@@ -1118,6 +1142,7 @@ import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check,
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
+import { getPickupImages } from '@/utils/imageHelpers';
 import { formatVietnamDateTime } from '@/utils/dateTime';
 import * as XLSX from 'xlsx';
 import { useAuthStore } from '@/stores/auth';
@@ -1331,13 +1356,14 @@ const pickedDialogVisible = ref(false);
 const pickedForm = reactive({
   request_code: '',
   pickup_image_url: '',
+  pickup_image_urls: [],
   note: ''
 });
 
-// Image Upload Configuration
-const uploadUrl = computed(() => {
+// Image Upload Configuration (batch)
+const batchPickupUploadUrl = computed(() => {
   const base = import.meta.env.VITE_API_URL || '';
-  return `${base}/api/upload/bill?is_pickup=true`;
+  return `${base}/api/upload/bill/batch?is_pickup=true`;
 });
 
 const uploadHeaders = computed(() => {
@@ -1345,6 +1371,95 @@ const uploadHeaders = computed(() => {
 });
 
 const getFullImageUrl = resolveMediaUrl;
+
+// Batch upload: tối đa 5 ảnh
+const beforeUploadBatch = (file) => {
+  const isImage = file.type.startsWith('image/');
+  const isLt5M = file.size / 1024 / 1024 < 5;
+  if (!isImage) {
+    ElMessage.error('Chỉ chấp nhận file ảnh (JPG/PNG/WEBP)!');
+    return false;
+  }
+  if (!isLt5M) {
+    ElMessage.error('Ảnh phải nhỏ hơn 5MB!');
+    return false;
+  }
+  if (pickedForm.pickup_image_urls.length >= 5) {
+    ElMessage.warning('Chỉ được tải tối đa 5 ảnh!');
+    return false;
+  }
+  return true;
+};
+
+const handleBatchUploadSuccess = (response) => {
+  const urls = response?.image_urls || [];
+  urls.forEach(url => {
+    if (pickedForm.pickup_image_urls.length < 5) {
+      pickedForm.pickup_image_urls.push(url);
+    }
+  });
+  if (response?.image_url && !pickedForm.pickup_image_url) {
+    pickedForm.pickup_image_url = response.image_url;
+  }
+  // Đảm bảo pickup_image_url luôn = ảnh đầu tiên trong mảng
+  if (pickedForm.pickup_image_urls.length > 0) {
+    pickedForm.pickup_image_url = pickedForm.pickup_image_urls[0];
+  }
+};
+
+const handleSingleUploadSuccess = (response) => {
+  const url = response?.image_url || response?.url || '';
+  if (url && pickedForm.pickup_image_urls.length < 5) {
+    pickedForm.pickup_image_urls.push(url);
+    pickedForm.pickup_image_url = pickedForm.pickup_image_urls[0];
+  }
+};
+
+const removePickupImage = (idx) => {
+  pickedForm.pickup_image_urls.splice(idx, 1);
+  pickedForm.pickup_image_url = pickedForm.pickup_image_urls[0] || '';
+};
+
+const openPickedDialog = (row) => {
+  pickedForm.request_code = row.request_code;
+  pickedForm.pickup_image_url = '';
+  pickedForm.pickup_image_urls = [];
+  pickedForm.note = '';
+  pickedDialogVisible.value = true;
+};
+
+const handleUploadSuccess = (response) => {
+  handleSingleUploadSuccess(response);
+};
+
+const beforeUpload = (file) => {
+  return beforeUploadBatch(file);
+};
+
+const submitPicked = async () => {
+  if (!pickedForm.pickup_image_urls.length) {
+    ElMessage.warning('Vui lòng tải lên ít nhất 1 ảnh biên nhận!');
+    return;
+  }
+  dialogLoading.value = true;
+  try {
+    await api.post(
+      `/api/delivery/pickup-requests/${pickedForm.request_code}/picked`,
+      {
+        pickup_image_url: pickedForm.pickup_image_urls[0],
+        pickup_image_urls: pickedForm.pickup_image_urls,
+        note: pickedForm.note || 'Đã lấy hàng thành công'
+      }
+    );
+    ElMessage.success('Xác nhận lấy hàng thành công!');
+    pickedDialogVisible.value = false;
+    fetchTabRequests('assigned');
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Có lỗi xảy ra khi xác nhận lấy hàng');
+  } finally {
+    dialogLoading.value = false;
+  }
+};
 
 // Lấy tên bưu cục từ hub_id (vì BookingRequestResponse không có target_hub_name)
 const getHubName = (hubId) => {
@@ -2280,6 +2395,59 @@ watch(
 </script>
 
 <style scoped>
+/* --- Batch Upload Gallery --- */
+.pickup-batch-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pickup-batch-thumb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid var(--sp-border, #e2e8f0);
+  flex-shrink: 0;
+}
+.receipt-preview-sm {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.remove-thumb-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(239,68,68,0.85);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.2s;
+}
+.remove-thumb-btn:hover { background: #dc2626; }
+.thumb-label-first {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  background: rgba(67,24,255,0.8);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.4;
+}
 .modern-pickup-page {
   min-height: calc(100vh - 64px);
   background-color: var(--sp-bg-app, #f8fafc);

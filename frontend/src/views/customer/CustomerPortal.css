@@ -710,6 +710,8 @@
   border-radius: 6px;
   font-size: 12px;
   display: inline-block;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
 }
 .code-badge.warning { background: rgba(245, 158, 11, 0.1); color: #D97706; }
 .code-badge.success { background: rgba(16, 185, 129, 0.1); color: #059669; }
@@ -1071,4 +1073,88 @@
 .table-scroll-wrapper :deep(button),
 .table-scroll-wrapper :deep(.el-button) {
   white-space: nowrap;
+}
+
+/* Custom Alignment & Spacing Helper Classes */
+.text-center {
+  text-align: center !important;
+}
+.text-left {
+  text-align: left !important;
+}
+.mx-auto {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.py-5 {
+  padding-top: 3rem !important;
+  padding-bottom: 3rem !important;
+}
+.mt-3 {
+  margin-top: 1rem !important;
+}
+.mb-2 {
+  margin-bottom: 0.5rem !important;
+}
+.mb-3 {
+  margin-bottom: 0.75rem !important;
+}
+.mb-4 {
+  margin-bottom: 1rem !important;
+}
+.text-muted {
+  color: var(--sp-text-muted, #a3b1cc) !important;
+}
+.large-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.gap-2 {
+  gap: 8px;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.text-center .el-icon,
+.text-center img,
+.text-center .large-icon {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.el-button {
+  white-space: nowrap !important;
+}
+.customer-orders-table-scroll :deep(.el-table) {
+  min-width: 1350px;
+}
+.el-tag,
+:deep(.el-tag) {
+  max-width: none !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+/* Enforce solid backgrounds on fixed table columns to prevent transparency overlap */
+.modern-table :deep(.el-table__cell.is-fixed) {
+  background-color: #ffffff !important;
+}
+.modern-table :deep(.el-table__row--striped td.el-table__cell.is-fixed) {
+  background-color: #f8fafc !important;
+}
+.modern-table :deep(th.el-table__cell.is-fixed) {
+  background-color: #f8fafc !important;
+}
+.modern-table :deep(.el-table__row:hover td.el-table__cell.is-fixed) {
+  background-color: #f5f7fa !important;
 }

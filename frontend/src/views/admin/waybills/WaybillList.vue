@@ -399,27 +399,37 @@
               <div class="timeline-card" :class="{'latest': index === 0}">
                 <h4 class="status-title">{{ activity.status_id }}</h4>
                 <p class="status-note">{{ activity.note }}</p>
-                <div v-if="activity.pickup_image_url" class="pickup-proof">
-                  <span class="pickup-proof-label">Ảnh xác nhận pickup</span>
-                  <el-image
-                    class="pickup-proof-image"
-                    :src="getMediaUrl(activity.pickup_image_url)"
-                    :preview-src-list="[getMediaUrl(activity.pickup_image_url)]"
-                    :initial-index="0"
-                    fit="cover"
-                    preview-teleported
-                  />
+                <!-- Gallery ảnh lấy hàng (pickup) - tối đa 5 ảnh -->
+                <div v-if="getPickupImages(activity).length > 0" class="pickup-proof">
+                  <span class="pickup-proof-label">Ảnh xác nhận pickup ({{ getPickupImages(activity).length }} ảnh)</span>
+                  <div class="pickup-proof-gallery">
+                    <el-image
+                      v-for="(imgUrl, imgIdx) in getPickupImages(activity)"
+                      :key="'pickup-' + imgIdx"
+                      class="pickup-proof-image"
+                      :src="resolveMediaUrl(imgUrl)"
+                      :preview-src-list="getPickupImages(activity).map(u => resolveMediaUrl(u))"
+                      :initial-index="imgIdx"
+                      fit="cover"
+                      preview-teleported
+                    />
+                  </div>
                 </div>
-                <div v-if="activity.pod_image_url" class="pickup-proof">
-                  <span class="pickup-proof-label">Ảnh xác nhận giao hàng (POD)</span>
-                  <el-image
-                    class="pickup-proof-image"
-                    :src="resolveMediaUrl(activity.pod_image_url)"
-                    :preview-src-list="[resolveMediaUrl(activity.pod_image_url)]"
-                    :initial-index="0"
-                    fit="cover"
-                    preview-teleported
-                  />
+                <!-- Gallery ảnh giao hàng (POD) - tối đa 5 ảnh -->
+                <div v-if="getPodImages(activity).length > 0" class="pickup-proof">
+                  <span class="pickup-proof-label">Ảnh xác nhận giao hàng (POD) ({{ getPodImages(activity).length }} ảnh)</span>
+                  <div class="pickup-proof-gallery">
+                    <el-image
+                      v-for="(imgUrl, imgIdx) in getPodImages(activity)"
+                      :key="'pod-' + imgIdx"
+                      class="pickup-proof-image"
+                      :src="resolveMediaUrl(imgUrl)"
+                      :preview-src-list="getPodImages(activity).map(u => resolveMediaUrl(u))"
+                      :initial-index="imgIdx"
+                      fit="cover"
+                      preview-teleported
+                    />
+                  </div>
                 </div>
                 <div v-if="activity.hub_name" class="status-location">
                    <el-icon><LocationInformation /></el-icon>
@@ -758,6 +768,7 @@ import {
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
+import { getPickupImages, getPodImages } from '@/utils/imageHelpers';
 import moment from 'moment';
 import { useAuthStore } from '@/stores/auth';
 

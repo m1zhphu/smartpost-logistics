@@ -527,3 +527,55 @@ button[title*="Xóa"]:hover,
   transform: translateY(-1px) !important;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12) !important;
 }
+
+/* =========================================
+   IMAGE GALLERY - Pickup & POD (multi-photo)
+   ========================================= */
+
+/* Gallery container dùng chung trong timeline và detail dialog */
+.pickup-proof-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pickup-proof-gallery .el-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.pickup-proof-gallery .el-image:hover {
+  transform: scale(1.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Gallery dạng hàng ngang trong CustomerOrders detail dialog */
+.pickup-image-gallery-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pickup-image-gallery-row .el-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.pickup-image-gallery-row .el-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}

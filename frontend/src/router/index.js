@@ -197,6 +197,13 @@ const adminRoutes = [
         component: () => import('../views/admin/cskh/BillVerification.vue'),
         meta: { requiresAuth: true }
       },
+      // Profile
+      {
+        path: 'profile',
+        name: 'AdminProfile',
+        component: () => import('../views/admin/profile/AdminProfile.vue'),
+        meta: { requiresAuth: true }
+      },
     ],
   },
 ];

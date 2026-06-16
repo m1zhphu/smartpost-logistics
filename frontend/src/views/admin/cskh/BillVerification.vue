@@ -107,15 +107,21 @@
               </div>
             </el-tab-pane>
             <el-tab-pane label="Ảnh Kiện hàng">
-              <div class="image-wrapper" style="height: 330px; border: none;">
-                <el-image
-                  v-if="selectedWaybill.pickup_image_url"
-                  :src="getMediaUrl(selectedWaybill.pickup_image_url)"
-                  :preview-src-list="[getMediaUrl(selectedWaybill.pickup_image_url)]"
-                  fit="contain"
-                  class="bill-large-image"
-                  preview-teleported
-                />
+              <div class="image-wrapper" style="height: 330px; border: none; overflow-y: auto;">
+                <!-- Gallery ảnh pickup - tối đa 5 ảnh -->
+                <div v-if="getPickupImages(selectedWaybill).length > 0" class="pickup-proof-gallery" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 8px;">
+                  <el-image
+                    v-for="(imgUrl, imgIdx) in getPickupImages(selectedWaybill)"
+                    :key="'bv-pickup-' + imgIdx"
+                    :style="getPickupImages(selectedWaybill).length === 1 ? 'width:100%; height:310px;' : 'width:calc(50% - 4px); height:150px;'"
+                    :src="getMediaUrl(imgUrl)"
+                    :preview-src-list="getPickupImages(selectedWaybill).map(u => getMediaUrl(u))"
+                    :initial-index="imgIdx"
+                    fit="contain"
+                    class="bill-large-image"
+                    preview-teleported
+                  />
+                </div>
                 <div v-else class="no-image-placeholder">
                   <el-icon style="font-size: 48px; color: #cbd5e1;"><Picture /></el-icon>
                   <p style="margin-top: 8px;">Không có ảnh kiện hàng bưu tá chụp</p>
@@ -279,6 +285,7 @@ import { Refresh, Money, Printer, Memo, Warning, Check, Close, Picture, SuccessF
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
 import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
+import { getPickupImages } from '@/utils/imageHelpers';
 
 const tableData = ref([]);
 const loading = ref(false);

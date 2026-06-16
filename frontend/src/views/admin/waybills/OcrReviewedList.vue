@@ -68,12 +68,28 @@
             <div class="muted">{{ row.actual_weight || 0 }} kg - COD {{ formatMoney(row.cod_amount) }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="Ảnh" width="150">
+        <el-table-column label="Ảnh" width="160">
           <template #default="{ row }">
-            <div class="image-actions">
+            <div class="image-actions" style="display: flex; gap: 8px; align-items: center;">
               <el-link v-if="row.bill_image_url" type="primary" :href="imageUrl(row.bill_image_url)" target="_blank">Bill</el-link>
-              <el-link v-if="row.pickup_image_url" type="success" :href="imageUrl(row.pickup_image_url)" target="_blank">Pickup</el-link>
-              <span v-if="!row.bill_image_url && !row.pickup_image_url" class="muted">---</span>
+              
+              <!-- Dùng el-image preview để xem được cả gallery ảnh pickup -->
+              <div v-if="getPickupImages(row).length" style="display: inline-block;">
+                <el-image
+                  style="width: 0px; height: 0px; visibility: hidden; position: absolute;"
+                  ref="previewImg"
+                  :src="imageUrl(getPickupImages(row)[0])"
+                  :preview-src-list="getPickupImages(row).map(url => imageUrl(url))"
+                  :initial-index="0"
+                  fit="cover"
+                  preview-teleported
+                />
+                <el-link type="success" @click="openPreview(row)">
+                  Pickup ({{ getPickupImages(row).length }})
+                </el-link>
+              </div>
+
+              <span v-if="!row.bill_image_url && !getPickupImages(row).length" class="muted">---</span>
             </div>
           </template>
         </el-table-column>
@@ -185,6 +201,25 @@ const finalize = (row) => {
 const formatMoney = (value) => Number(value || 0).toLocaleString('vi-VN') + 'd';
 const formatDate = (value) => value ? new Date(value).toLocaleString('vi-VN') : '---';
 const imageUrl = getMediaUrl;
+
+const previewImg = ref(null);
+
+const getPickupImages = (row) => {
+  if (row.pickup_image_urls && row.pickup_image_urls.length > 0) {
+    return row.pickup_image_urls;
+  }
+  return row.pickup_image_url ? [row.pickup_image_url] : [];
+};
+
+const openPreview = (row) => {
+  const index = rows.value.findIndex(r => r.waybill_code === row.waybill_code);
+  if (index !== -1 && previewImg.value) {
+    const imgEl = Array.isArray(previewImg.value) ? previewImg.value[index] : previewImg.value;
+    if (imgEl && typeof imgEl.clickHandler === 'function') {
+      imgEl.clickHandler();
+    }
+  }
+};
 
 onMounted(async () => {
   await fetchLookups();

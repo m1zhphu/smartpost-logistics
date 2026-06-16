@@ -73,12 +73,13 @@
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="160">
+                
+                <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="220">
                   <template #default="{ row }">
                     <span class="code-badge warning">{{ row.request_code }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Mã Vận Đơn / Túi" min-width="210">
+                <el-table-column label="Mã Vận Đơn / Túi" min-width="380">
                   <template #default="{ row }">
                     <span class="code-badge success">{{ row.pickup_mode === 'BULK_MAIL' ? (row.bag_code || row.waybill_code || '---') : (row.waybill_code || row.bag_code || '---') }}</span>
                   </template>
@@ -88,7 +89,7 @@
                     <span class="text-xs">{{ formatDate(row.created_at) }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Trạng thái" min-width="160">
+                <el-table-column label="Trạng thái" min-width="280">
                   <template #default="{ row }">
                     <el-tag :type="getCustomerOrderStatusType(row)" size="small">
                       {{ getCustomerOrderStatusLabel(row) }}
@@ -116,12 +117,8 @@
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column label="Thao tác" min-width="130" align="center">
-                  <template #default="{ row }">
-                    <el-button type="primary" size="small" plain @click="openDetail(row)">
-                      Xem chi tiết
-                    </el-button>
-                  </template>
+                <el-table-column label="Thao tác" min-width="160" align="center">
+                  <template #default="{ row }"><el-button type="primary" size="small" plain @click="openDetail(row)">Xem chi tiết</el-button></template>
                 </el-table-column>
                 <template #empty>
                   <el-empty description="Bạn chưa tạo đơn gửi hàng nào hoặc chưa có lịch sử vận đơn" :image-size="100" />
@@ -253,9 +250,10 @@
                 </el-col>
               </el-row>
 
-              <template v-if="selectedPickup.bill_image_url || selectedPickup.pickup_image_url || selectedPickup.pod_image_url">
+              <template v-if="selectedPickup.bill_image_url || getPickupImages(selectedPickup).length > 0 || getPodImages(selectedPickup).length > 0">
                 <el-divider content-position="left"><el-icon><Picture /></el-icon> Hình ảnh OCR / lấy hàng</el-divider>
                 <div class="pickup-image-grid">
+                  <!-- Ảnh OCR bill (giữ nguyên 1 ảnh) -->
                   <div v-if="selectedPickup.bill_image_url" class="pickup-image-card">
                     <div class="pickup-image-title">Ảnh vận đơn OCR</div>
                     <el-image
@@ -265,23 +263,35 @@
                       preview-teleported
                     />
                   </div>
-                  <div v-if="selectedPickup.pickup_image_url" class="pickup-image-card">
-                    <div class="pickup-image-title">Ảnh lấy hàng</div>
-                    <el-image
-                      :src="getMediaUrl(selectedPickup.pickup_image_url)"
-                      :preview-src-list="[getMediaUrl(selectedPickup.pickup_image_url)]"
-                      fit="cover"
-                      preview-teleported
-                    />
+                  <!-- Gallery ảnh lấy hàng - tối đa 5 ảnh -->
+                  <div v-if="getPickupImages(selectedPickup).length > 0" class="pickup-image-card">
+                    <div class="pickup-image-title">Ảnh lấy hàng ({{ getPickupImages(selectedPickup).length }} ảnh)</div>
+                    <div class="pickup-image-gallery-row">
+                      <el-image
+                        v-for="(imgUrl, imgIdx) in getPickupImages(selectedPickup)"
+                        :key="'pickup-' + imgIdx"
+                        :src="getMediaUrl(imgUrl)"
+                        :preview-src-list="getPickupImages(selectedPickup).map(u => getMediaUrl(u))"
+                        :initial-index="imgIdx"
+                        fit="cover"
+                        preview-teleported
+                      />
+                    </div>
                   </div>
-                  <div v-if="selectedPickup.pod_image_url" class="pickup-image-card">
-                    <div class="pickup-image-title">Ảnh giao hàng (POD)</div>
-                    <el-image
-                      :src="getMediaUrl(selectedPickup.pod_image_url)"
-                      :preview-src-list="[getMediaUrl(selectedPickup.pod_image_url)]"
-                      fit="cover"
-                      preview-teleported
-                    />
+                  <!-- Gallery ảnh giao hàng (POD) - tối đa 5 ảnh -->
+                  <div v-if="getPodImages(selectedPickup).length > 0" class="pickup-image-card">
+                    <div class="pickup-image-title">Ảnh giao hàng (POD) ({{ getPodImages(selectedPickup).length }} ảnh)</div>
+                    <div class="pickup-image-gallery-row">
+                      <el-image
+                        v-for="(imgUrl, imgIdx) in getPodImages(selectedPickup)"
+                        :key="'pod-' + imgIdx"
+                        :src="getMediaUrl(imgUrl)"
+                        :preview-src-list="getPodImages(selectedPickup).map(u => getMediaUrl(u))"
+                        :initial-index="imgIdx"
+                        fit="cover"
+                        preview-teleported
+                      />
+                    </div>
                   </div>
                 </div>
               </template>
@@ -437,6 +447,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
 import { formatVietnamDateTime } from '@/utils/dateTime';
+import { getPickupImages, getPodImages } from '@/utils/imageHelpers';
 import { 
   User, Service, Phone, Message, Close, 
   Search, DocumentAdd, Location, List, Edit, Lock,
@@ -1193,7 +1204,9 @@ const openDetail = async (row) => {
         ...selectedPickup.value,
         bill_image_url: res.data?.bill_image_url || selectedPickup.value?.bill_image_url,
         pickup_image_url: res.data?.pickup_image_url || selectedPickup.value?.pickup_image_url,
-        pod_image_url: res.data?.pod_image_url || selectedPickup.value?.pod_image_url
+        pickup_image_urls: res.data?.pickup_image_urls || selectedPickup.value?.pickup_image_urls || [],
+        pod_image_url: res.data?.pod_image_url || selectedPickup.value?.pod_image_url,
+        pod_image_urls: res.data?.pod_image_urls || selectedPickup.value?.pod_image_urls || []
       };
     } catch (err) {
       console.error('Error fetching timeline:', err);

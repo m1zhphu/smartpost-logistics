@@ -24,9 +24,9 @@
       </header>
 
       <!-- ===== DESKTOP TABLE (ẩn trên mobile) ===== -->
-      <div class="content-card table-wrapper animate-fade-in-up desktop-only">
+      <div class="content-card table-wrapper animate-fade-in-up desktop-only" style="padding-bottom: 20px;">
         <el-table 
-          :data="hubs" 
+          :data="paginatedHubs" 
           v-loading="loading" 
           class="modern-table"
           row-class-name="modern-row"
@@ -118,13 +118,25 @@
             <el-empty description="Chưa có dữ liệu bưu cục" :image-size="100" />
           </template>
         </el-table>
+
+        <!-- Phân trang desktop -->
+        <div class="pagination-container" style="display: flex; justify-content: flex-end; margin-top: 16px;">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[5, 10, 20, 50]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="hubs.length"
+            background
+          />
+        </div>
       </div>
 
       <!-- ===== MOBILE CARD LIST (chỉ hiện trên điện thoại) ===== -->
       <div class="mobile-only" v-loading="loading">
         <el-empty v-if="hubs.length === 0 && !loading" description="Chưa có dữ liệu bưu cục" :image-size="80" />
         <div
-          v-for="hub in hubs"
+          v-for="hub in paginatedHubs"
           :key="hub.hub_id"
           class="mobile-hub-card animate-fade-in-up"
         >
@@ -184,6 +196,18 @@
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Phân trang mobile -->
+        <div class="pagination-container" style="display: flex; justify-content: center; margin-top: 16px; margin-bottom: 24px;">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            layout="prev, pager, next"
+            :total="hubs.length"
+            small
+            background
+          />
         </div>
       </div>
 
@@ -275,7 +299,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { 
   Plus, Edit, Delete, Box, Location, UserFilled, User, Key, OfficeBuilding, Loading
 } from '@element-plus/icons-vue';
@@ -289,6 +313,15 @@ const formRef = ref(null);
 const hubs = ref([]);
 const admins = ref([]);
 const provinces = ref([]);
+
+const currentPage = ref(1);
+const pageSize = ref(10);
+
+const paginatedHubs = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return hubs.value.slice(start, end);
+});
 
 const hubForm = reactive({
   hub_id: null,

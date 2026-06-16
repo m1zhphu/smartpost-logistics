@@ -11,9 +11,27 @@
             </template>
             <div class="profile-details text-center">
               <el-avatar :size="90" class="portal-avatar mx-auto mb-3">{{ authStore.user?.full_name?.charAt(0) || 'C' }}</el-avatar>
-              <h3>{{ authStore.user?.full_name }}</h3>
-              <p>{{ customerInfo.email }}</p>
-              <p>{{ customerInfo.phone_number }}</p>
+              <h3 class="mb-3">{{ authStore.user?.full_name }}</h3>
+              
+              <div class="details-list text-left mt-3 mb-4 w-full mx-auto" style="max-width: 450px; text-align: left;">
+                <div class="detail-item">
+                  <span class="label">Mã khách hàng:</span>
+                  <span class="value">{{ customerInfo.customer_code || 'REG-PENDING' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Số điện thoại:</span>
+                  <span class="value">{{ customerInfo.phone_number || 'Chưa cập nhật' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Email liên hệ:</span>
+                  <span class="value">{{ customerInfo.email }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Địa chỉ lấy hàng mặc định:</span>
+                  <span class="value" style="line-height: 1.4;">{{ formattedAddress }}</span>
+                </div>
+              </div>
+              
               <div style="margin-top: 15px;">
                 <el-button type="primary" @click="openEditDialog">Cập nhật thông tin</el-button>
                 <el-button @click="openChangePasswordDialog">Đổi mật khẩu</el-button>
