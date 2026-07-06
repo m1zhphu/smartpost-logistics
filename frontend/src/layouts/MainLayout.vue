@@ -251,7 +251,7 @@ const menuData = computed(() => {
       ] : [
         { title: 'LẤY HÀNG', items: [
           ...([1, 2, 7].includes(role) ? [{ label: 'Thêm mới yêu cầu', path: '/admin/delivery/pickup-create' }] : []),
-          ...(role === 1 ? [{ label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' }] : []),
+          ...([1, 7].includes(role) ? [{ label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' }] : []),
           { label: 'Chờ bưu cục xác nhận', path: '/admin/delivery/pickup-management?tab=dispatch-hub' },
           { label: 'Chờ gán bưu tá', path: '/admin/delivery/pickup-management?tab=received' },
           { label: 'Đang đi lấy', path: '/admin/delivery/pickup-management?tab=assigned' }
@@ -278,6 +278,7 @@ const menuData = computed(() => {
         { title: 'TRUNG TÂM CSKH', items: [
           { label: 'Khách hàng tôi quản lý', path: '/admin/customers?mine=1' },
           { label: 'Bưu tá tôi quản lý', path: '/admin/users?my_shippers=1' },
+          { label: 'Yêu cầu pickup', path: '/admin/delivery/pickup-management?tab=pending' }
           // { label: 'Duyệt Bill & Báo giá', path: '/admin/cskh/verification' },
           // { label: 'Mô phỏng giá cước', path: '/admin/pricing/simulator' }
         ]}
@@ -295,6 +296,7 @@ const menuData = computed(() => {
           { label: 'Hàng chờ tạo đơn', path: '/customer/queue' },
           { label: 'Yêu cầu của tôi', path: '/customer/orders' },
           { label: 'Sổ địa chỉ người nhận', path: '/customer/recipients' },
+          { label: 'Quản lý phòng ban', path: '/customer/departments' },
         ]},
         { title: 'TÀI KHOẢN', items: [
           { label: 'Thông tin cá nhân', path: '/customer/profile' },
@@ -338,6 +340,7 @@ const currentPageTitle = computed(() => {
     'CustomerQueue': 'Hàng chờ tạo đơn',
     'CustomerOrders': 'Yêu cầu của tôi',
     'CustomerRecipients': 'Sổ địa chỉ người nhận',
+    'CustomerDepartments': 'Quản lý phòng ban',
     'CustomerProfile': 'Thông tin cá nhân'
   };
   return titleMap[route.name] || route.name || 'Bảng điều khiển';
