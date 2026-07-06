@@ -33,9 +33,6 @@
                 <el-button @click="saveDraft" type="info" plain>
                   <el-icon class="mr-1"><EditPen /></el-icon>Lưu nháp
                 </el-button>
-                <el-button @click="addToQueue" type="warning" plain>
-                  <el-icon class="mr-1"><FolderAdd /></el-icon>Đưa vào hàng chờ
-                </el-button>
               </div>
             </div>
 
@@ -356,6 +353,20 @@
                       </el-col>
                     </el-row>
                     <el-row :gutter="20">
+                      <el-col :span="24">
+                        <el-form-item label="Phòng ban quản lý (Để theo dõi chi phí)">
+                          <el-select v-model="form.department" placeholder="Chọn phòng ban (nếu có)" class="w-full" clearable filterable>
+                            <el-option
+                              v-for="dept in departmentsList"
+                              :key="dept.id"
+                              :label="dept.name"
+                              :value="dept.name"
+                            />
+                          </el-select>
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <el-row :gutter="20">
                       <el-col :xs="24" :sm="12">
                         <el-form-item label="Ghi chú khi giao">
                           <el-select v-model="form.delivery_note_option" class="w-full">
@@ -400,6 +411,15 @@
                     </el-checkbox-group>
                   </el-card>
 
+                  <!-- bottom actions -->
+                  <div class="form-actions-bottom" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
+                    <el-button @click="addToQueue" type="warning" plain size="large">
+                      <el-icon class="mr-1"><FolderAdd /></el-icon>Đưa vào hàng chờ
+                    </el-button>
+                    <el-button @click="submitPickupRequest" type="primary" size="large" :loading="submitLoading">
+                      <el-icon class="mr-1"><Upload /></el-icon>Gửi pickup
+                    </el-button>
+                  </div>
                 </el-form>
               </el-col>
 
@@ -478,7 +498,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import { 
   User, DocumentAdd, Box, Setting, CircleCheck, InfoFilled, 
-  ArrowLeft, Warning, Download, EditPen, FolderAdd, ArrowDown
+  ArrowLeft, Warning, Download, EditPen, FolderAdd, ArrowDown, Upload
 } from '@element-plus/icons-vue';
 import { parseExcelFile, processExcelRows } from '@/utils/excelParser';
 
@@ -634,7 +654,8 @@ const form = reactive({
   delivery_note_option: 'CHO_XEM_HANG',
   note: '',
   payment_method: 'SENDER_DEBT',
-  target_hub_id: null
+  target_hub_id: null,
+  department: ''
 });
 
 const isDirty = ref(false);
@@ -647,6 +668,22 @@ watch(form, () => {
 }, { deep: true });
 
 const hubsList = ref([]);
+const departmentsList = ref([]);
+const loadDepartments = () => {
+  const key = `customer_departments_${authStore.user?.username || 'global'}`;
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    departmentsList.value = JSON.parse(raw);
+  } else {
+    departmentsList.value = [
+      { id: '1', name: 'Phòng Kế toán' },
+      { id: '2', name: 'Phòng Nhân sự' },
+      { id: '3', name: 'Phòng Kinh doanh' },
+      { id: '4', name: 'Phòng Marketing' }
+    ];
+  }
+};
+
 const isBulkMail = computed(() => form.pickup_mode === 'BULK_MAIL');
 const bulkProductTypes = computed(() => productTypes.value.filter(type => ['DOCUMENT', 'PARCEL'].includes(type.code)));
 const isSingleBulkMail = computed(() => isBulkMail.value && Number(form.bulk_estimated_quantity) === 1);
@@ -699,6 +736,228 @@ const simulateResult = ref(null);
 const simulateError = ref('');
 
 const getProvinceName = (id) => provinces.value.find(p => Number(p.id) === Number(id))?.name || '';
+
+const getDistrictName = (provId, distId) => {
+  if (!provId || !distId) return '';
+  const cached = districtsCache[Number(provId)];
+  if (cached) {
+    return cached.find(d => Number(d.id) === Number(distId))?.name || '';
+  }
+  const activeLists = [senderDistricts.value, receiverDistricts.value];
+  for (const list of activeLists) {
+    const found = list.find(d => Number(d.id) === Number(distId));
+    if (found) return found.name;
+  }
+  return '';
+};
+
+const getWardName = (distId, wardId) => {
+  if (!distId || !wardId) return '';
+  const cached = wardsCache[Number(distId)];
+  if (cached) {
+    return cached.find(w => Number(w.id) === Number(wardId))?.name || '';
+  }
+  const activeLists = [senderWards.value, receiverWards.value];
+  for (const list of activeLists) {
+    const found = list.find(w => Number(w.id) === Number(wardId));
+    if (found) return found.name;
+  }
+  return '';
+};
+
+const validateForm = () => {
+  if (isBulkMail.value) {
+    if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id) {
+      ElMessage.warning('Vui lòng điền đủ thông tin lấy hàng.');
+      return false;
+    }
+    if (!productTypes.value.some(type => type.code === form.bulk_product_type) || Number(form.bulk_estimated_quantity) < 1) {
+      ElMessage.warning('Vui lòng chọn loại bưu gửi và nhập số lượng dự kiến.');
+      return false;
+    }
+  } else {
+    if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id ||
+        !form.receiver.name || !form.receiver.phone || !form.receiver.province_id || !form.receiver.district_id) {
+      ElMessage.warning('Vui lòng điền đủ thông tin người gửi và người nhận trước khi tạo đơn.');
+      return false;
+    }
+    if (!form.items[0].product_name) {
+      ElMessage.warning('Vui lòng điền đủ thông tin cơ bản trước khi tạo đơn.');
+      return false;
+    }
+
+    // Validate items
+    for (let i = 0; i < form.items.length; i++) {
+      const item = form.items[i];
+      if (!item.product_group) {
+        ElMessage.warning(`Vui lòng chọn loại hàng cho sản phẩm thứ ${i + 1}.`);
+        return false;
+      }
+      if (item.weight === undefined || item.weight === null || item.weight === '' || Number(item.weight) <= 0) {
+        ElMessage.warning(`Khối lượng sản phẩm thứ ${i + 1} phải lớn hơn 0.`);
+        return false;
+      }
+      if (item.quantity === undefined || item.quantity === null || item.quantity === '' || Number(item.quantity) < 1) {
+        ElMessage.warning(`Số lượng sản phẩm thứ ${i + 1} phải lớn hơn hoặc bằng 1.`);
+        return false;
+      }
+      if (item.declared_value === undefined || item.declared_value === null || item.declared_value === '' || Number(item.declared_value) < 0) {
+        ElMessage.warning(`Giá trị khai báo sản phẩm thứ ${i + 1} phải lớn hơn hoặc bằng 0.`);
+        return false;
+      }
+      if (item.product_group === 'HIGH_VALUE' && (!item.declared_value || Number(item.declared_value) <= 0)) {
+        ElMessage.warning('Hàng giá trị cao bắt buộc phải có giá trị khai báo lớn hơn 0.');
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+const submitPickupRequest = async () => {
+  if (!validateForm()) return;
+
+  submitLoading.value = true;
+  try {
+    const sName = getProvinceName(form.sender.province_id);
+    const sDist = getDistrictName(form.sender.province_id, form.sender.district_id);
+    const sWrd = getWardName(form.sender.district_id, form.sender.ward_id);
+
+    const deptPrefix = form.department ? `[Phòng ban: ${form.department}] ` : '';
+
+    if (isBulkMail.value) {
+      const draftItems = (form.bulk_draft_items || []).map((item, index) => ({
+        sequence_no: index + 1,
+        customer_reference_code: item.customer_reference_code || null,
+        receiver_name: item.receiver_name || null,
+        receiver_phone: item.receiver_phone || null,
+        receiver_address: item.receiver_address || null,
+        note: item.note || null
+      }));
+      const firstMail = draftItems[0] || {};
+      const hasReceiver = Number(form.bulk_estimated_quantity) === 1 && (
+        firstMail.receiver_name || firstMail.receiver_phone || firstMail.receiver_address
+      );
+
+      const payload = {
+        product_type: ['DOCUMENT', 'PARCEL'].includes(form.bulk_product_type) ? form.bulk_product_type : 'PARCEL',
+        service_type: form.service_type || 'TK',
+        payment_method: form.payment_method || 'SENDER_DEBT',
+        estimated_quantity: Number(form.bulk_estimated_quantity),
+        sender: {
+          name: form.sender.name,
+          phone: form.sender.phone,
+          address: [form.sender.address_detail, sWrd, sDist, sName].filter(Boolean).join(', '),
+          province_id: Number(form.sender.province_id),
+          district_id: Number(form.sender.district_id),
+          ward_id: form.sender.ward_id ? Number(form.sender.ward_id) : null,
+          province_name: sName,
+          district_name: sDist,
+          ward_name: sWrd
+        },
+        receiver: hasReceiver ? {
+          name: firstMail.receiver_name || null,
+          phone: firstMail.receiver_phone || null,
+          address: firstMail.receiver_address || '',
+        } : null,
+        draft_items: draftItems,
+        target_hub_id: form.target_hub_id || null,
+        note: deptPrefix + (form.note || '') || null
+      };
+
+      await api.post('/api/waybills/customer/bulk-mail-pickups', payload);
+      ElMessage.success('Tạo yêu cầu gửi hàng hàng loạt thành công!');
+    } else {
+      const rName = getProvinceName(form.receiver.province_id);
+      const rDist = getDistrictName(form.receiver.province_id, form.receiver.district_id);
+      const rWrd = getWardName(form.receiver.district_id, form.receiver.ward_id);
+
+      const mappedExtra = form.extra_services.map(code => {
+        const srv = availableServices.value.find(s => s.service_code === code);
+        return {
+          service_code: code,
+          service_name: srv ? srv.service_name : '',
+          service_fee: srv ? (srv.fee_type === 'FIXED' ? srv.fee_value : 0) : 0
+        };
+      });
+
+      const payload = {
+        order_type: 'DOMESTIC',
+        sender: {
+          name: form.sender.name,
+          phone: form.sender.phone,
+          address: [form.sender.address_detail, sWrd, sDist, sName].filter(Boolean).join(', '),
+          province_id: Number(form.sender.province_id),
+          district_id: Number(form.sender.district_id),
+          ward_id: Number(form.sender.ward_id),
+          province_name: sName,
+          district_name: sDist,
+          ward_name: sWrd
+        },
+        receiver: {
+          name: form.receiver.name,
+          phone: form.receiver.phone,
+          address: [form.receiver.address_detail, rWrd, rDist, rName].filter(Boolean).join(', '),
+          province_id: Number(form.receiver.province_id),
+          district_id: Number(form.receiver.district_id),
+          ward_id: Number(form.receiver.ward_id),
+          province_name: rName,
+          district_name: rDist,
+          ward_name: rWrd
+        },
+        items: form.items.map(i => ({
+          product_group: i.product_group || 'PARCEL',
+          product_name: i.product_name,
+          weight: Number(i.weight),
+          length: Number(i.length || 0),
+          width: Number(i.width || 0),
+          height: Number(i.height || 0),
+          quantity: Number(i.quantity || 1),
+          declared_value: Number(i.declared_value || 0)
+        })),
+        cod_amount: Number(form.cod_amount || 0),
+        cod_receiver_pays_fee: form.cod_receiver_pays_fee,
+        service_type: form.service_type,
+        extra_services: mappedExtra,
+        delivery_note_option: form.delivery_note_option,
+        note: deptPrefix + (form.note || ''),
+        payment_method: form.payment_method,
+        pickup_method: 'OUR_STAFF_PICKUP',
+        delivery_method: 'OUR_STAFF_DELIVERY',
+        target_hub_id: form.target_hub_id || null,
+        save_as_draft: false
+      };
+
+      const res = await api.post('/api/waybills/customer/pickups', payload);
+      ElMessage.success(`Tạo yêu cầu thành công! Mã vận đơn: ${res.data.waybill_code}`);
+      saveToAddressBook(form.receiver);
+    }
+
+    const resumeDraftId = route.query.resume_draft_id;
+    if (resumeDraftId) {
+      draftsList.value = draftsList.value.filter(d => d.draft_id !== resumeDraftId);
+      savedDraftsList.value = savedDraftsList.value.filter(d => d.draft_id !== resumeDraftId);
+      localStorage.setItem('customer_pickup_queue', JSON.stringify(draftsList.value));
+      localStorage.setItem('customer_pickup_drafts', JSON.stringify(savedDraftsList.value));
+    }
+
+    isDirty.value = false;
+    router.push('/customer/orders');
+  } catch (err) {
+    console.error('Lỗi khi gửi yêu cầu lấy hàng:', err);
+    let errorMsg = 'Có lỗi xảy ra khi tạo yêu cầu lấy hàng.';
+    if (err.response && err.response.data) {
+      if (Array.isArray(err.response.data.detail)) {
+        errorMsg = err.response.data.detail.map(d => d.msg).join(', ');
+      } else if (err.response.data.detail) {
+        errorMsg = err.response.data.detail;
+      }
+    }
+    ElMessage.error(errorMsg);
+  } finally {
+    submitLoading.value = false;
+  }
+};
 
 const normalizeAddressText = (value = '') => value
   .toString()
@@ -923,49 +1182,7 @@ const addToQueue = () => {
     return;
   }
   
-  if (isBulkMail.value) {
-    if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id) {
-      ElMessage.warning('Vui lòng điền đủ thông tin lấy hàng.');
-      return;
-    }
-    if (!productTypes.value.some(type => type.code === form.bulk_product_type) || Number(form.bulk_estimated_quantity) < 1) {
-      ElMessage.warning('Vui lòng chọn loại bưu gửi và nhập số lượng dự kiến.');
-      return;
-    }
-  } else if (!form.sender.name || !form.sender.phone || !form.sender.province_id || !form.sender.district_id ||
-      !form.receiver.name || !form.receiver.phone || !form.receiver.province_id || !form.receiver.district_id) {
-    ElMessage.warning('Vui lòng điền đủ thông tin người gửi và người nhận trước khi đưa vào hàng chờ.');
-    return;
-  }
-  if (!isBulkMail.value && !form.items[0].product_name) {
-    ElMessage.warning('Vui lòng điền đủ thông tin cơ bản trước khi đưa vào hàng chờ.');
-    return;
-  }
-
-  // Validate items
-  for (let i = 0; !isBulkMail.value && i < form.items.length; i++) {
-    const item = form.items[i];
-    if (!item.product_group) {
-      ElMessage.warning(`Vui lòng chọn loại hàng cho sản phẩm thứ ${i + 1}.`);
-      return;
-    }
-    if (item.weight === undefined || item.weight === null || item.weight === '' || Number(item.weight) <= 0) {
-      ElMessage.warning(`Khối lượng sản phẩm thứ ${i + 1} phải lớn hơn 0.`);
-      return;
-    }
-    if (item.quantity === undefined || item.quantity === null || item.quantity === '' || Number(item.quantity) < 1) {
-      ElMessage.warning(`Số lượng sản phẩm thứ ${i + 1} phải lớn hơn hoặc bằng 1.`);
-      return;
-    }
-    if (item.declared_value === undefined || item.declared_value === null || item.declared_value === '' || Number(item.declared_value) < 0) {
-      ElMessage.warning(`Giá trị khai báo sản phẩm thứ ${i + 1} phải lớn hơn hoặc bằng 0.`);
-      return;
-    }
-    if (item.product_group === 'HIGH_VALUE' && (!item.declared_value || Number(item.declared_value) <= 0)) {
-      ElMessage.warning('Hàng giá trị cao bắt buộc phải có giá trị khai báo lớn hơn 0.');
-      return;
-    }
-  }
+  if (!validateForm()) return;
 
   syncAutoProcessingHub();
 
@@ -1286,6 +1503,7 @@ onMounted(async () => {
   if (!authStore.user) return;
 
   loadDrafts();
+  loadDepartments();
 
   await fetchProvinces();
   await fetchProductTypes();
