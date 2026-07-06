@@ -28,7 +28,7 @@
         <el-tabs v-model="activeTab" @tab-change="handleTabChange">
           
           <!-- TAB 1: CHỜ XÁC NHẬN VĂN PHÒNG -->
-          <el-tab-pane name="pending" v-if="authStore.user?.role_id === 1">
+          <el-tab-pane name="pending" v-if="[1, 7].includes(authStore.user?.role_id)">
             <template #label>
               <div class="flex-center gap-2">
                 <el-badge :value="pendingRequests.length" :hidden="pendingRequests.length === 0" type="danger">
@@ -200,7 +200,7 @@
             <div class="flex-between mb-4">
               <div class="flex items-center gap-2">
                 <el-select 
-                  v-if="authStore.user?.role_id === 1" 
+                  v-if="[1, 7].includes(authStore.user?.role_id)" 
                   v-model="selectedHubId" 
                   placeholder="Chọn bưu cục để xem đơn" 
                   filterable 
@@ -398,7 +398,7 @@
             <div class="flex-between mb-4">
               <div class="flex items-center gap-2">
                 <el-select 
-                  v-if="authStore.user?.role_id === 1" 
+                  v-if="[1, 7].includes(authStore.user?.role_id)" 
                   v-model="selectedHubId" 
                   placeholder="Chọn bưu cục để xem đơn" 
                   filterable 
@@ -555,7 +555,7 @@
             <div class="flex-between mb-4">
               <div>
                 <el-select 
-                  v-if="authStore.user?.role_id === 1" 
+                  v-if="[1, 7].includes(authStore.user?.role_id)" 
                   v-model="selectedHubId" 
                   placeholder="Chọn bưu cục để xem đơn" 
                   filterable 
@@ -1670,8 +1670,8 @@ const handleRefresh = () => {
 const fetchTabRequests = async (tabName) => {
   loading.value = true;
   try {
-    const isAdmin = authStore.user?.role_id === 1;
-    const hubId = isAdmin ? null : (authStore.user?.primary_hub_id || null);
+    const isAdminOrCSKH = [1, 7].includes(authStore.user?.role_id);
+    const hubId = isAdminOrCSKH ? null : (authStore.user?.primary_hub_id || null);
 
     if (tabName === 'pending') {
       const [resPending, resRejected] = await Promise.all([
@@ -1680,7 +1680,7 @@ const fetchTabRequests = async (tabName) => {
       ]);
       pendingRequests.value = [...(resPending.data || []), ...(resRejected.data || [])];
     } else if (tabName === 'dispatch-hub') {
-      if (isAdmin) {
+      if (isAdminOrCSKH) {
         const params = { status: 'DISPATCHED_TO_HUB' };
         if (selectedHubId.value) params.hub_id = selectedHubId.value;
         const res = await api.get('/api/delivery/hub-dispatch-requests', { params });
@@ -1692,7 +1692,7 @@ const fetchTabRequests = async (tabName) => {
         dispatchRequests.value = res.data || [];
       }
     } else if (tabName === 'received') {
-      if (isAdmin) {
+      if (isAdminOrCSKH) {
         const params = { status: 'RECEIVED' };
         if (selectedHubId.value) params.hub_id = selectedHubId.value;
         const res = await api.get('/api/delivery/pickup-requests', { params });
@@ -1704,7 +1704,7 @@ const fetchTabRequests = async (tabName) => {
         receivedRequests.value = res.data || [];
       }
     } else if (tabName === 'assigned') {
-      if (isAdmin) {
+      if (isAdminOrCSKH) {
         const params = { status: 'ASSIGNED_PICKUP' };
         if (selectedHubId.value) params.hub_id = selectedHubId.value;
         const res = await api.get('/api/delivery/pickup-requests', { params });
@@ -2330,8 +2330,8 @@ onMounted(async () => {
     activeTab.value = route.query.tab;
   }
 
-  // Ràng buộc quyền truy cập tab pending: Nếu không phải Admin (role_id !== 1) thì không cho vào tab pending
-  if (authStore.user?.role_id !== 1 && activeTab.value === 'pending') {
+  // Ràng buộc quyền truy cập tab pending: Nếu không phải Admin hoặc CSKH thì không cho vào tab pending
+  if (![1, 7].includes(authStore.user?.role_id) && activeTab.value === 'pending') {
     activeTab.value = 'dispatch-hub';
   }
 
@@ -2349,7 +2349,7 @@ onMounted(async () => {
 
     // Tự động chuyển tab tương ứng có chứa mã đơn hàng tìm kiếm (mã yêu cầu hoặc mã vận đơn)
     if (pendingRequests.value.some(r => r.request_code === q || getWaybillCode(r) === q)) {
-      if (authStore.user?.role_id === 1) {
+      if ([1, 7].includes(authStore.user?.role_id)) {
         activeTab.value = 'pending';
         searchPending.value = q;
       } else {
@@ -2366,7 +2366,7 @@ onMounted(async () => {
       searchAssigned.value = q;
     } else {
       // Fallback nếu không khớp tab nào cụ thể, đặt ở pending nếu admin, ngược lại đặt ở dispatch-hub
-      if (authStore.user?.role_id === 1) {
+      if ([1, 7].includes(authStore.user?.role_id)) {
         activeTab.value = 'pending';
         searchPending.value = q;
       } else {
@@ -2384,7 +2384,7 @@ watch(
   (newTab) => {
     if (newTab) {
       let resolvedTab = newTab;
-      if (authStore.user?.role_id !== 1 && resolvedTab === 'pending') {
+      if (![1, 7].includes(authStore.user?.role_id) && resolvedTab === 'pending') {
         resolvedTab = 'dispatch-hub';
       }
       activeTab.value = resolvedTab;
