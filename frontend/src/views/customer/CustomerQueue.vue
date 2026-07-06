@@ -446,6 +446,8 @@ const submitSelectedDrafts = async () => {
       const sDist = getDistrictName(draft.sender.province_id, draft.sender.district_id);
       const sWrd = getWardName(draft.sender.district_id, draft.sender.ward_id);
 
+      const deptPrefix = draft.department ? `[Phòng ban: ${draft.department}] ` : '';
+
       if (draft.pickup_mode === 'BULK_MAIL') {
         const draftItems = (draft.bulk_draft_items || []).map((item, index) => ({
           sequence_no: index + 1,
@@ -482,7 +484,7 @@ const submitSelectedDrafts = async () => {
           } : null,
           draft_items: draftItems,
           target_hub_id: draft.target_hub_id || null,
-          note: draft.note || null
+          note: deptPrefix + (draft.note || '') || null
         });
         successCount++;
         successIds.push(draft.draft_id);
@@ -541,7 +543,7 @@ const submitSelectedDrafts = async () => {
         service_type: draft.service_type,
         extra_services: mappedExtra,
         delivery_note_option: draft.delivery_note_option,
-        note: draft.note,
+        note: deptPrefix + (draft.note || ''),
         payment_method: draft.payment_method,
         pickup_method: 'OUR_STAFF_PICKUP',
         delivery_method: 'OUR_STAFF_DELIVERY',
