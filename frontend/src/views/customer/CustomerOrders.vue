@@ -6,18 +6,39 @@
           <div style="min-width: 0; width: 100%;">
             <el-card class="recent-waybills-card mt-20 animate-fade-in">
               <template #header>
-                <div class="flex-between">
+                <div class="flex-between" style="flex-wrap: wrap; gap: 12px;">
                   <div class="card-header-title">
                     <el-icon><List /></el-icon><span>Bưu gửi & Yêu cầu lấy hàng của tôi</span>
                   </div>
-                  <el-button size="small" type="primary" plain @click="fetchPickupsList">
-                    <el-icon class="mr-1"><Refresh /></el-icon>Làm mới
-                  </el-button>
+                  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <el-select v-model="filterDept" placeholder="Lọc theo phòng ban" size="small" clearable style="width: 180px;">
+                      <el-option
+                        v-for="dept in departmentsList"
+                        :key="dept.id"
+                        :label="dept.name"
+                        :value="dept.name"
+                      />
+                      <el-option label="Không gán phòng ban" value="_UNASSIGNED_" />
+                    </el-select>
+                    <el-date-picker
+                      v-model="filterDate"
+                      type="date"
+                      placeholder="Lọc theo ngày tạo"
+                      format="DD/MM/YYYY"
+                      value-format="YYYY-MM-DD"
+                      size="small"
+                      clearable
+                      style="width: 170px;"
+                    />
+                    <el-button size="small" type="primary" plain @click="fetchPickupsList">
+                      <el-icon class="mr-1"><Refresh /></el-icon>Làm mới
+                    </el-button>
+                  </div>
                 </div>
               </template>
               
               <div class="customer-orders-table-scroll">
-                <el-table style="width: 100%; min-width: 1200px;" :data="pickupsList" v-loading="listLoading" stripe class="modern-table customer-orders-table" :row-class-name="customerOrderRowClass">
+                <el-table style="width: 100%; min-width: 1200px;" :data="filteredPickupsList" v-loading="listLoading" stripe class="modern-table customer-orders-table" :row-class-name="customerOrderRowClass">
                 <el-table-column type="expand" width="48">
                   <template #default="{ row }">
                     <div v-if="row.pickup_mode === 'BULK_MAIL'" class="bulk-waybill-panel">
@@ -27,7 +48,7 @@
                       </div>
                       <div v-if="getPickupWaybills(row).length" class="bulk-waybill-table-scroll">
                         <div class="table-scroll-wrapper">
-                          <el-table style="width: 100%; min-width: 1250px;" :data="getPickupWaybills(row)" size="small" border class="bulk-waybill-table">
+                          <el-table style="width: 100%; min-width: 1250px;" :data="getPaginatedWaybills(row)" size="small" border class="bulk-waybill-table">
                           <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="230">
                             <template #default="{ row: waybill }">
                               <span class="code-badge info">{{ waybill.waybill_code }}</span>
@@ -64,6 +85,16 @@
                             </template>
                           </el-table-column>
                           </el-table>
+                          <div style="display: flex; justify-content: flex-end; margin-top: 8px; padding-right: 12px;">
+                            <el-pagination
+                              layout="prev, pager, next, total"
+                              :total="getPickupWaybills(row).length"
+                              :page-size="10"
+                              v-model:current-page="innerTableCurrentPages[row.request_code || row.bag_code || 'default']"
+                              size="small"
+                              background
+                            />
+                          </div>
                         </div>
                       </div>
                       <el-empty v-else description="Chưa có mã vận đơn trong túi" :image-size="80" />
@@ -84,9 +115,19 @@
                     <span class="code-badge success">{{ row.pickup_mode === 'BULK_MAIL' ? (row.bag_code || row.waybill_code || '---') : (row.waybill_code || row.bag_code || '---') }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Ngày tạo" min-width="160">
+                 <el-table-column label="Ngày tạo" min-width="185">
                   <template #default="{ row }">
-                    <span class="text-xs">{{ formatDate(row.created_at) }}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="text-xs">{{ formatDate(row.created_at) }}</span>
+                      <el-tag v-if="isToday(row.created_at)" size="small" type="success" effect="dark" round>Hôm nay</el-tag>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Phòng ban" min-width="155">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="row.parsedDept ? 'primary' : 'info'">
+                      {{ row.parsedDept || 'Chưa gán' }}
+                    </el-tag>
                   </template>
                 </el-table-column>
                 <el-table-column label="Trạng thái" min-width="280">
@@ -157,15 +198,16 @@
                 </div>
                 <div v-if="selectedPickup.pickup_mode === 'BULK_MAIL' && getPickupWaybillCodes(selectedPickup).length" class="detail-grid-item full-width">
                   <span class="label">Mã vận đơn trong túi:</span>
-                  <span class="value bulk-waybill-grid compact">
+                  <div style="max-height: 120px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; width: 100%; box-sizing: border-box; margin-top: 4px;">
                     <span
                       v-for="code in getPickupWaybillCodes(selectedPickup)"
                       :key="code"
-                      class="code-badge info bulk-waybill-code"
+                      class="code-badge info"
+                      style="margin: 0;"
                     >
                       {{ code }}
                     </span>
-                  </span>
+                  </div>
                 </div>
                 <div v-if="selectedPickup.pickup_mode === 'BULK_MAIL'" class="detail-grid-item">
                   <span class="label">Số lượng bưu gửi:</span>
@@ -174,6 +216,10 @@
                 <div class="detail-grid-item">
                   <span class="label">Ngày tạo:</span>
                   <span class="value">{{ formatDate(selectedPickup.created_at) }}</span>
+                </div>
+                <div class="detail-grid-item">
+                  <span class="label">Phòng ban quản lý:</span>
+                  <span class="value fw-bold text-primary">{{ selectedPickup.parsedDept || 'Chưa gán' }}</span>
                 </div>
                 <div class="detail-grid-item">
                   <span class="label">Loại hàng hóa:</span>
@@ -411,26 +457,35 @@
 
             <!-- Tab 3: Order Timeline -->
             <el-tab-pane label="Hành trình bưu gửi" name="timeline">
-              <div class="timeline-wrapper" v-loading="timelineLoading">
-                <el-timeline v-if="pickupTimeline.length > 0">
-                  <el-timeline-item
-                    v-for="(log, idx) in pickupTimeline"
-                    :key="idx"
-                    :timestamp="log.time"
-                    type="primary"
-                    hollow
-                  >
-                    <div class="timeline-log-title">{{ log.action }}</div>
-                    <div class="timeline-log-desc">
-                      Thực hiện: <strong>{{ log.actor }}</strong> tại <em>{{ log.location }}</em>
+              <el-row :gutter="20">
+                <el-col :xs="24" :sm="11">
+                  <div class="timeline-wrapper" v-loading="timelineLoading" style="max-height: 450px; overflow-y: auto; padding-right: 10px;">
+                    <el-timeline v-if="pickupTimeline.length > 0">
+                      <el-timeline-item
+                        v-for="(log, idx) in pickupTimeline"
+                        :key="idx"
+                        :timestamp="log.time"
+                        type="primary"
+                        hollow
+                      >
+                        <div class="timeline-log-title">{{ log.action }}</div>
+                        <div class="timeline-log-desc">
+                          Thực hiện: <strong>{{ log.actor }}</strong> tại <em>{{ log.location }}</em>
+                        </div>
+                        <div class="timeline-log-note" v-if="log.note">Ghi chú: {{ log.note }}</div>
+                      </el-timeline-item>
+                    </el-timeline>
+                    <div class="text-center text-muted py-4" v-else>
+                      <el-empty description="Chưa có thông tin hành trình bưu gửi" :image-size="60" />
                     </div>
-                    <div class="timeline-log-note" v-if="log.note">Ghi chú: {{ log.note }}</div>
-                  </el-timeline-item>
-                </el-timeline>
-                <div class="text-center text-muted py-4" v-else>
-                  <el-empty description="Chưa có thông tin hành trình bưu gửi" :image-size="60" />
-                </div>
-              </div>
+                  </div>
+                </el-col>
+                <el-col :xs="24" :sm="13">
+                  <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; height: 450px; background: #f8fafc; position: relative;">
+                    <div id="timeline-map" style="width: 100%; height: 100%; z-index: 1;"></div>
+                  </div>
+                </el-col>
+              </el-row>
             </el-tab-pane>
 
           </el-tabs>
@@ -446,7 +501,7 @@ import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
-import { formatVietnamDateTime } from '@/utils/dateTime';
+import { formatVietnamDateTime, parseApiDate } from '@/utils/dateTime';
 import { getPickupImages, getPodImages } from '@/utils/imageHelpers';
 import { 
   User, Service, Phone, Message, Close, 
@@ -586,6 +641,93 @@ const hubsList = ref([]);
 // Simulation price result
 const simulateResult = ref(null);
 const simulateError = ref('');
+
+const filterDate = ref('');
+const filterDept = ref('');
+const departmentsList = ref([]);
+const loadDepartments = () => {
+  const key = `customer_departments_${authStore.user?.username || 'global'}`;
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    departmentsList.value = JSON.parse(raw);
+  } else {
+    departmentsList.value = [
+      { id: '1', name: 'Phòng Kế toán' },
+      { id: '2', name: 'Phòng Nhân sự' },
+      { id: '3', name: 'Phòng Kinh doanh' },
+      { id: '4', name: 'Phòng Marketing' }
+    ];
+  }
+};
+const parseDeptFromNote = (note) => {
+  if (!note) return null;
+  const match = note.match(/\[Phòng ban:\s*([^\]]+)\]/);
+  return match ? match[1].trim() : null;
+};
+
+const getVietnamLocalDateString = (value) => {
+  const date = parseApiDate(value);
+  if (!date) return '';
+  const parts = new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value: part }) => [type, part]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+
+const isToday = (value) => {
+  const vietnamDate = getVietnamLocalDateString(value);
+  if (!vietnamDate) return false;
+  
+  const today = new Date();
+  const parts = new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).formatToParts(today);
+  const values = Object.fromEntries(parts.map(({ type, value: part }) => [type, part]));
+  const todayStr = `${values.year}-${values.month}-${values.day}`;
+  
+  return vietnamDate === todayStr;
+};
+
+const filteredPickupsList = computed(() => {
+  let list = pickupsList.value;
+  if (filterDate.value) {
+    list = list.filter(row => {
+      if (!row.created_at) return false;
+      const dateStr = getVietnamLocalDateString(row.created_at);
+      return dateStr === filterDate.value;
+    });
+  }
+  if (filterDept.value) {
+    list = list.filter(row => {
+      if (filterDept.value === '_UNASSIGNED_') {
+        return !row.parsedDept;
+      }
+      return row.parsedDept === filterDept.value;
+    });
+  }
+  return list;
+});
+
+const innerTableCurrentPages = ref({});
+
+const getPaginatedWaybills = (row) => {
+  const allWaybills = getPickupWaybills(row);
+  const key = row.request_code || row.bag_code || 'default';
+  if (innerTableCurrentPages.value[key] === undefined) {
+    innerTableCurrentPages.value[key] = 1;
+  }
+  const currentPage = innerTableCurrentPages.value[key];
+  const pageSize = 10;
+  const start = (currentPage - 1) * pageSize;
+  return allWaybills.slice(start, start + pageSize);
+};
 
 // Details Dialog variables
 const detailDialogVisible = ref(false);
@@ -1166,7 +1308,12 @@ const fetchPickupsList = async () => {
       })
       .map(row => ({ ...row, pickup_mode: row.pickup_mode || 'SINGLE_WAYBILL' }));
     const fallbackBulkRows = [...fallbackBulkMap.values()];
-    pickupsList.value = [...regularRows, ...bulkRows, ...fallbackBulkRows].sort((a, b) => {
+    pickupsList.value = [...regularRows, ...bulkRows, ...fallbackBulkRows].map(row => {
+      return {
+        ...row,
+        parsedDept: parseDeptFromNote(row.notes || row.note)
+      };
+    }).sort((a, b) => {
       return new Date(b.created_at || 0) - new Date(a.created_at || 0);
     });
   } catch (err) {
@@ -1518,6 +1665,178 @@ const handleSaveProfile = async () => {
   }
 };
 
+const mapInstance = ref(null);
+
+const getCoordinatesForLocationName = (name) => {
+  if (!name) return null;
+  const n = name.toLowerCase();
+  if (n.includes('hồ chí minh') || n.includes('hcm') || n.includes('sài gòn') || n.includes('quận 1') || n.includes('quận 3') || n.includes('quận 12')) {
+    return [10.776889, 106.700806];
+  }
+  if (n.includes('đà nẵng') || n.includes('hải châu') || n.includes('liên chiểu')) {
+    return [16.054407, 108.202164];
+  }
+  if (n.includes('cầu giấy')) return [21.036237, 105.790583];
+  if (n.includes('nam từ liêm') || n.includes('mỹ đình')) return [21.020526, 105.776662];
+  if (n.includes('đống đa')) return [21.018047, 105.823902];
+  if (n.includes('ba đình')) return [21.036067, 105.826279];
+  if (n.includes('hai bà trưng')) return [21.009072, 105.850428];
+  if (n.includes('hoàng mai')) return [20.978187, 105.845942];
+  if (n.includes('thanh xuân')) return [20.993751, 105.811833];
+  if (n.includes('hà đông')) return [20.968603, 105.774887];
+  if (n.includes('long biên')) return [21.042784, 105.889025];
+  if (n.includes('tây hồ')) return [21.066492, 105.818817];
+  if (n.includes('gia lâm')) return [21.029671, 105.940555];
+  if (n.includes('thanh trì')) return [20.949791, 105.836015];
+  if (n.includes('hoài đức')) return [21.018785, 105.706179];
+  
+  if (n.includes('hà nội') || n.includes('từ liêm') || n.includes('hoàn kiếm')) {
+    return [21.028511, 105.804817];
+  }
+  if (n.includes('bình dương')) return [11.0296, 106.666];
+  if (n.includes('đồng nai') || n.includes('biên hòa')) return [10.957, 106.842];
+  if (n.includes('hải phòng')) return [20.8449, 106.6881];
+  if (n.includes('cần thơ')) return [10.0452, 105.7469];
+  
+  return [21.028511, 105.804817];
+};
+
+const initMap = () => {
+  if (typeof window.L === 'undefined') {
+    setTimeout(initMap, 200);
+    return;
+  }
+  
+  if (mapInstance.value) {
+    try {
+      mapInstance.value.remove();
+    } catch (e) {
+      console.error(e);
+    }
+    mapInstance.value = null;
+  }
+  
+  const mapContainer = document.getElementById('timeline-map');
+  if (!mapContainer) return;
+  
+  // Fix Leaflet marker icon URL issue in webpack/vite
+  delete window.L.Icon.Default.prototype._getIconUrl;
+  window.L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+
+  const points = [];
+  
+  const senderLoc = selectedPickup.value?.sender_district_name || selectedPickup.value?.sender_province_name;
+  const senderCoords = getCoordinatesForLocationName(senderLoc);
+  if (senderCoords) {
+    points.push({
+      latlng: senderCoords,
+      title: 'Điểm lấy hàng (Người gửi)',
+      desc: selectedPickup.value?.sender_name || 'Người gửi'
+    });
+  }
+  
+  if (selectedPickup.value?.hub_name) {
+    const hubCoords = getCoordinatesForLocationName(selectedPickup.value.hub_name);
+    if (hubCoords) {
+      points.push({
+        latlng: hubCoords,
+        title: 'Bưu cục tiếp nhận',
+        desc: selectedPickup.value.hub_name
+      });
+    }
+  }
+  
+  if (Array.isArray(pickupTimeline.value)) {
+    pickupTimeline.value.forEach(log => {
+      if (log.location && log.location !== '---') {
+        const coords = getCoordinatesForLocationName(log.location);
+        if (coords) {
+          const exists = points.some(p => Math.abs(p.latlng[0] - coords[0]) < 0.001 && Math.abs(p.latlng[1] - coords[1]) < 0.001);
+          if (!exists) {
+            points.push({
+              latlng: coords,
+              title: log.action || 'Hành trình',
+              desc: `${log.time} - tại ${log.location}`
+            });
+          }
+        }
+      }
+    });
+  }
+
+  const receiverLoc = selectedPickup.value?.receiver_district_name || selectedPickup.value?.receiver_province_name;
+  const receiverCoords = getCoordinatesForLocationName(receiverLoc);
+  if (receiverCoords) {
+    const exists = points.some(p => Math.abs(p.latlng[0] - receiverCoords[0]) < 0.001 && Math.abs(p.latlng[1] - receiverCoords[1]) < 0.001);
+    if (!exists) {
+      points.push({
+        latlng: receiverCoords,
+        title: 'Điểm giao hàng (Người nhận)',
+        desc: selectedPickup.value?.receiver_name || 'Người nhận'
+      });
+    }
+  }
+
+  const centerCoords = points.length > 0 ? points[0].latlng : [21.028511, 105.804817];
+  
+  const map = window.L.map('timeline-map').setView(centerCoords, 13);
+  mapInstance.value = map;
+  
+  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  
+  const latlngs = [];
+  points.forEach((pt) => {
+    latlngs.push(pt.latlng);
+    const marker = window.L.marker(pt.latlng).addTo(map);
+    marker.bindPopup(`<b>${pt.title}</b><br>${pt.desc}`);
+  });
+  
+  if (latlngs.length > 1) {
+    const polyline = window.L.polyline(latlngs, { color: '#4318FF', weight: 4, dashArray: '5, 10' }).addTo(map);
+    map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+  } else if (latlngs.length === 1) {
+    map.setView(latlngs[0], 13);
+  }
+};
+
+const loadLeafletAssets = () => {
+  if (document.getElementById('leaflet-css')) {
+    initMap();
+    return;
+  }
+  
+  const link = document.createElement('link');
+  link.id = 'leaflet-css';
+  link.rel = 'stylesheet';
+  link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+  document.head.appendChild(link);
+  
+  const script = document.createElement('script');
+  script.id = 'leaflet-js';
+  script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  script.onload = () => {
+    initMap();
+  };
+  document.head.appendChild(script);
+};
+
+watch(
+  () => activeDetailTab.value,
+  (newTab) => {
+    if (newTab === 'timeline') {
+      setTimeout(() => {
+        loadLeafletAssets();
+      }, 200);
+    }
+  }
+);
+
 const loadDrafts = () => {
   try {
     const storedQueue = localStorage.getItem('customer_pickup_queue');
@@ -1542,6 +1861,7 @@ onMounted(async () => {
   if (!authStore.user) return;
 
   loadDrafts();
+  loadDepartments();
 
   // 1. Fetch provinces first
   await fetchProvinces();
@@ -1610,6 +1930,13 @@ const handleRealtimeEvent = (e) => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('realtime-pickup-event', handleRealtimeEvent);
+  if (mapInstance.value) {
+    try {
+      mapInstance.value.remove();
+    } catch (e) {
+      console.error(e);
+    }
+  }
 });
 </script>
 <style scoped src="./CustomerPortal.css"></style>
