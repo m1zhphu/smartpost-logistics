@@ -257,6 +257,12 @@ const customerRoutes = [
         meta: { title: 'Sổ địa chỉ người nhận' }
       },
       {
+        path: 'departments',
+        name: 'CustomerDepartments',
+        component: () => import('../views/customer/CustomerDepartments.vue'),
+        meta: { title: 'Quản lý phòng ban' }
+      },
+      {
         path: 'profile',
         name: 'CustomerProfile',
         component: () => import('../views/customer/CustomerProfile.vue'),
