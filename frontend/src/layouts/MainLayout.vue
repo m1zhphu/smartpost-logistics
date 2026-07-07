@@ -221,6 +221,7 @@ const menuData = computed(() => {
       children: [
         { title: 'VẬN ĐƠN', items: [
           { label: 'Tạo mới Vận đơn', path: '/admin/waybills/create' },
+          { label: 'Gửi thư nội bộ', path: '/admin/waybills/create-internal' },
           { label: 'Tra cứu & Quản lý', path: '/admin/waybills' },
           { label: 'Đơn đã OCR', path: '/admin/waybills/ocr-reviewed' }
         ]}
@@ -314,6 +315,7 @@ const currentPageTitle = computed(() => {
     'AuditLogs': 'Nhật ký hệ thống',
     'WaybillList': 'Danh sách vận đơn',
     'CreateWaybill': 'Tạo vận đơn',
+    'CreateInternalWaybill': 'Gửi thư nội bộ',
     'ScanIn': 'Quét nhập kho',
     'Bagging': 'Đóng túi',
     'ManifestScan': 'Lên/Xuống xe',

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import date, datetime
 from typing import List, Optional
 import pandas as pd
@@ -590,7 +590,8 @@ async def create_waybill(
     current_user: dict = Depends(get_current_user)
 ):
     """Tạo vận đơn mới và ghi log khởi tạo"""
-    if data.shipping_fee <= 0:
+    # Bỏ qua kiểm tra cước đối với thư nội bộ (có thể cước = 0)
+    if not data.is_internal and data.shipping_fee <= 0:
         raise HTTPException(
             status_code=400, 
             detail="Tuyến đường này chưa được cấu hình giá cước (Cước = 0đ). Không thể tạo vận đơn."
@@ -607,9 +608,23 @@ async def create_waybill(
         from crud.accounting import create_ledger_entry
         
         new_waybill = crud_wb.create_waybill_record(db, save_data, fee=data.shipping_fee)
+        
+        # Log khởi tạo ban đầu (CREATED)
         crud_wb.create_initial_log(db, new_waybill.waybill_id, origin_id, current_user['user_id'])
+        
+        # Nếu là thư nội bộ -> Thêm tiếp log nhập kho (IN_HUB) để bốc xe đi luôn
+        if data.is_internal:
+            db.add(models.TrackingLogs(
+                waybill_id=new_waybill.waybill_id,
+                status_id="IN_HUB",
+                hub_id=origin_id,
+                user_id=current_user['user_id'],
+                system_time=datetime.utcnow(),
+                action_time=datetime.utcnow(),
+                note="Nhập kho tự động (Thư nội bộ)"
+            ))
 
-        if (data.shipping_fee or 0) > 0 and data.payment_method == "SENDER_PAY":
+        if not data.is_internal and (data.shipping_fee or 0) > 0 and data.payment_method == "SENDER_PAY":
             create_ledger_entry(
                 db, new_waybill.waybill_id, new_waybill.customer_id, 
                 "DEBIT", float(data.shipping_fee), "FEE"
@@ -734,7 +749,6 @@ def _bulk_waybill_item(waybill: models.Waybills, sequence_no: int | None = None,
         "status": waybill.status,
         "ocr_status": waybill.ocr_status,
         "verify_status": waybill.verify_status,
-        "price_status": waybill.price_status,
         "actual_weight": float(waybill.actual_weight or 0),
         "length": float(waybill.length or 0),
         "width": float(waybill.width or 0),
@@ -1004,7 +1018,6 @@ def _create_pending_ocr_waybill_for_bag(
         final_extra_services_fee=0,
         final_vat_amount=0,
         final_total_amount=0,
-        price_status="PENDING_OCR",
         ocr_status="PENDING",
         verify_status="PENDING",
         version=1,
@@ -1053,7 +1066,6 @@ def _build_pickup_create_response(booking: models.BookingRequests, waybill: mode
         "status": waybill.status,
         "pickup_status": booking.status,
         "office_status": "CHUA_XAC_NHAN_VAN_PHONG" if not booking.target_hub_id else booking.target_hub.hub_name,
-        "price_status": waybill.price_status or "ESTIMATED",
         "shipping_fee": float(waybill.shipping_fee or 0),
         "extra_services_fee": float(waybill.extra_services_fee or 0),
         "vat_amount": float(waybill.vat_amount or 0),

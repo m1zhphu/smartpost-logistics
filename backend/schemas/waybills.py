@@ -298,9 +298,8 @@ class CustomerPickupSummary(BaseModel):
     office_status: str
     hub_id: Optional[int] = None
     hub_name: Optional[str] = None
-    assigned_shipper_id: Optional[int] = None
     assigned_shipper_name: Optional[str] = None
-    price_status: Optional[str]
+    price_status: Optional[str] = None
     estimated_shipping_fee: float = 0
     estimated_total_amount: float = 0
     final_shipping_fee: Optional[float] = None

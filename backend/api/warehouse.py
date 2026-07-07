@@ -149,7 +149,6 @@ async def update_actual_weight(
     waybill.final_extra_services_fee = final_extra_fee
     waybill.final_vat_amount = final_vat
     waybill.final_total_amount = final_total
-    waybill.price_status = "ADJUSTED" if estimated_total and abs(final_total - estimated_total) >= 1 else "FINALIZED"
     waybill.shipping_fee = final_shipping_fee
     waybill.vat_amount = final_vat
     if waybill.payment_method == "RECEIVER_PAY":
@@ -167,7 +166,7 @@ async def update_actual_weight(
     db.commit()
     realtime_manager.publish([f"hub:{current_user.get('primary_hub_id')}", f"customer:{waybill.customer_id}", "admin"], "pickup.price_finalized", {
         "waybill_code": waybill_code,
-        "price_status": waybill.price_status,
+        "price_status": "FINALIZED",
         "estimated_total_amount": float(waybill.estimated_total_amount or 0),
         "final_total_amount": float(waybill.final_total_amount or 0),
     })
@@ -175,7 +174,7 @@ async def update_actual_weight(
         "waybill_code": waybill_code,
         "declared_weight": float(waybill.converted_weight),
         "actual_weight": data.actual_weight,
-        "price_status": waybill.price_status,
+        "price_status": "FINALIZED",
         "estimated_shipping_fee": float(waybill.estimated_shipping_fee or waybill.shipping_fee or 0),
         "final_shipping_fee": float(waybill.final_shipping_fee or 0),
         "estimated_total_amount": float(waybill.estimated_total_amount or 0),

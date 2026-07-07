@@ -89,6 +89,11 @@ const adminRoutes = [
         component: () => import('../views/admin/waybills/CreateWaybill.vue'),
       },
       {
+        path: 'waybills/create-internal',
+        name: 'CreateInternalWaybill',
+        component: () => import('../views/admin/waybills/CreateInternalWaybill.vue'),
+      },
+      {
         path: 'waybills/ocr-reviewed',
         name: 'Đơn đã OCR',
         component: () => import('../views/admin/waybills/OcrReviewedList.vue'),

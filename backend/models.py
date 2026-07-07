@@ -821,10 +821,14 @@ class Waybills(Base):
     final_extra_services_fee: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
     final_vat_amount: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
     final_total_amount: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(15, 2), server_default=text('0'))
-    price_status: Mapped[Optional[str]] = mapped_column(String(30), server_default=text("'ESTIMATED'"))
     length: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
     width: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
     height: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
+    
+    # Internal mail flag
+    is_internal: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('false'))
+    # Pre-merger province name for sorting and route assignment
+    old_province: Mapped[Optional[str]] = mapped_column(String(150))
 
     customer: Mapped[Optional['Customers']] = relationship('Customers', back_populates='waybills')
     dest_hub: Mapped[Optional['Hubs']] = relationship('Hubs', foreign_keys=[dest_hub_id], back_populates='waybills_dest_hub')

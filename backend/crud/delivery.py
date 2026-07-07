@@ -423,7 +423,7 @@ def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
         "note": db_req.notes or (waybill.note if waybill else None),
         "pickup_image_url": waybill.pickup_image_url if waybill else None,
         "pickup_image_urls": _read_image_urls(waybill.pickup_image_urls, waybill.pickup_image_url) if waybill else [],
-        "price_status": waybill.price_status if waybill else None,
+        "price_status": "ESTIMATED",
         "estimated_shipping_fee": float((waybill.estimated_shipping_fee or waybill.shipping_fee or 0) if waybill else 0),
         "estimated_total_amount": float((waybill.estimated_total_amount or 0) if waybill else 0),
         "final_shipping_fee": float(waybill.final_shipping_fee) if waybill and waybill.final_shipping_fee is not None else None,
