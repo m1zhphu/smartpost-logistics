@@ -319,6 +319,8 @@ class Customers(Base):
     ward_name: Mapped[Optional[str]] = mapped_column(String(150))
     street_address: Mapped[Optional[str]] = mapped_column(String(255))
     address_detail: Mapped[Optional[str]] = mapped_column(String(255))
+    # Old province name before 2025 administrative merger - used for sorting/loading onto vehicles
+    old_province: Mapped[Optional[str]] = mapped_column(String(150))
     parent_customer_id: Mapped[Optional[int]] = mapped_column(Integer)
     staff_in_charge_id: Mapped[Optional[int]] = mapped_column(Integer)
     status: Mapped[Optional[str]] = mapped_column(String(20), server_default=text("'ACTIVE'::character varying"))

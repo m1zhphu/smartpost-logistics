@@ -51,6 +51,8 @@ class CustomerSelfUpdate(BaseModel):
     street_address: Optional[str] = None
     address: Optional[str] = None
     address_detail: Optional[str] = None
+    # Old province name before 2025 merger - used for vehicle sorting/bagging
+    old_province: Optional[str] = None
     bank_name: Optional[str] = None
     bank_number: Optional[str] = None
     bank_owner: Optional[str] = None

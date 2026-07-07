@@ -628,80 +628,75 @@
               </el-col>
             </el-row>
 
-            <!-- Địa chỉ cascade: Tỉnh → Quận/Huyện → Phường/Xã -->
+            <!-- Địa chỉ mới 2 cấp: Tỉnh / Thành phố → Phường / Xã -->
             <el-row :gutter="24">
               <el-col :span="12">
-                <el-form-item label="Tỉnh / Thành phố" prop="province">
+                <el-form-item label="Tỉnh / Thành phố (Mới)" prop="province">
                   <el-select
                     v-model="selectedProvinceCode"
                     filterable
                     clearable
                     class="w-full"
-                    placeholder="Chọn tỉnh / thành phố"
-                    :loading="loadingProvinces"
+                    placeholder="Chọn tỉnh / thành phố mới"
                     @change="onProvinceChange"
                   >
                     <template #prefix><el-icon><Location /></el-icon></template>
                     <el-option
                       v-for="p in provinces"
-                      :key="p.code"
-                      :label="p.name"
-                      :value="p.code"
+                      :key="p.Code"
+                      :label="p.FullName"
+                      :value="p.Code"
                     />
                   </el-select>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="Quận / Huyện" prop="district">
+                <el-form-item label="Phường / Xã (Mới)" prop="ward">
                   <el-select
-                    v-model="selectedDistrictCode"
+                    v-model="selectedWardCode"
                     filterable
                     clearable
                     class="w-full"
-                    placeholder="Chọn quận / huyện"
-                    :loading="loadingDistricts"
+                    placeholder="Chọn phường / xã mới"
                     :disabled="!selectedProvinceCode"
-                    @change="onDistrictChange"
+                    :loading="legacyLookupLoading"
+                    @change="onWardChange"
                   >
                     <template #prefix><el-icon><Location /></el-icon></template>
                     <el-option
-                      v-for="d in districts"
-                      :key="d.code"
-                      :label="d.name"
-                      :value="d.code"
+                      v-for="w in wards"
+                      :key="w.Code"
+                      :label="w.FullName"
+                      :value="w.Code"
                     />
                   </el-select>
                 </el-form-item>
               </el-col>
             </el-row>
             <el-row :gutter="24">
-              <el-col :span="12">
-                <el-form-item label="Phường / Xã" prop="ward">
-                  <el-select
-                    v-model="customerForm.ward"
-                    filterable
-                    clearable
-                    class="w-full"
-                    placeholder="Chọn phường / xã"
-                    :loading="loadingWards"
-                    :disabled="!selectedDistrictCode"
-                  >
-                    <template #prefix><el-icon><Location /></el-icon></template>
-                    <el-option
-                      v-for="w in wards"
-                      :key="w.code"
-                      :label="w.name"
-                      :value="w.name"
-                    />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
+              <el-col :span="24">
                 <el-form-item label="Số nhà, đường" prop="street_address">
                   <el-input v-model="customerForm.street_address" placeholder="VD: 12 Nguyễn Huệ" />
                 </el-form-item>
               </el-col>
             </el-row>
+
+            <!-- Box thông tin địa chỉ sẽ được lưu (không cho chỉnh sửa trực tiếp, có viền xanh lá) -->
+            <div v-if="customerForm.province || customerForm.ward" class="address-preview-container animate-fade-in" style="border: 2px solid #2ec17e; border-radius: 12px; padding: 16px; background-color: #f4fbf7; margin-bottom: 20px;">
+              <div style="display: flex; align-items: center; margin-bottom: 12px; color: #2ec17e; font-weight: bold; font-size: 14px;">
+                <el-icon style="margin-right: 6px;"><Location /></el-icon>
+                <span>Thông tin địa chỉ lưu trữ</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 12px; color: #888; white-space: nowrap; min-width: 130px;">Địa chỉ sau sáp nhập:</span>
+                <span style="font-size: 14px; font-weight: 600; color: #2e7d32;">{{ newAddress || '—' }}</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span style="font-size: 12px; color: #888; white-space: nowrap; min-width: 130px;">Tỉnh cũ trước sáp nhập:</span>
+                <span v-if="legacyLookupLoading" style="font-size: 13px; color: #999; font-style: italic;">Đang tra cứu...</span>
+                <span v-else style="font-size: 14px; font-weight: 600; color: #2b6cb0;">{{ oldProvinceName || '—' }}</span>
+              </div>
+            </div>
           </div>
 
           <!-- Phân vùng 3: Thanh toán COD -->
@@ -841,8 +836,12 @@
                 <span class="detail-value">{{ selectedCustomer.email || '—' }}</span>
               </div>
               <div class="detail-item full-width">
-                <span class="detail-label">Địa chỉ đăng ký</span>
-                <span class="detail-value">{{ selectedCustomer.address || selectedCustomer.address_detail || '—' }}</span>
+                <span class="detail-label">Địa chỉ mới (Đăng ký)</span>
+                <span class="detail-value fw-bold text-success" style="color: #2ec17e;">{{ selectedCustomer.address || '—' }}</span>
+              </div>
+              <div class="detail-item full-width" v-if="selectedCustomer.old_province">
+                <span class="detail-label">Tỉnh cũ trước sáp nhập</span>
+                <span class="detail-value" style="color: #2b6cb0; font-weight: 600;">{{ selectedCustomer.old_province }}</span>
               </div>
             </div>
           </div>
@@ -934,154 +933,152 @@ const pricingPolicies = ref([]);
 const assignmentDrafts = reactive({});
 const assigningCustomerId = ref(null);
 
-// ---- Địa chỉ Cascade (provinces.open-api.vn) ----
-const ADDR_API = 'https://provinces.open-api.vn/api';
+// ---- Địa chỉ Cascade: Tỉnh -> Xã (dùng Provinces Open API V2 để tra cứu tỉnh cũ) ----
+const PROVINCES_API_V2 = 'https://provinces.open-api.vn/api/v2';
+
+// Map mã tỉnh cũ (trước 2025) -> tên tỉnh cũ
+// province_code trả về từ to-legacies là mã của hệ thống 63 tỉnh cũ
+const OLD_PROVINCE_CODE_MAP = {
+  1: 'Thành phố Hà Nội', 2: 'Tỉnh Hà Giang', 4: 'Tỉnh Cao Bằng',
+  6: 'Tỉnh Bắc Kạn', 8: 'Tỉnh Tuyên Quang', 10: 'Tỉnh Lào Cai',
+  11: 'Tỉnh Điện Biên', 12: 'Tỉnh Lai Châu', 14: 'Tỉnh Sơn La',
+  15: 'Tỉnh Yên Bái', 17: 'Tỉnh Hòa Bình', 19: 'Tỉnh Thái Nguyên',
+  20: 'Tỉnh Lạng Sơn', 22: 'Tỉnh Quảng Ninh', 24: 'Tỉnh Bắc Giang',
+  25: 'Tỉnh Phú Thọ', 26: 'Tỉnh Vĩnh Phúc', 27: 'Tỉnh Bắc Ninh',
+  30: 'Tỉnh Hải Dương', 31: 'Thành phố Hải Phòng', 33: 'Tỉnh Hưng Yên',
+  34: 'Tỉnh Thái Bình', 35: 'Tỉnh Hà Nam', 36: 'Tỉnh Nam Định',
+  37: 'Tỉnh Ninh Bình', 38: 'Tỉnh Thanh Hóa', 40: 'Tỉnh Nghệ An',
+  42: 'Tỉnh Hà Tĩnh', 44: 'Tỉnh Quảng Bình', 45: 'Tỉnh Quảng Trị',
+  46: 'Tỉnh Thừa Thiên Huế', 48: 'Thành phố Đà Nẵng', 49: 'Tỉnh Quảng Nam',
+  51: 'Tỉnh Quảng Ngãi', 52: 'Tỉnh Bình Định', 54: 'Tỉnh Phú Yên',
+  56: 'Tỉnh Khánh Hòa', 58: 'Tỉnh Ninh Thuận', 60: 'Tỉnh Bình Thuận',
+  62: 'Tỉnh Kon Tum', 64: 'Tỉnh Gia Lai', 66: 'Tỉnh Đắk Lắk',
+  67: 'Tỉnh Đắk Nông', 68: 'Tỉnh Lâm Đồng', 70: 'Tỉnh Bình Phước',
+  72: 'Tỉnh Tây Ninh', 74: 'Tỉnh Bình Dương', 75: 'Tỉnh Đồng Nai',
+  77: 'Tỉnh Bà Rịa - Vũng Tàu', 79: 'Thành phố Hồ Chí Minh', 80: 'Tỉnh Long An',
+  82: 'Tỉnh Tiền Giang', 83: 'Tỉnh Bến Tre', 84: 'Tỉnh Trà Vinh',
+  86: 'Tỉnh Vĩnh Long', 87: 'Tỉnh Đồng Tháp', 89: 'Tỉnh An Giang',
+  91: 'Tỉnh Kiên Giang', 92: 'Thành phố Cần Thơ', 93: 'Tỉnh Hậu Giang',
+  94: 'Tỉnh Sóc Trăng', 95: 'Tỉnh Bạc Liêu', 96: 'Tỉnh Cà Mau'
+};
+
 const provinces = ref([]);
-const districts = ref([]);
 const wards = ref([]);
 const selectedProvinceCode = ref(null);
-const selectedDistrictCode = ref(null);
-const loadingProvinces = ref(false);
-const loadingDistricts = ref(false);
-const loadingWards = ref(false);
+const selectedWardCode = ref(null);
+const oldProvinceName = ref('');
+const legacyLookupLoading = ref(false);
+
+import localProvincesData from '../../../../assets/data/vietnam_provinces.json';
+
+const newAddress = computed(() => {
+  return [
+    customerForm.street_address,
+    customerForm.ward,
+    customerForm.province,
+    customerForm.country
+  ].filter(Boolean).join(', ');
+});
 
 const fetchProvinces = async () => {
-  if (provinces.value.length) return;
-  loadingProvinces.value = true;
-  try {
-    const res = await fetch(`${ADDR_API}/`);
-    provinces.value = await res.json();
-  } catch {
-    ElMessage.warning('Không thể tải danh sách tỉnh/thành phố');
-  } finally {
-    loadingProvinces.value = false;
-  }
+  provinces.value = localProvincesData;
 };
 
-const onProvinceChange = async (code) => {
-  // Cập nhật tên tỉnh vào form
-  const found = provinces.value.find(p => p.code === code);
-  customerForm.province = found ? found.name : '';
-  // Reset quận/huyện và phường/xã
-  selectedDistrictCode.value = null;
+const onProvinceChange = (code) => {
+  const found = provinces.value.find(p => p.Code === code);
+  customerForm.province = found ? found.FullName : '';
   customerForm.ward = '';
-  districts.value = [];
-  wards.value = [];
-  if (!code) return;
-  loadingDistricts.value = true;
+  selectedWardCode.value = null;
+  wards.value = found ? found.Wards : [];
+  oldProvinceName.value = '';
+};
+
+// Look up legacy (pre-2025) province using Provinces Open API V2
+const onWardChange = async (wardCode) => {
+  if (!wardCode) {
+    customerForm.ward = '';
+    oldProvinceName.value = '';
+    return;
+  }
+
+  // Set ward name from the selected code
+  const wardObj = wards.value.find(w => w.Code === wardCode);
+  customerForm.ward = wardObj ? wardObj.FullName : '';
+
+  // Call API V2 to get legacy wards (pre-2025)
+  legacyLookupLoading.value = true;
+  oldProvinceName.value = '';
   try {
-    const res = await fetch(`${ADDR_API}/p/${code}?depth=2`);
-    const data = await res.json();
-    districts.value = data.districts || [];
-  } catch {
-    ElMessage.warning('Không thể tải danh sách quận/huyện');
+    const legacyRes = await fetch(`${PROVINCES_API_V2}/w/${wardCode}/to-legacies/`);
+    if (!legacyRes.ok) throw new Error('Legacy lookup failed');
+    const legacies = await legacyRes.json();
+
+    if (Array.isArray(legacies) && legacies.length > 0) {
+      // province_code here is the OLD (pre-2025) province code
+      // Use local map to look up the old province name - do NOT call /p/{code}
+      // because API V2 only knows new 34 provinces, not old 63
+      const legacyProvinceCode = legacies[0].province_code;
+      oldProvinceName.value = OLD_PROVINCE_CODE_MAP[legacyProvinceCode] || customerForm.province;
+    } else {
+      // Ward has no legacy data (newly created ward with no direct mapping)
+      oldProvinceName.value = customerForm.province;
+    }
+  } catch (err) {
+    console.error('[Address] Legacy province lookup error:', err);
+    oldProvinceName.value = customerForm.province;
   } finally {
-    loadingDistricts.value = false;
+    legacyLookupLoading.value = false;
   }
 };
 
-const onDistrictChange = async (code) => {
-  // Cập nhật tên quận/huyện vào form
-  const found = districts.value.find(d => d.code === code);
-  customerForm.district = found ? found.name : '';
-  
-  // Reset phường/xã
-  customerForm.ward = '';
-  wards.value = [];
-  if (!code) return;
-  loadingWards.value = true;
-  try {
-    const res = await fetch(`${ADDR_API}/d/${code}?depth=2`);
-    const data = await res.json();
-    wards.value = data.wards || [];
-  } catch {
-    ElMessage.warning('Không thể tải danh sách phường/xã');
-  } finally {
-    loadingWards.value = false;
-  }
-};
-
-// Khi dialog mở để sửa, pre-load districts/wards nếu đã có tỉnh/quận
 const preloadAddressDropdowns = async (row) => {
   await fetchProvinces();
   if (!row) {
     selectedProvinceCode.value = null;
-    selectedDistrictCode.value = null;
-    districts.value = [];
+    selectedWardCode.value = null;
+    customerForm.ward = '';
     wards.value = [];
-    return;
-  }
-  
-  // 1. Ưu tiên tìm theo ID nếu có sẵn
-  if (row.province_id) {
-    const provId = Number(row.province_id);
-    selectedProvinceCode.value = provId;
-    loadingDistricts.value = true;
-    try {
-      const res = await fetch(`${ADDR_API}/p/${provId}?depth=2`);
-      const data = await res.json();
-      districts.value = data.districts || [];
-      
-      if (row.district_id) {
-        const distId = Number(row.district_id);
-        selectedDistrictCode.value = distId;
-        loadingWards.value = true;
-        try {
-          const res2 = await fetch(`${ADDR_API}/d/${distId}?depth=2`);
-          const data2 = await res2.json();
-          wards.value = data2.wards || [];
-        } finally {
-          loadingWards.value = false;
-        }
-      } else {
-        selectedDistrictCode.value = null;
-        wards.value = [];
-      }
-    } catch {
-      ElMessage.warning('Không thể tải dữ liệu địa chỉ');
-    } finally {
-      loadingDistricts.value = false;
-    }
+    oldProvinceName.value = '';
     return;
   }
 
-  // 2. Fallback tìm theo Tên (từ trường address/address_detail được phân tách)
-  const searchProvinceName = row.province || row.province_name || customerForm.province;
-  const prov = provinces.value.find(p => p.name === searchProvinceName);
+  // Determine province name to restore
+  const searchProvinceName = row.province || row.province_name || customerForm.province || '';
+  const wardName = row.ward || row.ward_name || '';
+
+  // Find province in new list
+  const cleanProv = searchProvinceName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+  const prov = provinces.value.find(p => {
+    const pName = p.FullName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+    return pName === cleanProv;
+  });
+
   if (prov) {
-    selectedProvinceCode.value = prov.code;
-    loadingDistricts.value = true;
-    try {
-      const res = await fetch(`${ADDR_API}/p/${prov.code}?depth=2`);
-      const data = await res.json();
-      districts.value = data.districts || [];
-      
-      const searchDistrictName = row.district || customerForm.district;
-      const dist = districts.value.find(d => d.name === searchDistrictName);
-      if (dist) {
-        selectedDistrictCode.value = dist.code;
-        loadingWards.value = true;
-        try {
-          const res2 = await fetch(`${ADDR_API}/d/${dist.code}?depth=2`);
-          const data2 = await res2.json();
-          wards.value = data2.wards || [];
-        } finally {
-          loadingWards.value = false;
-        }
-      } else {
-        selectedDistrictCode.value = null;
-        wards.value = [];
-      }
-    } catch {
-      ElMessage.warning('Không thể tải dữ liệu địa chỉ');
-    } finally {
-      loadingDistricts.value = false;
+    selectedProvinceCode.value = prov.Code;
+    onProvinceChange(prov.Code);
+
+    // Find ward by name in the ward list to get its code
+    const cleanWard = wardName.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
+    const wardObj = wards.value.find(w => {
+      const wName = w.FullName.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
+      return wName === cleanWard;
+    });
+
+    if (wardObj) {
+      selectedWardCode.value = wardObj.Code;
+      await onWardChange(wardObj.Code);
+    } else {
+      // Ward name exists but not found in list → just display it without legacy lookup
+      customerForm.ward = wardName;
+      selectedWardCode.value = null;
+      oldProvinceName.value = row.address_detail ? row.address_detail.split(',').map(p => p.trim())[2] || '' : '';
     }
   } else {
     selectedProvinceCode.value = null;
-    selectedDistrictCode.value = null;
-    districts.value = [];
+    selectedWardCode.value = null;
+    customerForm.ward = '';
     wards.value = [];
+    oldProvinceName.value = '';
   }
 };
 
@@ -1270,13 +1267,13 @@ const openDialog = async (row) => {
       tax_code: targetRow.tax_code || '',
       phone: targetRow.phone || '',
       email: targetRow.email || '',
-      address: targetRow.address || targetRow.address_detail || '',
-      ...parseAddressParts(targetRow.address || targetRow.address_detail || ''),
-      country: targetRow.country || parseAddressParts(targetRow.address || targetRow.address_detail || '').country,
-      province: targetRow.province || targetRow.province_name || parseAddressParts(targetRow.address || targetRow.address_detail || '').province,
-      district: targetRow.district || parseAddressParts(targetRow.address || targetRow.address_detail || '').district || '',
-      ward: targetRow.ward || targetRow.ward_name || parseAddressParts(targetRow.address || targetRow.address_detail || '').ward,
-      street_address: targetRow.street_address || parseAddressParts(targetRow.address || targetRow.address_detail || '').street_address,
+      address: targetRow.address || '',
+      address_detail: targetRow.address_detail || '',
+      country: targetRow.country || 'Việt Nam',
+      province: targetRow.province || targetRow.province_name || '',
+      district: '',
+      ward: targetRow.ward || targetRow.ward_name || '',
+      street_address: targetRow.street_address || '',
       bank_name: targetRow.bank_name || '',
       bank_number: targetRow.bank_number || targetRow.account_number || '',
       bank_owner: targetRow.bank_owner || targetRow.account_name || '',
@@ -1290,7 +1287,7 @@ const openDialog = async (row) => {
       staff_in_charge_id: isCskh.value ? currentUser.value.user_id : null,
       policy_id: null,
       name: '', company_name: '', representative_name: '', tax_code: '',
-      phone: '', email: '', address: '',
+      phone: '', email: '', address: '', address_detail: '',
       country: 'Việt Nam', province: '', district: '', ward: '', street_address: '',
       bank_name: '', bank_number: '', bank_owner: '',
       username: '', password: ''
@@ -1308,13 +1305,13 @@ const handleSave = async () => {
       try {
         const payload = {
           ...customerForm,
-          address: [
-            customerForm.street_address,
-            customerForm.ward,
-            customerForm.district,
-            customerForm.province,
-            customerForm.country
-          ].filter(Boolean).join(', ')
+          address: newAddress.value,
+          // Full delivery address (used by waybills, shipping carriers)
+          address_detail: newAddress.value,
+          // Old province name before 2025 merger (used for vehicle sorting/bagging)
+          old_province: oldProvinceName.value || '',
+          province_name: customerForm.province,
+          ward_name: customerForm.ward
         };
         if (payload.customer_type !== 'COMPANY') {
           payload.company_name = '';

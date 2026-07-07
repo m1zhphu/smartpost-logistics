@@ -221,6 +221,8 @@ def create_customer_record(db: Session, data_dict: dict):
         "ward_name":           data_dict.get("ward") or data_dict.get("ward_name"),
         "street_address":      data_dict.get("street_address"),
         "address_detail":      build_address_detail(data_dict),
+        # Old province name before 2025 merger - for vehicle sorting/bagging logic
+        "old_province":        data_dict.get("old_province") or data_dict.get("address_detail"),
         "status":              data_dict.get("status", "ACTIVE"),
     }
 
@@ -271,6 +273,9 @@ def update_customer_record(db: Session, customer: models.Customers, data_dict: d
     customer.ward_name = data_dict.get("ward") or data_dict.get("ward_name") or customer.ward_name
     customer.street_address = data_dict.get("street_address") or customer.street_address
     customer.address_detail = build_address_detail(data_dict) or customer.address_detail
+    # Update old province if provided (pre-2025 province for sorting/bagging)
+    if data_dict.get("old_province") is not None:
+        customer.old_province = data_dict.get("old_province") or customer.old_province
     
     if "status" in data_dict:
         customer.status = data_dict["status"]
