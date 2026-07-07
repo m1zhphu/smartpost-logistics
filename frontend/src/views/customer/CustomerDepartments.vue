@@ -3,15 +3,15 @@
     <div class="portal-container">
       <el-row :gutter="24" class="portal-content">
         <el-col :span="24">
-          <div class="page-header mb-4">
+          <div class="page-header">
             <h2 class="section-title text-primary">Quản lý Phòng Ban Hoạt Động</h2>
             <p class="section-subtitle">Tạo và theo dõi sản lượng, chi phí gửi thư/vận đơn theo từng phòng ban trong công ty</p>
           </div>
 
-          <!-- Section 1: Department List & Add Button -->
-          <el-row :gutter="20">
-            <el-col :xs="24" :sm="10">
-              <el-card class="info-card animate-fade-in" shadow="hover">
+          <!-- Section 1 & 2: Department List & Statistics -->
+          <el-row :gutter="24" class="cards-row">
+            <el-col :xs="24" :sm="10" class="flex-col">
+              <el-card class="info-card animate-fade-in equal-height-card" shadow="hover">
                 <template #header>
                   <div class="flex-between">
                     <span class="card-header-title text-primary">
@@ -23,25 +23,27 @@
                   </div>
                 </template>
 
-                <el-table :data="departmentsList" stripe style="width: 100%" size="small">
-                  <el-table-column prop="name" label="Tên phòng ban" min-width="180">
-                    <template #default="{ row }">
-                      <strong class="text-dark">{{ row.name }}</strong>
-                    </template>
-                  </el-table-column>
-                  <el-table-column label="Thao tác" width="140" align="center">
-                    <template #default="{ row }">
-                      <el-button type="primary" size="small" link @click="openEditDialog(row)">Sửa</el-button>
-                      <el-button type="danger" size="small" link @click="deleteDepartment(row.id)">Xóa</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
+                <div class="card-body-content">
+                  <el-table :data="departmentsList" stripe style="width: 100%" size="small">
+                    <el-table-column prop="name" label="Tên phòng ban" min-width="180">
+                      <template #default="{ row }">
+                        <strong class="text-dark">{{ row.name }}</strong>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="Thao tác" width="140" align="center">
+                      <template #default="{ row }">
+                        <el-button type="primary" size="small" link @click="openEditDialog(row)">Sửa</el-button>
+                        <el-button type="danger" size="small" link @click="deleteDepartment(row.id)">Xóa</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
               </el-card>
             </el-col>
 
             <!-- Section 2: Statistics & Monthly calculation -->
-            <el-col :xs="24" :sm="14">
-              <el-card class="info-card animate-fade-in" shadow="hover">
+            <el-col :xs="24" :sm="14" class="flex-col">
+              <el-card class="info-card animate-fade-in equal-height-card" shadow="hover">
                 <template #header>
                   <div class="flex-between flex-wrap gap-2">
                     <span class="card-header-title text-success">
@@ -66,8 +68,8 @@
                   </div>
                 </template>
 
-                <div v-loading="listLoading">
-                  <el-row :gutter="10" class="mb-4">
+                <div v-loading="listLoading" class="card-body-content">
+                  <el-row :gutter="12" class="stats-grid">
                     <el-col :span="8">
                       <div class="stat-mini-card bg-primary-light">
                         <div class="stat-label">Tổng thư gửi</div>
@@ -108,7 +110,7 @@
           </el-row>
 
           <!-- Section 3: Detailed Lookup by Department -->
-          <el-card class="recent-waybills-card mt-20 animate-fade-in" shadow="hover">
+          <el-card class="recent-waybills-card animate-fade-in" shadow="hover">
             <template #header>
               <div class="flex-between flex-wrap gap-2">
                 <span class="card-header-title text-warning" style="color: #eab308;">
@@ -247,25 +249,15 @@ const totalMonthLetters = ref(0);
 const totalMonthCost = ref(0);
 const totalMonthPickups = ref(0);
 
-// Load departments from local storage
-const loadDepartments = () => {
-  const raw = localStorage.getItem(localStorageKey.value);
-  if (raw) {
-    departmentsList.value = JSON.parse(raw);
-  } else {
-    // Initial data
-    departmentsList.value = [
-      { id: '1', name: 'Phòng Kế toán' },
-      { id: '2', name: 'Phòng Nhân sự' },
-      { id: '3', name: 'Phòng Kinh doanh' },
-      { id: '4', name: 'Phòng Marketing' }
-    ];
-    saveDepartmentsToStorage();
+// Load departments from backend API
+const loadDepartments = async () => {
+  try {
+    const res = await api.get('/api/customers/me/departments');
+    departmentsList.value = res.data || [];
+  } catch (err) {
+    console.error('Lỗi khi tải danh sách phòng ban:', err);
+    ElMessage.error('Không thể tải danh sách phòng ban từ hệ thống');
   }
-};
-
-const saveDepartmentsToStorage = () => {
-  localStorage.setItem(localStorageKey.value, JSON.stringify(departmentsList.value));
 };
 
 // Add
@@ -274,23 +266,21 @@ const openAddDialog = () => {
   addDialogVisible.value = true;
 };
 
-const saveNewDepartment = () => {
+const saveNewDepartment = async () => {
   if (!addForm.name.trim()) {
     ElMessage.warning('Vui lòng nhập tên phòng ban');
     return;
   }
-  const exists = departmentsList.value.some(d => d.name.toLowerCase() === addForm.name.trim().toLowerCase());
-  if (exists) {
-    ElMessage.warning('Tên phòng ban đã tồn tại');
-    return;
+  try {
+    const res = await api.post('/api/customers/me/departments', { name: addForm.name.trim() });
+    departmentsList.value.push(res.data);
+    ElMessage.success('Đã thêm phòng ban mới thành công');
+    addDialogVisible.value = false;
+    calculateStats();
+  } catch (err) {
+    const errMsg = err.response?.data?.detail || 'Lỗi khi thêm phòng ban';
+    ElMessage.error(errMsg);
   }
-  departmentsList.value.push({
-    id: Date.now().toString(),
-    name: addForm.name.trim()
-  });
-  saveDepartmentsToStorage();
-  ElMessage.success('Đã thêm phòng ban mới thành công');
-  addDialogVisible.value = false;
 };
 
 // Edit
@@ -300,23 +290,23 @@ const openEditDialog = (row) => {
   editDialogVisible.value = true;
 };
 
-const saveEditDepartment = () => {
+const saveEditDepartment = async () => {
   if (!editForm.name.trim()) {
     ElMessage.warning('Vui lòng nhập tên phòng ban');
     return;
   }
-  const exists = departmentsList.value.some(d => d.id !== editForm.id && d.name.toLowerCase() === editForm.name.trim().toLowerCase());
-  if (exists) {
-    ElMessage.warning('Tên phòng ban đã tồn tại');
-    return;
-  }
-  const idx = departmentsList.value.findIndex(d => d.id === editForm.id);
-  if (idx !== -1) {
-    departmentsList.value[idx].name = editForm.name.trim();
-    saveDepartmentsToStorage();
+  try {
+    const res = await api.put(`/api/customers/me/departments/${editForm.id}`, { name: editForm.name.trim() });
+    const idx = departmentsList.value.findIndex(d => d.id === editForm.id);
+    if (idx !== -1) {
+      departmentsList.value[idx] = res.data;
+    }
     ElMessage.success('Đã cập nhật phòng ban thành công');
     editDialogVisible.value = false;
     calculateStats();
+  } catch (err) {
+    const errMsg = err.response?.data?.detail || 'Lỗi khi cập nhật phòng ban';
+    ElMessage.error(errMsg);
   }
 };
 
@@ -330,11 +320,16 @@ const deleteDepartment = (id) => {
       cancelButtonText: 'Hủy',
       type: 'warning'
     }
-  ).then(() => {
-    departmentsList.value = departmentsList.value.filter(d => d.id !== id);
-    saveDepartmentsToStorage();
-    ElMessage.success('Đã xóa phòng ban');
-    calculateStats();
+  ).then(async () => {
+    try {
+      await api.delete(`/api/customers/me/departments/${id}`);
+      departmentsList.value = departmentsList.value.filter(d => d.id !== id);
+      ElMessage.success('Đã xóa phòng ban');
+      calculateStats();
+    } catch (err) {
+      const errMsg = err.response?.data?.detail || 'Lỗi khi xóa phòng ban';
+      ElMessage.error(errMsg);
+    }
   }).catch(() => {});
 };
 
@@ -351,7 +346,7 @@ const fetchPickupsList = async () => {
   try {
     const res = await api.get('/api/waybills/customer/pickups');
     pickupsList.value = (res.data || []).map(row => {
-      const parsedDept = parseDeptFromNote(row.notes);
+      const parsedDept = row.customer_department_name || parseDeptFromNote(row.notes);
       return {
         ...row,
         parsedDept
@@ -491,18 +486,81 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.customer-portal {
+  padding: 24px 40px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+@media (max-width: 768px) {
+  .customer-portal {
+    padding: 16px;
+  }
+}
 .page-header {
   margin-top: 10px;
+  margin-bottom: 24px;
 }
 .section-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
-  margin: 0 0 4px 0;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.5px;
 }
 .section-subtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: #718096;
   margin: 0;
+}
+.cards-row {
+  margin-bottom: 28px;
+}
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+.equal-height-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.equal-height-card:hover {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+.equal-height-card :deep(.el-card__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #edf2f7;
+  background-color: #fafafa;
+}
+.equal-height-card :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+.card-body-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.recent-waybills-card {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 8px;
+}
+.recent-waybills-card:hover {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+.recent-waybills-card :deep(.el-card__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #edf2f7;
+  background-color: #fafafa;
+}
+.recent-waybills-card :deep(.el-card__body) {
+  padding: 20px;
 }
 .flex-between {
   display: flex;
@@ -514,23 +572,35 @@ onMounted(() => {
   align-items: center;
 }
 .gap-2 {
-  gap: 8px;
+  gap: 10px;
+}
+.stats-grid {
+  margin-bottom: 24px;
 }
 .stat-mini-card {
-  padding: 12px 15px;
-  border-radius: 8px;
+  padding: 16px 18px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+.stat-mini-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.04);
 }
 .bg-primary-light {
   background-color: #ebf8ff;
+  border-color: #bee3f8;
 }
 .bg-success-light {
   background-color: #f0fff4;
+  border-color: #c6f6d5;
 }
 .bg-warning-light {
   background-color: #fffaf0;
+  border-color: #feebc8;
 }
 .stat-label {
   font-size: 11px;
@@ -540,16 +610,17 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 .stat-value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 .code-badge {
   font-family: monospace;
   font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
   font-size: 12px;
+  display: inline-block;
 }
 .code-badge.warning {
   background-color: #fffbeb;
@@ -560,6 +631,12 @@ onMounted(() => {
   background-color: #f0fdf4;
   color: #16a34a;
   border: 1px solid #bbf7d0;
+}
+.card-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
 }
 .text-success {
   color: #16a34a;

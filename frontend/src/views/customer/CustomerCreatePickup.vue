@@ -355,12 +355,12 @@
                     <el-row :gutter="20">
                       <el-col :span="24">
                         <el-form-item label="Phòng ban quản lý (Để theo dõi chi phí)">
-                          <el-select v-model="form.department" placeholder="Chọn phòng ban (nếu có)" class="w-full" clearable filterable>
+                          <el-select v-model="form.customer_department_id" placeholder="Chọn phòng ban (nếu có)" class="w-full" clearable filterable>
                             <el-option
                               v-for="dept in departmentsList"
                               :key="dept.id"
                               :label="dept.name"
-                              :value="dept.name"
+                              :value="dept.id"
                             />
                           </el-select>
                         </el-form-item>
@@ -655,7 +655,8 @@ const form = reactive({
   note: '',
   payment_method: 'SENDER_DEBT',
   target_hub_id: null,
-  department: ''
+  department: '',
+  customer_department_id: null
 });
 
 const isDirty = ref(false);
@@ -669,18 +670,19 @@ watch(form, () => {
 
 const hubsList = ref([]);
 const departmentsList = ref([]);
-const loadDepartments = () => {
-  const key = `customer_departments_${authStore.user?.username || 'global'}`;
-  const raw = localStorage.getItem(key);
-  if (raw) {
-    departmentsList.value = JSON.parse(raw);
-  } else {
-    departmentsList.value = [
-      { id: '1', name: 'Phòng Kế toán' },
-      { id: '2', name: 'Phòng Nhân sự' },
-      { id: '3', name: 'Phòng Kinh doanh' },
-      { id: '4', name: 'Phòng Marketing' }
-    ];
+const loadDepartments = async () => {
+  try {
+    const res = await api.get('/api/customers/me/departments');
+    departmentsList.value = res.data || [];
+    // Backward compatibility for drafts
+    if (form.department && !form.customer_department_id) {
+      const match = departmentsList.value.find(d => d.name.toLowerCase() === form.department.toLowerCase());
+      if (match) {
+        form.customer_department_id = match.id;
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi khi tải danh sách phòng ban:', err);
   }
 };
 
@@ -823,7 +825,8 @@ const submitPickupRequest = async () => {
     const sDist = getDistrictName(form.sender.province_id, form.sender.district_id);
     const sWrd = getWardName(form.sender.district_id, form.sender.ward_id);
 
-    const deptPrefix = form.department ? `[Phòng ban: ${form.department}] ` : '';
+    const selectedDept = departmentsList.value.find(d => d.id === form.customer_department_id);
+    const deptPrefix = selectedDept ? `[Phòng ban: ${selectedDept.name}] ` : '';
 
     if (isBulkMail.value) {
       const draftItems = (form.bulk_draft_items || []).map((item, index) => ({
@@ -862,7 +865,8 @@ const submitPickupRequest = async () => {
         } : null,
         draft_items: draftItems,
         target_hub_id: form.target_hub_id || null,
-        note: deptPrefix + (form.note || '') || null
+        note: deptPrefix + (form.note || '') || null,
+        customer_department_id: form.customer_department_id || null
       };
 
       await api.post('/api/waybills/customer/bulk-mail-pickups', payload);
@@ -925,7 +929,8 @@ const submitPickupRequest = async () => {
         pickup_method: 'OUR_STAFF_PICKUP',
         delivery_method: 'OUR_STAFF_DELIVERY',
         target_hub_id: form.target_hub_id || null,
-        save_as_draft: false
+        save_as_draft: false,
+        customer_department_id: form.customer_department_id || null
       };
 
       const res = await api.post('/api/waybills/customer/pickups', payload);

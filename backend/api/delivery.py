@@ -192,8 +192,8 @@ async def assign_shipper(
         if not shipper:
             raise HTTPException(status_code=404, detail="Không tìm thấy Shipper hợp lệ.")
             
-        if shipper.is_online is False:
-            raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan don")
+        # if shipper.is_online is False:
+        #     raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan don")
 
         if current_user.get("role_id") != 1 and shipper.primary_hub_id != user_hub:
             raise HTTPException(status_code=403, detail="Không thể phân công cho Shipper của bưu cục khác!")
@@ -802,8 +802,8 @@ async def assign_shipper_pickup(
     if not shipper:
         raise HTTPException(status_code=404, detail="Không tìm thấy Shipper hoạt động.")
         
-    if shipper.is_online is False:
-        raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan pickup")
+    # if shipper.is_online is False:
+    #     raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan pickup")
 
     crud_delivery.assign_shipper_to_pickup(db, db_req, data.shipper_id, current_user["user_id"])
     db.commit()
@@ -839,15 +839,15 @@ async def assign_shipper_online_pickup(
     shipper = crud_delivery.get_active_shipper(db, data.shipper_id)
     if not shipper or not shipper.is_active:
         raise HTTPException(status_code=404, detail="Khong tim thay buu ta hoat dong")
-    if shipper.is_online is False:
-        db.add(models.BookingRequestLogs(
-            request_id=db_req.request_id,
-            user_id=current_user["user_id"],
-            action="Gan buu ta that bai",
-            note=f"Buu ta ID {data.shipper_id} dang offline",
-        ))
-        db.commit()
-        raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan pickup")
+    # if shipper.is_online is False:
+    #     db.add(models.BookingRequestLogs(
+    #         request_id=db_req.request_id,
+    #         user_id=current_user["user_id"],
+    #         action="Gan buu ta that bai",
+    #         note=f"Buu ta ID {data.shipper_id} dang offline",
+    #     ))
+    #     db.commit()
+    #     raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan pickup")
     if shipper.primary_hub_id != db_req.target_hub_id:
         raise HTTPException(status_code=400, detail="Buu ta khong thuoc van phong nhan hang")
 

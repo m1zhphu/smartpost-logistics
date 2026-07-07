@@ -1066,6 +1066,8 @@ def _build_pickup_create_response(booking: models.BookingRequests, waybill: mode
         "estimated_total_amount": float(waybill.estimated_total_amount or 0),
         "product_type": product_type,
         "product_type_label": get_product_type_definition(product_type)["label"],
+        "customer_department_id": booking.customer_department_id,
+        "customer_department_name": booking.customer_department.name if booking.customer_department else None,
     }
 
 
@@ -1277,6 +1279,8 @@ def create_customer_bulk_mail_pickup(
             "materialization_status": bag.materialization_status if bag else request.materialization_status,
             "created_at": bag.pickup_time if bag else data.pickup_time,
             "waybills": waybill_items,
+            "customer_department_id": request.customer_department_id,
+            "customer_department_name": request.customer_department.name if request.customer_department else None,
         }
     except ValueError as exc:
         db.rollback()
@@ -1294,6 +1298,7 @@ def list_customer_bulk_mail_pickups(
     _require_customer_account(current_user)
     rows = (
         db.query(models.BookingRequests, models.Bags, models.Customers)
+        .options(joinedload(models.BookingRequests.customer_department))
         .outerjoin(models.Bags, models.Bags.booking_request_id == models.BookingRequests.request_id)
         .join(models.Customers, models.Customers.customer_id == models.BookingRequests.customer_id)
         .filter(
@@ -1312,24 +1317,26 @@ def list_customer_bulk_mail_pickups(
         ]
         first_waybill = request.waybills[0] if request.waybills else None
         response.append({
-        "request_id": request.request_id,
-        "request_code": request.request_code,
-        "bag_id": bag.bag_id if bag else None,
-        "bag_code": bag.bag_code if bag else None,
-        "waybill_id": first_waybill.waybill_id if first_waybill else None,
-        "waybill_code": first_waybill.waybill_code if first_waybill else None,
-        "customer_id": customer.customer_id,
-        "customer_code": customer.customer_code,
-        "product_type": request.product_type,
-        "product_type_label": get_product_type_definition(request.product_type)["label"],
-        "service_type": first_waybill.service_type if first_waybill else None,
-        "estimated_quantity": request.est_quantity or 0,
-        "actual_quantity": bag.actual_quantity or 0 if bag else request.actual_quantity or 0,
-        "pickup_status": request.status,
-        "bag_status": bag.status if bag else None,
-        "materialization_status": bag.materialization_status if bag else request.materialization_status,
-        "created_at": bag.pickup_time if bag else first_waybill.requested_pickup_time if first_waybill else None,
-        "waybills": waybill_items,
+            "request_id": request.request_id,
+            "request_code": request.request_code,
+            "bag_id": bag.bag_id if bag else None,
+            "bag_code": bag.bag_code if bag else None,
+            "waybill_id": first_waybill.waybill_id if first_waybill else None,
+            "waybill_code": first_waybill.waybill_code if first_waybill else None,
+            "customer_id": customer.customer_id,
+            "customer_code": customer.customer_code,
+            "product_type": request.product_type,
+            "product_type_label": get_product_type_definition(request.product_type)["label"],
+            "service_type": first_waybill.service_type if first_waybill else None,
+            "estimated_quantity": request.est_quantity or 0,
+            "actual_quantity": bag.actual_quantity or 0 if bag else request.actual_quantity or 0,
+            "pickup_status": request.status,
+            "bag_status": bag.status if bag else None,
+            "materialization_status": bag.materialization_status if bag else request.materialization_status,
+            "created_at": bag.pickup_time if bag else first_waybill.requested_pickup_time if first_waybill else None,
+            "waybills": waybill_items,
+            "customer_department_id": request.customer_department_id,
+            "customer_department_name": request.customer_department.name if request.customer_department else None,
         })
     return response
 

@@ -117,6 +117,8 @@ class CustomerPickupCreate(BaseModel):
     pickup_method: str = Field(default="OUR_STAFF_PICKUP")
     delivery_method: str = Field(default="OUR_STAFF_DELIVERY")
     save_as_draft: bool = False
+    customer_department_id: Optional[int] = None
+
 
 
 class AdminPickupCreate(CustomerPickupCreate):
@@ -149,6 +151,8 @@ class BulkMailPickupCreate(BaseModel):
     source: str = Field(default="PORTAL", description="PORTAL, HOTLINE, CSKH, ADMIN")
     payment_method: str = Field(default="SENDER_DEBT")
     note: Optional[str] = None
+    customer_department_id: Optional[int] = None
+
 
     @field_validator("product_type", mode="before")
     @classmethod
@@ -187,6 +191,9 @@ class BulkMailPickupResponse(BaseModel):
     materialization_status: str
     created_at: Optional[datetime] = None
     waybills: List[dict] = Field(default_factory=list)
+    customer_department_id: Optional[int] = None
+    customer_department_name: Optional[str] = None
+
 
 
 class MobileOcrWaybillUpdate(BaseModel):
@@ -301,6 +308,9 @@ class CustomerPickupSummary(BaseModel):
     created_at: Optional[datetime] = None
     product_type: str = "PARCEL"
     product_type_label: Optional[str] = None
+    customer_department_id: Optional[int] = None
+    customer_department_name: Optional[str] = None
+
 
     # Sender & Receiver Info
     sender_name: Optional[str] = None

@@ -33,7 +33,7 @@
           class="mb-12"
         />
         <el-row :gutter="20" class="filter-row">
-          <el-col :xs="24" :sm="12" :lg="4" class="filter-col">
+          <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Tìm kiếm trực tiếp</div>
             <el-input 
               v-model="filter.query" 
@@ -45,7 +45,7 @@
             </el-input>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :lg="4" class="filter-col">
+          <el-col :xs="24" :sm="12" :lg="5" class="filter-col">
             <div class="filter-label">Chức vụ</div>
             <el-select v-model="filter.role_id" placeholder="Tất cả chức vụ" clearable class="w-full modern-select">
               <el-option label="Quản trị hệ thống" :value="1" />
@@ -57,18 +57,10 @@
             </el-select>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :lg="4" class="filter-col">
+          <el-col :xs="24" :sm="12" :lg="5" class="filter-col">
             <div class="filter-label">Bưu cục trực thuộc</div>
             <el-select v-model="filter.hub_id" placeholder="Tất cả bưu cục" clearable class="w-full modern-select">
               <el-option v-for="hub in hubs" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
-            </el-select>
-          </el-col>
-
-          <el-col :xs="24" :sm="12" :lg="4" class="filter-col">
-            <div class="filter-label">Trạng thái Shipper</div>
-            <el-select v-model="filter.is_online" placeholder="Tất cả trạng thái" clearable class="w-full modern-select" :disabled="filter.role_id !== 4">
-              <el-option label="Đang hoạt động" :value="true" />
-              <el-option label="Ngoại tuyến" :value="false" />
             </el-select>
           </el-col>
           
@@ -102,12 +94,6 @@
                 <div class="user-details">
                   <div class="flex-align-center">
                     <span class="fw-bold text-dark">{{ row.full_name }}</span>
-                    <span 
-                      v-if="row.role_id === 4" 
-                      class="status-dot ml-8" 
-                      :class="row.is_online ? 'online' : 'offline'"
-                      :title="row.is_online ? 'Bưu tá đang Hoạt động' : 'Bưu tá đang Ngoại tuyến'"
-                    ></span>
                   </div>
                   <span class="text-xs text-muted">
                     <el-icon class="mr-1"><Message /></el-icon>{{ row.email || 'Chưa cập nhật email' }}
@@ -209,12 +195,6 @@
             <div class="muc-identity">
               <div class="flex-align-center">
                 <span class="fw-bold text-dark muc-name">{{ user.full_name }}</span>
-                <span 
-                  v-if="user.role_id === 4" 
-                  class="status-dot ml-8" 
-                  :class="user.is_online ? 'online' : 'offline'"
-                  :title="user.is_online ? 'Bưu tá đang Hoạt động' : 'Bưu tá đang Ngoại tuyến'"
-                ></span>
               </div>
               <div class="modern-tag" :class="'tag-' + getRoleType(user.role_id)" style="width:fit-content;margin-top:4px;">
                 <span class="dot"></span>

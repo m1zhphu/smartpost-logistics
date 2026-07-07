@@ -131,17 +131,17 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.userName} numberOfLines={1}>
               {user?.full_name || user?.username || "---"}
             </Text>
-            <TouchableOpacity onPress={handleToggleOnline} activeOpacity={isShipperRole ? 0.7 : 1} style={styles.rolePill}>
+            <View style={styles.rolePill}>
               <View
                 style={[
                   styles.roleDot,
-                  { backgroundColor: isShipperRole ? (user?.is_online ? "#10B981" : "#9CA3AF") : "#38BDF8" }
+                  { backgroundColor: isShipperRole ? "#10B981" : "#38BDF8" }
                 ]}
               />
               <Text style={styles.roleText}>
-                {isShipperRole ? (user?.is_online ? "Đang Online" : "Đang Offline") : "Điều phối online"}
+                {isShipperRole ? "Bưu tá" : "Điều phối"}
               </Text>
-            </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.headerBtns}>

@@ -774,9 +774,8 @@
               <el-option 
                 v-for="shipper in shippers" 
                 :key="shipper.user_id" 
-                :label="shipper.full_name + ' (' + (shipper.is_online ? 'Hoạt động' : 'Ngoại tuyến') + ' - ' + shipper.phone + ')'" 
+                :label="shipper.full_name + (shipper.phone ? ' (' + shipper.phone + ')' : '')" 
                 :value="shipper.user_id" 
-                :disabled="!shipper.is_online"
               />
             </el-select>
           </div>

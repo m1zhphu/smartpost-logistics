@@ -101,6 +101,7 @@ def create_bulk_mail_pickup(
         pickup_method="OUR_STAFF_PICKUP",
         priority="NORMAL",
         notes=data.note,
+        customer_department_id=getattr(data, "customer_department_id", None),
     )
     db.add(request)
     db.flush()
@@ -374,6 +375,7 @@ def create_customer_pickup_waybill(
         priority="NORMAL",
         sla_deadline=None,
         notes=data.note,
+        customer_department_id=getattr(data, "customer_department_id", None),
     )
     if booking_status == "RECEIVED":
         booking.confirmed_by_user_id = creator_id
@@ -570,6 +572,10 @@ def customer_pickup_payload(request: models.BookingRequests, waybill: models.Way
         "pickup_image_url": waybill.pickup_image_url,
         "pickup_image_urls": _read_image_urls(waybill.pickup_image_urls, waybill.pickup_image_url),
 
+        # Department Info
+        "customer_department_id": request.customer_department_id,
+        "customer_department_name": request.customer_department.name if request.customer_department else None,
+
         # Items List
         "items": items,
     }
@@ -582,6 +588,7 @@ def get_customer_pickup_waybills(db: Session, customer_id: int):
             joinedload(models.BookingRequests.target_hub),
             joinedload(models.BookingRequests.assigned_shipper),
             joinedload(models.BookingRequests.logs),
+            joinedload(models.BookingRequests.customer_department),
             joinedload(models.Waybills.waybill_items)
         )
         .join(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)
@@ -603,6 +610,7 @@ def get_customer_pickup_waybill_by_code(db: Session, customer_id: int, waybill_c
             joinedload(models.BookingRequests.target_hub),
             joinedload(models.BookingRequests.assigned_shipper),
             joinedload(models.BookingRequests.logs),
+            joinedload(models.BookingRequests.customer_department),
             joinedload(models.Waybills.waybill_items)
         )
         .join(models.Waybills, models.Waybills.request_id == models.BookingRequests.request_id)

@@ -1,7 +1,28 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
+
+class CustomerDepartmentBase(BaseModel):
+    name: str
+
+class CustomerDepartmentCreate(CustomerDepartmentBase):
+    pass
+
+class CustomerDepartmentUpdate(CustomerDepartmentBase):
+    pass
+
+class CustomerDepartmentResponse(CustomerDepartmentBase):
+    id: int
+    customer_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
 
 class CustomerCreate(BaseModel):
+
     customer_code: Optional[str] = None
     customer_type: str = "PERSONAL"
     name: str

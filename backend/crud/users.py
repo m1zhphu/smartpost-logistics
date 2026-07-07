@@ -154,8 +154,8 @@ def get_active_shippers_by_hub(db: Session, hub_id: int = None, is_online: bool 
             (models.Users.primary_hub_id == hub_id) |
             (models.Users.user_data_access.any(models.UserDataAccess.accessible_hub_id == hub_id))
         )
-    if is_online is not None:
-        query = query.filter(models.Users.is_online == is_online)
+    # if is_online is not None:
+    #     query = query.filter(models.Users.is_online == is_online)
     if managed_by_cskh_id:
         query = query.filter(models.Users.managed_by_cskh_id == managed_by_cskh_id)
         
@@ -172,6 +172,6 @@ def get_shippers_by_cskh(db: Session, cskh_id: int, is_online: bool | None = Non
         models.Users.managed_by_cskh_id == cskh_id,
         models.Users.is_deleted == False
     )
-    if is_online is not None:
-        query = query.filter(models.Users.is_online == is_online)
+    # if is_online is not None:
+    #     query = query.filter(models.Users.is_online == is_online)
     return query.all()

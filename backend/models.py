@@ -292,6 +292,21 @@ class Bags(Base):
 
 
 
+class CustomerDepartments(Base):
+    __tablename__ = 'customer_departments'
+    __table_args__ = (
+        PrimaryKeyConstraint('id', name='customer_departments_pkey'),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey('customers.customer_id', ondelete='CASCADE'), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text('now()'), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=text('now()'), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    customer: Mapped['Customers'] = relationship('Customers', back_populates='departments')
+
+
 class Customers(Base):
     __tablename__ = 'customers'
     __table_args__ = (
@@ -335,6 +350,8 @@ class Customers(Base):
     statement_cod: Mapped[list['StatementCOD']] = relationship('StatementCOD', back_populates='customer')
     statement_debt: Mapped[list['StatementDebt']] = relationship('StatementDebt', back_populates='customer')
     waybills: Mapped[list['Waybills']] = relationship('Waybills', back_populates='customer')
+    departments: Mapped[list['CustomerDepartments']] = relationship('CustomerDepartments', back_populates='customer', cascade='all, delete-orphan')
+
 
 
 class Incidents(Base):
@@ -510,6 +527,7 @@ class BookingRequests(Base):
     pickup_mode: Mapped[Optional[str]] = mapped_column(String(30), server_default=text("'SINGLE_WAYBILL'"))
     actual_quantity: Mapped[Optional[int]] = mapped_column(Integer, server_default=text('0'))
     materialization_status: Mapped[Optional[str]] = mapped_column(String(30), server_default=text("'NOT_REQUIRED'"))
+    customer_department_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('customer_departments.id', ondelete='SET NULL'))
 
     assigned_shipper: Mapped[Optional['Users']] = relationship('Users', back_populates='booking_requests')
     customer: Mapped[Optional['Customers']] = relationship('Customers', back_populates='booking_requests')
@@ -517,6 +535,8 @@ class BookingRequests(Base):
     waybills: Mapped[list['Waybills']] = relationship('Waybills', back_populates='request')
     logs: Mapped[list['BookingRequestLogs']] = relationship('BookingRequestLogs', back_populates='request')
     pickup_bag: Mapped[Optional['Bags']] = relationship('Bags', back_populates='booking_request', uselist=False)
+    customer_department: Mapped[Optional['CustomerDepartments']] = relationship('CustomerDepartments')
+
 
     @property
     def customer_code(self):

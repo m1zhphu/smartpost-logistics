@@ -645,18 +645,12 @@ const simulateError = ref('');
 const filterDate = ref('');
 const filterDept = ref('');
 const departmentsList = ref([]);
-const loadDepartments = () => {
-  const key = `customer_departments_${authStore.user?.username || 'global'}`;
-  const raw = localStorage.getItem(key);
-  if (raw) {
-    departmentsList.value = JSON.parse(raw);
-  } else {
-    departmentsList.value = [
-      { id: '1', name: 'Phòng Kế toán' },
-      { id: '2', name: 'Phòng Nhân sự' },
-      { id: '3', name: 'Phòng Kinh doanh' },
-      { id: '4', name: 'Phòng Marketing' }
-    ];
+const loadDepartments = async () => {
+  try {
+    const res = await api.get('/api/customers/me/departments');
+    departmentsList.value = res.data || [];
+  } catch (err) {
+    console.error('Lỗi khi tải danh sách phòng ban:', err);
   }
 };
 const parseDeptFromNote = (note) => {
@@ -1311,7 +1305,7 @@ const fetchPickupsList = async () => {
     pickupsList.value = [...regularRows, ...bulkRows, ...fallbackBulkRows].map(row => {
       return {
         ...row,
-        parsedDept: parseDeptFromNote(row.notes || row.note)
+        parsedDept: row.customer_department_name || parseDeptFromNote(row.notes || row.note)
       };
     }).sort((a, b) => {
       return new Date(b.created_at || 0) - new Date(a.created_at || 0);
@@ -1333,11 +1327,15 @@ const openDetail = async (row) => {
     pickupTimeline.value = [];
     try {
       const detailRes = await api.get(`/api/waybills/customer/pickups/${row.waybill_code}`);
-      selectedPickup.value = detailRes.data;
+      const mappedDetail = {
+        ...detailRes.data,
+        parsedDept: detailRes.data.customer_department_name || parseDeptFromNote(detailRes.data.notes || detailRes.data.note)
+      };
+      selectedPickup.value = mappedDetail;
       
       const idx = pickupsList.value.findIndex(item => item.waybill_code === row.waybill_code);
       if (idx !== -1) {
-        pickupsList.value[idx] = detailRes.data;
+        pickupsList.value[idx] = mappedDetail;
       }
     } catch (err) {
       console.error('Error fetching pickup detail:', err);
@@ -1861,7 +1859,7 @@ onMounted(async () => {
   if (!authStore.user) return;
 
   loadDrafts();
-  loadDepartments();
+  await loadDepartments();
 
   // 1. Fetch provinces first
   await fetchProvinces();

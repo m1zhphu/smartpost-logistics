@@ -227,7 +227,6 @@ const menuData = computed(() => {
       ]
     },
     // { id: 'scan-in', icon: Box, label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in', roles: [1, 2, 3] },
-    /*
     {
       id: 'warehouse', icon: Box, label: 'Kho hàng', roles: [1, 2, 3], // Admin, Manager, Kho
       children: [
@@ -241,7 +240,6 @@ const menuData = computed(() => {
         ]}
       ]
     },
-    */
     {
       id: 'delivery', icon: Location, label: 'Điều phối', roles: [1, 2, 3, 4, 7], // Admin, Manager, Kho, Shipper, CSKH
       children: role === 4 ? [

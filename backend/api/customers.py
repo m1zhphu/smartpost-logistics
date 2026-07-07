@@ -5,7 +5,7 @@ from core.database import get_db
 from core.security import get_current_user
 import crud.customers as crud_customers
 import crud.pricing as crud_pricing
-from schemas.customers import CustomerAssignStaff, CustomerCreate, CustomerSelfUpdate
+from schemas.customers import CustomerAssignStaff, CustomerCreate, CustomerSelfUpdate, CustomerDepartmentCreate, CustomerDepartmentUpdate, CustomerDepartmentResponse
 import models
 
 router = APIRouter(prefix="/api/customers", tags=["Customers"])
@@ -463,3 +463,103 @@ def delete_customer(customer_id: int, db: Session = Depends(get_db), current_use
             "action": "INACTIVATED",
         }
     return {"message": "\u0110\u00e3 x\u00f3a m\u1ec1m kh\u00e1ch h\u00e0ng", "id": customer.customer_id, "status": customer.status, "action": "DELETED"}
+
+@router.get("/me/departments", response_model=List[CustomerDepartmentResponse])
+def list_my_departments(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_customer_self(current_user)
+    cust_id = current_user["customer_id"]
+    return db.query(models.CustomerDepartments).filter(models.CustomerDepartments.customer_id == cust_id).order_by(models.CustomerDepartments.name.asc()).all()
+
+@router.post("/me/departments", response_model=CustomerDepartmentResponse)
+def create_my_department(
+    data: CustomerDepartmentCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_customer_self(current_user)
+    cust_id = current_user["customer_id"]
+    
+    # Check if department with same name already exists for this customer
+    existing = db.query(models.CustomerDepartments).filter(
+        models.CustomerDepartments.customer_id == cust_id,
+        models.CustomerDepartments.name == data.name.strip()
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Phòng ban này đã tồn tại")
+
+    new_dept = models.CustomerDepartments(
+        customer_id=cust_id,
+        name=data.name.strip()
+    )
+    db.add(new_dept)
+    db.commit()
+    db.refresh(new_dept)
+    return new_dept
+
+@router.put("/me/departments/{dept_id}", response_model=CustomerDepartmentResponse)
+def update_my_department(
+    dept_id: int,
+    data: CustomerDepartmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_customer_self(current_user)
+    cust_id = current_user["customer_id"]
+    
+    dept = db.query(models.CustomerDepartments).filter(
+        models.CustomerDepartments.id == dept_id,
+        models.CustomerDepartments.customer_id == cust_id
+    ).first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phòng ban")
+        
+    existing = db.query(models.CustomerDepartments).filter(
+        models.CustomerDepartments.customer_id == cust_id,
+        models.CustomerDepartments.name == data.name.strip(),
+        models.CustomerDepartments.id != dept_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Phòng ban này đã tồn tại")
+
+    dept.name = data.name.strip()
+    db.commit()
+    db.refresh(dept)
+    return dept
+
+@router.delete("/me/departments/{dept_id}")
+def delete_my_department(
+    dept_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    _require_customer_self(current_user)
+    cust_id = current_user["customer_id"]
+    
+    dept = db.query(models.CustomerDepartments).filter(
+        models.CustomerDepartments.id == dept_id,
+        models.CustomerDepartments.customer_id == cust_id
+    ).first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phòng ban")
+
+    db.delete(dept)
+    db.commit()
+    return {"message": "Đã xóa phòng ban thành công"}
+
+@router.get("/{customer_id}/departments", response_model=List[CustomerDepartmentResponse])
+def list_customer_departments(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role_id") != 6:
+        _require_customer_view_role(current_user)
+    else:
+        if current_user.get("customer_id") != customer_id:
+            raise HTTPException(status_code=403, detail="Không có quyền truy cập dữ liệu của khách hàng khác")
+
+    return db.query(models.CustomerDepartments).filter(models.CustomerDepartments.customer_id == customer_id).order_by(models.CustomerDepartments.name.asc()).all()
+

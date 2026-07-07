@@ -16,10 +16,14 @@ const publicRoutes = [
     name: 'AdminLogin',
     component: () => import('../views/auth/AdminLoginView.vue'),
   },
+  // {
+  //   path: '/register',
+  //   name: 'Register',
+  //   component: () => import('../views/auth/RegisterView.vue'),
+  // },
   {
     path: '/register',
-    name: 'Register',
-    component: () => import('../views/auth/RegisterView.vue'),
+    redirect: '/login'
   },
   {
     path: '/setup-admin',

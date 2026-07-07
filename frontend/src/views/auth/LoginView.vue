@@ -42,8 +42,8 @@
       
       <div class="login-actions">
         <button class="forgot-link" type="button" @click="openForgotDialog">Quên mật khẩu?</button>
-        <span>Chưa có tài khoản?</span>
-        <router-link to="/register" class="register-link">Đăng ký ngay</router-link>
+        <!-- <span>Chưa có tài khoản?</span>
+        <router-link to="/register" class="register-link">Đăng ký ngay</router-link> -->
       </div>
 
       <div style="text-align: center; margin-top: 16px; padding-top: 16px; border-top: 1px dashed #e2e8f0;">
