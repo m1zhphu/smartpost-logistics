@@ -17,6 +17,9 @@ api.interceptors.request.use(
     if (authStore.token) {
       config.headers.Authorization = `Bearer ${authStore.token}`;
     }
+    if (authStore.selectedHubId) {
+      config.headers['X-Selected-Hub-Id'] = authStore.selectedHubId;
+    }
 
     // Thêm Idempotency-Key cho các request POST để chống trùng lặp (Backend yêu cầu)
     if (config.method?.toLowerCase() === 'post') {

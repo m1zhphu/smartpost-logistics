@@ -1,9 +1,9 @@
-﻿# File: core/security.py
+# File: core/security.py
 from datetime import datetime, timedelta
 
 import bcrypt
 import jwt
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -41,6 +41,7 @@ def _get_permissions_from_role(user):
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ):
@@ -50,36 +51,51 @@ def get_current_user(
         user_id = payload.get("user_id")
         username = payload.get("sub")
     except Exception:
-        raise HTTPException(status_code=401, detail="Phi\u00ean \u0111\u0103ng nh\u1eadp \u0111\u00e3 h\u1ebft h\u1ea1n ho\u1eb7c kh\u00f4ng h\u1ee3p l\u1ec7", headers=AUTH_INVALID_HEADERS)
+        raise HTTPException(status_code=401, detail="Phiên đăng nhập đã hết hạn hoặc không hợp lệ", headers=AUTH_INVALID_HEADERS)
 
     user = db.query(models.Users).filter(
         models.Users.user_id == user_id,
         models.Users.username == username,
     ).first()
     if not user:
-        raise HTTPException(status_code=401, detail="T\u00e0i kho\u1ea3n kh\u00f4ng t\u1ed3n t\u1ea1i", headers=AUTH_INVALID_HEADERS)
+        raise HTTPException(status_code=401, detail="Tài khoản không tồn tại", headers=AUTH_INVALID_HEADERS)
     if user.is_deleted:
-        raise HTTPException(status_code=403, detail="T\u00e0i kho\u1ea3n \u0111\u00e3 b\u1ecb x\u00f3a m\u1ec1m, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean", headers=AUTH_INVALID_HEADERS)
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị xóa mềm, vui lòng liên hệ quản trị viên", headers=AUTH_INVALID_HEADERS)
     if user.is_active is False or user.status is False:
-        raise HTTPException(status_code=403, detail="T\u00e0i kho\u1ea3n \u0111ang b\u1ecb kh\u00f3a, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean", headers=AUTH_INVALID_HEADERS)
+        raise HTTPException(status_code=403, detail="Tài khoản đang bị khóa, vui lòng liên hệ quản trị viên", headers=AUTH_INVALID_HEADERS)
     if user.role_id == 6 and user.customer_id:
         customer = db.query(models.Customers).filter(
             models.Customers.customer_id == user.customer_id
         ).first()
         if not customer or customer.status == "DELETED":
-            raise HTTPException(status_code=403, detail="H\u1ed3 s\u01a1 kh\u00e1ch h\u00e0ng \u0111\u00e3 b\u1ecb x\u00f3a, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean", headers=AUTH_INVALID_HEADERS)
+            raise HTTPException(status_code=403, detail="Hồ sơ khách hàng đã bị xóa, vui lòng liên hệ quản trị viên", headers=AUTH_INVALID_HEADERS)
         if customer.status != "ACTIVE":
-            raise HTTPException(status_code=403, detail="H\u1ed3 s\u01a1 kh\u00e1ch h\u00e0ng \u0111\u00e3 ng\u1eebng h\u1ee3p t\u00e1c, vui l\u00f2ng li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb vi\u00ean", headers=AUTH_INVALID_HEADERS)
+            raise HTTPException(status_code=403, detail="Hồ sơ khách hàng đã ngừng hợp tác, vui lòng liên hệ quản trị viên", headers=AUTH_INVALID_HEADERS)
+
+    # Đọc thông tin bưu cục được admin chọn từ header
+    primary_hub_id = user.primary_hub_id
+    role_id = user.role_id
+    is_hub_admin = user.role_id == 2
+    
+    selected_hub_id = request.headers.get("X-Selected-Hub-Id")
+    if user.role_id == 1 and selected_hub_id:
+        try:
+            primary_hub_id = int(selected_hub_id)
+            # Khi Admin chuyển đổi sang bưu cục cụ thể, cho phép hoạt động với quyền hạn như Hub Admin của bưu cục đó
+            role_id = 2
+            is_hub_admin = True
+        except ValueError:
+            pass
 
     permissions = _get_permissions_from_role(user) or payload.get("permissions", {})
     return {
         "user_id": user.user_id,
         "username": user.username,
-        "role_id": user.role_id,
+        "role_id": role_id,
         "customer_id": user.customer_id,
-        "primary_hub_id": user.primary_hub_id,
+        "primary_hub_id": primary_hub_id,
         "permissions": permissions,
         "is_super_admin": permissions.get("all") is True,
-        "is_hub_admin": user.role_id == 2,
+        "is_hub_admin": is_hub_admin,
         "is_shipper": user.role_id == 4,
     }

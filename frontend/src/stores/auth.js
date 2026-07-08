@@ -7,6 +7,7 @@ export const useAuthStore = defineStore('auth', {
     return {
       user: (savedUser && savedUser !== 'undefined') ? JSON.parse(savedUser) : null,
       token: localStorage.getItem('token') || null,
+      selectedHubId: localStorage.getItem('selectedHubId') || null,
       loading: false,
     };
   },
@@ -17,6 +18,14 @@ export const useAuthStore = defineStore('auth', {
     isCustomer: (state) => state.user?.role_id === 6,
   },
   actions: {
+    setSelectedHubId(hubId) {
+      this.selectedHubId = hubId;
+      if (hubId) {
+        localStorage.setItem('selectedHubId', hubId);
+      } else {
+        localStorage.removeItem('selectedHubId');
+      }
+    },
     setUser(user, token) {
       // --- BƯỚC QUAN TRỌNG: Giải mã JWT Token để lấy Hub ID và Role ID ---
       if (token) {
@@ -65,6 +74,7 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       this.user = null;
       this.token = null;
+      this.selectedHubId = null;
       [
         'user',
         'token',
@@ -73,7 +83,8 @@ export const useAuthStore = defineStore('auth', {
         'userId',
         'userEmail',
         'roleId',
-        'permissions'
+        'permissions',
+        'selectedHubId'
       ].forEach((key) => localStorage.removeItem(key));
       router.push('/login');
     },
