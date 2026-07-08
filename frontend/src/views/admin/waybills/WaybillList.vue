@@ -401,9 +401,9 @@
             </template>
           </el-table>
 
-          <!-- Bảng phẳng dành cho CSKH (Hiển thị Vận đơn trực tiếp) -->
+          <!-- Bảng phẳng dành cho CSKH và các Role khác (Hiển thị Vận đơn trực tiếp) -->
           <el-table 
-            v-if="isCSKH"
+            v-if="!isAdmin"
             :data="flatWaybills" 
             v-loading="loading" 
             class="modern-table"
@@ -578,7 +578,7 @@
           <span class="pagination-info" v-else>Tổng số vận đơn hiển thị: {{ total }}</span>
           
           <el-pagination
-            v-if="isCSKH"
+            v-if="!isAdmin"
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
             :page-sizes="[10, 20, 50, 100]"
@@ -1284,8 +1284,8 @@ const handleSearch = async () => {
   activeWaybillSelection.value = {};
   try {
     const filters = {
-      page: isCSKH.value ? currentPage.value : 1,
-      size: isCSKH.value ? pageSize.value : 10000,
+      page: !isAdmin.value ? currentPage.value : 1,
+      size: !isAdmin.value ? pageSize.value : 10000,
       waybill_code: searchQuery.value || null,
       status: statusFilter.value || null,
       start_date: dateRange.value?.[0] ? moment(dateRange.value[0]).toISOString() : null,
@@ -1299,7 +1299,7 @@ const handleSearch = async () => {
     
     const response = await api.post('/api/waybills/search', filters);
     
-    if (isCSKH.value) {
+    if (!isAdmin.value) {
       flatWaybills.value = response.data.items || [];
       total.value = response.data.total || 0;
     } else {
@@ -1371,7 +1371,7 @@ const handleFlatSelectionChange = (selectedList) => {
 };
 
 const selectedWaybillsList = computed(() => {
-  if (isCSKH.value) {
+  if (!isAdmin.value) {
     return activeWaybillSelection.value['flat'] || [];
   }
   return Object.values(activeWaybillSelection.value).flat();
@@ -1495,7 +1495,7 @@ const resetFilters = () => {
 const viewTracking = async (code) => {
   trackingDialog.value = true;
   trackingLoading.value = true;
-  if (isCSKH.value) {
+  if (!isAdmin.value) {
     selectedWaybill.value = flatWaybills.value.find(w => w.waybill_code === code);
   } else {
     selectedWaybill.value = Object.values(customerWaybills.value).flat().find(w => w.waybill_code === code);
@@ -1696,7 +1696,7 @@ const submitOverridePrice = async () => {
           };
         }
       };
-      if (isCSKH.value) {
+      if (!isAdmin.value) {
         updateLocalWaybill(flatWaybills.value);
       } else {
         Object.values(customerWaybills.value).forEach(list => updateLocalWaybill(list));
