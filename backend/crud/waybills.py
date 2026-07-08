@@ -812,13 +812,18 @@ def update_waybill(db: Session, code: str, update_data: dict):
     db.flush()
     return waybill
 
-def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_id: Optional[int] = None):
+def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_id: Optional[int] = None, cskh_id: Optional[int] = None):
     query = db.query(models.Waybills).options(
         joinedload(models.Waybills.origin_hub),
         joinedload(models.Waybills.dest_hub),
         joinedload(models.Waybills.holding_hub),
         joinedload(models.Waybills.holding_shipper),
+        joinedload(models.Waybills.customer),
     ).filter(models.Waybills.is_deleted == False)
+
+    if cskh_id:
+        assigned_customer_ids = db.query(models.Customers.customer_id).filter(models.Customers.staff_in_charge_id == cskh_id)
+        query = query.filter(models.Waybills.customer_id.in_(assigned_customer_ids))
 
     # Tìm kiếm theo keyword / search_term đa năng (Mã đơn, Tên/SĐT nhận, Mã KH/Tên shop gửi, Người gửi)
     search_keyword = None

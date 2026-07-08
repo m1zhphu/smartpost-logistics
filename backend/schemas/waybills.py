@@ -467,3 +467,7 @@ class WaybillBillImagesUpdate(BaseModel):
 class WaybillVerifyRequest(BaseModel):
     action: str = Field(..., description="VERIFIED hoặc MISMATCH")
     error_msg: Optional[str] = Field(None, description="Lý do lỗi nếu mismatch")
+
+class WaybillExportSelectedRequest(BaseModel):
+    waybill_codes: List[str]
+

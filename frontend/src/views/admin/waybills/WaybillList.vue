@@ -16,10 +16,14 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="btn-secondary" @click="exportExcel" :disabled="exporting" style="margin-right: 8px;">
-            <el-icon class="is-loading mr-2" v-if="exporting"><Loading /></el-icon>
+          <button class="btn-secondary" @click="exportSelectedExcel" :disabled="selectedWaybillsList.length === 0 || exportingSelected" style="margin-right: 8px;">
+            <el-icon class="is-loading mr-2" v-if="exportingSelected"><Loading /></el-icon>
             <el-icon v-else><Download /></el-icon>
-            <span>Xuất Excel</span>
+            <span>Xuất Excel Đơn Đã Chọn ({{ selectedWaybillsList.length }})</span>
+          </button>
+          <button class="btn-secondary" @click="openUpdateDialog" style="margin-right: 8px;">
+            <el-icon><Upload /></el-icon>
+            <span>Cập Nhật Excel</span>
           </button>
           <button class="btn-secondary" @click="openImportDialog" style="margin-right: 8px;">
             <el-icon><Upload /></el-icon>
@@ -173,59 +177,249 @@
         </el-row>
       </div>
 
-      <!-- Main Table Card -->
+      <!-- Main Table Card (Grouped by Customer) -->
       <div class="content-card table-wrapper animate-fade-in-up" style="min-width: 0; width: 100%; overflow: hidden;">
         <div class="card-header-inner mb-4 flex-between">
-          <h3 class="inner-title">Danh sách Vận đơn</h3>
-          <el-tag type="primary" effect="light" round class="fw-bold">Tổng: {{ total }} bản ghi</el-tag>
+          <h3 class="inner-title">Danh sách Khách hàng & Vận đơn</h3>
+          <el-tag type="primary" effect="light" round class="fw-bold">Tổng số vận đơn hiển thị: {{ total }}</el-tag>
         </div>
-
         <div class="waybill-table-scroll">
+          <!-- Bảng dành cho Quản trị viên (Gom nhóm theo Khách hàng) -->
           <el-table 
-            :data="waybills" 
+            v-if="isAdmin"
+            :data="displayCustomers" 
             v-loading="loading" 
             class="modern-table"
-            :row-class-name="tableRowClassName"
-            style="width: 100%; min-width: 1600px; max-width: none;"
+            style="width: 100%;"
+            row-key="customer_id"
+            @expand-change="handleCustomerExpand"
           >
-            <!-- Mã vận đơn -->
-            <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="270">
-              <template #default="{ row }">
-                 <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
-                   <span class="fw-bold">{{ row.waybill_code }}</span>
-                   <!-- Cảnh báo chưa kiểm duyệt ảnh bill OCR -->
-                   <el-tag v-if="row.verify_status !== 'VERIFIED'" type="danger" size="small" effect="dark" class="verify-badge animate-pulse" style="font-size: 10px; font-weight: 700; border-radius: 4px; border: none; letter-spacing: 0.3px; padding: 2px 6px;">
-                     ⚠️ CHƯA DUYỆT OCR
-                   </el-tag>
-                   <el-tag v-else type="success" size="small" effect="plain" class="verify-badge" style="font-size: 10px; font-weight: 600; border-radius: 4px; padding: 2px 6px;">
-                     ✓ ĐÃ DUYỆT OCR
-                   </el-tag>
-                 </div>
-              </template>
-            </el-table-column>
-            
-            <!-- Thông tin Người nhận -->
-            <el-table-column label="Thông tin Người nhận" min-width="260">
-              <template #default="{ row }">
-                <div class="recipient-profile">
-                  <div class="avatar-circle bg-info">
-                    <el-icon><User /></el-icon>
-                  </div>
-                  <div class="recipient-details">
-                    <div class="name-phone">
-                      <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
-                      <span class="phone-tag"><el-icon><Phone /></el-icon>{{ row.receiver_phone }}</span>
-                    </div>
-                    <span class="address-text" :title="row.receiver_address">
-                      <el-icon class="mr-1"><Location /></el-icon>{{ row.receiver_address }}
+            <!-- Expanded Area for Customer's Waybills -->
+            <el-table-column type="expand">
+              <template #default="{ row: customer }">
+                <div style="padding: 16px 24px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; margin: 8px 16px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; font-size: 14px; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                      <el-icon><Tickets /></el-icon>
+                      Danh sách vận đơn của: <strong style="color: #3b82f6;">{{ customer.company_name || customer.name }}</strong>
+                    </h4>
+                    <span style="font-size: 12px; color: #64748b;">
+                      Đã chọn: <strong>{{ activeWaybillSelection[customer.customer_id]?.length || 0 }}</strong> / {{ customerWaybills[customer.customer_id]?.length || 0 }} đơn
                     </span>
                   </div>
+
+                  <el-table
+                    :data="customerWaybills[customer.customer_id] || []"
+                    v-loading="customerWaybillsLoading[customer.customer_id]"
+                    style="width: 100%; min-width: 1400px;"
+                    class="inner-waybill-table"
+                    @selection-change="(val) => handleWaybillSelectionChange(customer.customer_id, val)"
+                  >
+                    <!-- Checkbox -->
+                    <el-table-column type="selection" width="55" align="center" />
+
+                    <!-- Mã vận đơn -->
+                    <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="220">
+                      <template #default="{ row }">
+                        <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình" style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                          <span class="fw-bold">{{ row.waybill_code }}</span>
+                          <el-tag v-if="row.verify_status !== 'VERIFIED'" type="danger" size="small" effect="dark" class="verify-badge animate-pulse" style="font-size: 9px; font-weight: 700; border-radius: 4px; padding: 1px 4px; border: none;">
+                            ⚠️ CHƯA DUYỆT
+                          </el-tag>
+                          <el-tag v-else type="success" size="small" effect="plain" class="verify-badge" style="font-size: 9px; font-weight: 600; border-radius: 4px; padding: 1px 4px;">
+                            ✓ ĐÃ DUYỆT
+                          </el-tag>
+                        </div>
+                      </template>
+                    </el-table-column>
+
+                    <!-- Người nhận -->
+                    <el-table-column label="Người nhận" min-width="240">
+                      <template #default="{ row }">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                          <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
+                          <span style="font-size: 11px; color: #475569;"><el-icon><Phone /></el-icon> {{ row.receiver_phone }}</span>
+                          <span style="font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="row.receiver_address">
+                            <el-icon><Location /></el-icon> {{ row.receiver_address }}
+                          </span>
+                        </div>
+                      </template>
+                    </el-table-column>
+
+                    <!-- Trạng thái -->
+                    <el-table-column prop="status" label="Trạng thái" min-width="130" align="center">
+                      <template #default="{ row }">
+                        <div class="modern-tag" :class="getStatusClass(row.status)">
+                          <span class="dot"></span>
+                          {{ getStatusLabel(row.status) }}
+                        </div>
+                      </template>
+                    </el-table-column>
+
+                    <!-- SLA & Đơn vị giữ -->
+                    <el-table-column label="SLA & Đang giữ" min-width="150">
+                      <template #default="{ row }">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                          <el-tag :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
+                            {{ row.sla_status || 'ON_TIME' }}
+                          </el-tag>
+                          <span style="font-size: 11px; color: #64748b;">
+                            <b>Giữ:</b> {{ row.holding_hub?.hub_name || row.holding_shipper?.full_name || '---' }}
+                          </span>
+                        </div>
+                      </template>
+                    </el-table-column>
+
+                    <!-- Chi tiết hàng -->
+                    <el-table-column label="Chi tiết hàng" min-width="140">
+                      <template #default="{ row }">
+                        <div style="font-size: 12px; color: #334155; line-height: 1.4;">
+                          <div><b>Trọng lượng:</b> {{ row.actual_weight }} kg</div>
+                          <div v-if="row.length"><b>Kích thước:</b> {{ row.length }}x{{ row.width }}x{{ row.height }}</div>
+                        </div>
+                      </template>
+                    </el-table-column>
+
+                    <!-- Tài chính -->
+                    <el-table-column label="Tài chính (VNĐ)" min-width="180" align="right">
+                      <template #default="{ row }">
+                        <div class="finance-display" style="font-size: 12px;">
+                          <div class="finance-line">
+                            <span class="label">Cước: </span>
+                            <span class="value text-primary fw-bold">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
+                          </div>
+                          <div class="finance-line" v-if="row.cod_amount > 0">
+                            <span class="label">Thu hộ (COD): </span>
+                            <span class="value text-warning fw-bold">{{ formatCurrencyManual(row.cod_amount) }}</span>
+                          </div>
+                        </div>
+                      </template>
+                    </el-table-column>
+
+                    <!-- Thao tác -->
+                    <el-table-column label="Thao tác" min-width="140" align="center">
+                      <template #default="{ row }">
+                        <div class="action-buttons">
+                          <button class="icon-btn edit" @click="handlePrint(row.waybill_code)" title="In tem vận đơn">
+                            <el-icon><Printer /></el-icon>
+                          </button>
+                          <button class="icon-btn success" @click="viewTracking(row.waybill_code)" title="Theo dõi hành trình">
+                            <el-icon><Van /></el-icon>
+                          </button>
+                          
+                          <el-dropdown trigger="click" placement="bottom-end">
+                            <button class="icon-btn secondary" title="Thêm thao tác">
+                              <el-icon><MoreFilled /></el-icon>
+                            </button>
+                            <template #dropdown>
+                              <el-dropdown-menu class="modern-dropdown">
+                                <el-dropdown-item @click="openEditDialog(row)">
+                                  <el-icon><Edit /></el-icon> Hiệu chỉnh thông tin
+                                </el-dropdown-item>
+                                <el-dropdown-item @click="openOverrideDialog(row)" class="text-warning">
+                                  <el-icon><Money /></el-icon> Sửa giá vận đơn
+                                </el-dropdown-item>
+                                <el-dropdown-item 
+                                  v-if="row.status !== 'DELIVERED' && row.status !== 'SETTLED' && row.status !== 'CANCELLED'"
+                                  @click="handleDelete(row.waybill_code)"
+                                  class="text-danger"
+                                >
+                                  <el-icon><Delete /></el-icon> Hủy vận đơn
+                                </el-dropdown-item>
+                              </el-dropdown-menu>
+                            </template>
+                          </el-dropdown>
+                        </div>
+                      </template>
+                    </el-table-column>
+                  </el-table>
                 </div>
               </template>
             </el-table-column>
-  
+
+            <!-- Customer Columns -->
+            <el-table-column prop="customer_code" label="Mã Khách Hàng" min-width="150">
+              <template #default="{ row }">
+                <span class="fw-bold text-dark">{{ row.customer_code }}</span>
+              </template>
+            </el-table-column>
+            
+            <el-table-column prop="company_name" label="Tên Shop / Doanh nghiệp" min-width="250">
+              <template #default="{ row }">
+                <span class="fw-bold">{{ row.company_name || row.name }}</span>
+              </template>
+            </el-table-column>
+
+            <el-table-column prop="phone" label="Số điện thoại" min-width="150" />
+            
+            <el-table-column prop="address" label="Địa chỉ" min-width="300" show-overflow-tooltip />
+
+            <el-table-column prop="staff_in_charge_name" label="CSKH Quản lý" min-width="180">
+              <template #default="{ row }">
+                <el-tag v-if="row.staff_in_charge_name" type="success" effect="light">
+                  {{ row.staff_in_charge_name }}
+                </el-tag>
+                <span v-else style="color: #94a3b8; font-style: italic;">Chưa gán</span>
+              </template>
+            </el-table-column>
+
+            <template #empty>
+              <el-empty description="Không tìm thấy khách hàng nào phù hợp" :image-size="100" />
+            </template>
+          </el-table>
+
+          <!-- Bảng phẳng dành cho CSKH (Hiển thị Vận đơn trực tiếp) -->
+          <el-table 
+            v-if="isCSKH"
+            :data="flatWaybills" 
+            v-loading="loading" 
+            class="modern-table"
+            style="width: 100%;"
+            @selection-change="handleFlatSelectionChange"
+          >
+            <!-- Checkbox -->
+            <el-table-column type="selection" width="55" align="center" />
+
+            <!-- Mã vận đơn -->
+            <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="220">
+              <template #default="{ row }">
+                <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình" style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                  <span class="fw-bold">{{ row.waybill_code }}</span>
+                  <el-tag v-if="row.verify_status !== 'VERIFIED'" type="danger" size="small" effect="dark" class="verify-badge animate-pulse" style="font-size: 9px; font-weight: 700; border-radius: 4px; padding: 1px 4px; border: none;">
+                    ⚠️ CHƯA DUYỆT
+                  </el-tag>
+                  <el-tag v-else type="success" size="small" effect="plain" class="verify-badge" style="font-size: 9px; font-weight: 600; border-radius: 4px; padding: 1px 4px;">
+                    ✓ ĐÃ DUYỆT
+                  </el-tag>
+                </div>
+              </template>
+            </el-table-column>
+
+            <!-- Khách hàng -->
+            <el-table-column label="Khách hàng" min-width="200">
+              <template #default="{ row }">
+                <div style="font-size: 12px; line-height: 1.4;">
+                  <div class="fw-bold text-dark">{{ row.customer_name || '---' }}</div>
+                  <div style="color: #64748b;">Mã KH: <b>{{ row.customer_code || '---' }}</b></div>
+                </div>
+              </template>
+            </el-table-column>
+
+            <!-- Người nhận -->
+            <el-table-column label="Người nhận" min-width="240">
+              <template #default="{ row }">
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <span class="fw-bold text-dark">{{ row.receiver_name }}</span>
+                  <span style="font-size: 11px; color: #475569;"><el-icon><Phone /></el-icon> {{ row.receiver_phone }}</span>
+                  <span style="font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="row.receiver_address">
+                    <el-icon><Location /></el-icon> {{ row.receiver_address }}
+                  </span>
+                </div>
+              </template>
+            </el-table-column>
+
             <!-- Trạng thái -->
-            <el-table-column prop="status" label="Trạng thái" min-width="150" align="center">
+            <el-table-column prop="status" label="Trạng thái" min-width="130" align="center">
               <template #default="{ row }">
                 <div class="modern-tag" :class="getStatusClass(row.status)">
                   <span class="dot"></span>
@@ -233,75 +427,49 @@
                 </div>
               </template>
             </el-table-column>
-  
+
             <!-- SLA & Đơn vị giữ -->
-            <el-table-column label="SLA & Đơn vị giữ" min-width="180">
+            <el-table-column label="SLA & Đang giữ" min-width="150">
               <template #default="{ row }">
-                <div class="sla-holding">
-                  <el-tag :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" class="mb-1">
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <el-tag :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
                     {{ row.sla_status || 'ON_TIME' }}
                   </el-tag>
-                  <div class="text-xs mt-1" style="font-size: 11px; color: #6b7280; margin-top: 4px;">
-                    <b>Đang giữ:</b> 
-                    {{ row.holding_hub ? row.holding_hub.hub_name : (row.holding_shipper ? row.holding_shipper.full_name : '---') }}
-                  </div>
+                  <span style="font-size: 11px; color: #64748b;">
+                    <b>Giữ:</b> {{ row.holding_hub?.hub_name || row.holding_shipper?.full_name || '---' }}
+                  </span>
                 </div>
               </template>
             </el-table-column>
-  
-            <!-- Xác thực Bill -->
-            <el-table-column label="Xác thực Bill" min-width="140" align="center">
+
+            <!-- Chi tiết hàng -->
+            <el-table-column label="Chi tiết hàng" min-width="140">
               <template #default="{ row }">
-                <div class="modern-tag" :class="getVerifyClass(row.verify_status)">
-                  {{ getVerifyLabel(row.verify_status) }}
+                <div style="font-size: 12px; color: #334155; line-height: 1.4;">
+                  <div><b>Trọng lượng:</b> {{ row.actual_weight }} kg</div>
+                  <div v-if="row.length"><b>Kích thước:</b> {{ row.length }}x{{ row.width }}x{{ row.height }}</div>
                 </div>
               </template>
             </el-table-column>
-  
+
             <!-- Tài chính -->
-            <el-table-column label="Tài chính (VNĐ)" min-width="200" align="right">
+            <el-table-column label="Tài chính (VNĐ)" min-width="180" align="right">
               <template #default="{ row }">
-                <div class="finance-display">
+                <div class="finance-display" style="font-size: 12px;">
                   <div class="finance-line">
-                    <span class="label">Cước phí:</span>
-                    <span class="value text-primary">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
+                    <span class="label">Cước: </span>
+                    <span class="value text-primary fw-bold">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
                   </div>
-                  <!-- Hiển thị phụ phí nếu có -->
-                  <div class="finance-line" v-if="(row.extra_services_fee || 0) > 0">
-                    <span class="label">Phụ phí:</span>
-                    <span class="value text-warning">{{ formatCurrencyManual(row.extra_services_fee) }}</span>
-                  </div>
-                  <!-- Tính toán Tổng thu an toàn để tránh NaN -->
-                  <div class="finance-line total-row">
-                    <span class="label">Tổng thu:</span>
-                    <span class="value fw-bold">
-                      {{ formatCurrencyManual(
-                        row.total_amount_to_collect || 
-                        ((row.shipping_fee || 0) + (row.extra_services_fee || 0)) * 1.08
-                      ) }}
-                    </span>
-                  </div>
-                  <div class="finance-line highlight">
-                    <span class="label">Thu hộ (COD):</span>
-                    <span class="value">{{ formatCurrencyManual(row.cod_amount || 0) }}</span>
+                  <div class="finance-line" v-if="row.cod_amount > 0">
+                    <span class="label">Thu hộ (COD): </span>
+                    <span class="value text-warning fw-bold">{{ formatCurrencyManual(row.cod_amount) }}</span>
                   </div>
                 </div>
               </template>
             </el-table-column>
-  
-            <!-- Nguồn / Đích -->
-            <el-table-column label="Hành trình (Nguồn → Đích)" min-width="260">
-              <template #default="{ row }">
-                <div class="hub-route">
-                  <span class="hub-item origin">{{ row.origin_hub?.hub_name || '---' }}</span>
-                  <el-icon class="route-arrow"><Right /></el-icon>
-                  <span class="hub-item dest">{{ row.dest_hub?.hub_name || '---' }}</span>
-                </div>
-              </template>
-            </el-table-column>
-  
+
             <!-- Thao tác -->
-            <el-table-column label="Thao tác" min-width="180" align="center">
+            <el-table-column label="Thao tác" min-width="140" align="center">
               <template #default="{ row }">
                 <div class="action-buttons">
                   <button class="icon-btn edit" @click="handlePrint(row.waybill_code)" title="In tem vận đơn">
@@ -324,12 +492,6 @@
                           <el-icon><Money /></el-icon> Sửa giá vận đơn
                         </el-dropdown-item>
                         <el-dropdown-item 
-                          @click="handleUpdateStatus(row.waybill_code)"
-                          :disabled="row.status === 'DELIVERED' || row.status === 'SETTLED'"
-                          class="text-success"
-                        >
-                        </el-dropdown-item>
-                        <el-dropdown-item 
                           v-if="row.status !== 'DELIVERED' && row.status !== 'SETTLED' && row.status !== 'CANCELLED'"
                           @click="handleDelete(row.waybill_code)"
                           class="text-danger"
@@ -342,26 +504,27 @@
                 </div>
               </template>
             </el-table-column>
-            
+
             <template #empty>
               <el-empty description="Không tìm thấy vận đơn nào phù hợp" :image-size="100" />
             </template>
           </el-table>
         </div>
 
-        <!-- Pagination -->
+        <!-- Phân trang -->
         <div class="pagination-wrapper mt-24 flex-between">
-          <span class="pagination-info">Hiển thị {{ waybills.length }} / {{ total }} bản ghi</span>
+          <span class="pagination-info" v-if="isAdmin">Hiển thị {{ displayCustomers.length }} khách hàng</span>
+          <span class="pagination-info" v-else>Tổng số vận đơn hiển thị: {{ total }}</span>
+          
           <el-pagination
+            v-if="isCSKH"
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
             :page-sizes="[10, 20, 50, 100]"
-            layout="sizes, prev, pager, next, jumper"
+            layout="total, sizes, prev, pager, next, jumper"
             :total="total"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
-            background
-            class="modern-pagination"
           />
         </div>
       </div>
@@ -753,12 +916,84 @@
         </template>
       </el-dialog>
 
+      <!-- Update Excel Dialog -->
+      <el-dialog
+        v-model="updateDialogVisible"
+        title="Cập nhật Vận đơn hàng loạt qua Excel"
+        width="540px"
+        class="modern-dialog"
+        destroy-on-close
+      >
+        <div class="import-excel-container" style="padding: 10px 0;">
+          <div class="template-download-section mb-16" style="padding: 12px; background: #fffbeb; border-radius: 8px; border: 1px solid #fef3c7; margin-bottom: 16px;">
+            <p style="margin: 0; font-size: 13px; color: #b45309; line-height: 1.6;">
+              Tải lên file Excel chứa cột <b>Mã Vận Đơn</b> và các cột cần cập nhật (như <b>Khối lượng (kg), COD, Dịch vụ, Dài, Rộng, Cao, Ghi chú</b>). 
+              <br><i>Lưu ý: Tên và địa chỉ người nhận sẽ không được thay đổi để đảm bảo tính an toàn dữ liệu.</i>
+            </p>
+          </div>
+
+          <el-form label-position="top">
+            <el-form-item label="Chọn File Excel / CSV đã chỉnh sửa">
+              <el-upload
+                class="excel-uploader"
+                drag
+                action=""
+                :auto-upload="false"
+                :on-change="handleUpdateFileChange"
+                :limit="1"
+                :on-exceed="handleUpdateExceed"
+                accept=".xlsx, .xls, .csv"
+                ref="updateUploadRef"
+              >
+                <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+                <div class="el-upload__text">
+                  Kéo thả file Excel/CSV vào đây hoặc <em>nhấp để tải lên</em>
+                </div>
+              </el-upload>
+            </el-form-item>
+          </el-form>
+
+          <!-- Update Summary Result -->
+          <div v-if="updateResult" class="import-result-section mt-16" style="margin-top: 16px; padding: 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
+              <span>Kết quả Cập nhật:</span>
+              <el-tag :type="updateResult.status === 'success' ? 'success' : 'danger'" size="small">
+                {{ updateResult.status === 'success' ? 'Hoàn tất' : 'Có lỗi xảy ra' }}
+              </el-tag>
+            </h4>
+            <div style="font-size: 13px; line-height: 1.8;">
+              <div>🟢 Cập nhật thành công: <strong style="color: #10b981;">{{ updateResult.imported_count }} đơn</strong></div>
+              <div>🔴 Thất bại: <strong style="color: #ef4444;">{{ updateResult.failed_count }} dòng</strong></div>
+            </div>
+            
+            <div v-if="updateResult.errors && updateResult.errors.length > 0" class="error-list" style="margin-top: 8px; max-height: 150px; overflow-y: auto; padding: 8px; background: #fff5f5; border-radius: 6px; border: 1px solid #fed7d7;">
+              <div v-for="err in updateResult.errors" :key="err.row" style="font-size: 12px; color: #c53030; margin-bottom: 4px;">
+                Dòng {{ err.row }}: {{ err.error }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <button class="btn-secondary mr-2" @click="updateDialogVisible = false">Đóng</button>
+          <button 
+            class="btn-primary" 
+            @click="submitUpdateExcel" 
+            :disabled="!selectedUpdateFile || updateSubmitting"
+          >
+            <el-icon class="is-loading mr-2" v-if="updateSubmitting"><Loading /></el-icon>
+            <el-icon v-else><Upload /></el-icon>
+            <span>Bắt đầu Cập nhật</span>
+          </button>
+        </template>
+      </el-dialog>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { 
   Search, Plus, Printer, Download, MoreFilled, Check, Edit, Delete, 
@@ -775,6 +1010,15 @@ import { useAuthStore } from '@/stores/auth';
 const route = useRoute();
 const auth = useAuthStore();
 const customers = ref([]);
+const displayCustomers = ref([]);
+const customerWaybills = ref({});
+const customerWaybillsLoading = ref({});
+const activeWaybillSelection = ref({});
+const flatWaybills = ref([]);
+
+const isAdmin = computed(() => auth.user?.role_id === 1);
+const isCSKH = computed(() => auth.user?.role_id === 7);
+
 const loading = ref(false);
 const searchQuery = ref('');
 const statusFilter = ref('');
@@ -950,15 +1194,20 @@ const codStatusFilter = ref('');
 
 const fetchHubsAndShippers = async () => {
   try {
+    const customerParams = {};
+    if (auth.user?.role_id === 7) {
+      customerParams.mine = true;
+    }
     const [hubsRes, usersRes, customersRes] = await Promise.all([
       api.get('/api/hubs').catch(() => ({ data: [] })),
       api.get('/api/users').catch(() => ({ data: [] })),
-      api.get('/api/customers').catch(() => ({ data: [] }))
+      api.get('/api/customers', { params: customerParams }).catch(() => ({ data: [] }))
     ]);
     hubs.value = Array.isArray(hubsRes.data) ? hubsRes.data : (hubsRes.data.items || hubsRes.data.data || []);
     const allUsers = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data.items || usersRes.data.data || []);
     shippers.value = allUsers.filter(u => u.role_id === 4);
     customers.value = Array.isArray(customersRes.data) ? customersRes.data : (customersRes.data.items || customersRes.data.data || []);
+    displayCustomers.value = [...customers.value];
   } catch (err) {
     console.error('Không thể tải danh sách bưu cục/bưu tá/khách hàng:', err);
   }
@@ -971,11 +1220,12 @@ const formatCurrencyManual = (amount) => {
 
 const handleSearch = async () => {
   loading.value = true;
+  activeWaybillSelection.value = {};
   try {
     const filters = {
-      page: currentPage.value,
-      size: pageSize.value,
-      waybill_code: searchQuery.value,
+      page: isCSKH.value ? currentPage.value : 1,
+      size: isCSKH.value ? pageSize.value : 10000,
+      waybill_code: searchQuery.value || null,
       status: statusFilter.value || null,
       start_date: dateRange.value?.[0] ? moment(dateRange.value[0]).toISOString() : null,
       end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null,
@@ -985,53 +1235,187 @@ const handleSearch = async () => {
       service_type: serviceTypeFilter.value || null,
       sla_status: slaStatusFilter.value || null
     };
+    
     const response = await api.post('/api/waybills/search', filters);
-    waybills.value = response.data.items || [];
-    total.value = response.data.total || 0;
+    
+    if (isCSKH.value) {
+      flatWaybills.value = response.data.items || [];
+      total.value = response.data.total || 0;
+    } else {
+      const allWaybills = response.data.items || [];
+      
+      const grouped = {};
+      allWaybills.forEach(w => {
+        const cId = w.customer_id;
+        if (!grouped[cId]) {
+          grouped[cId] = [];
+        }
+        grouped[cId].push(w);
+      });
+      
+      customerWaybills.value = grouped;
+      
+      const isFiltering = !!(
+        searchQuery.value || statusFilter.value || dateRange.value?.[0] ||
+        holdingHubFilter.value || holdingShipperFilter.value || codStatusFilter.value ||
+        serviceTypeFilter.value || slaStatusFilter.value
+      );
+      
+      if (isFiltering) {
+        displayCustomers.value = customers.value.filter(c => !!grouped[c.customer_id]);
+      } else {
+        displayCustomers.value = [...customers.value];
+      }
+      
+      total.value = allWaybills.length;
+    }
   } catch (err) {
+    console.error(err);
     ElMessage.error('Không thể tìm kiếm vận đơn');
-    waybills.value = [];
+    displayCustomers.value = [];
+    flatWaybills.value = [];
   } finally {
     loading.value = false;
   }
 };
 
-const exporting = ref(false);
+const handleCustomerExpand = async (row, expandedRows) => {
+  const isExpanded = expandedRows.some(r => r.customer_id === row.customer_id);
+  if (isExpanded) {
+    if (!customerWaybills.value[row.customer_id] || customerWaybills.value[row.customer_id].length === 0) {
+      customerWaybillsLoading.value[row.customer_id] = true;
+      try {
+        const response = await api.post('/api/waybills/search', {
+          page: 1,
+          size: 500,
+          customer_id: row.customer_id
+        });
+        customerWaybills.value[row.customer_id] = response.data.items || [];
+      } catch (err) {
+        console.error(err);
+        ElMessage.error('Không thể tải vận đơn cho khách hàng này');
+      } finally {
+        customerWaybillsLoading.value[row.customer_id] = false;
+      }
+    }
+  }
+};
 
-const exportExcel = async () => {
-  exporting.value = true;
+const handleWaybillSelectionChange = (customerId, selectedList) => {
+  activeWaybillSelection.value[customerId] = selectedList;
+};
+
+const handleFlatSelectionChange = (selectedList) => {
+  activeWaybillSelection.value['flat'] = selectedList;
+};
+
+const selectedWaybillsList = computed(() => {
+  if (isCSKH.value) {
+    return activeWaybillSelection.value['flat'] || [];
+  }
+  return Object.values(activeWaybillSelection.value).flat();
+});
+
+const exportingSelected = ref(false);
+
+const exportSelectedExcel = async () => {
+  if (selectedWaybillsList.value.length === 0) {
+    ElMessage.warning('Vui lòng chọn ít nhất 1 vận đơn để xuất');
+    return;
+  }
+  
+  exportingSelected.value = true;
   try {
-    const filters = {
-      page: 1,
-      size: 10000,
-      waybill_code: searchQuery.value,
-      status: statusFilter.value || null,
-      start_date: dateRange.value?.[0] ? moment(dateRange.value[0]).toISOString() : null,
-      end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null,
-      holding_hub_id: holdingHubFilter.value || null,
-      holding_shipper_id: holdingShipperFilter.value || null,
-      cod_status: codStatusFilter.value || null,
-      service_type: serviceTypeFilter.value || null,
-      sla_status: slaStatusFilter.value || null
+    const payload = {
+      waybill_codes: selectedWaybillsList.value.map(w => w.waybill_code)
     };
-    const response = await api.post('/api/waybills/export', filters, {
+    const response = await api.post('/api/waybills/export-selected', payload, {
       responseType: 'blob'
     });
     
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    const filename = `DanhSachVanDon_${moment().format('YYYYMMDD_HHmm')}.xlsx`;
+    const filename = `DonHangChon_${moment().format('YYYYMMDD_HHmm')}.xlsx`;
     link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
-    ElMessage.success('Đã xuất file Excel thành công!');
+    ElMessage.success('Đã xuất các đơn hàng được chọn thành công!');
   } catch (err) {
     ElMessage.error('Không thể xuất Excel');
   } finally {
-    exporting.value = false;
+    exportingSelected.value = false;
+  }
+};
+
+// --- UPDATE EXCEL STATE & FUNCTIONS ---
+const updateDialogVisible = ref(false);
+const updateSubmitting = ref(false);
+const selectedUpdateFile = ref(null);
+const updateResult = ref(null);
+const updateUploadRef = ref(null);
+
+const openUpdateDialog = () => {
+  updateDialogVisible.value = true;
+  updateResult.value = null;
+  selectedUpdateFile.value = null;
+  if (updateUploadRef.value) {
+    updateUploadRef.value.clearFiles();
+  }
+};
+
+const handleUpdateFileChange = (file) => {
+  selectedUpdateFile.value = file.raw;
+  updateResult.value = null;
+};
+
+const handleUpdateExceed = (files) => {
+  if (updateUploadRef.value) {
+    updateUploadRef.value.clearFiles();
+    const file = files[0];
+    updateUploadRef.value.handleStart(file);
+    selectedUpdateFile.value = file;
+  }
+};
+
+const submitUpdateExcel = async () => {
+  if (!selectedUpdateFile.value) {
+    ElMessage.warning('Vui lòng chọn file Excel đã chỉnh sửa trước');
+    return;
+  }
+  
+  updateSubmitting.value = true;
+  updateResult.value = null;
+  
+  const formData = new FormData();
+  formData.append('file', selectedUpdateFile.value);
+  
+  try {
+    const response = await api.post('/api/waybills/update-excel', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    updateResult.value = response.data;
+    if (response.data.failed_count === 0) {
+      ElMessage.success(`Cập nhật thành công ${response.data.imported_count} đơn hàng!`);
+      updateDialogVisible.value = false;
+      handleSearch();
+    } else if (response.data.imported_count > 0) {
+      ElMessage.warning(`Cập nhật hoàn tất một phần: Thành công ${response.data.imported_count} đơn, thất bại ${response.data.failed_count} dòng.`);
+      handleSearch();
+    } else {
+      ElMessage.error(`Cập nhật thất bại hoàn toàn! ${response.data.failed_count} dòng có lỗi.`);
+    }
+  } catch (err) {
+    console.error(err);
+    const detail = err.response?.data?.detail || 'Lỗi hệ thống khi tải file lên';
+    ElMessage.error(`Lỗi cập nhật: ${detail}`);
+  } finally {
+    updateSubmitting.value = false;
   }
 };
 
@@ -1050,7 +1434,11 @@ const resetFilters = () => {
 const viewTracking = async (code) => {
   trackingDialog.value = true;
   trackingLoading.value = true;
-  selectedWaybill.value = waybills.value.find(w => w.waybill_code === code);
+  if (isCSKH.value) {
+    selectedWaybill.value = flatWaybills.value.find(w => w.waybill_code === code);
+  } else {
+    selectedWaybill.value = Object.values(customerWaybills.value).flat().find(w => w.waybill_code === code);
+  }
   try {
     const response = await api.get(`/api/waybills/${code}/tracking`);
     trackingLogs.value = response.data.history;
@@ -1235,15 +1623,22 @@ const submitOverridePrice = async () => {
     } else {
       // Bảng kê DRAFT → sửa trực tiếp
       // Cập nhật ngay tất cả giá trị tài chính từ BE trả về vào bảng local (optimistic update)
-      const idx = waybills.value.findIndex(w => w.waybill_id === overrideForm.value.waybill_id);
-      if (idx !== -1) {
-        waybills.value[idx] = {
-          ...waybills.value[idx],
-          shipping_fee: data.new_shipping_fee,
-          extra_services_fee: data.new_extra_fee,
-          vat_amount: data.new_vat,
-          total_amount_to_collect: data.new_total
-        };
+      const updateLocalWaybill = (list) => {
+        const idx = list.findIndex(w => w.waybill_id === overrideForm.value.waybill_id);
+        if (idx !== -1) {
+          list[idx] = {
+            ...list[idx],
+            shipping_fee: data.new_shipping_fee,
+            extra_services_fee: data.new_extra_fee,
+            vat_amount: data.new_vat,
+            total_amount_to_collect: data.new_total
+          };
+        }
+      };
+      if (isCSKH.value) {
+        updateLocalWaybill(flatWaybills.value);
+      } else {
+        Object.values(customerWaybills.value).forEach(list => updateLocalWaybill(list));
       }
       ElMessage.success(`✅ Cập nhật giá thành công! Tổng mới: ${Number(data.new_total).toLocaleString('vi-VN')} đ`);
     }

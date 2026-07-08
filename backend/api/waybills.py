@@ -82,8 +82,9 @@ def export_waybills_excel(
         filters.size = 10000 
         
         role_id = current_user.get("role_id")
-        hub_id = current_user.get("primary_hub_id") if role_id != 1 else None
-        items, _ = crud_wb.get_waybills_with_filters(db, filters, current_hub_id=hub_id)
+        hub_id = current_user.get("primary_hub_id") if (role_id != 1 and role_id != 7) else None
+        cskh_id = current_user.get("user_id") if role_id == 7 else None
+        items, _ = crud_wb.get_waybills_with_filters(db, filters, current_hub_id=hub_id, cskh_id=cskh_id)
 
         # 2. Chuyển đổi dữ liệu sang dạng bảng
         data = []
@@ -202,7 +203,11 @@ def search_waybills(
         filters.keyword = filters.search_term
 
     hub_filter = None
-    if user_role != 1:
+    cskh_filter_id = None
+    
+    if user_role == 7:
+        cskh_filter_id = current_user.get("user_id")
+    elif user_role != 1:
         # --- CHỐT CHẶN NGHIỆP VỤ ---
         if filters.status == "CREATED":
             filters.origin_hub_id = user_hub_id
@@ -216,7 +221,7 @@ def search_waybills(
             hub_filter = user_hub_id
 
     try:
-        items, total = crud_wb.get_waybills_with_filters(db, filters, current_hub_id=hub_filter)
+        items, total = crud_wb.get_waybills_with_filters(db, filters, current_hub_id=hub_filter, cskh_id=cskh_filter_id)
 
         result = []
         for w in items:
@@ -239,6 +244,8 @@ def search_waybills(
                 "product_name": w.product_name,
                 "note": w.note,
                 "customer_id": w.customer_id,
+                "customer_code": w.customer.customer_code if w.customer else None,
+                "customer_name": w.customer.company_name or w.customer.transaction_name or w.customer.customer_code if w.customer else None,
                 "origin_hub_id": w.origin_hub_id,
                 "dest_hub_id": w.dest_hub_id,
                 "origin_hub": {"hub_id": w.origin_hub.hub_id, "hub_name": w.origin_hub.hub_name} if w.origin_hub else None,
@@ -2082,7 +2089,11 @@ def get_sla_dashboard(
     try:
         from core.state_machine import WaybillStatus
         # Lấy tất cả đơn chưa xóa
-        all_w = db.query(models.Waybills).filter(models.Waybills.is_deleted == False).all()
+        query = db.query(models.Waybills).filter(models.Waybills.is_deleted == False)
+        role_id = current_user.get("role_id")
+        if role_id == 7:
+            query = query.join(models.Customers).filter(models.Customers.staff_in_charge_id == current_user.get("user_id"))
+        all_w = query.all()
         
         total = len(all_w)
         on_time = 0
@@ -2125,7 +2136,10 @@ async def import_waybills_excel(
         df = pd.read_excel(BytesIO(contents))
         
         # Chuẩn hóa khoảng trắng các ô kiểu chuỗi
-        df = df.applymap(lambda s: s.strip() if isinstance(s, str) else s)
+        if hasattr(df, 'map'):
+            df = df.map(lambda s: s.strip() if isinstance(s, str) else s)
+        else:
+            df = df.applymap(lambda s: s.strip() if isinstance(s, str) else s)
         
         # Ánh xạ cột tự động dựa trên từ khóa gợi ý
         columns_mapping = {}
@@ -2329,3 +2343,311 @@ async def import_waybills_excel(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Lỗi khi import Excel: {str(e)}")
+
+
+@router.post("/export-selected")
+def export_selected_waybills_excel(
+    data: schema_wb.WaybillExportSelectedRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Xuất Excel cho các vận đơn được chọn"""
+    try:
+        from sqlalchemy.orm import joinedload
+        query = (
+            db.query(models.Waybills)
+            .options(
+                joinedload(models.Waybills.customer),
+                joinedload(models.Waybills.dest_hub)
+            )
+            .filter(
+                models.Waybills.waybill_code.in_(data.waybill_codes),
+                models.Waybills.is_deleted == False
+            )
+        )
+        
+        if current_user.get("role_id") == 7:
+            query = query.join(models.Customers).filter(models.Customers.staff_in_charge_id == current_user.get("user_id"))
+            
+        waybills = query.all()
+        
+        rows = []
+        for w in waybills:
+            rows.append({
+                "Mã Vận Đơn": w.waybill_code,
+                "Họ tên": w.receiver_name or "",
+                "Số điện thoại": w.receiver_phone or "",
+                "Địa chỉ nhận hàng": w.receiver_address or "",
+                "Khối lượng (kg)": float(w.actual_weight or 0),
+                "COD": float(w.cod_amount or 0),
+                "Dịch vụ": w.service_type or "STANDARD",
+                "Tên hàng": w.product_name or "",
+                "Ghi chú": w.note or "",
+                "Dài": float(w.length or 0),
+                "Rộng": float(w.width or 0),
+                "Cao": float(w.height or 0),
+                "Mã Khách Hàng": w.customer.customer_code if w.customer else "",
+                "Mã bưu cục nhận": w.dest_hub.hub_code if w.dest_hub else ""
+            })
+            
+        import io
+        from fastapi.responses import StreamingResponse
+        
+        cols = [
+            "Mã Vận Đơn", "Họ tên", "Số điện thoại", "Địa chỉ nhận hàng", 
+            "Khối lượng (kg)", "COD", "Dịch vụ", "Tên hàng", "Ghi chú", 
+            "Dài", "Rộng", "Cao", "Mã Khách Hàng", "Mã bưu cục nhận"
+        ]
+        
+        if not rows:
+            df = pd.DataFrame(columns=cols)
+        else:
+            df = pd.DataFrame(rows)[cols]
+            
+        stream = io.BytesIO()
+        df.to_excel(stream, index=False)
+        stream.seek(0)
+        
+        return StreamingResponse(
+            stream,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename=SelectedWaybills.xlsx"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khi xuất excel: {str(e)}")
+
+
+@router.post("/update-excel")
+async def update_waybills_excel(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Cập nhật thông tin hàng loạt cho vận đơn qua Excel"""
+    try:
+        def safe_float(val, default=None):
+            if val is None or pd.isna(val):
+                return default
+            try:
+                val_str = str(val).strip()
+                if not val_str:
+                    return default
+                return float(val_str)
+            except:
+                return default
+
+        contents = await file.read()
+        df = pd.read_excel(BytesIO(contents))
+        
+        if hasattr(df, 'map'):
+            df = df.map(lambda s: s.strip() if isinstance(s, str) else s)
+        else:
+            df = df.applymap(lambda s: s.strip() if isinstance(s, str) else s)
+        
+        columns_mapping = {}
+        for col in df.columns:
+            col_lower = str(col).lower().strip()
+            if any(k in col_lower for k in ["mã vận đơn", "ma van don", "waybill code", "waybill_code", "mã đơn", "ma don"]):
+                columns_mapping["waybill_code"] = col
+            elif any(k in col_lower for k in ["khối lượng", "trọng lượng", "cân nặng", "weight", "khoi luong"]):
+                columns_mapping["actual_weight"] = col
+            elif any(k in col_lower for k in ["cod", "thu hộ", "thu ho"]):
+                columns_mapping["cod_amount"] = col
+            elif any(k in col_lower for k in ["dịch vụ", "dich vu", "service"]):
+                columns_mapping["service_type"] = col
+            elif any(k in col_lower for k in ["sản phẩm", "san pham", "tên hàng", "product"]):
+                columns_mapping["product_name"] = col
+            elif any(k in col_lower for k in ["ghi chú", "ghi chu", "note"]):
+                columns_mapping["note"] = col
+            elif any(k in col_lower for k in ["dài", "dai", "length"]):
+                columns_mapping["length"] = col
+            elif any(k in col_lower for k in ["rộng", "rong", "width"]):
+                columns_mapping["width"] = col
+            elif any(k in col_lower for k in ["cao", "height"]):
+                columns_mapping["height"] = col
+            elif any(k in col_lower for k in ["bưu cục nhận", "buu cuc nhan", "dest hub", "mã kho nhận", "ma kho nhan", "kho nhan"]):
+                columns_mapping["dest_hub_code"] = col
+
+        if "waybill_code" not in columns_mapping:
+            raise HTTPException(
+                status_code=400,
+                detail="Thiếu cột 'Mã Vận Đơn' trong file Excel để xác định các đơn cần cập nhật."
+            )
+            
+        success_count = 0
+        error_rows = []
+        updated_codes = []
+        
+        user_id = current_user.get("user_id")
+        hub_id = current_user.get("primary_hub_id")
+        
+        for index, row in df.iterrows():
+            row_num = index + 2
+            try:
+                code_val = row[columns_mapping["waybill_code"]]
+                if pd.isna(code_val):
+                    continue
+                code = str(code_val).strip()
+                if not code:
+                    continue
+                
+                waybill = db.query(models.Waybills).filter(
+                    models.Waybills.waybill_code == code,
+                    models.Waybills.is_deleted == False
+                ).first()
+                
+                if not waybill:
+                    raise Exception(f"Không tìm thấy vận đơn mang mã {code} trên hệ thống.")
+                    
+                if current_user.get("role_id") == 7:
+                    cust = db.query(models.Customers).filter(
+                        models.Customers.customer_id == waybill.customer_id,
+                        models.Customers.staff_in_charge_id == current_user.get("user_id")
+                    ).first()
+                    if not cust:
+                        raise Exception(f"Vận đơn {code} không thuộc quyền quản lý của bạn.")
+                        
+                if waybill.status in ["DELIVERED", "CANCELLED"]:
+                    raise Exception(f"Không thể chỉnh sửa vận đơn đang ở trạng thái {waybill.status}")
+
+                weight = waybill.actual_weight
+                if "actual_weight" in columns_mapping:
+                    weight = safe_float(row[columns_mapping["actual_weight"]], default=waybill.actual_weight)
+                            
+                cod_amount = waybill.cod_amount
+                if "cod_amount" in columns_mapping:
+                    cod_amount = safe_float(row[columns_mapping["cod_amount"]], default=waybill.cod_amount)
+                            
+                srv_type = waybill.service_type
+                if "service_type" in columns_mapping:
+                    srv_val = row[columns_mapping["service_type"]]
+                    if not pd.isna(srv_val):
+                        srv_type = str(srv_val).upper().strip()
+                        if "TIẾT KIỆM" in srv_type or "TIET KIEM" in srv_type or "TK" in srv_type:
+                            srv_type = "TK"
+                        elif "CPN" in srv_type or "NHANH" in srv_type:
+                            srv_type = "CPN"
+                        elif "HỎA TỐC" in srv_type or "HOA TOC" in srv_type or "HT" in srv_type:
+                            srv_type = "HT"
+                        elif "TRƯỚC 9H" in srv_type or "PT9H" in srv_type:
+                            srv_type = "PT9H"
+                        elif "QUỐC TẾ" in srv_type or "QUOC TE" in srv_type or "QT" in srv_type:
+                            srv_type = "QT"
+                        else:
+                            srv_type = "CPN"
+                            
+                product_name = waybill.product_name
+                if "product_name" in columns_mapping:
+                    p_val = row[columns_mapping["product_name"]]
+                    if not pd.isna(p_val):
+                        product_name = str(p_val)
+                        
+                note = waybill.note
+                if "note" in columns_mapping:
+                    n_val = row[columns_mapping["note"]]
+                    if not pd.isna(n_val):
+                        note = str(n_val)
+                        
+                length = waybill.length
+                if "length" in columns_mapping:
+                    length = safe_float(row[columns_mapping["length"]], default=waybill.length)
+                width = waybill.width
+                if "width" in columns_mapping:
+                    width = safe_float(row[columns_mapping["width"]], default=waybill.width)
+                height = waybill.height
+                if "height" in columns_mapping:
+                    height = safe_float(row[columns_mapping["height"]], default=waybill.height)
+
+                dest_hub_id = waybill.dest_hub_id
+                if "dest_hub_code" in columns_mapping:
+                    dest_code = row[columns_mapping["dest_hub_code"]]
+                    if not pd.isna(dest_code) and str(dest_code).strip():
+                        hub = db.query(models.Hubs).filter(models.Hubs.hub_code == str(dest_code).strip()).first()
+                        if not hub:
+                            hub = db.query(models.Hubs).filter(models.Hubs.hub_name.ilike(f"%{dest_code}%")).first()
+                        if hub:
+                            dest_hub_id = hub.hub_id
+
+                try:
+                    new_fee = calculate_shipping_fee(
+                        db, 
+                        origin_hub_id=waybill.origin_hub_id or hub_id or 1, 
+                        dest_hub_id=dest_hub_id, 
+                        weight=weight or 0.0, 
+                        service_type=srv_type or "TK", 
+                        customer_id=waybill.customer_id
+                    )
+                except Exception:
+                    new_fee = waybill.shipping_fee or 0.0
+                
+                waybill.actual_weight = weight
+                waybill.cod_amount = cod_amount
+                waybill.service_type = srv_type
+                waybill.product_name = product_name
+                waybill.note = note
+                waybill.length = length
+                waybill.width = width
+                waybill.height = height
+                waybill.dest_hub_id = dest_hub_id
+                
+                waybill.shipping_fee = new_fee
+                waybill.estimated_weight = weight
+                waybill.final_weight = weight
+                waybill.estimated_shipping_fee = new_fee
+                waybill.final_shipping_fee = new_fee
+                
+                total_collect = float(cod_amount or 0)
+                if waybill.payment_method == 'RECEIVER_PAY':
+                    total_collect += float(new_fee)
+                waybill.total_amount_to_collect = total_collect
+                
+                waybill.version += 1
+                
+                waybill_item = db.query(models.WaybillItems).filter(models.WaybillItems.waybill_id == waybill.waybill_id).first()
+                if waybill_item:
+                    waybill_item.actual_weight = weight
+                    waybill_item.length = length
+                    waybill_item.width = width
+                    waybill_item.height = height
+                    waybill_item.product_name = product_name
+                else:
+                    db.add(models.WaybillItems(
+                        parcel_code=f"{waybill.waybill_code}-001",
+                        waybill_id=waybill.waybill_id,
+                        product_group="PARCEL",
+                        product_name=product_name or "Hàng hóa",
+                        actual_weight=weight,
+                        length=length,
+                        width=width,
+                        height=height,
+                        quantity=1
+                    ))
+                
+                db.add(models.TrackingLogs(
+                    waybill_id=waybill.waybill_id,
+                    status_id=waybill.status,
+                    hub_id=hub_id or waybill.origin_hub_id or 1,
+                    user_id=user_id,
+                    note=f"Cân lại và cập nhật Excel hàng loạt: Khối lượng {weight}kg, cước mới {new_fee:,.0f} VNĐ",
+                    system_time=datetime.utcnow()
+                ))
+                
+                updated_codes.append(waybill.waybill_code)
+                success_count += 1
+            except Exception as row_err:
+                error_rows.append({"row": row_num, "error": str(row_err)})
+                
+        if success_count > 0:
+            db.commit()
+            
+        return {
+            "status": "success",
+            "imported_count": success_count,
+            "failed_count": len(error_rows),
+            "errors": error_rows,
+            "updated_codes": updated_codes
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Lỗi khi cập nhật Excel: {str(e)}")
+
