@@ -246,6 +246,30 @@
                       </template>
                     </el-table-column>
 
+                    <!-- Phòng ban -->
+                    <el-table-column label="Phòng ban" min-width="150">
+                      <template #default="{ row }">
+                        <el-tag v-if="row.customer_department_name" type="info" effect="light" class="fw-semibold">
+                          {{ row.customer_department_name }}
+                        </el-tag>
+                        <span v-else style="color: #94a3b8; font-style: italic;">---</span>
+                      </template>
+                    </el-table-column>
+
+                    <!-- Người gửi -->
+                    <el-table-column label="Người gửi" min-width="200">
+                      <template #default="{ row }">
+                        <div v-if="row.sender_name" style="display: flex; flex-direction: column; gap: 2px; font-size: 12px;">
+                          <span class="fw-bold text-dark">{{ row.sender_name }}</span>
+                          <span style="font-size: 11px; color: #64748b;"><el-icon><Phone /></el-icon> {{ row.sender_phone }}</span>
+                          <span style="font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="row.sender_address">
+                            <el-icon><Location /></el-icon> {{ row.sender_address }}
+                          </span>
+                        </div>
+                        <span v-else style="color: #94a3b8; font-style: italic;">Mặc định</span>
+                      </template>
+                    </el-table-column>
+
                     <!-- Trạng thái -->
                     <el-table-column prop="status" label="Trạng thái" min-width="130" align="center">
                       <template #default="{ row }">
@@ -281,16 +305,25 @@
                     </el-table-column>
 
                     <!-- Tài chính -->
-                    <el-table-column label="Tài chính (VNĐ)" min-width="180" align="right">
+                    <el-table-column label="Tài chính (VNĐ)" min-width="220" align="right">
                       <template #default="{ row }">
-                        <div class="finance-display" style="font-size: 12px;">
+                        <div class="finance-display" style="font-size: 12px; display: flex; flex-direction: column; gap: 2px;">
                           <div class="finance-line">
-                            <span class="label">Cước: </span>
+                            <span class="label" style="color: #64748b;">Cước: </span>
                             <span class="value text-primary fw-bold">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
                           </div>
                           <div class="finance-line" v-if="row.cod_amount > 0">
-                            <span class="label">Thu hộ (COD): </span>
+                            <span class="label" style="color: #64748b;">Thu hộ (COD): </span>
                             <span class="value text-warning fw-bold">{{ formatCurrencyManual(row.cod_amount) }}</span>
+                          </div>
+                          <div class="finance-line" style="border-top: 1px dashed #e2e8f0; margin-top: 2px; padding-top: 2px;">
+                            <span class="label" style="color: #64748b;">Tổng thu: </span>
+                            <span class="value text-danger fw-bold">{{ formatCurrencyManual(row.total_amount_to_collect || (row.cod_amount + (row.payment_method === 'RECEIVER_PAY' ? row.shipping_fee : 0))) }}</span>
+                          </div>
+                          <div style="font-size: 10px; color: #475569; margin-top: 2px;">
+                            <span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">
+                              {{ row.payment_method === 'SENDER_DEBT' ? 'Công nợ shop' : row.payment_method === 'RECEIVER_PAY' ? 'Thu cước người nhận' : row.payment_method === 'SENDER_PAY' ? 'Shop trả trước' : row.payment_method || '---' }}
+                            </span>
                           </div>
                         </div>
                       </template>
@@ -396,11 +429,16 @@
             </el-table-column>
 
             <!-- Khách hàng -->
-            <el-table-column label="Khách hàng" min-width="200">
+            <el-table-column label="Khách hàng" min-width="220">
               <template #default="{ row }">
-                <div style="font-size: 12px; line-height: 1.4;">
+                <div style="font-size: 12px; line-height: 1.4; display: flex; flex-direction: column; gap: 2px;">
                   <div class="fw-bold text-dark">{{ row.customer_name || '---' }}</div>
                   <div style="color: #64748b;">Mã KH: <b>{{ row.customer_code || '---' }}</b></div>
+                  <div v-if="row.customer_department_name" style="margin-top: 2px;">
+                    <el-tag type="info" size="small" effect="light" class="fw-semibold">
+                      PB: {{ row.customer_department_name }}
+                    </el-tag>
+                  </div>
                 </div>
               </template>
             </el-table-column>
@@ -415,6 +453,20 @@
                     <el-icon><Location /></el-icon> {{ row.receiver_address }}
                   </span>
                 </div>
+              </template>
+            </el-table-column>
+
+            <!-- Người gửi -->
+            <el-table-column label="Người gửi" min-width="200">
+              <template #default="{ row }">
+                <div v-if="row.sender_name" style="display: flex; flex-direction: column; gap: 2px; font-size: 12px;">
+                  <span class="fw-bold text-dark">{{ row.sender_name }}</span>
+                  <span style="font-size: 11px; color: #64748b;"><el-icon><Phone /></el-icon> {{ row.sender_phone }}</span>
+                  <span style="font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="row.sender_address">
+                    <el-icon><Location /></el-icon> {{ row.sender_address }}
+                  </span>
+                </div>
+                <span v-else style="color: #94a3b8; font-style: italic;">Mặc định</span>
               </template>
             </el-table-column>
 
@@ -453,16 +505,25 @@
             </el-table-column>
 
             <!-- Tài chính -->
-            <el-table-column label="Tài chính (VNĐ)" min-width="180" align="right">
+            <el-table-column label="Tài chính (VNĐ)" min-width="220" align="right">
               <template #default="{ row }">
-                <div class="finance-display" style="font-size: 12px;">
+                <div class="finance-display" style="font-size: 12px; display: flex; flex-direction: column; gap: 2px;">
                   <div class="finance-line">
-                    <span class="label">Cước: </span>
+                    <span class="label" style="color: #64748b;">Cước: </span>
                     <span class="value text-primary fw-bold">{{ formatCurrencyManual(row.shipping_fee || 0) }}</span>
                   </div>
                   <div class="finance-line" v-if="row.cod_amount > 0">
-                    <span class="label">Thu hộ (COD): </span>
+                    <span class="label" style="color: #64748b;">Thu hộ (COD): </span>
                     <span class="value text-warning fw-bold">{{ formatCurrencyManual(row.cod_amount) }}</span>
+                  </div>
+                  <div class="finance-line" style="border-top: 1px dashed #e2e8f0; margin-top: 2px; padding-top: 2px;">
+                    <span class="label" style="color: #64748b;">Tổng thu: </span>
+                    <span class="value text-danger fw-bold">{{ formatCurrencyManual(row.total_amount_to_collect || (row.cod_amount + (row.payment_method === 'RECEIVER_PAY' ? row.shipping_fee : 0))) }}</span>
+                  </div>
+                  <div style="font-size: 10px; color: #475569; margin-top: 2px;">
+                    <span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">
+                      {{ row.payment_method === 'SENDER_DEBT' ? 'Công nợ shop' : row.payment_method === 'RECEIVER_PAY' ? 'Thu cước người nhận' : row.payment_method === 'SENDER_PAY' ? 'Shop trả trước' : row.payment_method || '---' }}
+                    </span>
                   </div>
                 </div>
               </template>

@@ -819,6 +819,7 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
         joinedload(models.Waybills.holding_hub),
         joinedload(models.Waybills.holding_shipper),
         joinedload(models.Waybills.customer),
+        joinedload(models.Waybills.request).joinedload(models.BookingRequests.customer_department),
     ).filter(models.Waybills.is_deleted == False)
 
     if cskh_id:
