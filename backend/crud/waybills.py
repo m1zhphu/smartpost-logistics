@@ -96,7 +96,7 @@ def create_bulk_mail_pickup(
         actual_quantity=0,
         pickup_mode="BULK_MAIL",
         materialization_status="PENDING",
-        status="PENDING_CONFIRMATION",
+        status="RECEIVED",
         requested_pickup_time=data.pickup_time,
         pickup_method="OUR_STAFF_PICKUP",
         priority="NORMAL",
@@ -353,7 +353,7 @@ def create_customer_pickup_waybill(
     estimated_total = float(shipping_fee or 0) + float(extra_services_fee or 0) + float(vat_amount or 0)
 
     request_code = generate_waybill_code(db)
-    booking_status = initial_status or ("DRAFT" if data.save_as_draft else "PENDING_CONFIRMATION")
+    booking_status = initial_status or ("DRAFT" if data.save_as_draft else "RECEIVED")
     assigned_origin_hub_id = target_hub_id if booking_status == "RECEIVED" else None
     proposed_target_hub_id = target_hub_id if booking_status in ["PENDING_CONFIRMATION", "DISPATCHED_TO_HUB", "RECEIVED"] else None
     booking = models.BookingRequests(
@@ -1064,11 +1064,11 @@ def update_waybill_images_and_trigger_ocr(db: Session, code: str, bill_url: str,
     waybill.ocr_status = "SUCCESS"
     
     if not errors:
-        # Khớp 100% -> Auto Verified
+        # Khớp 100% -> Auto Verified -> Vào thẳng kho
         waybill.verify_status = "VERIFIED"
-        waybill.status = WaybillStatus.READY_WAREHOUSE
+        waybill.status = WaybillStatus.IN_HUB
         waybill.verify_error_msg = None
-        note = "Đã tự động xác thực OCR thành công (Khớp 100%). Sẵn sàng nhập kho."
+        note = "Đã tự động xác thực OCR thành công (Khớp 100%). Đã nhập kho."
     else:
         # Lệch thông tin -> Chuyển trạng thái lỗi
         waybill.verify_status = "MISMATCH"
@@ -1098,9 +1098,9 @@ def verify_waybill_status(db: Session, code: str, action: str, error_msg: Option
     
     if action == "VERIFIED":
         waybill.verify_status = "VERIFIED"
-        waybill.status = WaybillStatus.READY_WAREHOUSE
+        waybill.status = WaybillStatus.IN_HUB
         waybill.verify_error_msg = None
-        note = "Đã xác thực ảnh bill khớp với dữ liệu hệ thống"
+        note = "Đã xác thực ảnh bill khớp với dữ liệu hệ thống. Đã nhập kho."
     elif action == "MISMATCH":
         waybill.verify_status = "MISMATCH"
         waybill.status = WaybillStatus.VERIFY_ERROR

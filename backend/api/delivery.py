@@ -27,7 +27,7 @@ def verify_shipper_access(user: dict):
 # -------------------------------
 
 def _can_operate_hub(current_user: dict, hub_id: int | None) -> bool:
-    if current_user.get("role_id") == 1:
+    if current_user.get("role_id") in [1, 7]:
         return True
     return bool(hub_id and current_user.get("primary_hub_id") == hub_id)
 
@@ -848,8 +848,8 @@ async def assign_shipper_online_pickup(
     #     ))
     #     db.commit()
     #     raise HTTPException(status_code=400, detail="Buu ta dang offline, khong the gan pickup")
-    if shipper.primary_hub_id != db_req.target_hub_id:
-        raise HTTPException(status_code=400, detail="Buu ta khong thuoc van phong nhan hang")
+    # if shipper.primary_hub_id != db_req.target_hub_id:
+    #     raise HTTPException(status_code=400, detail="Buu ta khong thuoc van phong nhan hang")
 
     try:
         crud_delivery.assign_shipper_to_online_pickup(db, db_req, data.shipper_id, current_user["user_id"], data.note)

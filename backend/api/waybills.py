@@ -1662,7 +1662,7 @@ def create_admin_pickup_waybill(
 
     data.service_type = normalize_service_type(data.service_type)
     shipping_fee, extra_services_fee, vat_amount = _calculate_pickup_estimated_price(db, customer, data, origin_hub, dest_hub)
-    initial_status = "RECEIVED" if target_hub else "PENDING_CONFIRMATION"
+    initial_status = "RECEIVED"
     source = (data.source or "HOTLINE").upper()
     if source not in ["PORTAL", "HOTLINE", "CSKH", "ADMIN"]:
         source = "HOTLINE"

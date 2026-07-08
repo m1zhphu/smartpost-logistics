@@ -27,8 +27,8 @@
       <div class="content-card">
         <el-tabs v-model="activeTab" @tab-change="handleTabChange">
           
-          <!-- TAB 1: CHỜ XÁC NHẬN VĂN PHÒNG -->
-          <el-tab-pane name="pending" v-if="[1, 7].includes(authStore.user?.role_id)">
+          <!-- TAB 1: CHỜ XÁC NHẬN VĂN PHÒNG (Tạm ẩn cho luồng gán bưu tá trực tiếp) -->
+          <el-tab-pane name="pending" v-if="false">
             <template #label>
               <div class="flex-center gap-2">
                 <el-badge :value="pendingRequests.length" :hidden="pendingRequests.length === 0" type="danger">
@@ -187,8 +187,8 @@
           </div>
           </el-tab-pane>
 
-          <!-- TAB NEW: CHỜ BƯU CỤC XÁC NHẬN (DISPATCHED_TO_HUB) -->
-          <el-tab-pane name="dispatch-hub">
+          <!-- TAB NEW: CHỜ BƯU CỤC XÁC NHẬN (Tạm ẩn cho luồng gán bưu tá trực tiếp) -->
+          <el-tab-pane name="dispatch-hub" v-if="false">
             <template #label>
               <div class="flex-center gap-2">
                 <el-badge :value="dispatchRequests.length" :hidden="dispatchRequests.length === 0" type="warning">
@@ -1149,7 +1149,7 @@ import { useAuthStore } from '@/stores/auth';
 const route = useRoute();
 const authStore = useAuthStore();
 
-const activeTab = ref('pending');
+const activeTab = ref('received');
 const excelInput = ref(null);
 const loading = ref(false);
 const dialogLoading = ref(false);
@@ -2329,9 +2329,9 @@ onMounted(async () => {
     activeTab.value = route.query.tab;
   }
 
-  // Ràng buộc quyền truy cập tab pending: Nếu không phải Admin hoặc CSKH thì không cho vào tab pending
-  if (![1, 7].includes(authStore.user?.role_id) && activeTab.value === 'pending') {
-    activeTab.value = 'dispatch-hub';
+  // Ràng buộc quyền: chuyển sang tab received mặc định
+  if (['pending', 'dispatch-hub'].includes(activeTab.value)) {
+    activeTab.value = 'received';
   }
 
   const searchCode = route.query.search;
@@ -2364,14 +2364,9 @@ onMounted(async () => {
       activeTab.value = 'assigned';
       searchAssigned.value = q;
     } else {
-      // Fallback nếu không khớp tab nào cụ thể, đặt ở pending nếu admin, ngược lại đặt ở dispatch-hub
-      if ([1, 7].includes(authStore.user?.role_id)) {
-        activeTab.value = 'pending';
-        searchPending.value = q;
-      } else {
-        activeTab.value = 'dispatch-hub';
-        searchDispatch.value = q;
-      }
+      // Fallback mặc định là received
+      activeTab.value = 'received';
+      searchReceived.value = q;
     }
   } else {
     fetchTabRequests(activeTab.value);

@@ -326,7 +326,8 @@ def get_pickup_bag_discrepancy(db: Session, bag: models.Bags):
             errors.append(f"Bill {w.waybill_code}: Sai COD (Trống thông tin COD)")
         if not w.receiver_name or not w.receiver_address:
             errors.append(f"Bill {w.waybill_code}: Sai người nhận (Thiếu tên hoặc địa chỉ nhận)")
-        if not w.ocr_status or w.ocr_status not in ["SUCCESS", "SCANNED"]:
+        # CONVERTED = Admin đã duyệt OCR và lập phiếu gửi hàng
+        if not w.ocr_status or w.ocr_status not in ["SUCCESS", "SCANNED", "CONVERTED"]:
             errors.append(f"Bill {w.waybill_code}: Bill chưa OCR")
         if w.verify_status == "MISMATCH" or w.status == WaybillStatus.VERIFY_ERROR:
             errors.append(f"Bill {w.waybill_code}: Lệch dữ liệu OCR (MISMATCH). Lý do: {w.verify_error_msg or 'Chưa duyệt lại'}")

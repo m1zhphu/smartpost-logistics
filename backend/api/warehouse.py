@@ -216,15 +216,27 @@ async def scan_bagging(
             # Thay thế bằng CRUD
             last_log = crud_wh.get_last_tracking_log(db, wb.waybill_id)
             
-            if not last_log or wb.status != WaybillStatus.IN_HUB:
-                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} chưa được Nhập kho, không thể đóng túi!")
+            # Cho phép đóng túi nếu đơn đang ở IN_HUB (đã nhập kho)
+            # hoặc CREATED với ocr_status=CONVERTED (Admin đã duyệt OCR, bỏ bước nhập kho thủ công)
+            can_bag = (wb.status == WaybillStatus.IN_HUB) or \
+                      (wb.status == WaybillStatus.CREATED and wb.ocr_status == "CONVERTED")
+            
+            if not last_log and not can_bag:
+                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} chưa được xử lý, không thể đóng túi!")
+            
+            if not can_bag:
+                raise HTTPException(status_code=400, detail=f"Đơn hàng {code} chưa sẵn sàng để đóng túi (Trạng thái: {wb.status})!")
 
-            package_location = last_log.hub_id if last_log.hub_id else wb.origin_hub_id
+            # Với đơn CREATED (bỏ bước nhập kho), last_log có thể None → dùng origin_hub_id
+            if last_log and last_log.hub_id:
+                package_location = last_log.hub_id
+            else:
+                package_location = wb.origin_hub_id or hub_id
 
-            if user_role != 1 and package_location != hub_id:
+            if user_role != 1 and package_location and package_location != hub_id:
                 raise HTTPException(
                     status_code=403, 
-                    detail=f"Lỗi: Đơn hàng {code} đang ở Bưu cục khác (Hub ID: {package_location}). Bạn không thể đóng túi hàng không có mặt ở đây!"
+                    detail=f"Lỗi: Đơn hàng {code} thuộc Bưu cục khác (Hub ID: {package_location}). Bạn không thể đóng túi hàng không có mặt ở đây!"
                 )
 
             # --- KIỂM SOÁT VẬN ĐƠN TRƯỚC KHI XUẤT KHO ---
@@ -236,7 +248,9 @@ async def scan_bagging(
                 )
             
             # 2. Chưa quét OCR
-            if not wb.ocr_status or wb.ocr_status not in ["SUCCESS", "SCANNED"]:
+            # CONVERTED = Admin đã duyệt OCR và lập phiếu gửi hàng
+            # SUCCESS/SCANNED = OCR thành công hoặc đã quét nhập kho
+            if not wb.ocr_status or wb.ocr_status not in ["SUCCESS", "SCANNED", "CONVERTED"]:
                 raise HTTPException(
                     status_code=400, 
                     detail=f"Đơn hàng {code} chưa được chạy kiểm tra OCR. Không thể xuất kho!"
@@ -272,6 +286,18 @@ async def scan_bagging(
 
             if wb.status == WaybillStatus.BAGGED:
                 raise HTTPException(status_code=400, detail=f"Đơn hàng {code} đã nằm trong túi hàng khác.")
+            
+            # Nếu đơn đang ở CREATED (đã qua OCR CONVERTED, bỏ bước nhập kho thủ công)
+            # → Tự động chuyển CREATED → IN_HUB trước khi đóng túi
+            if wb.status == WaybillStatus.CREATED:
+                validate_state_transition(wb.status, WaybillStatus.IN_HUB)
+                wb.status = WaybillStatus.IN_HUB
+                wb.version += 1
+                effective_hub_id = hub_id or wb.origin_hub_id
+                crud_wh.create_log(
+                    db, wb.waybill_id, WaybillStatus.IN_HUB, 
+                    effective_hub_id, user_id, "Tự động nhập kho qua quy trình OCR (bỏ quét nhập kho thủ công)"
+                )
             
             validate_state_transition(wb.status, WaybillStatus.BAGGED)
             

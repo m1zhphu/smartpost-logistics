@@ -250,8 +250,9 @@ const menuData = computed(() => {
       ] : [
         { title: 'LẤY HÀNG', items: [
           ...([1, 2, 7].includes(role) ? [{ label: 'Thêm mới yêu cầu', path: '/admin/delivery/pickup-create' }] : []),
-          ...([1, 7].includes(role) ? [{ label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' }] : []),
-          { label: 'Chờ bưu cục xác nhận', path: '/admin/delivery/pickup-management?tab=dispatch-hub' },
+          // Tạm ẩn hai menu con cho luồng gán bưu tá trực tiếp
+          // ...([1, 7].includes(role) ? [{ label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' }] : []),
+          // { label: 'Chờ bưu cục xác nhận', path: '/admin/delivery/pickup-management?tab=dispatch-hub' },
           { label: 'Chờ gán bưu tá', path: '/admin/delivery/pickup-management?tab=received' },
           { label: 'Đang đi lấy', path: '/admin/delivery/pickup-management?tab=assigned' }
         ]},
@@ -277,7 +278,8 @@ const menuData = computed(() => {
         { title: 'TRUNG TÂM CSKH', items: [
           { label: 'Khách hàng tôi quản lý', path: '/admin/customers?mine=1' },
           { label: 'Bưu tá tôi quản lý', path: '/admin/users?my_shippers=1' },
-          { label: 'Yêu cầu pickup', path: '/admin/delivery/pickup-management?tab=pending' }
+          // Tạm ẩn menu này do trùng lặp với menu Điều phối > Chờ gán bưu tá
+          // { label: 'Yêu cầu pickup', path: '/admin/delivery/pickup-management?tab=received' }
           // { label: 'Duyệt Bill & Báo giá', path: '/admin/cskh/verification' },
           // { label: 'Mô phỏng giá cước', path: '/admin/pricing/simulator' }
         ]}
