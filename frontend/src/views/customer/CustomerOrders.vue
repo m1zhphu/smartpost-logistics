@@ -1668,12 +1668,31 @@ const mapInstance = ref(null);
 const getCoordinatesForLocationName = (name) => {
   if (!name) return null;
   const n = name.toLowerCase();
-  if (n.includes('hồ chí minh') || n.includes('hcm') || n.includes('sài gòn') || n.includes('quận 1') || n.includes('quận 3') || n.includes('quận 12')) {
+  
+  // Tọa độ các Hub bưu cục cụ thể
+  if (n.includes('trụ sở chính') || n.includes('tru so chinh') || n.includes('hcm') || n.includes('hồ chí minh')) {
     return [10.776889, 106.700806];
   }
-  if (n.includes('đà nẵng') || n.includes('hải châu') || n.includes('liên chiểu')) {
+  if (n.includes('vp hà nội') || n.includes('vp ha noi') || n.includes('bưu cục hà nội') || n.includes('buu cuc ha noi')) {
+    return [21.028511, 105.804817];
+  }
+  if (n.includes('khai thác miền bắc') || n.includes('khai thac mien bac') || n.includes('kho miền bắc') || n.includes('khai thac kho mien bac')) {
+    return [21.0822, 105.7821];
+  }
+  if (n.includes('khai thác kho miền nam') || n.includes('khai thac kho mien nam') || n.includes('kho miền nam') || n.includes('khai thac mien nam')) {
+    return [10.8402, 106.7724];
+  }
+  if (n.includes('quảng trị') || n.includes('quang tri')) {
+    return [16.7433, 107.1855];
+  }
+  if (n.includes('đắk nông') || n.includes('dak nong')) {
+    return [12.2131, 107.6908];
+  }
+  if (n.includes('đà nẵng') || n.includes('da nang') || n.includes('hải châu') || n.includes('liên chiểu')) {
     return [16.054407, 108.202164];
   }
+
+  // Tọa độ quận huyện Hà Nội
   if (n.includes('cầu giấy')) return [21.036237, 105.790583];
   if (n.includes('nam từ liêm') || n.includes('mỹ đình')) return [21.020526, 105.776662];
   if (n.includes('đống đa')) return [21.018047, 105.823902];
@@ -1687,10 +1706,10 @@ const getCoordinatesForLocationName = (name) => {
   if (n.includes('gia lâm')) return [21.029671, 105.940555];
   if (n.includes('thanh trì')) return [20.949791, 105.836015];
   if (n.includes('hoài đức')) return [21.018785, 105.706179];
+  if (n.includes('hoàn kiếm')) return [21.028511, 105.804817];
   
-  if (n.includes('hà nội') || n.includes('từ liêm') || n.includes('hoàn kiếm')) {
-    return [21.028511, 105.804817];
-  }
+  // Tỉnh thành khác
+  if (n.includes('hà nội')) return [21.028511, 105.804817];
   if (n.includes('bình dương')) return [11.0296, 106.666];
   if (n.includes('đồng nai') || n.includes('biên hòa')) return [10.957, 106.842];
   if (n.includes('hải phòng')) return [20.8449, 106.6881];
@@ -1727,77 +1746,138 @@ const initMap = () => {
 
   const points = [];
   
-  const senderLoc = selectedPickup.value?.sender_district_name || selectedPickup.value?.sender_province_name;
+  // 1. Điểm Người gửi (Bắt đầu)
+  const senderLoc = selectedPickup.value?.sender_address || selectedPickup.value?.sender_district_name || selectedPickup.value?.sender_province_name;
   const senderCoords = getCoordinatesForLocationName(senderLoc);
   if (senderCoords) {
     points.push({
-      latlng: senderCoords,
-      title: 'Điểm lấy hàng (Người gửi)',
-      desc: selectedPickup.value?.sender_name || 'Người gửi'
+      latlng: [...senderCoords],
+      title: 'Người gửi (Điểm bắt đầu)',
+      desc: selectedPickup.value?.sender_name || 'Người gửi',
+      type: 'sender'
     });
   }
   
+  // 2. Bưu cục tiếp nhận
   if (selectedPickup.value?.hub_name) {
     const hubCoords = getCoordinatesForLocationName(selectedPickup.value.hub_name);
     if (hubCoords) {
       points.push({
-        latlng: hubCoords,
+        latlng: [...hubCoords],
         title: 'Bưu cục tiếp nhận',
-        desc: selectedPickup.value.hub_name
+        desc: selectedPickup.value.hub_name,
+        type: 'hub'
       });
     }
   }
   
+  // 3. Các mốc trung gian từ timeline
   if (Array.isArray(pickupTimeline.value)) {
-    pickupTimeline.value.forEach(log => {
+    const sortedTimeline = [...pickupTimeline.value];
+    sortedTimeline.forEach(log => {
       if (log.location && log.location !== '---') {
         const coords = getCoordinatesForLocationName(log.location);
         if (coords) {
-          const exists = points.some(p => Math.abs(p.latlng[0] - coords[0]) < 0.001 && Math.abs(p.latlng[1] - coords[1]) < 0.001);
-          if (!exists) {
-            points.push({
-              latlng: coords,
-              title: log.action || 'Hành trình',
-              desc: `${log.time} - tại ${log.location}`
-            });
-          }
+          points.push({
+            latlng: [...coords],
+            title: log.action || 'Hành trình trung chuyển',
+            desc: `${log.time} - tại ${log.location} (${log.note || ''})`,
+            type: 'transit'
+          });
         }
       }
     });
   }
 
-  const receiverLoc = selectedPickup.value?.receiver_district_name || selectedPickup.value?.receiver_province_name;
+  // 4. Điểm Người nhận (Kết thúc)
+  const receiverLoc = selectedPickup.value?.receiver_address || selectedPickup.value?.receiver_district_name || selectedPickup.value?.receiver_province_name;
   const receiverCoords = getCoordinatesForLocationName(receiverLoc);
   if (receiverCoords) {
-    const exists = points.some(p => Math.abs(p.latlng[0] - receiverCoords[0]) < 0.001 && Math.abs(p.latlng[1] - receiverCoords[1]) < 0.001);
-    if (!exists) {
-      points.push({
-        latlng: receiverCoords,
-        title: 'Điểm giao hàng (Người nhận)',
-        desc: selectedPickup.value?.receiver_name || 'Người nhận'
-      });
+    points.push({
+      latlng: [...receiverCoords],
+      title: 'Người nhận (Điểm kết thúc)',
+      desc: selectedPickup.value?.receiver_name || 'Người nhận',
+      type: 'receiver'
+    });
+  }
+
+  if (points.length === 0) return;
+
+  // XỬ LÝ TRÙNG TỌA ĐỘ (Jitter/Offset)
+  // Nếu hai điểm trùng hoặc quá gần nhau, dịch chuyển nhẹ để tạo các mốc riêng biệt và hiển thị đường nối
+  for (let i = 0; i < points.length; i++) {
+    for (let j = 0; j < i; j++) {
+      const lat1 = points[i].latlng[0];
+      const lng1 = points[i].latlng[1];
+      const lat2 = points[j].latlng[0];
+      const lng2 = points[j].latlng[1];
+      
+      const distance = Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lng1 - lng2, 2));
+      if (distance < 0.0005) {
+        const angle = Math.random() * Math.PI * 2;
+        const offset = 0.0015 + Math.random() * 0.0015; // Dịch chuyển từ 150m đến 300m
+        points[i].latlng[0] = lat1 + Math.sin(angle) * offset;
+        points[i].latlng[1] = lng1 + Math.cos(angle) * offset;
+      }
     }
   }
 
-  const centerCoords = points.length > 0 ? points[0].latlng : [21.028511, 105.804817];
-  
-  const map = window.L.map('timeline-map').setView(centerCoords, 13);
+  const centerCoords = points[0].latlng;
+  const map = window.L.map('timeline-map').setView(centerCoords, 12);
   mapInstance.value = map;
   
   window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
-  
+
+  // Khởi tạo custom div icon bằng SVG
+  const createCustomIcon = (color, char) => {
+    return window.L.divIcon({
+      html: `
+        <div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 2C9.48 2 5 6.48 5 12C5 18.52 13.25 26.96 14.3 27.97C14.7 28.36 15.3 28.36 15.7 27.97C16.75 26.96 25 18.52 25 12C25 6.48 20.52 2 15 2Z" fill="${color}"/>
+            <circle cx="15" cy="12" r="6" fill="white"/>
+          </svg>
+          <span style="position: absolute; top: 5px; font-size: 11px; font-weight: 800; color: ${color}; font-family: sans-serif;">${char}</span>
+        </div>
+      `,
+      className: 'custom-map-marker',
+      iconSize: [30, 30],
+      iconAnchor: [15, 28],
+      popupAnchor: [0, -28]
+    });
+  };
+
+  const icons = {
+    sender: createCustomIcon('#10b981', 'S'),   // Xanh lá (Start/Sender)
+    receiver: createCustomIcon('#ef4444', 'R'), // Đỏ (Receiver/End)
+    hub: createCustomIcon('#3b82f6', 'H'),      // Xanh dương (Hub tiếp nhận)
+    transit: createCustomIcon('#f59e0b', 'T')  // Vàng cam (Transit)
+  };
+
   const latlngs = [];
   points.forEach((pt) => {
     latlngs.push(pt.latlng);
-    const marker = window.L.marker(pt.latlng).addTo(map);
-    marker.bindPopup(`<b>${pt.title}</b><br>${pt.desc}`);
+    const icon = icons[pt.type] || icons.transit;
+    const marker = window.L.marker(pt.latlng, { icon }).addTo(map);
+    marker.bindPopup(`
+      <div style="font-family: sans-serif; font-size: 13px; line-height: 1.4; max-width: 220px;">
+        <b style="color: #1e293b; font-size: 14px;">${pt.title}</b>
+        <p style="margin: 4px 0 0 0; color: #64748b;">${pt.desc}</p>
+      </div>
+    `);
   });
   
   if (latlngs.length > 1) {
-    const polyline = window.L.polyline(latlngs, { color: '#4318FF', weight: 4, dashArray: '5, 10' }).addTo(map);
-    map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+    const polyline = window.L.polyline(latlngs, { 
+      color: '#4f46e5', // Màu Indigo liền mạch, sang trọng
+      weight: 4, 
+      opacity: 0.8,
+      lineJoin: 'round'
+    }).addTo(map);
+    
+    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
   } else if (latlngs.length === 1) {
     map.setView(latlngs[0], 13);
   }
