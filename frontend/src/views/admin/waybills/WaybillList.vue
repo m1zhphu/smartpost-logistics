@@ -1319,7 +1319,7 @@ const handleSearch = async () => {
       const isFiltering = !!(
         searchQuery.value || statusFilter.value || dateRange.value?.[0] ||
         holdingHubFilter.value || holdingShipperFilter.value || codStatusFilter.value ||
-        serviceTypeFilter.value || slaStatusFilter.value
+        serviceTypeFilter.value || slaStatusFilter.value || auth.selectedHubId
       );
       
       if (isFiltering) {
