@@ -26,7 +26,6 @@ const COLUMN_MAPPING = {
 
 export const parseVietnameseAddress = (addressStr, fallbackProvinceName) => {
   let provinceName = '';
-  let districtName = '';
   let wardName = '';
   let addressDetail = addressStr || '';
 
@@ -34,12 +33,11 @@ export const parseVietnameseAddress = (addressStr, fallbackProvinceName) => {
     const parts = addressStr.split(',').map(p => p.trim());
     if (parts.length >= 4) {
       provinceName = parts[parts.length - 1];
-      districtName = parts[parts.length - 2];
       wardName = parts[parts.length - 3];
       addressDetail = parts.slice(0, parts.length - 3).join(', ');
     } else if (parts.length === 3) {
       provinceName = parts[parts.length - 1];
-      districtName = parts[parts.length - 2];
+      wardName = parts[parts.length - 2];
       addressDetail = parts.slice(0, parts.length - 2).join(', ');
     } else if (parts.length === 2) {
       provinceName = parts[parts.length - 1];
@@ -53,7 +51,6 @@ export const parseVietnameseAddress = (addressStr, fallbackProvinceName) => {
 
   return {
     province_name: provinceName,
-    district_name: districtName,
     ward_name: wardName,
     address_detail: addressDetail
   };
@@ -112,9 +109,7 @@ export const parseExcelFile = (b64) => {
 export const processExcelRows = async ({
   rawRows,
   provincesList,
-  fetchDistricts,
   fetchWards,
-  districtsCache,
   wardsCache,
   defaultSender,
   targetHubId
@@ -170,20 +165,16 @@ export const processExcelRows = async ({
       sender_phone: getValueByMapping(row, 'sender_phone') || '',
       sender_address_detail: parsedSender.address_detail,
       sender_province_name: parsedSender.province_name,
-      sender_district_name: parsedSender.district_name,
       sender_ward_name: parsedSender.ward_name,
       senderProvinceId: findProvinceId(parsedSender.province_name, provincesList),
-      senderDistrictId: null,
       senderWardId: null,
 
       receiver_name: getValueByMapping(row, 'receiver_name') || '',
       receiver_phone: getValueByMapping(row, 'receiver_phone') || '',
       receiver_address_detail: parsedReceiver.address_detail,
       receiver_province_name: parsedReceiver.province_name,
-      receiver_district_name: parsedReceiver.district_name,
       receiver_ward_name: parsedReceiver.ward_name,
       receiverProvinceId: findProvinceId(parsedReceiver.province_name, provincesList),
-      receiverDistrictId: null,
       receiverWardId: null,
 
       product_group: normalizeProductGroup(getValueByMapping(row, 'product_group')),
@@ -209,45 +200,19 @@ export const processExcelRows = async ({
   ];
 
   for (const pId of uniqueProvinceIds) {
-    if (!districtsCache[pId]) {
-      districtsCache[pId] = await fetchDistricts(pId);
+    if (!wardsCache[pId]) {
+      wardsCache[pId] = await fetchWards(pId);
     }
   }
 
   for (const row of parsedRows) {
-    if (row.senderProvinceId && row.sender_district_name) {
-      const dists = districtsCache[row.senderProvinceId] || [];
-      const match = dists.find(d => norm(d.name) === norm(row.sender_district_name));
-      if (match) row.senderDistrictId = match.id;
-    }
-    if (row.receiverProvinceId && row.receiver_district_name) {
-      const dists = districtsCache[row.receiverProvinceId] || [];
-      const match = dists.find(d => norm(d.name) === norm(row.receiver_district_name));
-      if (match) row.receiverDistrictId = match.id;
-    }
-  }
-
-  const uniqueDistrictIds = [
-    ...new Set([
-      ...parsedRows.map(r => r.senderDistrictId),
-      ...parsedRows.map(r => r.receiverDistrictId)
-    ].filter(Boolean))
-  ];
-
-  for (const dId of uniqueDistrictIds) {
-    if (!wardsCache[dId]) {
-      wardsCache[dId] = await fetchWards(dId);
-    }
-  }
-
-  for (const row of parsedRows) {
-    if (row.senderDistrictId && row.sender_ward_name) {
-      const wrds = wardsCache[row.senderDistrictId] || [];
+    if (row.senderProvinceId && row.sender_ward_name) {
+      const wrds = wardsCache[row.senderProvinceId] || [];
       const match = wrds.find(w => norm(w.name) === norm(row.sender_ward_name));
       if (match) row.senderWardId = match.id;
     }
-    if (row.receiverDistrictId && row.receiver_ward_name) {
-      const wrds = wardsCache[row.receiverDistrictId] || [];
+    if (row.receiverProvinceId && row.receiver_ward_name) {
+      const wrds = wardsCache[row.receiverProvinceId] || [];
       const match = wrds.find(w => norm(w.name) === norm(row.receiver_ward_name));
       if (match) row.receiverWardId = match.id;
     }
@@ -259,7 +224,6 @@ export const processExcelRows = async ({
         name: row.sender_name || defaultSender.name || '',
         phone: row.sender_phone || defaultSender.phone || '',
         province_id: row.senderProvinceId || defaultSender.province_id || null,
-        district_id: row.senderDistrictId || defaultSender.district_id || null,
         ward_id: row.senderWardId || defaultSender.ward_id || null,
         address_detail: row.sender_address_detail || defaultSender.address_detail || ''
       },
@@ -267,7 +231,6 @@ export const processExcelRows = async ({
         name: row.receiver_name || '',
         phone: row.receiver_phone || '',
         province_id: row.receiverProvinceId || null,
-        district_id: row.receiverDistrictId || null,
         ward_id: row.receiverWardId || null,
         address_detail: row.receiver_address_detail || ''
       },

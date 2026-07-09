@@ -53,7 +53,12 @@ export default function ShipperCameraScreen({ route, navigation }) {
   const focusAnim = useRef(new Animated.Value(0)).current;
 
   // --- OCR CONFIG STATES ---
-  const [ocrConfig, setOcrConfig] = useState({ customer: null, bagCode: "", waybillCode: "" });
+  const [ocrConfig, setOcrConfig] = useState({ 
+    customer: route.params?.customer || null, 
+    bagCode: route.params?.bagCode || "", 
+    waybillCode: route.params?.waybillCode || "",
+    senderData: route.params?.senderData || null
+  });
   const [showOcrConfig, setShowOcrConfig] = useState(false);
 
   // Customer Selection
@@ -109,7 +114,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
   };
 
   const handleSelectCustomer = (customer) => {
-    setOcrConfig((prev) => ({ ...prev, customer: customer, bagCode: "", waybillCode: "" }));
+    setOcrConfig((prev) => ({ ...prev, customer: customer, bagCode: "", waybillCode: "", senderData: null }));
     setShowCustomerModal(false);
     setShowOcrConfig(true);
     fetchBagsData(customer.customer_id);
@@ -129,7 +134,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
   };
 
   const handleSelectBag = (bagCode) => {
-    setOcrConfig((prev) => ({ ...prev, bagCode: bagCode, waybillCode: "" }));
+    setOcrConfig((prev) => ({ ...prev, bagCode: bagCode, waybillCode: "", senderData: null }));
     setShowBagModal(false);
     setShowOcrConfig(true);
     fetchWaybillsData(bagCode);
@@ -143,7 +148,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
 
   const handleBarcodeScanned = ({ data }) => {
     if (isScanningBag) {
-      setOcrConfig((prev) => ({ ...prev, bagCode: data, waybillCode: "" }));
+      setOcrConfig((prev) => ({ ...prev, bagCode: data, waybillCode: "", senderData: null }));
       setIsScanningBag(false);
       setShowOcrConfig(true);
       fetchWaybillsData(data);
@@ -324,6 +329,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
           customer_name: ocrConfig.customer?.customer_name,
           bag_code: ocrConfig.bagCode,
           waybill_code: ocrConfig.waybillCode,
+          senderData: ocrConfig.senderData,
         });
       } else {
         const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
@@ -388,6 +394,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
           customer_name: ocrConfig.customer?.customer_name,
           bag_code: ocrConfig.bagCode,
           waybill_code: ocrConfig.waybillCode,
+          senderData: ocrConfig.senderData,
         });
         // processQueueItem(newItem);
       }

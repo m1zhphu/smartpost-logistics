@@ -14,6 +14,8 @@ import {
   verifyOcrWaybill,
 } from "../services/pickupService";
 import styles from "../styles/OcrWaybillDetailScreenStyles";
+import AddressPickerModal from "../components/AddressPickerModal";
+import { PROVINCES_34 } from "../utils/provinces";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
@@ -63,6 +65,7 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
   const [uploading, setUploading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showProvincePicker, setShowProvincePicker] = useState(false);
 
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -201,8 +204,11 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
     ];
 
     numericFields.forEach((field) => {
-      const value = form[field];
+      let value = form[field];
       if (value !== "") {
+        if (typeof value === "string") {
+          value = value.replace(",", ".");
+        }
         payload[field] = Number(value);
       }
     });
@@ -255,6 +261,21 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
         numberOfLines={opts.multiline ? 3 : 1}
         textAlignVertical={opts.multiline ? "top" : "center"}
       />
+    </View>
+  );
+
+  const renderSelectField = (label, key, placeholder, onPress) => (
+    <View style={styles.fieldRow}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TouchableOpacity
+        style={[styles.input, { justifyContent: 'center' }]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <Text style={{ color: form[key] ? '#0F172A' : '#94A3B8' }}>
+          {form[key] || placeholder}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -362,10 +383,11 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
             {renderField("Dia chi", "receiver_address", "123 Nguyen Hue", {
               multiline: true,
             })}
-            {renderField(
+            {renderSelectField(
               "Tinh/Thanh",
               "receiver_province_name",
-              "TP. Ho Chi Minh",
+              "Chọn Tỉnh/Thành",
+              () => setShowProvincePicker(true)
             )}
             {renderField("Quan/Huyen", "receiver_district_name", "Quan 1")}
             {renderField("Phuong/Xa", "receiver_ward_name", "Ben Nghe")}
@@ -476,6 +498,13 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+      <AddressPickerModal
+        visible={showProvincePicker}
+        onClose={() => setShowProvincePicker(false)}
+        data={PROVINCES_34}
+        onSelect={(val) => setField("receiver_province_name", val)}
+        title="Chọn Tỉnh/Thành"
+      />
     </View>
   );
 }

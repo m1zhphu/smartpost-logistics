@@ -21,7 +21,6 @@ export default function HomeScreen({ navigation }) {
     logout,
     isWarehouseStaff,
     unreadCount,
-    toggleUserOnlineStatus,
   } = useUser();
 
   const { clearQueue } = useQueue();
@@ -80,31 +79,7 @@ export default function HomeScreen({ navigation }) {
     navigation.navigate(screenName);
   };
 
-  const handleToggleOnline = () => {
-    if (!isShipperRole) return;
-    const nextStatus = !user?.is_online;
-    const note = nextStatus ? "Bắt đầu ca làm" : "Kết thúc ca làm";
-    CustomAlert.alert(
-      "Trạng thái hoạt động",
-      `Bạn có muốn ${nextStatus ? "bật" : "tắt"} online?`,
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Đồng ý",
-          onPress: async () => {
-            try {
-              const { shipperService } = require("../services/shipper");
-              await shipperService.toggleAvailability(nextStatus, note);
-              toggleUserOnlineStatus(nextStatus);
-              Toast.show({ type: "success", text1: "Đã cập nhật trạng thái" });
-            } catch (error) {
-              Toast.show({ type: "error", text1: "Không thể cập nhật trạng thái" });
-            }
-          },
-        },
-      ],
-    );
-  };
+
 
   const GCard = ({ badgeText, badgeColor, badgeBg, icon, iconColor, iconBg, title, desc, onPress }) => (
     <TouchableOpacity style={styles.gcard} activeOpacity={0.7} onPress={onPress}>
@@ -206,6 +181,12 @@ export default function HomeScreen({ navigation }) {
               icon="paper-plane-outline" iconColor="#D97706" iconBg="#FEF3C7"
               title="Giao hàng" desc="Danh sách cần giao"
               onPress={() => handleFeaturePress("ShipperDeliveryList")}
+            />
+            <GCard
+              badgeText="OCR" badgeColor="#5B21B6" badgeBg="#EDE9FE"
+              icon="scan-outline" iconColor="#8B5CF6" iconBg="#EDE9FE"
+              title="Đơn chờ OCR" desc="Đơn đã lấy, cần scan"
+              onPress={() => handleFeaturePress("ShipperPickedOrders")}
             />
           </View>
         </View>

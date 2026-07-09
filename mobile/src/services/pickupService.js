@@ -608,3 +608,15 @@ export const createAdminPickup = async (data) => {
         return { success: false, message: getErrorMessage(error) };
     }
 };
+
+export const getCustomerDepartments = async () => {
+    try {
+        const url = `/departments`;
+        const response = await apiClient.get(url);
+        return { success: true, data: response.data };
+    } catch (error) {
+        console.error('L?i l?y danh sách phòng ban:', error);
+        return { success: false, message: error.message };
+    }
+};
+

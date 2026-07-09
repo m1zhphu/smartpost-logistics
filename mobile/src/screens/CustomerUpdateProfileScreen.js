@@ -157,33 +157,17 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
   const [phone, setPhone] = useState(user?.phone_number || "");
 
   const [provincesData, setProvincesData] = useState([]);
-  const [districtsData, setDistrictsData] = useState([]);
   const [wardsData, setWardsData] = useState([]);
   const [selectedProvince, setSelectedProvince] = useState(null);
-  const [selectedDistrict, setSelectedDistrict] = useState(null);
   const [selectedWard, setSelectedWard] = useState(null);
   const [provinceQuery, setProvinceQuery] = useState("");
-  const [districtQuery, setDistrictQuery] = useState("");
   const [wardQuery, setWardQuery] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
 
-  const fetchDistricts = async (provinceCode) => {
+  const fetchWards = async (provinceCode) => {
     try {
       const response = await fetch(
-        `https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`,
-      );
-      const data = await response.json();
-      return data.districts || [];
-    } catch (error) {
-      console.error("Lỗi lấy danh sách quận/huyện:", error);
-      return [];
-    }
-  };
-
-  const fetchWards = async (districtCode) => {
-    try {
-      const response = await fetch(
-        `https://provinces.open-api.vn/api/d/${districtCode}?depth=2`,
+        `https://provinces.open-api.vn/api/v2/p/${provinceCode}?depth=2`,
       );
       const data = await response.json();
       return data.wards || [];
@@ -213,56 +197,18 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
       setSelectedProvince(matchedProvince);
       setProvinceQuery(matchedProvince.name);
 
-      const districts = await fetchDistricts(matchedProvince.code);
+      const wards = await fetchWards(matchedProvince.code);
 
       if (!isMounted) {
         return;
       }
 
-      setDistrictsData(districts);
-
-      let matchedDistrict =
-        districts.find((item) => item.code == user?.district_id) || null;
-      let wards = [];
-      let matchedWard = null;
-
-      if (matchedDistrict) {
-        wards = await fetchWards(matchedDistrict.code);
-
-        if (!isMounted) {
-          return;
-        }
-
-        matchedWard =
-          wards.find(
-            (item) => item.code == user?.ward_id || item.name === user?.ward,
-          ) || null;
-      } else if (user?.ward_id || user?.ward) {
-        for (const district of districts) {
-          wards = await fetchWards(district.code);
-
-          if (!isMounted) {
-            return;
-          }
-
-          matchedWard =
-            wards.find(
-              (item) => item.code == user?.ward_id || item.name === user?.ward,
-            ) || null;
-
-          if (matchedWard) {
-            matchedDistrict = district;
-            break;
-          }
-        }
-      }
-
-      if (matchedDistrict) {
-        setSelectedDistrict(matchedDistrict);
-        setDistrictQuery(matchedDistrict.name);
-      }
-
       setWardsData(wards);
+
+      const matchedWard =
+        wards.find(
+          (item) => item.code == user?.ward_id || item.name === user?.ward,
+        ) || null;
 
       if (matchedWard) {
         setSelectedWard(matchedWard);
@@ -272,7 +218,7 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
 
     const fetchProvinces = async () => {
       try {
-        const response = await fetch("https://provinces.open-api.vn/api/");
+        const response = await fetch("https://provinces.open-api.vn/api/v2/");
         const data = await response.json();
 
         if (!isMounted) {
@@ -307,25 +253,11 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
   const handleSelectProvince = async (province) => {
     setSelectedProvince(province);
     setProvinceQuery(province.name);
-    setSelectedDistrict(null);
-    setDistrictQuery("");
-    setDistrictsData([]);
     setSelectedWard(null);
     setWardQuery("");
     setWardsData([]);
 
-    const districts = await fetchDistricts(province.code);
-    setDistrictsData(districts);
-  };
-
-  const handleSelectDistrict = async (district) => {
-    setSelectedDistrict(district);
-    setDistrictQuery(district.name);
-    setSelectedWard(null);
-    setWardQuery("");
-    setWardsData([]);
-
-    const wards = await fetchWards(district.code);
+    const wards = await fetchWards(province.code);
     setWardsData(wards);
   };
 
@@ -337,17 +269,6 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
   const handleProvinceQueryChange = (text) => {
     setProvinceQuery(text);
     setSelectedProvince(null);
-    setSelectedDistrict(null);
-    setDistrictQuery("");
-    setDistrictsData([]);
-    setSelectedWard(null);
-    setWardQuery("");
-    setWardsData([]);
-  };
-
-  const handleDistrictQueryChange = (text) => {
-    setDistrictQuery(text);
-    setSelectedDistrict(null);
     setSelectedWard(null);
     setWardQuery("");
     setWardsData([]);
@@ -364,7 +285,6 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
       !phone.trim() ||
       !addressDetail.trim() ||
       !selectedProvince ||
-      !selectedDistrict ||
       !selectedWard
     ) {
       Toast.show({
@@ -385,8 +305,6 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
           phone_number: phone.trim(),
           province_name: selectedProvince.name,
           province_id: selectedProvince.code,
-          district: selectedDistrict.name,
-          district_id: selectedDistrict.code,
           ward_name: selectedWard.name,
           ward_id: selectedWard.code,
           street_address: addressDetail.trim(),
@@ -487,19 +405,6 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
             />
           </View>
 
-          <View style={[styles.inputGroup, styles.autocompleteGroupMiddle]}>
-            <Text style={styles.label}>Quận / Huyện</Text>
-            <AutocompleteInput
-              value={districtQuery}
-              onChangeText={handleDistrictQueryChange}
-              placeholder="Nhập hoặc chọn Quận / Huyện"
-              data={districtsData}
-              disabled={!selectedProvince}
-              onSelect={handleSelectDistrict}
-              emptyText="Không tìm thấy Quận / Huyện phù hợp"
-            />
-          </View>
-
           <View style={[styles.inputGroup, styles.autocompleteGroupBottom]}>
             <Text style={styles.label}>Phường / Xã</Text>
             <AutocompleteInput
@@ -507,7 +412,7 @@ export default function CustomerUpdateProfileScreen({ navigation }) {
               onChangeText={handleWardQueryChange}
               placeholder="Nhập hoặc chọn Phường / Xã"
               data={wardsData}
-              disabled={!selectedDistrict}
+              disabled={!selectedProvince}
               onSelect={handleSelectWard}
               emptyText="Không tìm thấy Phường / Xã phù hợp"
             />

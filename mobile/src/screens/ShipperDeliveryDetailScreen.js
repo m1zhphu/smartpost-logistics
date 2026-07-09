@@ -11,6 +11,7 @@ import {
   confirmDelivery,
   getDeliveryTasks,
   reportDeliveryFailure,
+  retryDelivery,
   uploadPodImage,
   uploadBatchPodImages,
 } from "../services/deliveryService";
@@ -34,6 +35,13 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
   const [podPreviews, setPodPreviews] = useState([]);
   const [codCollected, setCodCollected] = useState("0");
   const [note, setNote] = useState("Đã giao hàng thành công");
+  
+  const formatDateTimeLocal = (d) => {
+    const pad = (n) => n < 10 ? '0' + n : n;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+  const [receivedBy, setReceivedBy] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState(formatDateTimeLocal(new Date()));
 
   useEffect(() => {
     fetchTask();
@@ -108,6 +116,42 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
     await uploadSelectedImages(result.assets);
   };
 
+  const handleOcrPod = async () => {
+    if (podPreviews.length === 0) {
+      Toast.show({ type: "error", text1: "Chưa có ảnh POD", text2: "Vui lòng chụp hoặc chọn ảnh POD trước" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const uri = podPreviews[0];
+      const filename = uri.split("/").pop() || "image.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+      
+      const formData = new FormData();
+      formData.append("file", { uri, name: filename, type });
+
+      const response = await fetch("https://speedlight.minhhien.click/extract", {
+        method: "POST",
+        body: formData,
+        headers: { Accept: "application/json" },
+      });
+
+      const textResponse = await response.text();
+      const data = JSON.parse(textResponse);
+
+      if (data.receiver?.name) {
+        setReceivedBy(data.receiver.name);
+        Toast.show({ type: "success", text1: "Quét OCR thành công" });
+      } else {
+        Toast.show({ type: "error", text1: "Không tìm thấy tên người nhận", text2: "Vui lòng nhập tay" });
+      }
+    } catch (e) {
+      Toast.show({ type: "error", text1: "Lỗi OCR", text2: e.message });
+    }
+    setSubmitting(false);
+  };
+
   const handleConfirm = () => {
     if (uploadingImage) {
       Toast.show({ type: "info", text1: "Ảnh POD đang được tải lên" });
@@ -132,7 +176,9 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
             Number(codCollected || 0),
             note,
             podImages[0],
-            podImages
+            podImages,
+            receivedBy,
+            deliveryTime
           );
           setSubmitting(false);
           if (result.success) {
@@ -177,6 +223,38 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
         },
       },
     ]);
+  };
+
+  const handleRetry = () => {
+    CustomAlert.alert(
+      "Giao lại",
+      "Xác nhận gưởi đơn này vào danh sách giao lại?",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Giao lại",
+          onPress: async () => {
+            setSubmitting(true);
+            const result = await retryDelivery(waybillCode, note);
+            setSubmitting(false);
+            if (result.success) {
+              Toast.show({
+                type: "success",
+                text1: "Đã đưa vào danh sách giao lại",
+                text2: "Đơn sẽ xuất hiện ở tab Đang giao",
+              });
+              navigation.goBack();
+            } else {
+              Toast.show({
+                type: "error",
+                text1: "Không thể giao lại",
+                text2: result.message,
+              });
+            }
+          },
+        },
+      ]
+    );
   };
 
   const HeaderButton = ({ icon, onPress }) => (
@@ -334,6 +412,30 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
             </ScrollView>
           )}
           <TextInput
+            value={receivedBy}
+            onChangeText={setReceivedBy}
+            placeholder="Tên người thực nhận"
+            style={styles.input}
+            placeholderTextColor="#94A3B8"
+          />
+          {podPreviews.length > 0 && (
+            <TouchableOpacity 
+              style={{ padding: 12, backgroundColor: PRIMARY, borderRadius: 8, marginBottom: 10, alignItems: 'center' }} 
+              onPress={handleOcrPod}
+              disabled={submitting}
+            >
+               <Text style={{ color: "white", fontWeight: "bold" }}>Quét OCR Tên Người Nhận từ Ảnh POD</Text>
+            </TouchableOpacity>
+          )}
+          <View style={[styles.input, { paddingVertical: 4 }]}>
+            <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 4 }}>Thời gian giao (Có thể chỉnh sửa nếu giao trước đó):</Text>
+            <TextInput
+               value={deliveryTime}
+               onChangeText={setDeliveryTime}
+               style={{ fontSize: 16, color: '#333' }}
+            />
+          </View>
+          <TextInput
             value={codCollected}
             onChangeText={setCodCollected}
             keyboardType="number-pad"
@@ -352,26 +454,42 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      {/* BOTTOM BAR CHUẨN FORM */}
+      {/* BOTTOM BAR */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[styles.failBtn, submitting && { opacity: 0.7 }]}
-          onPress={handleFail}
-          disabled={submitting}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.failText}>Báo thất bại</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.okBtn, submitting && { opacity: 0.7 }]}
-          onPress={handleConfirm}
-          disabled={submitting || uploadingImage}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.okText}>
-            {submitting ? "ĐANG XỬ LÝ..." : "Xác nhận giao"}
-          </Text>
-        </TouchableOpacity>
+        {/* Nếu đơn đang ở trạng thái thất bại: hiển thị nút Giao lại thay vì Báo thất bại */}
+        {(task.status === 'DELIVERY_FAILED' || task.status === 'CUSTOMER_UNAVAILABLE') ? (
+          <TouchableOpacity
+            style={[styles.okBtn, { backgroundColor: '#F59E0B' }, submitting && { opacity: 0.7 }]}
+            onPress={handleRetry}
+            disabled={submitting}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.okText}>
+              {submitting ? "ĐANG XỬ LÝ..." : "Giao lại"}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.failBtn, submitting && { opacity: 0.7 }]}
+              onPress={handleFail}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.failText}>Báo thất bại</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.okBtn, submitting && { opacity: 0.7 }]}
+              onPress={handleConfirm}
+              disabled={submitting || uploadingImage}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.okText}>
+                {submitting ? "ĐANG XỬ LÝ..." : "Xác nhận giao"}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </View>
   );

@@ -26,14 +26,16 @@ export const getDeliveryTasks = async () => {
     }
 };
 
-export const confirmDelivery = async (waybillCode, actualCodCollected, note, podImageUrl = null, podImageUrls = []) => {
+export const confirmDelivery = async (waybillCode, actualCodCollected, note, podImageUrl = null, podImageUrls = [], receivedBy = "", deliveryTime = "") => {
     try {
         const payload = {
             waybill_code: waybillCode,
             actual_cod_collected: actualCodCollected,
             note: note || '',
             pod_image_url: podImageUrl,
-            pod_image_urls: podImageUrls
+            pod_image_urls: podImageUrls,
+            received_by: receivedBy,
+            delivery_time: deliveryTime
         };
         const response = await apiClient.post(ADMIN_ENDPOINTS.CONFIRM_DELIVERY, payload, {
             headers: buildIdempotencyHeaders('mobile-shipper-delivery-success')
@@ -85,6 +87,22 @@ export const reportDeliveryFailure = async (waybillCode, reasonCode, note) => {
         };
         const response = await apiClient.post(ADMIN_ENDPOINTS.REPORT_FAILURE, payload, {
             headers: buildIdempotencyHeaders('mobile-shipper-delivery-fail')
+        });
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
+/**
+ * Giao lại đơn thất bại — bưu tá xác nhận thử giao lại
+ * Backend cần endpoint: POST /api/delivery/retry-delivery
+ */
+export const retryDelivery = async (waybillCode, note = '') => {
+    try {
+        const payload = { waybill_code: waybillCode, note };
+        const response = await apiClient.post(ADMIN_ENDPOINTS.RETRY_DELIVERY, payload, {
+            headers: buildIdempotencyHeaders('mobile-shipper-delivery-retry')
         });
         return { success: true, data: response.data };
     } catch (error) {

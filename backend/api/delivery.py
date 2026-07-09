@@ -309,7 +309,7 @@ def record_shipper_location(
     if not shipper:
         raise HTTPException(status_code=404, detail="Không tìm thấy Shipper")
 
-    saved = crud_delivery.save_shipper_location(
+    saved = crud_delivery.save_shipper_gps_location(
         db,
         shipper_id=data.shipper_id,
         latitude=data.latitude,
@@ -414,6 +414,39 @@ async def report_failure(
         
     db.commit()
     res = {"status": "DELIVERY_FAILED", "waybill_code": data.waybill_code}
+    commit_idempotency(idem_key, res) 
+    return res
+
+@router.post("/retry-delivery")
+async def retry_delivery(
+    data: schema_delivery.DeliveryRetryRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    idem_key: str = Depends(validate_idempotency)
+):
+    """Shipper yêu cầu giao lại đơn hàng đã báo thất bại"""
+    verify_shipper_access(current_user)
+    
+    waybill = crud_wb.get_waybill_by_code(db, data.waybill_code)
+    if not waybill or waybill.status not in [WaybillStatus.DELIVERY_FAILED, "CUSTOMER_UNAVAILABLE"]:
+        raise HTTPException(status_code=400, detail="Trạng thái đơn hàng không hợp lệ để giao lại")
+
+    # SECURITY: Chặn Shipper giao lại giùm đơn của người khác
+    if current_user.get("role_id") != 1:
+        delivery_record = crud_delivery.get_latest_delivery_record(db, waybill.waybill_id)
+        
+        if not delivery_record or delivery_record.shipper_id != current_user["user_id"]:
+            raise HTTPException(status_code=403, detail="Bạn không được phân công giao đơn hàng này!")
+
+    success = crud_delivery.retry_delivery(
+        db, waybill, current_user['user_id'], data.note
+    )
+    
+    if not success:
+        raise HTTPException(status_code=409, detail="Dữ liệu đã bị thay đổi bởi người khác, vui lòng thử lại")
+        
+    db.commit()
+    res = {"status": "DELIVERING", "waybill_code": data.waybill_code}
     commit_idempotency(idem_key, res) 
     return res
 

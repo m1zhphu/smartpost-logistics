@@ -260,16 +260,29 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
           setSubmitting(false);
 
           if (result.success) {
-            Toast.show({
-              type: "success",
-              text1: isBulkMail
-                ? "Đã xác nhận lấy túi thư"
-                : "Xác nhận lấy hàng thành công",
-              text2: isBulkMail
-                ? "Lưu ý: backend hiện tại cần xác nhận thêm actual_quantity nếu muốn persist."
-                : undefined,
-            });
-            navigation.goBack();
+            const successMsg = isBulkMail
+              ? "Đã xác nhận lấy túi thư"
+              : "Xác nhận lấy hàng thành công";
+            Toast.show({ type: "success", text1: successMsg });
+            // Hỏi bưu tá có muốn OCR ngay không
+            CustomAlert.alert(
+              "Lấy hàng thành công!",
+              "Bạn có muốn OCR đơn này ngay bây giờ không?",
+              [
+                {
+                  text: "Để sau",
+                  style: "cancel",
+                  onPress: () => navigation.goBack(),
+                },
+                {
+                  text: "OCR ngay",
+                  onPress: () => {
+                    // Navigate đến danh sách đơn chờ OCR
+                    navigation.navigate("ShipperPickedOrders");
+                  },
+                },
+              ]
+            );
           } else {
             Toast.show({
               type: "error",
@@ -609,9 +622,23 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
                   </Text>
                 ) : (
                   bagWaybills.map((waybill, index) => (
-                    <View
+                    <TouchableOpacity
                       key={waybill.waybill_code || `${index}`}
                       style={styles.childWaybillRow}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        if (waybill.waybill_code) {
+                          navigation.navigate("OcrWaybillDetail", {
+                            waybillCode: waybill.waybill_code,
+                            waybillData: {
+                              ...waybill,
+                              sender_name: detail?.sender_name,
+                              sender_phone: detail?.sender_phone,
+                              sender_address: detail?.pickup_address,
+                            },
+                          });
+                        }
+                      }}
                     >
                       <View style={styles.childWaybillIndex}>
                         <Text style={styles.childWaybillIndexText}>
@@ -630,7 +657,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
                               : "Chờ OCR"}
                         </Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))
                 )}
               </View>

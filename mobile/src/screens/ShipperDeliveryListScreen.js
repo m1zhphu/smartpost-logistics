@@ -23,6 +23,7 @@ const PRIMARY = COLORS.primary || "#1B5E20";
 export default function ShipperDeliveryListScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("delivering");
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", fetchTasks);
@@ -151,26 +152,44 @@ export default function ShipperDeliveryListScreen({ navigation }) {
         <HeaderButton icon="reload" onPress={fetchTasks} />
       </View>
 
+      <View style={{ flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+        <TouchableOpacity
+          style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'delivering' ? PRIMARY : 'transparent' }}
+          onPress={() => setActiveTab('delivering')}
+        >
+          <Text style={{ fontWeight: activeTab === 'delivering' ? '700' : '500', color: activeTab === 'delivering' ? PRIMARY : '#64748B' }}>Đang giao</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'failed' ? PRIMARY : 'transparent' }}
+          onPress={() => setActiveTab('failed')}
+        >
+          <Text style={{ fontWeight: activeTab === 'failed' ? '700' : '500', color: activeTab === 'failed' ? PRIMARY : '#64748B' }}>Giao thất bại</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={PRIMARY} />
         </View>
-      ) : tasks.length === 0 ? (
-        <View style={styles.center}>
-          <View style={styles.emptyIconBox}>
-            <Ionicons name="car-outline" size={36} color="#94A3B8" />
+      ) : (() => {
+        const filteredTasks = tasks.filter(t => activeTab === 'delivering' ? (t.status !== 'DELIVERY_FAILED' && t.status !== 'CUSTOMER_UNAVAILABLE') : (t.status === 'DELIVERY_FAILED' || t.status === 'CUSTOMER_UNAVAILABLE'));
+        return filteredTasks.length === 0 ? (
+          <View style={styles.center}>
+            <View style={styles.emptyIconBox}>
+              <Ionicons name="car-outline" size={36} color="#94A3B8" />
+            </View>
+            <Text style={styles.emptyText}>Hiện chưa có đơn giao nào.</Text>
           </View>
-          <Text style={styles.emptyText}>Hiện chưa có đơn giao nào.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={tasks}
-          keyExtractor={(item) => item.waybill_code}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+        ) : (
+          <FlatList
+            data={filteredTasks}
+            keyExtractor={(item) => item.waybill_code}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        );
+      })()}
     </View>
   );
 }

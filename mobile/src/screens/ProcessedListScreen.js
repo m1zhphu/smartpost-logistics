@@ -41,7 +41,7 @@ export default function ProcessedListComponent({
   const handleCreateOrder = (item) => {
     onClose();
     navigation.navigate("CreateOrder", {
-      senderData: item.data?.sender,
+      senderData: item.senderData || item.data?.sender || null,
       receiverData: item.data?.receiver,
       trackingNumber: item.waybill_code || item.data?.tracking_number,
       username: user.username,

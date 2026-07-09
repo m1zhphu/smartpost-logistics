@@ -25,8 +25,8 @@ import styles from "../styles/CustomerPickupDraftsScreenStyles";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
-const buildFullAddress = (detail, ward, district, province) =>
-  [detail, ward?.name, district?.name, province?.name]
+const buildFullAddress = (detail, ward, province) =>
+  [detail, ward?.name, province?.name]
     .filter(Boolean)
     .join(", ");
 
@@ -53,14 +53,11 @@ const buildPickupPayload = (draft) => ({
     address: buildFullAddress(
       draft.sAddressDetail,
       draft.sWard,
-      draft.sDistrict,
       draft.sProvince,
     ),
     province_id: draft.sProvince?.code || null,
-    district_id: draft.sDistrict?.code || null,
     ward_id: draft.sWard?.code || null,
     province_name: draft.sProvince?.name || "",
-    district_name: draft.sDistrict?.name || "",
     ward_name: draft.sWard?.name || "",
   },
   receiver: {
@@ -69,14 +66,11 @@ const buildPickupPayload = (draft) => ({
     address: buildFullAddress(
       draft.rAddressDetail,
       draft.rWard,
-      draft.rDistrict,
       draft.rProvince,
     ),
     province_id: draft.rProvince?.code || null,
-    district_id: draft.rDistrict?.code || null,
     ward_id: draft.rWard?.code || null,
     province_name: draft.rProvince?.name || "",
-    district_name: draft.rDistrict?.name || "",
     ward_name: draft.rWard?.name || "",
   },
   items: [
@@ -192,26 +186,14 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
         text1: `Đang phân tích ${rawRows.length} dòng...`,
       });
 
-      const provincesRes = await fetch("https://provinces.open-api.vn/api/");
+      const provincesRes = await fetch("https://provinces.open-api.vn/api/v2/");
       const provinces = await provincesRes.json();
 
-      const districtsCache = {};
       const wardsCache = {};
 
-      const fetchDistrictsForProvince = async (pId) => {
-        const dRes = await fetch(
-          `https://provinces.open-api.vn/api/p/${pId}?depth=2`,
-        );
-        const data = await dRes.json();
-        return (data.districts || []).map((d) => ({
-          id: d.code,
-          name: d.name,
-        }));
-      };
-
-      const fetchWardsForDistrict = async (dId) => {
+      const fetchWardsForProvince = async (pId) => {
         const wRes = await fetch(
-          `https://provinces.open-api.vn/api/d/${dId}?depth=2`,
+          `https://provinces.open-api.vn/api/v2/p/${pId}?depth=2`,
         );
         const data = await wRes.json();
         return (data.wards || []).map((w) => ({ id: w.code, name: w.name }));
@@ -221,7 +203,6 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
         name: user?.full_name || "",
         phone: user?.phone_number || "",
         province_id: user?.province_id || null,
-        district_id: user?.district_id || null,
         ward_id: user?.ward_id || null,
         address_detail: user?.street_address || user?.address || "",
       };
@@ -229,9 +210,7 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
       const importedDrafts = await processExcelRows({
         rawRows,
         provincesList: provinces.map((p) => ({ id: p.code, name: p.name })),
-        fetchDistricts: fetchDistrictsForProvince,
-        fetchWards: fetchWardsForDistrict,
-        districtsCache,
+        fetchWards: fetchWardsForProvince,
         wardsCache,
         defaultSender,
       });
@@ -301,24 +280,21 @@ export default function CustomerPickupDraftsScreen({ navigation }) {
               address: [
                 draft.sender.address_detail,
                 draft.sender.ward_name,
-                draft.sender.district_name,
                 draft.sender.province_name,
               ]
                 .filter(Boolean)
                 .join(", "),
               province_id: Number(draft.sender.province_id),
-              district_id: Number(draft.sender.district_id),
               ward_id: draft.sender.ward_id
                 ? Number(draft.sender.ward_id)
                 : null,
               province_name: draft.sender.province_name,
-              district_name: draft.sender.district_name,
               ward_name: draft.sender.ward_name,
             },
             draft_items: draft.bulk_draft_items,
             receiver: buildBulkReceiverPayload(draft),
-            pickup_time: draft.pickup_time || null,
-            target_hub_id: draft.target_hub_id ? Number(draft.target_hub_id) : null,
+            service_type: draft.service_type || "STANDARD",
+            payment_method: draft.payment_method || "SENDER_DEBT",
             note: draft.note || null,
           };
 

@@ -1,4 +1,4 @@
-# File: schemas/delivery.py
+﻿# File: schemas/delivery.py
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional
 from datetime import datetime
@@ -41,6 +41,10 @@ class DeliveryFailureRequest(BaseModel):
     waybill_code: str
     reason_code: str # Phải thuộc danh sách chuẩn hóa ở trên
     note: Optional[str] = None
+
+class DeliveryRetryRequest(BaseModel):
+    waybill_code: str
+    note: str = ''  # Ghi chu ly do giao lai
 
 # --- PICKUP REQUEST (BOOKING REQUEST) SCHEMAS ---
 

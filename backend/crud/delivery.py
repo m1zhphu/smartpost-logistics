@@ -131,8 +131,7 @@ def reassign_waybill(db: Session, waybill: models.Waybills, new_hub_id: int = No
     db.flush()
     return waybill
 
-
-def save_shipper_location(db: Session, shipper_id: int, latitude: float, longitude: float, timestamp: datetime, accuracy: float = None, note: str = None):
+def save_shipper_gps_location(db: Session, shipper_id: int, latitude: float, longitude: float, timestamp: datetime, accuracy: float = None, note: str = None):
     """Lưu vị trí GPS của shipper. Hiện tại lưu mock vào TrackingLogs"""
     db.add(models.TrackingLogs(
         waybill_id=None,
@@ -230,6 +229,28 @@ def report_delivery_failure(db: Session, waybill: models.Waybills, reason_code: 
             user_id=user_id,
             system_time=datetime.utcnow(),
             note=f"Giao thất bại. Lý do: {reason_code}. Ghi chú: {note}"
+        ))
+    return affected
+
+def retry_delivery(db: Session, waybill: models.Waybills, user_id: int, note: str):
+    """Chuyển trạng thái đơn giao thất bại về lại đang giao (DELIVERY_FAILED -> DELIVERING)"""
+    current_version = waybill.version
+    
+    affected = db.query(models.Waybills).filter(
+        models.Waybills.waybill_id == waybill.waybill_id,
+        models.Waybills.version == current_version
+    ).update({
+        "status": "DELIVERING",
+        "version": current_version + 1
+    })
+
+    if affected > 0:
+        db.add(models.TrackingLogs(
+            waybill_id=waybill.waybill_id,
+            status_id="DELIVERING",
+            user_id=user_id,
+            system_time=datetime.utcnow(),
+            note=f"Yêu cầu giao lại đơn hàng. Ghi chú: {note}" if note else "Yêu cầu giao lại đơn hàng."
         ))
     return affected
 

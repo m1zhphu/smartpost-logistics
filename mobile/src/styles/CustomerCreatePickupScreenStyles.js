@@ -10,7 +10,7 @@ const TEXT_PRIMARY = COLORS.textPrimary || "#0F172A";
 const TEXT_SECONDARY = COLORS.textSecondary || "#475569";
 
 export default StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC'},
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -37,7 +37,7 @@ export default StyleSheet.create({
   headerButtonInner: { justifyContent: "center", alignItems: "center" },
   headerCenter: { alignItems: "center", flex: 1, paddingHorizontal: 10 },
   headerTitle: { color: "white", fontSize: 18, fontWeight: "900" },
-  headerSubtitle: { color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 2, fontWeight: "700" },
+  headerSubtitle: { color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 2, fontWeight: "700", textAlign: "center" },
   draftPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -160,6 +160,7 @@ export default StyleSheet.create({
     padding: 16,
     paddingBottom: Platform.OS === "ios" ? 34 : 20,
     borderTopWidth: 1,
+    gap: 8,
     borderTopColor: COLORS.borderSoft || "#E2E8F0",
     ...Platform.select({
       ios: { shadowColor: "#64748B", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.06, shadowRadius: 8 },

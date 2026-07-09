@@ -36,6 +36,7 @@ export const ADMIN_ENDPOINTS = {
   GET_DELIVERY_TASKS: `${API_BASE_URL}/api/delivery/my-tasks`,
   CONFIRM_DELIVERY: `${API_BASE_URL}/api/delivery/confirm-success`,
   REPORT_FAILURE: `${API_BASE_URL}/api/delivery/report-failure`,
+  RETRY_DELIVERY: `${API_BASE_URL}/api/delivery/retry-delivery`,  // Giao lại đơn thất bại
   TRACKING_TIMELINE: (code) => `${API_BASE_URL}/api/waybills/${code}/timeline`,
 
   // Internal pickup flow

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { Animated, Easing, Modal, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Modal, Text, TextInput, TouchableOpacity, View, Switch } from 'react-native';
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,8 +12,8 @@ import styles from "../styles/CustomerCreatePickupScreenStyles";
 import {
   clearPickupDraft,
   createCustomerBulkMailPickup,
-  getActiveHubs,
   getPickupDraft,
+  getCustomerDepartments,
   removePickupDraft,
   savePickupDraft,
   upsertPickupDraft,
@@ -26,12 +26,14 @@ const createEmptyDraftItem = (sequence) => ({
   receiver_name: "",
   receiver_phone: "",
   customer_reference_code: "",
-  receiver_address: "",
+  receiver_province: null,
+  receiver_ward: null,
+  receiver_address_detail: "",
   note: "",
 });
 
-const buildFullAddress = (detail, ward, district, province) =>
-  [detail, ward?.name, district?.name, province?.name].filter(Boolean).join(", ");
+const buildFullAddress = (detail, ward, province) =>
+  [detail, ward?.name, province?.name].filter(Boolean).join(", ");
 
 const toPositiveInt = (value, fallback = 1) => {
   const parsed = parseInt(String(value || ""), 10);
@@ -70,7 +72,7 @@ const SelectModal = ({ visible, title, data, onSelect, onClose, itemKey = "code"
               <Ionicons name="close-circle" size={28} color="#94A3B8" />
             </TouchableOpacity>
           </View>
-          <KeyboardAwareScrollView keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView keyboardShouldPersistTaps="handled" enableOnAndroid={true} extraScrollHeight={100}>
             {data.map((item, index) => (
               <TouchableOpacity
                 key={String(item[itemKey] ?? item.code ?? index)}
@@ -108,22 +110,25 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     user?.street_address || user?.address || "",
   );
   const [sProvince, setSProvince] = useState(null);
-  const [sDistrict, setSDistrict] = useState(null);
   const [sWard, setSWard] = useState(null);
   const [sProvinceQuery, setSProvinceQuery] = useState("");
-  const [sDistrictQuery, setSDistrictQuery] = useState("");
   const [sWardQuery, setSWardQuery] = useState("");
-  const [sDistrictsData, setSDistrictsData] = useState([]);
   const [sWardsData, setSWardsData] = useState([]);
   const [provincesData, setProvincesData] = useState([]);
 
   const [bulkProductType, setBulkProductType] = useState("DOCUMENT");
   const [estimatedQuantity, setEstimatedQuantity] = useState("1");
   const [draftItems, setDraftItems] = useState([createEmptyDraftItem(1)]);
-  const [pickupTime, setPickupTime] = useState("");
   const [note, setNote] = useState("");
-  const [targetHubId, setTargetHubId] = useState(null);
-  const [hubs, setHubs] = useState([]);
+
+  const [serviceType, setServiceType] = useState("STANDARD");
+  const [paymentMethod, setPaymentMethod] = useState("SENDER_DEBT");
+  const [isPacking, setIsPacking] = useState(false);
+  const [codAmount, setCodAmount] = useState("0");
+  const [deliveryNote, setDeliveryNote] = useState("");
+  const [departmentId, setDepartmentId] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [wardsCache, setWardsCache] = useState({});
 
   const [loading, setLoading] = useState(false);
   const [modalConfig, setModalConfig] = useState({
@@ -139,35 +144,40 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
   const currentDraftIdRef = useRef(null);
 
   const fullSenderAddress = useMemo(
-    () => buildFullAddress(sAddressDetail, sWard, sDistrict, sProvince),
-    [sAddressDetail, sWard, sDistrict, sProvince],
+    () => buildFullAddress(sAddressDetail, sWard, sProvince),
+    [sAddressDetail, sWard, sProvince],
   );
 
   const hasMeaningfulContent = useMemo(
     () =>
       Boolean(
         sAddressDetail ||
-          sProvince ||
-          sDistrict ||
-          note ||
-          pickupTime ||
-          draftItems.some(
-            (item) =>
-              item.receiver_name ||
-              item.receiver_phone ||
-              item.customer_reference_code ||
-              item.receiver_address ||
-              item.note,
-          ),
+        sProvince ||
+        draftItems.some(
+          (item) =>
+            item.receiver_name ||
+            item.receiver_phone ||
+            item.customer_reference_code ||
+            item.receiver_address_detail ||
+            item.receiver_province ||
+            item.note,
+        ),
       ),
-    [draftItems, note, pickupTime, sAddressDetail, sDistrict, sProvince],
+    [draftItems, note, sAddressDetail, sProvince, sWard],
   );
 
   useEffect(() => {
     fetchProvinces();
-    fetchHubs();
+    fetchDepartments();
     loadDraft();
   }, []);
+
+  const fetchDepartments = async () => {
+    const res = await getCustomerDepartments();
+    if (res.success && Array.isArray(res.data)) {
+      setDepartments(res.data);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -202,19 +212,18 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     estimatedQuantity,
     hasMeaningfulContent,
     note,
-    pickupTime,
     sAddressDetail,
-    sDistrict,
     sName,
     sPhone,
     sProvince,
     sWard,
-    targetHubId,
+    serviceType,
+    paymentMethod,
   ]);
 
   const fetchProvinces = async () => {
     try {
-      const response = await fetch("https://provinces.open-api.vn/api/");
+      const response = await fetch("https://provinces.open-api.vn/api/v2/");
       const data = await response.json();
       setProvincesData(data);
 
@@ -224,16 +233,8 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
         );
         if (matched) {
           await handleSelectSProvince(matched, false);
-          if (user?.district_id) {
-            const district = (await fetchDistricts(matched.code)).find(
-              (item) => Number(item.code) === Number(user.district_id),
-            );
-            if (district) {
-              await handleSelectSDistrict(district, false);
-            }
-          }
-          if (user?.ward_id && user?.district_id) {
-            const ward = (await fetchWards(user.district_id)).find(
+          if (user?.ward_id) {
+            const ward = (await fetchWards(matched.code)).find(
               (item) => Number(item.code) === Number(user.ward_id),
             );
             if (ward) handleSelectSWard(ward);
@@ -245,30 +246,11 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     }
   };
 
-  const fetchHubs = async () => {
-    const result = await getActiveHubs();
-    if (result.success) {
-      setHubs(result.data || []);
-    }
-  };
 
-  const fetchDistricts = async (provinceCode) => {
+  const fetchWards = async (provinceCode) => {
     try {
       const response = await fetch(
-        `https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`,
-      );
-      const data = await response.json();
-      return data.districts || [];
-    } catch (error) {
-      console.error("Lỗi lấy danh sách huyện:", error);
-      return [];
-    }
-  };
-
-  const fetchWards = async (districtCode) => {
-    try {
-      const response = await fetch(
-        `https://provinces.open-api.vn/api/d/${districtCode}?depth=2`,
+        `https://provinces.open-api.vn/api/v2/p/${provinceCode}?depth=2`,
       );
       const data = await response.json();
       return data.wards || [];
@@ -278,28 +260,15 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     }
   };
 
-  const handleSelectSProvince = async (prov, resetDistrict = true) => {
+  const handleSelectSProvince = async (prov, resetWard = true) => {
     setSProvince(prov);
     setSProvinceQuery(prov.name);
-    if (resetDistrict) {
-      setSDistrict(null);
-      setSDistrictQuery("");
+    if (resetWard) {
       setSWard(null);
       setSWardQuery("");
       setSWardsData([]);
     }
-    const districts = await fetchDistricts(prov.code);
-    setSDistrictsData(districts);
-  };
-
-  const handleSelectSDistrict = async (dist, resetWard = true) => {
-    setSDistrict(dist);
-    setSDistrictQuery(dist.name);
-    if (resetWard) {
-      setSWard(null);
-      setSWardQuery("");
-    }
-    const wards = await fetchWards(dist.code);
+    const wards = await fetchWards(prov.code);
     setSWardsData(wards);
   };
 
@@ -346,7 +315,9 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
       receiver_name: item.receiver_name || "",
       receiver_phone: item.receiver_phone || "",
       customer_reference_code: item.customer_reference_code || "",
-      receiver_address: item.receiver_address || "",
+      receiver_address_detail: item.receiver_address_detail || "",
+      receiver_province: item.receiver_province || null,
+      receiver_ward: item.receiver_ward || null,
       note: item.note || "",
     })),
     sender: {
@@ -354,27 +325,36 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
       phone: sPhone,
       address_detail: sAddressDetail,
       province_id: sProvince?.code || null,
-      district_id: sDistrict?.code || null,
       ward_id: sWard?.code || null,
       province_name: sProvince?.name || "",
-      district_name: sDistrict?.name || "",
       ward_name: sWard?.name || "",
     },
-    target_hub_id: targetHubId,
+    service_type: serviceType,
+    payment_method: paymentMethod,
     note,
-    pickup_time: pickupTime || null,
     draft_id: currentDraftIdRef.current || undefined,
     draft_title: `Túi thư ${bulkProductType === "DOCUMENT" ? "tài liệu" : "bưu kiện"} (${toPositiveInt(estimatedQuantity, 1)} bưu gửi)`,
     created_at: new Date().toISOString(),
+    is_packing: isPacking,
+    cod_amount: codAmount,
+    delivery_note: deliveryNote,
+    department_id: departmentId,
     ...(forAutosave ? {} : { updated_at: new Date().toISOString() }),
   });
 
   const buildSubmitPayload = () => {
+    const combinedNote = [
+      isPacking ? "Đóng kiện" : "",
+      codAmount && codAmount !== "0" ? `Thu hộ: ${codAmount}` : "",
+      deliveryNote ? `Giao hàng: ${deliveryNote}` : "",
+      note
+    ].filter(Boolean).join(" - ");
+
     const quantity = toPositiveInt(estimatedQuantity, draftItems.length || 1);
     const firstItem = draftItems[0] || createEmptyDraftItem(1);
     const hasReceiver =
       quantity === 1 &&
-      (firstItem.receiver_name || firstItem.receiver_phone || firstItem.receiver_address);
+      (firstItem.receiver_name || firstItem.receiver_phone || firstItem.receiver_address_detail || firstItem.receiver_province);
 
     return {
       product_type: bulkProductType,
@@ -384,30 +364,37 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
         phone: sPhone.trim(),
         address: fullSenderAddress,
         province_id: sProvince?.code || null,
-        district_id: sDistrict?.code || null,
         ward_id: sWard?.code || null,
         province_name: sProvince?.name || "",
-        district_name: sDistrict?.name || "",
         ward_name: sWard?.name || "",
       },
       receiver: hasReceiver
         ? {
-            name: firstItem.receiver_name || null,
-            phone: firstItem.receiver_phone || null,
-            address: firstItem.receiver_address || "",
-          }
+          name: firstItem.receiver_name || null,
+          phone: firstItem.receiver_phone || null,
+          address: [
+            firstItem.receiver_address_detail,
+            firstItem.receiver_ward?.name,
+            firstItem.receiver_province?.name,
+          ].filter(Boolean).join(", "),
+        }
         : null,
       draft_items: draftItems.map((item, index) => ({
         sequence_no: index + 1,
         customer_reference_code: item.customer_reference_code || null,
         receiver_name: item.receiver_name || null,
         receiver_phone: item.receiver_phone || null,
-        receiver_address: item.receiver_address || null,
+        receiver_address: [
+          item.receiver_address_detail,
+          item.receiver_ward?.name,
+          item.receiver_province?.name,
+        ].filter(Boolean).join(", ") || null,
         note: item.note || null,
       })),
-      pickup_time: pickupTime || null,
-      target_hub_id: targetHubId ? Number(targetHubId) : null,
-      note: note || null,
+      service_type: serviceType,
+      payment_method: paymentMethod,
+      customer_department_id: departmentId,
+      note: combinedNote || null,
     };
   };
 
@@ -422,11 +409,7 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
       setSProvince(draft.sProvince);
       setSProvinceQuery(draft.sProvinceQuery || draft.sProvince.name);
     }
-    if (draft.sDistrict) {
-      await handleSelectSDistrict(draft.sDistrict, false);
-      setSDistrict(draft.sDistrict);
-      setSDistrictQuery(draft.sDistrictQuery || draft.sDistrict.name);
-    }
+
     if (draft.sWard) {
       setSWard(draft.sWard);
       setSWardQuery(draft.sWardQuery || draft.sWard.name);
@@ -439,10 +422,11 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
         receiver_name: draft.rName || "",
         receiver_phone: draft.rPhone || "",
         customer_reference_code: "",
-        receiver_address: buildFullAddress(
+        receiver_province: null,
+        receiver_ward: null,
+        receiver_address_detail: buildFullAddress(
           draft.rAddressDetail,
           draft.rWard,
-          draft.rDistrict,
           draft.rProvince,
         ),
         note: draft.note || "",
@@ -453,7 +437,6 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     setEstimatedQuantity("1");
     setDraftItems(mappedItems);
     setNote(draft.note || "");
-    setPickupTime("");
     draftHydratedRef.current = true;
   };
 
@@ -465,9 +448,13 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     setSPhone(sender.phone || user?.phone_number || "");
     setSAddressDetail(sender.address_detail || "");
     setBulkProductType(draft.bulk_product_type || "DOCUMENT");
-    setPickupTime(draft.pickup_time || "");
     setNote(draft.note || "");
-    setTargetHubId(draft.target_hub_id || null);
+    setServiceType(draft.service_type || "STANDARD");
+    setPaymentMethod(draft.payment_method || "SENDER_DEBT");
+    setIsPacking(draft.is_packing || false);
+    setCodAmount(draft.cod_amount || "0");
+    setDeliveryNote(draft.delivery_note || "");
+    setDepartmentId(draft.department_id || null);
 
     if (sender.province_id) {
       const province =
@@ -480,21 +467,8 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
       setSProvinceQuery(province.name || sender.province_name || "");
     }
 
-    if (sender.district_id && sender.province_id) {
-      const districts = await fetchDistricts(Number(sender.province_id));
-      setSDistrictsData(districts);
-      const district =
-        districts.find((item) => Number(item.code) === Number(sender.district_id)) || {
-          code: Number(sender.district_id),
-          name: sender.district_name || "",
-        };
-      await handleSelectSDistrict(district, false);
-      setSDistrict(district);
-      setSDistrictQuery(district.name || sender.district_name || "");
-    }
-
-    if (sender.ward_id && sender.district_id) {
-      const wards = await fetchWards(Number(sender.district_id));
+    if (sender.ward_id && sender.province_id) {
+      const wards = await fetchWards(Number(sender.province_id));
       setSWardsData(wards);
       const ward =
         wards.find((item) => Number(item.code) === Number(sender.ward_id)) || {
@@ -511,7 +485,9 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
         receiver_name: item.receiver_name || "",
         receiver_phone: item.receiver_phone || "",
         customer_reference_code: item.customer_reference_code || "",
-        receiver_address: item.receiver_address || "",
+        receiver_province: item.receiver_province || null,
+        receiver_ward: item.receiver_ward || null,
+        receiver_address_detail: item.receiver_address_detail || "",
         note: item.note || "",
       }),
     );
@@ -553,7 +529,7 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     ]);
   };
 
-  const openModal = (type) => {
+  const openModal = async (type) => {
     if (type === "province") {
       setModalConfig({
         visible: true,
@@ -564,19 +540,24 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
       });
       return;
     }
-    if (type === "district") {
-      if (!sProvince) return;
+
+    if (type === "department") {
+      if (departments.length === 0) {
+        Toast.show({ type: "info", text1: "Không có phòng ban nào" });
+        return;
+      }
       setModalConfig({
         visible: true,
-        title: "Chọn quận/huyện",
-        data: sDistrictsData,
-        itemKey: "code",
-        onSelect: handleSelectSDistrict,
+        title: "Chọn phòng ban",
+        data: departments,
+        itemKey: "id",
+        onSelect: (dept) => setDepartmentId(dept.id),
       });
       return;
     }
+
     if (type === "ward") {
-      if (!sDistrict) return;
+      if (!sProvince) return;
       setModalConfig({
         visible: true,
         title: "Chọn phường/xã",
@@ -586,20 +567,51 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
       });
       return;
     }
-    if (type === "hub") {
+
+    if (type.startsWith("receiver_province_")) {
+      const index = parseInt(type.split("_")[2], 10);
       setModalConfig({
         visible: true,
-        title: "Chọn bưu cục nhận",
-        data: hubs.map((hub) => ({ ...hub, name: hub.hub_name })),
-        itemKey: "hub_id",
-        onSelect: (hub) => setTargetHubId(hub.hub_id),
+        title: "Chọn tỉnh/thành nhận",
+        data: provincesData,
+        itemKey: "code",
+        onSelect: (prov) => {
+          updateDraftItem(index, "receiver_province", prov);
+          updateDraftItem(index, "receiver_ward", null);
+        },
       });
+      return;
+    }
+
+    if (type.startsWith("receiver_ward_")) {
+      const index = parseInt(type.split("_")[2], 10);
+      const currentItem = draftItems[index];
+      if (!currentItem?.receiver_province) {
+        Toast.show({ type: "error", text1: "Vui lòng chọn tỉnh/thành trước" });
+        return;
+      }
+
+      const provCode = currentItem.receiver_province.code;
+      let wards = wardsCache[provCode];
+      if (!wards) {
+        wards = await fetchWards(provCode);
+        setWardsCache(prev => ({ ...prev, [provCode]: wards }));
+      }
+
+      setModalConfig({
+        visible: true,
+        title: "Chọn phường/xã nhận",
+        data: wards,
+        itemKey: "code",
+        onSelect: (w) => updateDraftItem(index, "receiver_ward", w),
+      });
+      return;
     }
   };
 
   const validateForm = () => {
     const quantity = toPositiveInt(estimatedQuantity, draftItems.length || 1);
-    if (!sName.trim() || !sPhone.trim() || !sProvince || !sDistrict || !sAddressDetail.trim()) {
+    if (!sName.trim() || !sPhone.trim() || !sProvince || !sAddressDetail.trim()) {
       Toast.show({
         type: "error",
         text1: "Thiếu thông tin người gửi",
@@ -674,11 +686,9 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
     navigation.navigate("CustomerPickupList");
   };
 
-  const selectedHub = hubs.find((item) => Number(item.hub_id) === Number(targetHubId));
-
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="light" backgroundColor={PRIMARY} />
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -702,10 +712,12 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
 
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        extraScrollHeight={100}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.sectionTitle}>1. NGƯỜI GỬI</Text>
+        <Text style={styles.sectionTitle}>1. THÔNG TIN LẤY HÀNG</Text>
         <View style={styles.card}>
           <Text style={styles.inputLabel}>Họ tên người gửi</Text>
           <TextInput
@@ -738,25 +750,12 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
             <Ionicons name="chevron-down" size={18} color="#94A3B8" />
           </TouchableOpacity>
 
-          <Text style={styles.inputLabel}>Quận/Huyện</Text>
-          <TouchableOpacity
-            style={[styles.selectionBox, !sProvince && styles.selectionBoxDisabled]}
-            onPress={() => openModal("district")}
-            activeOpacity={0.8}
-            disabled={!sProvince}
-          >
-            <Text style={styles.selectionText}>
-              {sDistrictQuery || "Chọn quận/huyện"}
-            </Text>
-            <Ionicons name="chevron-down" size={18} color="#94A3B8" />
-          </TouchableOpacity>
-
           <Text style={styles.inputLabel}>Phường/Xã</Text>
           <TouchableOpacity
-            style={[styles.selectionBox, !sDistrict && styles.selectionBoxDisabled]}
+            style={[styles.selectionBox, !sProvince && styles.selectionBoxDisabled]}
             onPress={() => openModal("ward")}
             activeOpacity={0.8}
-            disabled={!sDistrict}
+            disabled={!sProvince}
           >
             <Text style={styles.selectionText}>{sWardQuery || "Chọn phường/xã"}</Text>
             <Ionicons name="chevron-down" size={18} color="#94A3B8" />
@@ -817,27 +816,6 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
             placeholderTextColor="#94A3B8"
           />
 
-          <Text style={styles.inputLabel}>Bưu cục nhận hàng (tùy chọn)</Text>
-          <TouchableOpacity
-            style={styles.selectionBox}
-            onPress={() => openModal("hub")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.selectionText}>
-              {selectedHub ? `[${selectedHub.hub_code}] ${selectedHub.hub_name}` : "Để hệ thống tự điều phối"}
-            </Text>
-            <Ionicons name="chevron-down" size={18} color="#94A3B8" />
-          </TouchableOpacity>
-
-          <Text style={styles.inputLabel}>Thời gian lấy hàng (tùy chọn)</Text>
-          <TextInput
-            style={styles.input}
-            value={pickupTime}
-            onChangeText={setPickupTime}
-            placeholder="Ví dụ: 2026-06-14 15:30 hoặc Gọi trước 30 phút"
-            placeholderTextColor="#94A3B8"
-          />
-
           <Text style={styles.inputLabel}>Ghi chú chung</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -849,7 +827,109 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
           />
         </View>
 
-        <Text style={styles.sectionTitle}>3. DANH SÁCH BƯU GỬI</Text>
+        <Text style={styles.sectionTitle}>3. CẤU HÌNH VẬN CHUYỂN</Text>
+        <View style={styles.card}>
+          <Text style={styles.inputLabel}>Loại dịch vụ</Text>
+          <View style={styles.segmentRow}>
+            {[
+              { value: "STANDARD", label: "Tiêu chuẩn" },
+              { value: "FAST", label: "Chuyển phát nhanh" },
+            ].map((option) => {
+              const active = serviceType === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.segmentButton, active && styles.segmentButtonActive]}
+                  onPress={() => setServiceType(option.value)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={styles.inputLabel}>Thanh toán cước</Text>
+          <View style={styles.segmentRow}>
+            {[
+              { value: "SENDER_DEBT", label: "Ghi nợ" },
+              { value: "SENDER_PAY", label: "Người gửi trả" },
+              { value: "RECEIVER_PAY", label: "Người nhận trả" },
+            ].map((option) => {
+              const active = paymentMethod === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.segmentButton, active && styles.segmentButtonActive]}
+                  onPress={() => setPaymentMethod(option.value)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 12 }}>
+            <Text style={[styles.inputLabel, { marginBottom: 0 }]}>Đóng kiện</Text>
+            <Switch
+              trackColor={{ false: "#CBD5E1", true: "#81C784" }}
+              thumbColor={isPacking ? PRIMARY : "#F8FAFC"}
+              onValueChange={setIsPacking}
+              value={isPacking}
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>Số tiền thu hộ</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0"
+            placeholderTextColor="#94A3B8"
+            keyboardType="numeric"
+            value={codAmount}
+            onChangeText={setCodAmount}
+          />
+
+          <Text style={styles.inputLabel}>Phòng ban quản lý (Để theo dõi chi phí)</Text>
+          <TouchableOpacity
+            style={styles.selectionBox}
+            onPress={() => openModal("department")}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.selectionText, !departmentId && { color: "#94A3B8" }]}>
+              {departmentId
+                ? departments.find(d => d.id === departmentId)?.name || "Chọn phòng ban"
+                : "Chọn phòng ban"}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#94A3B8" />
+          </TouchableOpacity>
+
+          <Text style={styles.inputLabel}>Ghi chú khi giao</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ghi chú khi giao..."
+            placeholderTextColor="#94A3B8"
+            value={deliveryNote}
+            onChangeText={setDeliveryNote}
+          />
+
+          <Text style={styles.inputLabel}>Ghi chú thêm</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Ghi chú thêm cho bưu tá..."
+            placeholderTextColor="#94A3B8"
+            multiline
+            textAlignVertical="top"
+            value={note}
+            onChangeText={setNote}
+          />
+        </View>
+
+        <Text style={styles.sectionTitle}>4. DANH SÁCH BƯU GỬI</Text>
         <View style={styles.card}>
           <View style={styles.rowHeader}>
             <Text style={styles.helperText}>
@@ -896,14 +976,43 @@ export default function CustomerCreatePickupScreen({ navigation, route }) {
                 placeholder="Mã tham chiếu của shop"
                 placeholderTextColor="#94A3B8"
               />
+
+              <Text style={styles.inputLabel}>Tỉnh/Thành người nhận</Text>
+              <TouchableOpacity
+                style={styles.selectionBox}
+                onPress={() => openModal(`receiver_province_${index}`)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.selectionText}>
+                  {item.receiver_province?.name || "Chọn tỉnh/thành"}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              <Text style={styles.inputLabel}>Phường/Xã người nhận</Text>
+              <TouchableOpacity
+                style={[styles.selectionBox, !item.receiver_province && styles.selectionBoxDisabled]}
+                onPress={() => openModal(`receiver_ward_${index}`)}
+                activeOpacity={0.8}
+                disabled={!item.receiver_province}
+              >
+                <Text style={styles.selectionText}>
+                  {item.receiver_ward?.name || "Chọn phường/xã"}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              <Text style={styles.inputLabel}>Địa chỉ chi tiết người nhận</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                value={item.receiver_address}
-                onChangeText={(value) => updateDraftItem(index, "receiver_address", value)}
-                placeholder="Địa chỉ người nhận"
+                value={item.receiver_address_detail}
+                onChangeText={(value) => updateDraftItem(index, "receiver_address_detail", value)}
+                placeholder="Số nhà, đường..."
                 placeholderTextColor="#94A3B8"
                 multiline
               />
+
+              <Text style={styles.inputLabel}>Ghi chú bưu gửi</Text>
               <TextInput
                 style={[styles.input, styles.textArea, { marginBottom: 0 }]}
                 value={item.note}
