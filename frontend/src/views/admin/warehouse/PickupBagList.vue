@@ -216,6 +216,15 @@
 
                 <!-- Các nút chuyển trạng thái nhanh -->
                 <el-button 
+                  v-if="row.status === 'CREATED'"
+                  type="warning" 
+                  size="small" 
+                  class="action-btn-sm"
+                  @click="openAssignShipperModal(row)"
+                >
+                  Gán bưu tá
+                </el-button>
+                <el-button 
                   v-if="row.status === 'PICKED'"
                   type="warning" 
                   size="small" 
@@ -396,6 +405,23 @@
             </el-select>
           </el-form-item>
 
+          <el-form-item label="Bưu tá lấy hàng (Không bắt buộc)">
+            <el-select 
+              v-model="createForm.shipper_id" 
+              placeholder="Mặc định theo bưu tá phụ trách của khách..." 
+              clearable
+              filterable 
+              class="w-full modern-select"
+            >
+              <el-option 
+                v-for="s in shippers" 
+                :key="s.user_id" 
+                :label="s.full_name" 
+                :value="s.user_id" 
+              />
+            </el-select>
+          </el-form-item>
+
           <el-form-item label="Số lượng thư dự kiến" required>
             <el-input-number 
               v-model="createForm.est_quantity" 
@@ -418,6 +444,38 @@
           <div class="dialog-footer-actions">
             <el-button @click="createDialogVisible = false">Hủy</el-button>
             <el-button type="primary" :loading="btnLoading" @click="submitCreateBag">Tạo túi</el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <!-- Assign Shipper Modal -->
+      <el-dialog
+        v-model="assignShipperVisible"
+        title="Gán bưu tá lấy túi gom"
+        width="450px"
+        class="modern-dialog"
+      >
+        <el-form label-position="top" class="modern-form">
+          <el-form-item label="Chọn bưu tá đi lấy túi hàng" required>
+            <el-select 
+              v-model="assignForm.shipper_id" 
+              placeholder="Chọn bưu tá đi lấy..." 
+              filterable 
+              class="w-full modern-select"
+            >
+              <el-option 
+                v-for="s in shippers" 
+                :key="s.user_id" 
+                :label="s.full_name" 
+                :value="s.user_id" 
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <div class="dialog-footer-actions">
+            <el-button @click="assignShipperVisible = false">Hủy</el-button>
+            <el-button type="primary" :loading="btnLoading" @click="submitAssignShipper">Xác nhận gán</el-button>
           </div>
         </template>
       </el-dialog>
@@ -587,6 +645,7 @@ const loading = ref(false);
 const btnLoading = ref(false);
 const bags = ref([]);
 const customers = ref([]);
+const shippers = ref([]);
 
 // Stats count
 const stats = reactive({
@@ -606,8 +665,16 @@ const filters = reactive({
 const createDialogVisible = ref(false);
 const createForm = reactive({
   customer_id: null,
+  shipper_id: null,
   est_quantity: 50,
   bag_code: ''
+});
+
+// Assign Shipper Modal
+const assignShipperVisible = ref(false);
+const assignForm = reactive({
+  bag_code: '',
+  shipper_id: null
 });
 
 // Detail Dialog
@@ -668,6 +735,17 @@ const fetchCustomers = async () => {
   }
 };
 
+const fetchShippers = async () => {
+  try {
+    const res = await api.get('/api/users');
+    // Lọc lấy các tài khoản có role_id = 4 (Bưu tá / Shipper)
+    const list = res.data.items || res.data || [];
+    shippers.value = list.filter(u => u.role_id === 4);
+  } catch (err) {
+    console.error('Lỗi tải danh sách bưu tá', err);
+  }
+};
+
 const resetFilters = () => {
   filters.bag_code = '';
   filters.status = '';
@@ -676,6 +754,7 @@ const resetFilters = () => {
 
 const openCreateBagModal = () => {
   createForm.customer_id = null;
+  createForm.shipper_id = null;
   createForm.est_quantity = 50;
   createForm.bag_code = '';
   createDialogVisible.value = true;
@@ -690,7 +769,8 @@ const submitCreateBag = async () => {
   try {
     const payload = {
       customer_id: createForm.customer_id,
-      est_quantity: createForm.est_quantity
+      est_quantity: createForm.est_quantity,
+      shipper_id: createForm.shipper_id || undefined
     };
     if (createForm.bag_code.trim()) {
       payload.bag_code = createForm.bag_code.trim();
@@ -702,6 +782,32 @@ const submitCreateBag = async () => {
     fetchBags();
   } catch (err) {
     ElMessage.error(err.response?.data?.detail || 'Không tạo được túi lấy hàng.');
+  } finally {
+    btnLoading.value = false;
+  }
+};
+
+const openAssignShipperModal = (bag) => {
+  assignForm.bag_code = bag.bag_code;
+  assignForm.shipper_id = bag.created_by;
+  assignShipperVisible.value = true;
+};
+
+const submitAssignShipper = async () => {
+  if (!assignForm.shipper_id) {
+    ElMessage.warning('Vui lòng chọn bưu tá đi lấy túi hàng.');
+    return;
+  }
+  btnLoading.value = true;
+  try {
+    await api.post(`/api/scans/pickup-bags/${assignForm.bag_code}/assign-shipper`, {
+      shipper_id: assignForm.shipper_id
+    });
+    ElMessage.success('Gán bưu tá lấy túi hàng thành công!');
+    assignShipperVisible.value = false;
+    fetchBags();
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || 'Không thể gán bưu tá cho túi hàng này.');
   } finally {
     btnLoading.value = false;
   }
@@ -999,6 +1105,7 @@ const getStatusClass = (status) => {
 
 onMounted(() => {
   fetchCustomers();
+  fetchShippers();
   fetchBags();
 });
 </script>

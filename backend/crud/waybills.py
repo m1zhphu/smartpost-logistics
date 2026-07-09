@@ -238,7 +238,11 @@ def create_waybill_record(db: Session, data: dict, fee: float):
         'waybill_code', 'customer_id', 'receiver_name', 'receiver_phone', 'receiver_address',
         'origin_hub_id', 'dest_hub_id', 'actual_weight', 'cod_amount',
         'service_type', 'product_name', 'note', 'payment_method',
-        'sender_name', 'sender_phone', 'sender_address', 'length', 'width', 'height'
+        'sender_name', 'sender_phone', 'sender_address', 'length', 'width', 'height', 'old_province',
+        # Fields from 2-level static address system
+        'receiver_province_name', 'receiver_ward_name',
+        'sender_province_name', 'sender_ward_name',
+        'sender_province_id', 'receiver_province_id',
     }
     filtered = {k: v for k, v in data.items() if k in ALLOWED_FIELDS}
     product_group = normalize_product_type(data.get('product_group'))
@@ -439,6 +443,7 @@ def create_customer_pickup_waybill(
         width=first_item.width,
         height=first_item.height,
         holding_hub_id=assigned_origin_hub_id,
+        old_province=getattr(receiver, "old_province", None),
     )
     db.add(waybill)
     db.flush()

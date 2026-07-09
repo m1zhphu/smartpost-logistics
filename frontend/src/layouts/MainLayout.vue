@@ -307,7 +307,6 @@ const menuData = computed(() => {
           { label: 'Đang đi lấy', path: '/admin/delivery/pickup-management?tab=assigned' }
         ]},
         { title: 'GIAO HÀNG', items: [
-          ...([1, 2, 7].includes(role) ? [{ label: 'Đơn chuẩn bị giao', path: '/admin/delivery/development-ready' }] : []),
           { label: 'Phân công Shipper', path: '/admin/delivery/assign' }
         ]}
       ]

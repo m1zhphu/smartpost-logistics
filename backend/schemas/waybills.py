@@ -26,6 +26,7 @@ class WaybillCreate(BaseModel):
     
     # ĐÃ BỔ SUNG: Trường này bắt buộc phải có để Backend nhận tiền từ Frontend gửi xuống
     shipping_fee: float = Field(default=0.0, description="Phí vận chuyển tính từ Frontend")
+    old_province: Optional[str] = None
 
     # Bổ sung phục vụ Tạo Bill thông minh
     sender_name: Optional[str] = Field(default=None, description="Tên người gửi thực tế")
@@ -34,6 +35,15 @@ class WaybillCreate(BaseModel):
     length: Optional[float] = Field(default=None, description="Chiều dài (cm)")
     width: Optional[float] = Field(default=None, description="Chiều rộng (cm)")
     height: Optional[float] = Field(default=None, description="Chiều cao (cm)")
+    # Tên tỉnh/phường người nhận từ hệ thống địa chỉ 2 cấp tĩnh
+    receiver_province_name: Optional[str] = Field(default=None, description="Tên tỉnh/thành người nhận")
+    receiver_ward_name: Optional[str] = Field(default=None, description="Tên phường/xã người nhận")
+    # Tên tỉnh/phường người gửi từ hệ thống địa chỉ 2 cấp tĩnh
+    sender_province_name: Optional[str] = Field(default=None, description="Tên tỉnh/thành người gửi")
+    sender_ward_name: Optional[str] = Field(default=None, description="Tên phường/xã người gửi")
+    # IDs của tỉnh thành
+    sender_province_id: Optional[int] = Field(default=None, description="ID tỉnh thành người gửi")
+    receiver_province_id: Optional[int] = Field(default=None, description="ID tỉnh thành người nhận")
 
     @field_validator("product_group", mode="before")
     @classmethod
@@ -58,6 +68,7 @@ class CustomerPickupAddress(BaseModel):
     province_name: Optional[str] = None
     district_name: Optional[str] = None
     ward_name: Optional[str] = None
+    old_province: Optional[str] = None
 
 
 class CustomerPickupItem(BaseModel):
@@ -243,6 +254,14 @@ class OcrFinalizeRequest(BaseModel):
     note: Optional[str] = None
     extra_services: Optional[List[str]] = Field(default_factory=list)
     shipping_fee: Optional[float] = Field(default=0, ge=0)
+    
+    # 2-level static address fields for OCR finalize
+    sender_province_name: Optional[str] = None
+    sender_ward_name: Optional[str] = None
+    sender_province_id: Optional[int] = None
+    receiver_province_name: Optional[str] = None
+    receiver_ward_name: Optional[str] = None
+    receiver_province_id: Optional[int] = None
 
     @field_validator("product_group", mode="before")
     @classmethod

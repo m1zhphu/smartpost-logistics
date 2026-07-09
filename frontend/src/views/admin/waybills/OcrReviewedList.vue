@@ -135,6 +135,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
 import { getMediaUrl } from '@/utils/mediaUrl';
+import { formatVietnamDateTime } from '@/utils/dateTime';
 
 const router = useRouter();
 const loading = ref(false);
@@ -199,7 +200,7 @@ const finalize = (row) => {
 };
 
 const formatMoney = (value) => Number(value || 0).toLocaleString('vi-VN') + 'd';
-const formatDate = (value) => value ? new Date(value).toLocaleString('vi-VN') : '---';
+const formatDate = (value) => formatVietnamDateTime(value);
 const imageUrl = getMediaUrl;
 
 const previewImg = ref(null);

@@ -242,6 +242,9 @@
                           <span style="font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="row.receiver_address">
                             <el-icon><Location /></el-icon> {{ row.receiver_address }}
                           </span>
+                          <span v-if="row.old_province" style="font-size: 10px; color: #d97706; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+                            <el-icon><RefreshRight /></el-icon> Tỉnh cũ: {{ row.old_province }}
+                          </span>
                         </div>
                       </template>
                     </el-table-column>
@@ -452,6 +455,9 @@
                   <span style="font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="row.receiver_address">
                     <el-icon><Location /></el-icon> {{ row.receiver_address }}
                   </span>
+                  <span v-if="row.old_province" style="font-size: 10px; color: #d97706; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+                    <el-icon><RefreshRight /></el-icon> Tỉnh cũ: {{ row.old_province }}
+                  </span>
                 </div>
               </template>
             </el-table-column>
@@ -607,6 +613,25 @@
              <div class="modern-tag" :class="getStatusClass(selectedWaybill.status)">
                {{ getStatusLabel(selectedWaybill.status) }}
              </div>
+          </div>
+        </div>
+        
+        <!-- Thông tin địa chỉ gửi/nhận và Tỉnh cũ -->
+        <div v-if="selectedWaybill" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 20px; font-size: 13px;">
+          <div style="margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px;">
+            <div><b style="color: #475569;">Người nhận:</b> {{ selectedWaybill.receiver_name }} ({{ selectedWaybill.receiver_phone }})</div>
+            <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">
+              <el-icon><Location /></el-icon> <span>{{ selectedWaybill.receiver_address }}</span>
+            </div>
+            <div v-if="selectedWaybill.old_province" style="color: #d97706; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <el-icon><RefreshRight /></el-icon> <span>Tỉnh cũ trước sáp nhập: {{ selectedWaybill.old_province }}</span>
+            </div>
+          </div>
+          <div style="border-top: 1px dashed #cbd5e1; padding-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+            <div><b style="color: #475569;">Người gửi:</b> {{ selectedWaybill.sender_name || 'Khách hàng liên kết' }} ({{ selectedWaybill.sender_phone }})</div>
+            <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">
+              <el-icon><Location /></el-icon> <span>{{ selectedWaybill.sender_address }}</span>
+            </div>
           </div>
         </div>
         

@@ -10,6 +10,8 @@ class HubBase(BaseModel):
     address_detail: Optional[str] = None
     manager_id: Optional[int] = None
     status: Optional[bool] = True
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class HubCreate(HubBase):
     pass # Dùng để nhận dữ liệu khi tạo mới

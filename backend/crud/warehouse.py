@@ -224,29 +224,29 @@ def get_bag_items_with_logs(db: Session, bag_id: int):
     return result
 
 def get_incoming_manifests_data(db: Session, role_id: int, hub_id: int):
-    """Lấy danh sách chuyến xe đang đến bưu cục"""
-    query = db.query(models.Manifests).join(
-        models.ManifestDetails, models.Manifests.manifest_id == models.ManifestDetails.manifest_id
-    ).join(
-        models.Bags, models.ManifestDetails.bag_id == models.Bags.bag_id
-    ).filter(
-        models.Bags.status == "IN_TRANSIT"
-    )
+    """Lấy danh sách chuyến xe liên quan đến bưu cục (gồm cả gửi đi và nhận về)"""
+    query = db.query(models.Manifests)
 
     if role_id != 1:
-        query = query.filter(models.Manifests.to_hub_id == hub_id)
+        from sqlalchemy import or_
+        query = query.filter(or_(
+            models.Manifests.from_hub_id == hub_id,
+            models.Manifests.to_hub_id == hub_id
+        ))
 
-    manifests = query.group_by(models.Manifests.manifest_id).order_by(models.Manifests.manifest_id.desc()).all()
+    manifests = query.order_by(models.Manifests.manifest_id.desc()).all()
 
     result = []
     for m in manifests:
         from_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == m.from_hub_id).first()
+        to_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == m.to_hub_id).first()
         dispatched_time = getattr(m, "dispatched_at", None)
         
         result.append({
             "manifest_code": m.manifest_code,
             "vehicle_number": getattr(m, "vehicle_number", "N/A"),
             "from_hub_name": from_hub.hub_name if from_hub else f"Hub #{m.from_hub_id}",
+            "to_hub_name": to_hub.hub_name if to_hub else f"Hub #{m.to_hub_id}",
             "dispatched_at": dispatched_time.isoformat() if dispatched_time else None
         })
     return result

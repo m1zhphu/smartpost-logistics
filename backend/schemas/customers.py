@@ -38,6 +38,7 @@ class CustomerCreate(BaseModel):
     province: Optional[str] = None
     ward: Optional[str] = None
     street_address: Optional[str] = None
+    old_province: Optional[str] = None
     # Thông tin ngân hàng
     bank_name: Optional[str] = None
     bank_number: Optional[str] = None

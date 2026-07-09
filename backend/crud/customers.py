@@ -307,7 +307,7 @@ def update_customer_self_profile(db: Session, customer: models.Customers, data_d
     elif data_dict.get("representative_name") is not None:
         customer.representative_name = data_dict.get("representative_name")
 
-    for field in ("company_name", "tax_code", "email", "country", "street_address"):
+    for field in ("company_name", "tax_code", "email", "country", "street_address", "old_province"):
         if field in data_dict and data_dict.get(field) is not None:
             setattr(customer, field, data_dict.get(field))
 

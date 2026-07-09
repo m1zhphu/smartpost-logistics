@@ -33,11 +33,15 @@ from datetime import datetime
 
 class PickupBagCreate(BaseModel):
     customer_id: int
+    shipper_id: Optional[int] = None
     bag_code: Optional[str] = None
     est_quantity: Optional[int] = 0
     note: Optional[str] = None
     waybill_codes: Optional[List[str]] = None
     seal_bag: bool = True
+
+class PickupBagAssignShipper(BaseModel):
+    shipper_id: int
 
 class PickupBagResponse(BaseModel):
     bag_id: int

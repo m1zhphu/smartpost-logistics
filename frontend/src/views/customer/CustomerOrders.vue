@@ -174,7 +174,7 @@
       <el-dialog 
         v-model="detailDialogVisible" 
         title="Chi tiết yêu cầu & Vận đơn" 
-        width="780px"
+        width="1150px"
         destroy-on-close
         top="5vh"
       >
@@ -291,6 +291,9 @@
                     <div class="address-line">📞 {{ selectedPickup.receiver_phone || '---' }}</div>
                     <div class="address-line text-muted text-xs">
                       {{ [selectedPickup.receiver_address, selectedPickup.receiver_ward_name, selectedPickup.receiver_district_name, selectedPickup.receiver_province_name].filter(Boolean).join(', ') || '---' }}
+                    </div>
+                    <div v-if="selectedPickup.old_province" class="address-line text-xs" style="color: #d97706; font-weight: 600; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                      <el-icon><RefreshRight /></el-icon> Tỉnh cũ trước sáp nhập: {{ selectedPickup.old_province }}
                     </div>
                   </div>
                 </el-col>
@@ -459,7 +462,7 @@
             <el-tab-pane label="Hành trình bưu gửi" name="timeline">
               <el-row :gutter="20">
                 <el-col :xs="24" :sm="11">
-                  <div class="timeline-wrapper" v-loading="timelineLoading" style="max-height: 450px; overflow-y: auto; padding-right: 10px;">
+                  <div class="timeline-wrapper" v-loading="timelineLoading" style="max-height: 600px; height: 600px; overflow-y: auto; padding-right: 10px;">
                     <el-timeline v-if="pickupTimeline.length > 0">
                       <el-timeline-item
                         v-for="(log, idx) in pickupTimeline"
@@ -481,7 +484,7 @@
                   </div>
                 </el-col>
                 <el-col :xs="24" :sm="13">
-                  <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; height: 450px; background: #f8fafc; position: relative;">
+                  <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; height: 600px; background: #f8fafc; position: relative;">
                     <div id="timeline-map" style="width: 100%; height: 100%; z-index: 1;"></div>
                   </div>
                 </el-col>
@@ -1669,7 +1672,25 @@ const getCoordinatesForLocationName = (name) => {
   if (!name) return null;
   const n = name.toLowerCase();
   
-  // Tọa độ các Hub bưu cục cụ thể
+  // 1. Kiểm tra trong danh sách bưu cục động từ DB trước
+  if (Array.isArray(hubsList.value)) {
+    const foundHub = hubsList.value.find(h => {
+      const hubNameLower = h.hub_name ? h.hub_name.toLowerCase() : '';
+      const hubCodeLower = h.hub_code ? h.hub_code.toLowerCase() : '';
+      return (
+        hubNameLower && (
+          n === hubNameLower ||
+          n.includes(hubNameLower) ||
+          (hubCodeLower && n.includes(hubCodeLower))
+        )
+      );
+    });
+    if (foundHub && foundHub.latitude && foundHub.longitude) {
+      return [Number(foundHub.latitude), Number(foundHub.longitude)];
+    }
+  }
+  
+  // 2. Fallback sang tọa độ hardcode tĩnh nếu không khớp bưu cục DB hoặc bưu cục chưa cấu hình tọa độ
   if (n.includes('trụ sở chính') || n.includes('tru so chinh') || n.includes('hcm') || n.includes('hồ chí minh')) {
     return [10.776889, 106.700806];
   }
@@ -1758,38 +1779,40 @@ const initMap = () => {
     });
   }
   
-  // 2. Bưu cục tiếp nhận
+  // Lọc duy nhất các bưu cục trung chuyển thực tế theo trình tự di chuyển
+  const transitHubs = [];
   if (selectedPickup.value?.hub_name) {
-    const hubCoords = getCoordinatesForLocationName(selectedPickup.value.hub_name);
-    if (hubCoords) {
-      points.push({
-        latlng: [...hubCoords],
-        title: 'Bưu cục tiếp nhận',
-        desc: selectedPickup.value.hub_name,
-        type: 'hub'
-      });
-    }
+    transitHubs.push(selectedPickup.value.hub_name.trim());
   }
-  
-  // 3. Các mốc trung gian từ timeline
+
   if (Array.isArray(pickupTimeline.value)) {
+    // Sắp xếp timeline theo thứ tự thời gian tăng dần
     const sortedTimeline = [...pickupTimeline.value];
     sortedTimeline.forEach(log => {
       if (log.location && log.location !== '---') {
-        const coords = getCoordinatesForLocationName(log.location);
-        if (coords) {
-          points.push({
-            latlng: [...coords],
-            title: log.action || 'Hành trình trung chuyển',
-            desc: `${log.time} - tại ${log.location} (${log.note || ''})`,
-            type: 'transit'
-          });
+        const locName = log.location.trim();
+        // Chỉ thêm nếu khác bưu cục cuối cùng trong danh sách (tránh lặp mốc khi có nhiều log tại cùng 1 bưu cục)
+        if (transitHubs.length === 0 || transitHubs[transitHubs.length - 1].toLowerCase() !== locName.toLowerCase()) {
+          transitHubs.push(locName);
         }
       }
     });
   }
 
-  // 4. Điểm Người nhận (Kết thúc)
+  // Chuyển đổi danh sách bưu cục trung chuyển sang mảng points
+  transitHubs.forEach((hubName, idx) => {
+    const coords = getCoordinatesForLocationName(hubName);
+    if (coords) {
+      points.push({
+        latlng: [...coords],
+        title: idx === 0 ? 'Bưu cục tiếp nhận (Bắt đầu gom)' : `Bưu cục trung chuyển: ${hubName}`,
+        desc: hubName,
+        type: idx === 0 ? 'hub' : 'transit'
+      });
+    }
+  });
+
+  // Điểm Người nhận (Kết thúc)
   const receiverLoc = selectedPickup.value?.receiver_address || selectedPickup.value?.receiver_district_name || selectedPickup.value?.receiver_province_name;
   const receiverCoords = getCoordinatesForLocationName(receiverLoc);
   if (receiverCoords) {
@@ -1803,31 +1826,14 @@ const initMap = () => {
 
   if (points.length === 0) return;
 
-  // XỬ LÝ TRÙNG TỌA ĐỘ (Jitter/Offset)
-  // Nếu hai điểm trùng hoặc quá gần nhau, dịch chuyển nhẹ để tạo các mốc riêng biệt và hiển thị đường nối
-  for (let i = 0; i < points.length; i++) {
-    for (let j = 0; j < i; j++) {
-      const lat1 = points[i].latlng[0];
-      const lng1 = points[i].latlng[1];
-      const lat2 = points[j].latlng[0];
-      const lng2 = points[j].latlng[1];
-      
-      const distance = Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lng1 - lng2, 2));
-      if (distance < 0.0005) {
-        const angle = Math.random() * Math.PI * 2;
-        const offset = 0.0015 + Math.random() * 0.0015; // Dịch chuyển từ 150m đến 300m
-        points[i].latlng[0] = lat1 + Math.sin(angle) * offset;
-        points[i].latlng[1] = lng1 + Math.cos(angle) * offset;
-      }
-    }
-  }
-
   const centerCoords = points[0].latlng;
   const map = window.L.map('timeline-map').setView(centerCoords, 12);
   mapInstance.value = map;
   
-  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+  window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20
   }).addTo(map);
 
   // Khởi tạo custom div icon bằng SVG
@@ -1870,14 +1876,129 @@ const initMap = () => {
   });
   
   if (latlngs.length > 1) {
-    const polyline = window.L.polyline(latlngs, { 
-      color: '#4f46e5', // Màu Indigo liền mạch, sang trọng
-      weight: 4, 
-      opacity: 0.8,
-      lineJoin: 'round'
-    }).addTo(map);
+    // 1. Luôn thêm marker chủ quyền Quần đảo Hoàng Sa và Trường Sa (Việt Nam) một cách tinh tế
+    const sovereigntyIcon = window.L.divIcon({
+      html: `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 80px;">
+          <div style="width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; border: 1.5px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.4);"></div>
+          <span style="font-family: sans-serif; font-size: 9px; font-weight: 700; color: #475569; text-shadow: 0px 0px 3px white; margin-top: 2px; text-align: center; white-space: nowrap;">QĐ. Hoàng Sa<br>(Việt Nam)</span>
+        </div>
+      `,
+      className: 'sovereignty-marker',
+      iconSize: [80, 30],
+      iconAnchor: [40, 4]
+    });
     
-    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+    const truongSaIcon = window.L.divIcon({
+      html: `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 80px;">
+          <div style="width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; border: 1.5px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.4);"></div>
+          <span style="font-family: sans-serif; font-size: 9px; font-weight: 700; color: #475569; text-shadow: 0px 0px 3px white; margin-top: 2px; text-align: center; white-space: nowrap;">QĐ. Trường Sa<br>(Việt Nam)</span>
+        </div>
+      `,
+      className: 'sovereignty-marker',
+      iconSize: [80, 30],
+      iconAnchor: [40, 4]
+    });
+
+    window.L.marker([16.5, 112.0], { icon: sovereigntyIcon, interactive: false }).addTo(map);
+    window.L.marker([8.63, 111.92], { icon: truongSaIcon, interactive: false }).addTo(map);
+
+    // 2. Hàm tính khoảng cách giữa 2 tọa độ (Km)
+    const getDistanceKm = (c1, c2) => {
+      const R = 6371;
+      const dLat = (c2[0] - c1[0]) * Math.PI / 180;
+      const dLon = (c2[1] - c1[1]) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(c1[0] * Math.PI / 180) * Math.cos(c2[0] * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
+
+    // Hàm chèn các điểm trung gian dọc duyên hải miền Trung Việt Nam để ép đường đi bám sát địa phận Việt Nam
+    const getVietnamWaypoints = (c1, c2) => {
+      const vnDọcBờBiển = [
+        { latlng: [10.9322, 108.1009] }, // Phan Thiết
+        { latlng: [12.2458, 109.1948] }, // Nha Trang
+        { latlng: [13.7731, 109.2244] }, // Quy Nhơn
+        { latlng: [15.1205, 108.7924] }, // Quảng Ngãi
+        { latlng: [16.0544, 108.2022] }, // Đà Nẵng
+        { latlng: [17.4761, 106.5983] }, // Đồng Hới
+        { latlng: [18.6733, 105.6813] }, // Vinh
+        { latlng: [19.8075, 105.7764] }  // Thanh Hóa
+      ];
+
+      const minLat = Math.min(c1[0], c2[0]);
+      const maxLat = Math.max(c1[0], c2[0]);
+
+      // Lấy các mốc nằm giữa phạm vi vĩ độ của 2 điểm đầu/cuối chặng
+      const midPoints = vnDọcBờBiển.filter(pt => pt.latlng[0] > minLat + 0.5 && pt.latlng[0] < maxLat - 0.5);
+
+      // Sắp xếp theo chiều di chuyển Nam -> Bắc hoặc Bắc -> Nam
+      if (c1[0] < c2[0]) {
+        midPoints.sort((a, b) => a.latlng[0] - b.latlng[0]);
+      } else {
+        midPoints.sort((a, b) => b.latlng[0] - a.latlng[0]);
+      }
+
+      return midPoints.map(pt => pt.latlng);
+    };
+
+    const drawSegment = async (startPt, endPt) => {
+      // Đoạn ngắn: ưu tiên vẽ uốn lượn theo đường bộ thực tế qua OSRM
+      const url = `https://router.project-osrm.org/route/v1/driving/${startPt[1]},${startPt[0]};${endPt[1]},${endPt[0]}?overview=full&geometries=geojson`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+          const routeCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+          window.L.polyline(routeCoords, {
+            color: '#4f46e5',
+            weight: 5,
+            opacity: 0.85,
+            lineJoin: 'round'
+          }).addTo(map);
+          return;
+        }
+      } catch (e) {
+        console.warn('OSRM segment routing error:', e);
+      }
+
+      // Fallback vẽ đường thẳng
+      window.L.polyline([startPt, endPt], {
+        color: '#4f46e5',
+        weight: 4,
+        opacity: 0.8,
+        lineJoin: 'round'
+      }).addTo(map);
+    };
+
+    // Vẽ từng chặng thông minh
+    const drawLeg = async (c1, c2) => {
+      const distance = getDistanceKm(c1, c2);
+      if (distance >= 150) {
+        // Chặng dài (liên tỉnh Bắc-Nam) -> Chèn các waypoint bờ biển Việt Nam để hướng đường đi bám sát địa phận Việt Nam
+        const waypoints = getVietnamWaypoints(c1, c2);
+        const allPointsInLeg = [c1, ...waypoints, c2];
+        for (let idx = 0; idx < allPointsInLeg.length - 1; idx++) {
+          await drawSegment(allPointsInLeg[idx], allPointsInLeg[idx + 1]);
+        }
+      } else {
+        await drawSegment(c1, c2);
+      }
+    };
+
+    // Vẽ các chặng tuần tự
+    (async () => {
+      for (let i = 0; i < latlngs.length - 1; i++) {
+        await drawLeg(latlngs[i], latlngs[i+1]);
+      }
+    })();
+
+    const boundsPolyline = window.L.polyline(latlngs);
+    map.fitBounds(boundsPolyline.getBounds(), { padding: [40, 40] });
   } else if (latlngs.length === 1) {
     map.setView(latlngs[0], 13);
   }

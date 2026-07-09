@@ -527,7 +527,27 @@ def get_manifest_bags(
             
         bags = crud_wh.get_bags_by_manifest_id(db, manifest.manifest_id)
         
-        result = [{"bag_code": b.bag_code, "status": b.status} for b in bags]
+        from sqlalchemy import func
+        from_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == manifest.from_hub_id).first()
+        from_hub_name = from_hub.hub_name if from_hub else f"Hub #{manifest.from_hub_id}"
+        vehicle_number = getattr(manifest, "vehicle_number", "N/A")
+
+        result = []
+        for b in bags:
+            dest_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == b.dest_hub_id).first()
+            dest_hub_name = dest_hub.hub_name if dest_hub else "Không rõ"
+            
+            total_waybills = db.query(func.count(models.BagItems.waybill_id)).filter(models.BagItems.bag_id == b.bag_id).scalar()
+            
+            result.append({
+                "bag_code": b.bag_code,
+                "status": b.status,
+                "dest_hub_name": dest_hub_name,
+                "total_waybills": total_waybills,
+                "from_hub_name": from_hub_name,
+                "vehicle_number": vehicle_number
+            })
+            
         return {"items": result}
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -573,10 +593,18 @@ def create_pickup_bag(
             selected_waybills.append(wb)
 
     est_quantity = data.est_quantity or len(selected_waybills)
+    
+    # Xác định bưu tá phụ trách lấy túi hàng (created_by)
+    creator_id = current_user["user_id"]
+    if data.shipper_id:
+        creator_id = data.shipper_id
+    elif current_user.get("role_id") in [1, 2, 3, 7] and customer.staff_in_charge_id:
+        creator_id = customer.staff_in_charge_id
+
     bag = crud_wh.create_pickup_bag(
         db=db,
         customer_id=data.customer_id,
-        creator_id=current_user["user_id"],
+        creator_id=creator_id,
         est_quantity=est_quantity,
         bag_code=data.bag_code,
         note=data.note
@@ -585,7 +613,7 @@ def create_pickup_bag(
         for wb in selected_waybills:
             crud_wh.add_item_to_bag(db, bag.bag_id, wb.waybill_id)
             wb.status = WaybillStatus.BAGGED
-            wb.holding_shipper_id = current_user["user_id"] if current_user.get("role_id") == 4 else None
+            wb.holding_shipper_id = creator_id
             crud_wh.create_log(
                 db,
                 wb.waybill_id,
@@ -614,6 +642,29 @@ def create_pickup_bag(
     bag.actual_quantity = len(selected_waybills) if selected_waybills else 0
     bag.missing_quantity = 0 if selected_waybills else (est_quantity or 0)
     return bag
+
+@router.post("/pickup-bags/{bag_code}/assign-shipper")
+def assign_pickup_bag_shipper(
+    bag_code: str,
+    data: schema_wh.PickupBagAssignShipper,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Gán bưu tá đi lấy túi hàng"""
+    if current_user.get("role_id") not in [1, 2, 3, 7]:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền gán bưu tá cho túi hàng")
+    
+    bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code, models.Bags.bag_type == "PICKUP").first()
+    if not bag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy túi lấy hàng")
+        
+    shipper = db.query(models.Users).filter(models.Users.user_id == data.shipper_id, models.Users.role_id == 4).first()
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bưu tá phù hợp")
+        
+    bag.created_by = data.shipper_id
+    db.commit()
+    return {"status": "SUCCESS", "shipper_name": shipper.full_name}
 
 @router.get("/pickup-bags", response_model=list[schema_wh.PickupBagResponse])
 def list_pickup_bags(

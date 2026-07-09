@@ -23,6 +23,72 @@
         </div>
       </header>
 
+      <!-- Bộ lọc và Tìm kiếm (Filter & Search) -->
+      <div class="content-card filter-card animate-fade-in" style="margin-bottom: 20px; padding: 20px;">
+        <el-form :inline="true" class="filter-form-inline" style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: -18px;">
+          <el-form-item label="Tìm kiếm">
+            <el-input 
+              v-model="filters.searchText" 
+              placeholder="Mã, tên, địa chỉ..." 
+              clearable 
+              style="width: 220px;"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item label="Phân cấp">
+            <el-select 
+              v-model="filters.hubType" 
+              placeholder="Tất cả phân cấp" 
+              clearable 
+              style="width: 150px;"
+            >
+              <el-option label="Trung tâm" value="CENTER" />
+              <el-option label="Bưu cục" value="HUB" />
+              <el-option label="Điểm nhận" value="STATION" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="Tỉnh/Thành">
+            <el-select 
+              v-model="filters.provinceId" 
+              placeholder="Tất cả tỉnh thành" 
+              clearable 
+              filterable
+              style="width: 180px;"
+            >
+              <el-option
+                v-for="province in provinces"
+                :key="province.id"
+                :label="province.name"
+                :value="province.id"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="Trạng thái">
+            <el-select 
+              v-model="filters.status" 
+              placeholder="Tất cả trạng thái" 
+              clearable 
+              style="width: 150px;"
+            >
+              <el-option label="Hoạt động" :value="true" />
+              <el-option label="Tạm ngưng" :value="false" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="info" plain @click="resetFilters">
+              <el-icon class="mr-1"><Refresh /></el-icon> Reset
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
       <!-- ===== DESKTOP TABLE (ẩn trên mobile) ===== -->
       <div class="content-card table-wrapper animate-fade-in-up desktop-only" style="padding-bottom: 20px;">
         <el-table 
@@ -126,7 +192,7 @@
             v-model:page-size="pageSize"
             :page-sizes="[5, 10, 20, 50]"
             layout="total, sizes, prev, pager, next, jumper"
-            :total="hubs.length"
+            :total="filteredHubs.length"
             background
           />
         </div>
@@ -204,7 +270,7 @@
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
             layout="prev, pager, next"
-            :total="hubs.length"
+            :total="filteredHubs.length"
             small
             background
           />
@@ -263,13 +329,58 @@
           </el-form-item>
 
           <el-form-item label="Địa chỉ chi tiết" prop="address_detail">
-            <el-input 
-              v-model="hubForm.address_detail" 
-              type="textarea" 
-              :rows="3"
-              placeholder="VD: Số 10, Lý Thường Kiệt..." 
-              resize="none"
-            />
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <el-input 
+                v-model="hubForm.address_detail" 
+                type="textarea" 
+                :rows="2"
+                placeholder="VD: Số 10, Lý Thường Kiệt, Hoàn Kiếm, Hà Nội..." 
+                resize="none"
+                style="flex: 1;"
+              />
+              <el-button 
+                type="primary" 
+                plain 
+                style="height: auto; padding: 0 16px;" 
+                @click="geocodeAddress"
+                :loading="geocodeLoading"
+              >
+                Lấy tọa độ
+              </el-button>
+            </div>
+          </el-form-item>
+
+          <el-row :gutter="24">
+            <el-col :span="12">
+              <el-form-item label="Vĩ độ (Latitude)">
+                <el-input-number 
+                  v-model="hubForm.latitude" 
+                  :precision="6" 
+                  :step="0.000001" 
+                  placeholder="Nhấp vào bản đồ để chọn" 
+                  class="w-full"
+                  controls-position="right"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="Kinh độ (Longitude)">
+                <el-input-number 
+                  v-model="hubForm.longitude" 
+                  :precision="6" 
+                  :step="0.000001" 
+                  placeholder="Nhấp vào bản đồ để chọn" 
+                  class="w-full"
+                  controls-position="right"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-form-item label="Vị trí bản đồ (Click để chấm, kéo marker để chỉnh sửa)">
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; height: 220px; width: 100%; position: relative; background: #f8fafc;">
+              <div id="hub-editor-map" style="width: 100%; height: 100%; z-index: 1;"></div>
+            </div>
           </el-form-item>
 
           <el-form-item label="Người quản lý (Trưởng bưu cục)" prop="manager_id">
@@ -299,9 +410,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import { 
-  Plus, Edit, Delete, Box, Location, UserFilled, User, Key, OfficeBuilding, Loading
+  Plus, Edit, Delete, Box, Location, UserFilled, User, Key, OfficeBuilding, Loading, Search, Refresh
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -317,10 +428,52 @@ const provinces = ref([]);
 const currentPage = ref(1);
 const pageSize = ref(10);
 
+const filters = reactive({
+  searchText: '',
+  hubType: '',
+  provinceId: null,
+  status: null
+});
+
+const resetFilters = () => {
+  filters.searchText = '';
+  filters.hubType = '';
+  filters.provinceId = null;
+  filters.status = null;
+};
+
+const filteredHubs = computed(() => {
+  return hubs.value.filter(hub => {
+    if (filters.searchText) {
+      const search = filters.searchText.toLowerCase().trim();
+      const codeMatches = hub.hub_code ? hub.hub_code.toLowerCase().includes(search) : false;
+      const nameMatches = hub.hub_name ? hub.hub_name.toLowerCase().includes(search) : false;
+      const addressMatches = hub.address_detail ? hub.address_detail.toLowerCase().includes(search) : false;
+      if (!codeMatches && !nameMatches && !addressMatches) {
+        return false;
+      }
+    }
+
+    if (filters.hubType && hub.hub_type !== filters.hubType) {
+      return false;
+    }
+
+    if (filters.provinceId && hub.province_id !== filters.provinceId) {
+      return false;
+    }
+
+    if (filters.status !== null && hub.status !== filters.status) {
+      return false;
+    }
+
+    return true;
+  });
+});
+
 const paginatedHubs = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
   const end = start + pageSize.value;
-  return hubs.value.slice(start, end);
+  return filteredHubs.value.slice(start, end);
 });
 
 const hubForm = reactive({
@@ -331,7 +484,9 @@ const hubForm = reactive({
   province_id: null,
   address_detail: '',
   manager_id: null,
-  status: true
+  status: true,
+  latitude: null,
+  longitude: null
 });
 
 const rules = {
@@ -396,7 +551,11 @@ const fetchData = async () => {
 
 const openDialog = (row) => {
   if (row) {
-    Object.assign(hubForm, row);
+    Object.assign(hubForm, {
+      ...row,
+      latitude: row.latitude || null,
+      longitude: row.longitude || null
+    });
   } else {
     Object.assign(hubForm, {
       hub_id: null,
@@ -406,7 +565,9 @@ const openDialog = (row) => {
       province_id: null,
       address_detail: '',
       manager_id: null,
-      status: true
+      status: true,
+      latitude: null,
+      longitude: null
     });
   }
   dialogVisible.value = true;
@@ -472,6 +633,163 @@ const toggleStatus = async (row) => {
     row.status = !row.status;
   }
 };
+
+const mapInstance = ref(null);
+const markerInstance = ref(null);
+const geocodeLoading = ref(false);
+
+const initMap = () => {
+  if (typeof window.L === 'undefined') {
+    setTimeout(initMap, 200);
+    return;
+  }
+  
+  if (mapInstance.value) {
+    try {
+      mapInstance.value.remove();
+    } catch (e) {
+      console.error(e);
+    }
+    mapInstance.value = null;
+    markerInstance.value = null;
+  }
+  
+  const mapContainer = document.getElementById('hub-editor-map');
+  if (!mapContainer) return;
+
+  const defaultCoords = hubForm.latitude && hubForm.longitude
+    ? [hubForm.latitude, hubForm.longitude]
+    : [21.028511, 105.804817]; // Fallback to Hà Nội
+
+  const map = window.L.map('hub-editor-map').setView(defaultCoords, 14);
+  mapInstance.value = map;
+
+  window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20
+  }).addTo(map);
+
+  // Tạo marker custom màu xanh dương
+  const markerIcon = window.L.divIcon({
+    html: `
+      <div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 2C9.48 2 5 6.48 5 12C5 18.52 13.25 26.96 14.3 27.97C14.7 28.36 15.3 28.36 15.7 27.97C16.75 26.96 25 18.52 25 12C25 6.48 20.52 2 15 2Z" fill="#3b82f6"/>
+          <circle cx="15" cy="12" r="6" fill="white"/>
+        </svg>
+      </div>
+    `,
+    className: 'custom-map-marker',
+    iconSize: [30, 30],
+    iconAnchor: [15, 28]
+  });
+
+  const marker = window.L.marker(defaultCoords, { icon: markerIcon, draggable: true }).addTo(map);
+  markerInstance.value = marker;
+
+  // Khi kéo marker
+  marker.on('dragend', () => {
+    const latlng = marker.getLatLng();
+    hubForm.latitude = Number(latlng.lat.toFixed(6));
+    hubForm.longitude = Number(latlng.lng.toFixed(6));
+  });
+
+  // Khi click vào map
+  map.on('click', (e) => {
+    const latlng = e.latlng;
+    marker.setLatLng(latlng);
+    hubForm.latitude = Number(latlng.lat.toFixed(6));
+    hubForm.longitude = Number(latlng.lng.toFixed(6));
+  });
+};
+
+const loadLeafletAssets = () => {
+  if (document.getElementById('leaflet-css')) {
+    initMap();
+    return;
+  }
+  
+  const link = document.createElement('link');
+  link.id = 'leaflet-css';
+  link.rel = 'stylesheet';
+  link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+  document.head.appendChild(link);
+  
+  const script = document.createElement('script');
+  script.id = 'leaflet-js';
+  script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  script.onload = () => {
+    initMap();
+  };
+  document.head.appendChild(script);
+};
+
+// Geocoding Nominatim
+const geocodeAddress = async () => {
+  if (!hubForm.address_detail) {
+    ElMessage.warning('Vui lòng nhập địa chỉ chi tiết trước.');
+    return;
+  }
+  
+  geocodeLoading.value = true;
+  try {
+    const query = encodeURIComponent(hubForm.address_detail);
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const lat = Number(parseFloat(data[0].lat).toFixed(6));
+      const lon = Number(parseFloat(data[0].lon).toFixed(6));
+      
+      hubForm.latitude = lat;
+      hubForm.longitude = lon;
+      
+      if (markerInstance.value && mapInstance.value) {
+        markerInstance.value.setLatLng([lat, lon]);
+        mapInstance.value.setView([lat, lon], 15);
+      }
+      ElMessage.success('Lấy tọa độ tự động thành công.');
+    } else {
+      ElMessage.warning('Không tìm thấy tọa độ cho địa chỉ này. Bạn có thể tự chọn trên bản đồ.');
+    }
+  } catch (err) {
+    console.error('Geocoding error:', err);
+    ElMessage.error('Lỗi hệ thống khi tìm tọa độ. Vui lòng tự chọn trên bản đồ.');
+  } finally {
+    geocodeLoading.value = false;
+  }
+};
+
+watch(
+  () => dialogVisible.value,
+  (visible) => {
+    if (visible) {
+      setTimeout(() => {
+        loadLeafletAssets();
+      }, 200);
+    } else {
+      if (mapInstance.value) {
+        try {
+          mapInstance.value.remove();
+        } catch (e) {
+          console.error(e);
+        }
+        mapInstance.value = null;
+        markerInstance.value = null;
+      }
+    }
+  }
+);
+
+onBeforeUnmount(() => {
+  if (mapInstance.value) {
+    try {
+      mapInstance.value.remove();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+});
 
 onMounted(() => {
   fetchProvinces();

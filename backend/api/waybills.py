@@ -424,6 +424,8 @@ def finalize_waybill_from_ocr(
             "sender_name", "sender_phone", "sender_address",
             "receiver_name", "receiver_phone", "receiver_address",
             "service_type", "product_name", "payment_method", "note",
+            "sender_province_name", "sender_ward_name", "sender_province_id",
+            "receiver_province_name", "receiver_ward_name", "receiver_province_id",
         ]:
             if field in payload:
                 setattr(waybill, field, payload[field])
@@ -464,9 +466,10 @@ def finalize_waybill_from_ocr(
         item.height = decimal_value(data.height)
         item.declared_value = decimal_value(data.declared_value)
 
-        waybill.status = "CREATED"
+        waybill.status = "IN_HUB"
         waybill.ocr_status = "CONVERTED"
         waybill.verify_status = "VERIFIED"
+        waybill.holding_hub_id = waybill.origin_hub_id
         waybill.version = (waybill.version or 1) + 1
         db.add(models.TrackingLogs(
             waybill_id=waybill.waybill_id,
@@ -617,7 +620,7 @@ async def create_waybill(
             detail="Tuyến đường này chưa được cấu hình giá cước (Cước = 0đ). Không thể tạo vận đơn."
         )
 
-    origin_id = current_user.get("primary_hub_id") if current_user.get("role_id") != 1 else (data.origin_hub_id or current_user.get("primary_hub_id"))
+    origin_id = data.origin_hub_id or current_user.get("primary_hub_id")
     dest_id = data.dest_hub_id or origin_id
 
     try:

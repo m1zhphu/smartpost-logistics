@@ -2,7 +2,7 @@ from typing import Optional
 import datetime
 import decimal
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKeyConstraint, Integer, Numeric, PrimaryKeyConstraint, Sequence, String, Text, UniqueConstraint, text, ForeignKey, Identity, and_
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKeyConstraint, Integer, Numeric, PrimaryKeyConstraint, Sequence, String, Text, UniqueConstraint, text, ForeignKey, Identity, and_, Float
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime # Đảm bảo import đúng class datetime
@@ -41,6 +41,8 @@ class Hubs(Base):
     address_detail: Mapped[Optional[str]] = mapped_column(String(255))
     manager_id: Mapped[Optional[int]] = mapped_column(Integer)
     status: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('true'))
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     manager: Mapped[Optional['Users']] = relationship('Users', foreign_keys=[manager_id], back_populates='hubs_manager')
     users_primary_hub: Mapped[list['Users']] = relationship('Users', foreign_keys='[Users.primary_hub_id]', back_populates='primary_hub')

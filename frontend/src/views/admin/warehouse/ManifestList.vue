@@ -22,7 +22,7 @@
               <div class="card-header flex-between">
                 <span class="header-title flex-center gap-2">
                   <el-icon class="text-primary"><Van /></el-icon>
-                  Xe đang tới bưu cục của bạn
+                  Chuyến xe liên quan bưu cục của bạn
                 </span>
                 <el-button type="primary" size="small" plain icon="Refresh" @click="fetchIncoming" :loading="loadingIncoming">
                   Làm mới
@@ -39,13 +39,14 @@
                 </template>
               </el-table-column>
               
-              <el-table-column prop="vehicle_number" label="Biển Số Xe" width="120">
+              <el-table-column prop="vehicle_number" label="Biển Số Xe" width="110">
                 <template #default="{ row }">
                   <span class="vehicle-tag"><el-icon><Van /></el-icon> {{ row.vehicle_number || 'N/A' }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column prop="from_hub_name" label="Nơi Gửi" min-width="130" show-overflow-tooltip />
+              <el-table-column prop="from_hub_name" label="Nơi Gửi" min-width="110" show-overflow-tooltip />
+              <el-table-column prop="to_hub_name" label="Nơi Nhận" min-width="110" show-overflow-tooltip />
 
               <el-table-column label="Thao Tác" width="90" align="center">
                 <template #default="{ row }">
@@ -56,7 +57,7 @@
               </el-table-column>
               
               <template #empty>
-                <el-empty description="Không có chuyến xe nào đang tới bưu cục của bạn" :image-size="80" />
+                <el-empty description="Không tìm thấy chuyến xe nào liên quan bưu cục của bạn" :image-size="80" />
               </template>
             </el-table>
           </el-card>
