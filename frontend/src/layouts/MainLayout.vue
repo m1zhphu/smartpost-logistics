@@ -65,6 +65,28 @@
         </div>
         
         <div class="header-right">
+          <!-- Bộ chuyển đổi bưu cục (Chỉ dành cho Admin) -->
+          <div v-if="isAdmin" class="hub-selector-wrapper" style="margin-right: 16px;">
+            <el-select
+              v-model="selectedHub"
+              placeholder="Tất cả bưu cục"
+              clearable
+              filterable
+              class="modern-hub-select"
+              @change="handleHubChange"
+              style="width: 200px;"
+            >
+              <template #prefix>
+                <el-icon><Location /></el-icon>
+              </template>
+              <el-option
+                v-for="hub in hubList"
+                :key="hub.hub_id"
+                :label="hub.hub_name"
+                :value="hub.hub_id"
+              />
+            </el-select>
+          </div>
           
           <!-- Chuông thông báo -->
           <NotificationBell />
@@ -75,9 +97,9 @@
                  <el-avatar :size="40" class="modern-avatar">{{ user?.full_name?.charAt(0) || 'A' }}</el-avatar>
                  <div class="user-display-name">
                     <span class="fw-bold text-dark">{{ user?.full_name || 'Quản trị viên' }}</span>
-                    <span class="text-xs text-muted" v-if="userHubName">
+                    <span class="text-xs text-muted" v-if="activeHubDisplay">
                       <el-icon style="vertical-align: middle; margin-right: 2px;"><Location /></el-icon>
-                      <span style="vertical-align: middle;">{{ userHubName }}</span>
+                      <span style="vertical-align: middle;">{{ activeHubDisplay }}</span>
                     </span>
                     <span class="text-xs text-muted" v-else>{{ userRoleLabel }}</span>
                  </div>
@@ -88,7 +110,7 @@
                  <el-dropdown-menu class="modern-dropdown">
                    <div class="dropdown-header">
                       <div class="fw-bold text-dark">{{ user?.full_name || 'Quản trị viên' }}</div>
-                      <div class="text-xs text-muted">@{{ user?.username || 'admin' }} <span v-if="userHubName">| {{ userHubName }}</span></div>
+                      <div class="text-xs text-muted">@{{ user?.username || 'admin' }} <span v-if="activeHubDisplay">| {{ activeHubDisplay }}</span></div>
                    </div>
                    <el-dropdown-item @click="goToProfile">
                       <el-icon><User /></el-icon> Thông tin cá nhân
@@ -122,6 +144,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { storeToRefs } from 'pinia';
 import api from '@/api/axios';
+import { ElMessage } from 'element-plus';
 import { 
   Monitor, Management, Document, Box, Bicycle, Money, 
   Close, Search, HomeFilled, ArrowDown, User, Collection, Location, List, TrendCharts, Service, Fold, Expand
@@ -171,6 +194,28 @@ const handleMenuSelect = () => {
 
 // Fetch Hub Name
 const userHubName = ref('');
+const hubList = ref([]);
+const selectedHub = ref(authStore.selectedHubId ? Number(authStore.selectedHubId) : null);
+
+const handleHubChange = (val) => {
+  authStore.setSelectedHubId(val);
+  ElMessage.success({
+    message: val ? `Đã chuyển đổi sang bưu cục: ${hubList.value.find(h => h.hub_id === val)?.hub_name}` : 'Đã quay lại chế độ xem Tất cả bưu cục',
+    type: 'success',
+    duration: 2000
+  });
+  setTimeout(() => {
+    window.location.reload();
+  }, 500);
+};
+
+const activeHubDisplay = computed(() => {
+  if (isAdmin.value && selectedHub.value) {
+    const activeHub = hubList.value.find(h => h.hub_id === selectedHub.value);
+    return activeHub ? activeHub.hub_name : (userHubName.value || 'Đang tải...');
+  }
+  return userHubName.value;
+});
 
 onMounted(async () => {
   if (user.value) {
@@ -183,6 +228,11 @@ onMounted(async () => {
          const hubRes = await api.get(`/api/hubs`);
          const myHub = hubRes.data.find(h => h.hub_id === res.data.primary_hub_id);
          if (myHub) userHubName.value = myHub.hub_name;
+      }
+
+      if (isAdmin.value) {
+        const hubRes = await api.get('/api/hubs');
+        hubList.value = hubRes.data || [];
       }
     } catch (e) {
       console.error('Không thể lấy thông tin bưu cục', e);
@@ -355,3 +405,23 @@ const handleLogout = () => {
 </script>
 
 <style scoped src="@/styles/layouts/MainLayout.css"></style>
+
+<style scoped>
+:deep(.modern-hub-select .el-input__wrapper) {
+  background: var(--sp-surface, #ffffff);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02) !important;
+  border: 1px solid var(--sp-border, #e2e8f0);
+  transition: all 0.3s;
+}
+:deep(.modern-hub-select .el-input__wrapper.is-focus) {
+  border-color: var(--sp-primary, #388e3c);
+  box-shadow: 0 4px 15px rgba(56, 142, 60, 0.1) !important;
+}
+:deep(.modern-hub-select .el-input__inner) {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  color: var(--sp-text-main, #1b2559);
+}
+</style>

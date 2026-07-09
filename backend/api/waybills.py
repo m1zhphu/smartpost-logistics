@@ -101,6 +101,12 @@ def export_waybills_excel(
                 "Dịch vụ": w.service_type,
                 "Bưu cục Nguồn": w.origin_hub.hub_name if w.origin_hub else "",
                 "Bưu cục Đích": w.dest_hub.hub_name if w.dest_hub else "",
+                "Người gửi": w.sender_name or "",
+                "SĐT Gửi": w.sender_phone or "",
+                "Địa chỉ gửi": w.sender_address or "",
+                "Phòng ban": w.request.customer_department.name if (w.request and w.request.customer_department) else "",
+                "Hình thức TT": w.payment_method or "",
+                "Tổng thu hộ": float(w.total_amount_to_collect or 0)
             })
 
         if not data:
@@ -264,7 +270,14 @@ def search_waybills(
                 "pickup_image_urls": _read_image_urls(w.pickup_image_urls, w.pickup_image_url),
                 "ocr_status": w.ocr_status,
                 "verify_status": w.verify_status,
-                "verify_error_msg": w.verify_error_msg
+                "verify_error_msg": w.verify_error_msg,
+                "customer_department_id": w.request.customer_department_id if w.request else None,
+                "customer_department_name": w.request.customer_department.name if (w.request and w.request.customer_department) else None,
+                "payment_method": w.payment_method,
+                "total_amount_to_collect": float(w.total_amount_to_collect or 0),
+                "sender_name": w.sender_name,
+                "sender_phone": w.sender_phone,
+                "sender_address": w.sender_address
             })
 
         return {"items": result, "total": total, "page": filters.page, "size": filters.size}
@@ -2358,7 +2371,8 @@ def export_selected_waybills_excel(
             db.query(models.Waybills)
             .options(
                 joinedload(models.Waybills.customer),
-                joinedload(models.Waybills.dest_hub)
+                joinedload(models.Waybills.dest_hub),
+                joinedload(models.Waybills.request).joinedload(models.BookingRequests.customer_department)
             )
             .filter(
                 models.Waybills.waybill_code.in_(data.waybill_codes),
@@ -2387,7 +2401,13 @@ def export_selected_waybills_excel(
                 "Rộng": float(w.width or 0),
                 "Cao": float(w.height or 0),
                 "Mã Khách Hàng": w.customer.customer_code if w.customer else "",
-                "Mã bưu cục nhận": w.dest_hub.hub_code if w.dest_hub else ""
+                "Mã bưu cục nhận": w.dest_hub.hub_code if w.dest_hub else "",
+                "Người gửi": w.sender_name or "",
+                "SĐT Gửi": w.sender_phone or "",
+                "Địa chỉ gửi": w.sender_address or "",
+                "Phòng ban": w.request.customer_department.name if (w.request and w.request.customer_department) else "",
+                "Hình thức TT": w.payment_method or "",
+                "Tổng thu hộ": float(w.total_amount_to_collect or 0)
             })
             
         import io
@@ -2396,7 +2416,8 @@ def export_selected_waybills_excel(
         cols = [
             "Mã Vận Đơn", "Họ tên", "Số điện thoại", "Địa chỉ nhận hàng", 
             "Khối lượng (kg)", "COD", "Dịch vụ", "Tên hàng", "Ghi chú", 
-            "Dài", "Rộng", "Cao", "Mã Khách Hàng", "Mã bưu cục nhận"
+            "Dài", "Rộng", "Cao", "Mã Khách Hàng", "Mã bưu cục nhận",
+            "Người gửi", "SĐT Gửi", "Địa chỉ gửi", "Phòng ban", "Hình thức TT", "Tổng thu hộ"
         ]
         
         if not rows:
