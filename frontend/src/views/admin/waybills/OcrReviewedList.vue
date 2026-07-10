@@ -70,23 +70,27 @@
         </el-table-column>
         <el-table-column label="Ảnh" width="160">
           <template #default="{ row }">
-            <div class="image-actions" style="display: flex; gap: 8px; align-items: center;">
-              <el-link v-if="row.bill_image_url" type="primary" :href="imageUrl(row.bill_image_url)" target="_blank">Bill</el-link>
-              
-              <!-- Dùng el-image preview để xem được cả gallery ảnh pickup -->
-              <div v-if="getPickupImages(row).length" style="display: inline-block;">
+            <div class="image-actions" style="display: flex; gap: 12px; align-items: center;">
+              <div v-if="row.bill_image_url" style="text-align: center;">
                 <el-image
-                  style="width: 0px; height: 0px; visibility: hidden; position: absolute;"
-                  ref="previewImg"
-                  :src="imageUrl(getPickupImages(row)[0])"
-                  :preview-src-list="getPickupImages(row).map(url => imageUrl(url))"
-                  :initial-index="0"
+                  style="width: 45px; height: 45px; border-radius: 4px; border: 1px solid #dcdfe6; cursor: pointer;"
+                  :src="imageUrl(row.bill_image_url)"
+                  :preview-src-list="[imageUrl(row.bill_image_url)]"
                   fit="cover"
                   preview-teleported
                 />
-                <el-link type="success" @click="openPreview(row)">
-                  Pickup ({{ getPickupImages(row).length }})
-                </el-link>
+                <div style="font-size: 11px; margin-top: 2px; color: #409EFF; font-weight: 500;">Bill</div>
+              </div>
+              
+              <div v-if="getPickupImages(row).length" style="text-align: center;">
+                <el-image
+                  style="width: 45px; height: 45px; border-radius: 4px; border: 1px solid #dcdfe6; cursor: pointer;"
+                  :src="imageUrl(getPickupImages(row)[0])"
+                  :preview-src-list="getPickupImages(row).map(url => imageUrl(url))"
+                  fit="cover"
+                  preview-teleported
+                />
+                <div style="font-size: 11px; margin-top: 2px; color: #67C23A; font-weight: 500;">Pickup</div>
               </div>
 
               <span v-if="!row.bill_image_url && !getPickupImages(row).length" class="muted">---</span>
@@ -203,23 +207,11 @@ const formatMoney = (value) => Number(value || 0).toLocaleString('vi-VN') + 'd';
 const formatDate = (value) => formatVietnamDateTime(value);
 const imageUrl = getMediaUrl;
 
-const previewImg = ref(null);
-
 const getPickupImages = (row) => {
   if (row.pickup_image_urls && row.pickup_image_urls.length > 0) {
     return row.pickup_image_urls;
   }
   return row.pickup_image_url ? [row.pickup_image_url] : [];
-};
-
-const openPreview = (row) => {
-  const index = rows.value.findIndex(r => r.waybill_code === row.waybill_code);
-  if (index !== -1 && previewImg.value) {
-    const imgEl = Array.isArray(previewImg.value) ? previewImg.value[index] : previewImg.value;
-    if (imgEl && typeof imgEl.clickHandler === 'function') {
-      imgEl.clickHandler();
-    }
-  }
 };
 
 onMounted(async () => {
