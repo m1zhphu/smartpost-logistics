@@ -282,7 +282,7 @@ const menuData = computed(() => {
       id: 'warehouse', icon: Box, label: 'Kho hàng', roles: [1, 2, 3], // Admin, Manager, Kho
       children: [
         { title: 'VẬN HÀNH KHO', items: [
-          { label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in' },
+          // { label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in' },
           { label: 'Đóng túi (Bagging)', path: '/admin/warehouse/bagging' },
           { label: 'Danh sách túi', path: '/admin/warehouse/bags' },
           { label: 'Túi gom lấy hàng', path: '/admin/warehouse/pickup-bags' },
