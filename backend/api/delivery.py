@@ -365,7 +365,7 @@ def get_shipper_tasks(
             "total_amount_to_collect": float(w.total_amount_to_collect or 0),
             "final_total_amount": float(w.total_amount_to_collect or 0),
             "estimated_total_amount": float(w.total_amount_to_collect or 0),
-            "created_at": w.created_at.isoformat() if w.created_at else None,
+            "created_at": w.requested_pickup_time.isoformat() if w.requested_pickup_time else None,
             "failure_reason_code": reason_code,
         })
         
