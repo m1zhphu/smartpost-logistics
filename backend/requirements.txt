@@ -21,6 +21,7 @@ pandas
 openpyxl
 Pillow
 pytesseract
+cloudinary
 
 # --- In ấn Bill & Barcode ---
 python-barcode
