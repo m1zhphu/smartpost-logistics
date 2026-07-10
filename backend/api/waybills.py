@@ -305,16 +305,26 @@ def list_ocr_reviewed_waybills(
     current_user: dict = Depends(get_current_user),
 ):
     _require_ocr_admin_role(current_user)
-    statuses = [ocr_status] if ocr_status else ["REVIEW", "INCOMPLETE"]
     page = max(1, page)
     size = min(max(1, size), 100)
 
-    ocr_filter = models.Waybills.ocr_status.in_(statuses)
-    if not ocr_status:
-        # Tuong thich cac don da OCR bang endpoint cu: status da PICKED_UP
-        # nhung ocr_status van bi de PENDING.
+    if ocr_status == "REVIEW":
         ocr_filter = or_(
-            ocr_filter,
+            models.Waybills.ocr_status == "REVIEW",
+            and_(
+                models.Waybills.ocr_status == "SUCCESS",
+                models.Waybills.status == "VERIFY_ERROR",
+            ),
+        )
+    elif ocr_status:
+        ocr_filter = models.Waybills.ocr_status == ocr_status
+    else:
+        ocr_filter = or_(
+            models.Waybills.ocr_status.in_(["REVIEW", "INCOMPLETE"]),
+            and_(
+                models.Waybills.ocr_status == "SUCCESS",
+                models.Waybills.status == "VERIFY_ERROR",
+            ),
             and_(
                 models.Waybills.status.in_(["PICKED_UP", "PICKED_PENDING_VERIFY"]),
                 or_(
@@ -798,6 +808,8 @@ def _ocr_missing_fields(waybill: models.Waybills) -> list[str]:
 
 def _effective_ocr_status(waybill: models.Waybills) -> str | None:
     """Normalize legacy OCR records that were picked up before OCR status was persisted."""
+    if waybill.status == "VERIFY_ERROR":
+        return "REVIEW"
     if waybill.ocr_status in ["REVIEW", "INCOMPLETE"]:
         return waybill.ocr_status
     if (

@@ -52,8 +52,7 @@ def run_test():
         # Test Case 2: Đối soát thất bại (Mismatch) do thay đổi thông tin trên DB để so lệch với Simulation
         print("\n--- TEST CASE 2: ĐỐI SOÁT THẤT BẠI (MISMATCH) ---")
         original_phone = waybill.receiver_phone
-        # Đảm bảo SĐT gán khác hoàn toàn SĐT hiện tại
-        waybill.receiver_phone = "0123456789" if original_phone != "0123456789" else "0987654321"
+        waybill.receiver_phone = "0900000000"
         db.flush()
         
         updated_wb2 = update_waybill_images_and_trigger_ocr(
