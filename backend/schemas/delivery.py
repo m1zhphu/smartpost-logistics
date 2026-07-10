@@ -17,6 +17,8 @@ class DeliverySuccessRequest(BaseModel):
     pod_image_url: Optional[str] = None
     pod_image_urls: Optional[List[str]] = Field(default=None, max_length=5)
     note: str = "Giao hàng thành công"
+    received_by: Optional[str] = None
+    delivery_time: Optional[str] = None
 
     @field_validator("pod_image_urls")
     @classmethod

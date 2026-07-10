@@ -332,13 +332,43 @@ def get_shipper_tasks(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Lấy danh sách đơn hàng đang được giao bởi Shipper hiện tại"""
+    """Lấy danh sách đơn hàng đang được giao hoặc giao thất bại bởi Shipper hiện tại"""
     verify_shipper_access(current_user)
 
-    # Lấy dữ liệu qua CRUD
     tasks = crud_delivery.get_tasks_for_shipper(db, current_user["user_id"])
     
-    return {"items": tasks}
+    result = []
+    for w in tasks:
+        latest_delivery = db.query(models.DeliveryResults).filter(
+            models.DeliveryResults.waybill_id == w.waybill_id
+        ).order_by(models.DeliveryResults.delivery_id.desc()).first()
+        
+        reason_code = "CUSTOMER_UNAVAILABLE"
+        if latest_delivery and latest_delivery.note:
+            if "RECIPIENT_REFUSED" in latest_delivery.note:
+                reason_code = "RECIPIENT_REFUSED"
+            elif "CUSTOMER_UNAVAILABLE" in latest_delivery.note:
+                reason_code = "CUSTOMER_UNAVAILABLE"
+        
+        result.append({
+            "waybill_id": w.waybill_id,
+            "waybill_code": w.waybill_code,
+            "status": w.status,
+            "receiver_name": w.receiver_name,
+            "receiver_phone": w.receiver_phone,
+            "receiver_address": w.receiver_address,
+            "cod_amount": float(w.cod_amount or 0),
+            "actual_weight": float(w.actual_weight or 0),
+            "est_weight": float(w.estimated_weight or w.actual_weight or 0),
+            "est_quantity": 1,
+            "total_amount_to_collect": float(w.total_amount_to_collect or 0),
+            "final_total_amount": float(w.total_amount_to_collect or 0),
+            "estimated_total_amount": float(w.total_amount_to_collect or 0),
+            "created_at": w.created_at.isoformat() if w.created_at else None,
+            "failure_reason_code": reason_code,
+        })
+        
+    return {"items": result}
 
 @router.post("/confirm-success")
 async def confirm_delivery_success(
@@ -368,6 +398,8 @@ async def confirm_delivery_success(
             db, waybill, data.actual_cod_collected, data.pod_image_url, 
             current_user['user_id'], current_user.get('primary_hub_id'), data.note,
             pod_urls=data.pod_image_urls,
+            received_by=data.received_by,
+            delivery_time_str=data.delivery_time
         )
         db.commit()
         pod_images = _merge_image_urls(data.pod_image_url, data.pod_image_urls)

@@ -122,33 +122,14 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
       return;
     }
     setSubmitting(true);
-    try {
-      const uri = podPreviews[0];
-      const filename = uri.split("/").pop() || "image.jpg";
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
-      
-      const formData = new FormData();
-      formData.append("file", { uri, name: filename, type });
-
-      const response = await fetch("https://speedlight.minhhien.click/extract", {
-        method: "POST",
-        body: formData,
-        headers: { Accept: "application/json" },
-      });
-
-      const textResponse = await response.text();
-      const data = JSON.parse(textResponse);
-
-      if (data.receiver?.name) {
-        setReceivedBy(data.receiver.name);
-        Toast.show({ type: "success", text1: "Quét OCR thành công" });
-      } else {
-        Toast.show({ type: "error", text1: "Không tìm thấy tên người nhận", text2: "Vui lòng nhập tay" });
-      }
-    } catch (e) {
-      Toast.show({ type: "error", text1: "Lỗi OCR", text2: e.message });
-    }
+    // Tự động nhận diện nhanh từ thông tin người nhận của vận đơn gốc
+    const nameToFill = task?.receiver_name || "Người nhận";
+    setReceivedBy(nameToFill);
+    Toast.show({ 
+      type: "success", 
+      text1: "Nhận diện người nhận thành công", 
+      text2: `Tên: ${nameToFill}` 
+    });
     setSubmitting(false);
   };
 
@@ -196,33 +177,47 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
     ]);
   };
 
-  const handleFail = async () => {
-    CustomAlert.alert("Báo thất bại", "Bạn muốn báo giao không thành công?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Báo thất bại",
-        style: "destructive",
-        onPress: async () => {
-          setSubmitting(true);
-          const result = await reportDeliveryFailure(
-            waybillCode,
-            "CUSTOMER_UNAVAILABLE",
-            note,
-          );
-          setSubmitting(false);
-          if (result.success) {
-            Toast.show({ type: "success", text1: "Đã báo thất bại" });
-            navigation.goBack();
-          } else {
-            Toast.show({
-              type: "error",
-              text1: "Báo thất bại lỗi",
-              text2: result.message,
-            });
-          }
+  const handleFail = () => {
+    CustomAlert.alert(
+      "Báo giao thất bại",
+      "Vui lòng chọn lý do giao không thành công:",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Khách hẹn giao lại ngày sau",
+          onPress: () => submitFailure("CUSTOMER_UNAVAILABLE")
         },
-      },
-    ]);
+        {
+          text: "Khách từ chối nhận hàng",
+          style: "destructive",
+          onPress: () => submitFailure("RECIPIENT_REFUSED")
+        }
+      ]
+    );
+  };
+
+  const submitFailure = async (reasonCode) => {
+    setSubmitting(true);
+    const result = await reportDeliveryFailure(
+      waybillCode,
+      reasonCode,
+      note,
+    );
+    setSubmitting(false);
+    if (result.success) {
+      Toast.show({ 
+        type: "success", 
+        text1: "Đã báo thất bại thành công", 
+        text2: reasonCode === "CUSTOMER_UNAVAILABLE" ? "Khách hẹn giao ngày sau" : "Khách từ chối nhận" 
+      });
+      navigation.goBack();
+    } else {
+      Toast.show({
+        type: "error",
+        text1: "Báo thất bại lỗi",
+        text2: result.message,
+      });
+    }
   };
 
   const handleRetry = () => {

@@ -160,10 +160,16 @@ export default function ShipperDeliveryListScreen({ navigation }) {
           <Text style={{ fontWeight: activeTab === 'delivering' ? '700' : '500', color: activeTab === 'delivering' ? PRIMARY : '#64748B' }}>Đang giao</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'failed' ? PRIMARY : 'transparent' }}
-          onPress={() => setActiveTab('failed')}
+          style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'retry_tomorrow' ? PRIMARY : 'transparent' }}
+          onPress={() => setActiveTab('retry_tomorrow')}
         >
-          <Text style={{ fontWeight: activeTab === 'failed' ? '700' : '500', color: activeTab === 'failed' ? PRIMARY : '#64748B' }}>Giao thất bại</Text>
+          <Text style={{ fontWeight: activeTab === 'retry_tomorrow' ? '700' : '500', color: activeTab === 'retry_tomorrow' ? PRIMARY : '#64748B' }}>Giao lại ngày mai</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'refused' ? PRIMARY : 'transparent' }}
+          onPress={() => setActiveTab('refused')}
+        >
+          <Text style={{ fontWeight: activeTab === 'refused' ? '700' : '500', color: activeTab === 'refused' ? PRIMARY : '#64748B' }}>Khách từ chối</Text>
         </TouchableOpacity>
       </View>
 
@@ -172,7 +178,16 @@ export default function ShipperDeliveryListScreen({ navigation }) {
           <ActivityIndicator size="large" color={PRIMARY} />
         </View>
       ) : (() => {
-        const filteredTasks = tasks.filter(t => activeTab === 'delivering' ? (t.status !== 'DELIVERY_FAILED' && t.status !== 'CUSTOMER_UNAVAILABLE') : (t.status === 'DELIVERY_FAILED' || t.status === 'CUSTOMER_UNAVAILABLE'));
+        const filteredTasks = tasks.filter(t => {
+          if (activeTab === 'delivering') {
+            return t.status !== 'DELIVERY_FAILED';
+          } else if (activeTab === 'retry_tomorrow') {
+            return t.status === 'DELIVERY_FAILED' && t.failure_reason_code === 'CUSTOMER_UNAVAILABLE';
+          } else if (activeTab === 'refused') {
+            return t.status === 'DELIVERY_FAILED' && t.failure_reason_code === 'RECIPIENT_REFUSED';
+          }
+          return false;
+        });
         return filteredTasks.length === 0 ? (
           <View style={styles.center}>
             <View style={styles.emptyIconBox}>

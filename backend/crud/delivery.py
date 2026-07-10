@@ -21,9 +21,9 @@ def get_active_shipper(db: Session, shipper_id: int):
     ).first()
 
 def get_tasks_for_shipper(db: Session, shipper_id: int):
-    """Lấy danh sách đơn hàng đang đi giao của 1 shipper"""
+    """Lấy danh sách đơn hàng đang đi giao hoặc giao thất bại của 1 shipper"""
     return db.query(models.Waybills).join(models.DeliveryResults).filter(
-        models.Waybills.status == WaybillStatus.DELIVERING,
+        models.Waybills.status.in_([WaybillStatus.DELIVERING, WaybillStatus.DELIVERY_FAILED]),
         models.DeliveryResults.shipper_id == shipper_id
     ).order_by(models.DeliveryResults.delivery_id.desc()).all()
 
@@ -182,31 +182,44 @@ def confirm_delivery_record(
     hub_id: int,
     note: str,
     pod_urls: list[str] | None = None,
+    received_by: str | None = None,
+    delivery_time_str: str | None = None,
 ):
     """Cập nhật trạng thái giao thành công và thực thu COD"""
     waybill.status = WaybillStatus.DELIVERED
     waybill.version += 1
 
+    dt = datetime.utcnow()
+    if delivery_time_str:
+        try:
+            dt = datetime.strptime(delivery_time_str.strip(), "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            pass
+
     delivery_record = db.query(models.DeliveryResults).filter(
         models.DeliveryResults.waybill_id == waybill.waybill_id
     ).order_by(models.DeliveryResults.delivery_id.desc()).first()
     
+    formatted_note = f"Giao thành công. Người thực nhận: {received_by}." if received_by else "Giao thành công."
+    if note and note != "Giao hàng thành công":
+        formatted_note += f" Ghi chú: {note}"
+
     if delivery_record:
         all_pod_urls = _normalize_image_urls(pod_url, pod_urls)
         delivery_record.actual_cod_collected = actual_cod
         delivery_record.pod_image_url = all_pod_urls[0] if all_pod_urls else pod_url
         delivery_record.pod_image_urls = json.dumps(all_pod_urls) if all_pod_urls else None
         delivery_record.status = WaybillStatus.DELIVERED
-        delivery_record.delivery_time = datetime.utcnow()
-        delivery_record.note = f"Giao thành công bởi Shipper ID {delivery_record.shipper_id}"
+        delivery_record.delivery_time = dt
+        delivery_record.note = formatted_note
         
     db.add(models.TrackingLogs(
         waybill_id=waybill.waybill_id,
         status_id=WaybillStatus.DELIVERED,
         hub_id=hub_id,
         user_id=user_id,
-        system_time=datetime.utcnow(),
-        note=note
+        system_time=dt,
+        note=formatted_note
     ))
     return waybill
 
@@ -223,12 +236,25 @@ def report_delivery_failure(db: Session, waybill: models.Waybills, reason_code: 
     })
 
     if affected > 0:
+        delivery_record = db.query(models.DeliveryResults).filter(
+            models.DeliveryResults.waybill_id == waybill.waybill_id
+        ).order_by(models.DeliveryResults.delivery_id.desc()).first()
+        
+        failure_note = f"Giao thất bại. Lý do: {reason_code}."
+        if note:
+            failure_note += f" Ghi chú: {note}"
+
+        if delivery_record:
+            delivery_record.status = "DELIVERY_FAILED"
+            delivery_record.delivery_time = datetime.utcnow()
+            delivery_record.note = failure_note
+
         db.add(models.TrackingLogs(
             waybill_id=waybill.waybill_id,
             status_id="DELIVERY_FAILED",
             user_id=user_id,
             system_time=datetime.utcnow(),
-            note=f"Giao thất bại. Lý do: {reason_code}. Ghi chú: {note}"
+            note=failure_note
         ))
     return affected
 
