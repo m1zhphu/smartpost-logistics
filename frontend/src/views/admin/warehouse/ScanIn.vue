@@ -337,7 +337,7 @@ const weightInputsRef = ref([]);
 const pendingItems = ref([]);
 const pendingLoading = ref(false);
 
-const currentHubId = computed(() => auth.user?.primary_hub_id);
+const currentHubId = computed(() => auth.selectedHubId ? Number(auth.selectedHubId) : auth.user?.primary_hub_id);
 
 const fetchPendingBills = async () => {
   pendingLoading.value = true;

@@ -261,6 +261,9 @@ const beepError = ref(null);
 
 const currentHubId = computed(() => {
   try {
+    const savedHubId = localStorage.getItem('selectedHubId');
+    if (savedHubId) return Number(savedHubId);
+
     const token = localStorage.getItem('token');
     const payload = JSON.parse(atob(token.split('.')[1]));
     return payload.primary_hub_id || null;
