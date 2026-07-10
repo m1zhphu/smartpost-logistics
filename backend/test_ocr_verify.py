@@ -19,6 +19,10 @@ def run_test():
             print("Không tìm thấy vận đơn nào để test!")
             return
             
+        original_status = waybill.status
+        original_verify_status = waybill.verify_status
+        original_verify_error_msg = waybill.verify_error_msg
+        
         print(f"--- ĐƠN HÀNG TRƯỚC TEST ---")
         print(f"Mã: {waybill.waybill_code}")
         print(f"SĐT nhận: {waybill.receiver_phone}")
@@ -74,6 +78,9 @@ def run_test():
         
         # Khôi phục dữ liệu ban đầu
         waybill.receiver_phone = original_phone
+        waybill.status = original_status
+        waybill.verify_status = original_verify_status
+        waybill.verify_error_msg = original_verify_error_msg
         db.commit()
         print("\n=> TẤT CẢ TEST CASES ĐÃ PASS THÀNH CÔNG!")
         
