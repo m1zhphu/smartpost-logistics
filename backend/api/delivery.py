@@ -342,7 +342,7 @@ def get_shipper_tasks(
         latest_log = db.query(models.TrackingLogs).filter(
             models.TrackingLogs.waybill_id == w.waybill_id,
             models.TrackingLogs.status_id == "DELIVERY_FAILED"
-        ).order_by(models.TrackingLogs.log_id.desc()).first()
+        ).order_by(models.TrackingLogs.id.desc()).first()
         
         reason_code = "CUSTOMER_UNAVAILABLE"
         if latest_log and latest_log.note:
