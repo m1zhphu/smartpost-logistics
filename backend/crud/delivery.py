@@ -211,7 +211,6 @@ def confirm_delivery_record(
         delivery_record.pod_image_urls = json.dumps(all_pod_urls) if all_pod_urls else None
         delivery_record.status = WaybillStatus.DELIVERED
         delivery_record.delivery_time = dt
-        delivery_record.note = formatted_note
         
     db.add(models.TrackingLogs(
         waybill_id=waybill.waybill_id,
@@ -247,7 +246,6 @@ def report_delivery_failure(db: Session, waybill: models.Waybills, reason_code: 
         if delivery_record:
             delivery_record.status = "DELIVERY_FAILED"
             delivery_record.delivery_time = datetime.utcnow()
-            delivery_record.note = failure_note
 
         db.add(models.TrackingLogs(
             waybill_id=waybill.waybill_id,

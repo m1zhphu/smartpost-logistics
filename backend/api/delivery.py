@@ -339,15 +339,16 @@ def get_shipper_tasks(
     
     result = []
     for w in tasks:
-        latest_delivery = db.query(models.DeliveryResults).filter(
-            models.DeliveryResults.waybill_id == w.waybill_id
-        ).order_by(models.DeliveryResults.delivery_id.desc()).first()
+        latest_log = db.query(models.TrackingLogs).filter(
+            models.TrackingLogs.waybill_id == w.waybill_id,
+            models.TrackingLogs.status_id == "DELIVERY_FAILED"
+        ).order_by(models.TrackingLogs.log_id.desc()).first()
         
         reason_code = "CUSTOMER_UNAVAILABLE"
-        if latest_delivery and latest_delivery.note:
-            if "RECIPIENT_REFUSED" in latest_delivery.note:
+        if latest_log and latest_log.note:
+            if "RECIPIENT_REFUSED" in latest_log.note:
                 reason_code = "RECIPIENT_REFUSED"
-            elif "CUSTOMER_UNAVAILABLE" in latest_delivery.note:
+            elif "CUSTOMER_UNAVAILABLE" in latest_log.note:
                 reason_code = "CUSTOMER_UNAVAILABLE"
         
         result.append({
