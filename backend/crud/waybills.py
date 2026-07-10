@@ -668,7 +668,9 @@ def upsert_waybill_from_ocr(db: Session, data: dict, fee: float, hub_id: int, us
         'customer_id', 'receiver_name', 'receiver_phone', 'receiver_address',
         'origin_hub_id', 'dest_hub_id', 'actual_weight', 'cod_amount',
         'service_type', 'product_name', 'note', 'payment_method',
-        'sender_name', 'sender_phone', 'sender_address', 'length', 'width', 'height'
+        'sender_name', 'sender_phone', 'sender_address', 'length', 'width', 'height',
+        'sender_province_name', 'sender_ward_name', 'receiver_province_name', 'receiver_ward_name',
+        'sender_province_id', 'receiver_province_id'
     }
     filtered = {k: v for k, v in data.items() if k in ALLOWED_FIELDS}
 

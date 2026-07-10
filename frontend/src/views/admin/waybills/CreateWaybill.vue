@@ -1021,48 +1021,106 @@ const loadOcrPrefill = async () => {
     waybillForm.sender_name = data.sender_name || waybillForm.sender_name;
     waybillForm.sender_phone = data.sender_phone || waybillForm.sender_phone;
 
-    // Auto-fill sender address from sender_address text (parse province/ward from end of string)
+    // Reset sender selection codes
+    selectedSenderProvinceCode.value = null;
+    selectedSenderWardCode.value = null;
+    availableSenderWards.value = [];
+    waybillForm.sender.province = '';
+    waybillForm.sender.ward = '';
+    waybillForm.sender.old_province = '';
+
+    const senderProvText = data.sender_province_name || '';
+    const senderWardText = data.sender_ward_name || '';
+
+    if (senderProvText) {
+      const cleanProv = senderProvText.toLowerCase();
+      const provObj = senderProvinces.value.find(p => {
+        const pClean = p.FullName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+        const tClean = cleanProv.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+        return pClean === tClean || p.FullName.trim().toLowerCase() === cleanProv;
+      });
+      if (provObj) {
+        selectedSenderProvinceCode.value = provObj.Code;
+        waybillForm.sender.province = provObj.FullName;
+        availableSenderWards.value = provObj.Wards || [];
+        matchHubAndSet('origin', null, provObj.FullName);
+
+        if (senderWardText) {
+          const cleanWard = senderWardText.toLowerCase();
+          const wardObj = availableSenderWards.value.find(w => {
+            const wClean = w.FullName.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
+            const tClean = cleanWard.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
+            return wClean === tClean || w.FullName.trim().toLowerCase() === cleanWard;
+          });
+          if (wardObj) {
+            selectedSenderWardCode.value = wardObj.Code;
+            waybillForm.sender.ward = wardObj.FullName;
+            handleSenderWardChange(wardObj.Code);
+          }
+        }
+      }
+    }
+
     const senderFullAddr = data.sender_address || '';
     if (senderFullAddr) {
-      const parts = senderFullAddr.split(',').map(p => p.trim());
-      const senderProvPart = parts.length >= 2 ? parts[parts.length - 1] : '';
-      const senderWardPart = parts.length >= 3 ? parts[parts.length - 2] : '';
-
-      if (senderProvPart) {
-        const cleanProv = senderProvPart.toLowerCase();
-        const provObj = senderProvinces.value.find(p => {
-          const pClean = p.FullName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
-          const tClean = cleanProv.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
-          return pClean === tClean || p.FullName.trim().toLowerCase() === cleanProv;
-        });
-        if (provObj) {
-          selectedSenderProvinceCode.value = provObj.Code;
-          waybillForm.sender.province = provObj.FullName;
-          availableSenderWards.value = provObj.Wards || [];
-          matchHubAndSet('origin', null, provObj.FullName);
-
-          if (senderWardPart) {
-            const cleanWard = senderWardPart.toLowerCase();
-            const wardObj = availableSenderWards.value.find(w => {
-              const wClean = w.FullName.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
-              const tClean = cleanWard.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
-              return wClean === tClean || w.FullName.trim().toLowerCase() === cleanWard;
-            });
-            if (wardObj) {
-              selectedSenderWardCode.value = wardObj.Code;
-              waybillForm.sender.ward = wardObj.FullName;
-              handleSenderWardChange(wardObj.Code);
-            }
+      if (senderProvText) {
+        const parts = senderFullAddr.split(',').map(p => p.trim());
+        const lastPart = parts[parts.length - 1]?.toLowerCase() || '';
+        const provMatch = lastPart === senderProvText.toLowerCase() ||
+          lastPart.replace(/^(tỉnh|thành phố|tp\.)\s+/i, '') === senderProvText.toLowerCase().replace(/^(tỉnh|thành phố|tp\.)\s+/i, '');
+        if (provMatch && parts.length > 1) {
+          const secLastPart = parts[parts.length - 2]?.toLowerCase() || '';
+          const wardMatch = senderWardText && (
+            secLastPart === senderWardText.toLowerCase() ||
+            secLastPart.replace(/^(phường|xã|thị trấn)\s+/i, '') === senderWardText.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/i, '')
+          );
+          if (wardMatch && parts.length > 2) {
+            waybillForm.sender.address_detail = parts.slice(0, parts.length - 2).join(', ');
+          } else {
+            waybillForm.sender.address_detail = parts.slice(0, parts.length - 1).join(', ');
           }
-
-          const detailPart = parts.slice(0, parts.length - (senderWardPart ? 2 : 1)).join(', ');
-          waybillForm.sender.address_detail = detailPart || senderFullAddr;
         } else {
-          // Could not parse — just put entire string in detail
           waybillForm.sender.address_detail = senderFullAddr;
         }
       } else {
-        waybillForm.sender.address_detail = senderFullAddr;
+        const parts = senderFullAddr.split(',').map(p => p.trim());
+        const senderProvPart = parts.length >= 2 ? parts[parts.length - 1] : '';
+        const senderWardPart = parts.length >= 3 ? parts[parts.length - 2] : '';
+
+        if (senderProvPart) {
+          const cleanProv = senderProvPart.toLowerCase();
+          const provObj = senderProvinces.value.find(p => {
+            const pClean = p.FullName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+            const tClean = cleanProv.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+            return pClean === tClean || p.FullName.trim().toLowerCase() === cleanProv;
+          });
+          if (provObj) {
+            selectedSenderProvinceCode.value = provObj.Code;
+            waybillForm.sender.province = provObj.FullName;
+            availableSenderWards.value = provObj.Wards || [];
+            matchHubAndSet('origin', null, provObj.FullName);
+
+            if (senderWardPart) {
+              const cleanWard = senderWardPart.toLowerCase();
+              const wardObj = availableSenderWards.value.find(w => {
+                const wClean = w.FullName.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
+                const tClean = cleanWard.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
+                return wClean === tClean || w.FullName.trim().toLowerCase() === cleanWard;
+              });
+              if (wardObj) {
+                selectedSenderWardCode.value = wardObj.Code;
+                waybillForm.sender.ward = wardObj.FullName;
+                handleSenderWardChange(wardObj.Code);
+              }
+            }
+            const detailPart = parts.slice(0, parts.length - (senderWardPart ? 2 : 1)).join(', ');
+            waybillForm.sender.address_detail = detailPart || senderFullAddr;
+          } else {
+            waybillForm.sender.address_detail = senderFullAddr;
+          }
+        } else {
+          waybillForm.sender.address_detail = senderFullAddr;
+        }
       }
     }
 
