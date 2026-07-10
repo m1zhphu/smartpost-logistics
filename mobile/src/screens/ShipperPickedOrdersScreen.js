@@ -11,7 +11,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import { COLORS } from "../constants/colors";
-import { getShipperAssignedPickups } from "../services/pickupService";
+import { getShipperPickedPickups } from "../services/pickupService";
 import {
   formatDateTime,
   getPickupStatusLabel,
@@ -31,7 +31,7 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
-    const result = await getShipperAssignedPickups();
+    const result = await getShipperPickedPickups();
     if (result.success) {
       // Lọc các đơn đã lấy thành công, cần OCR
       const picked = (result.data || []).filter(
@@ -57,7 +57,7 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
   }, [navigation, fetchOrders]);
 
   const handlePressOrder = (item) => {
-    const isBulkMail = item.pickup_mode === "BULK_MAIL";
+    const isBulkMail = item.pickup_mode === "BULK_MAIL" && !!item.bag_code;
 
     if (isBulkMail) {
       // Túi thư → OCR từng bill trong túi
@@ -100,7 +100,7 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => {
-    const isBulkMail = item.pickup_mode === "BULK_MAIL";
+    const isBulkMail = item.pickup_mode === "BULK_MAIL" && !!item.bag_code;
     const ocrCfg = getOcrStatusConfig(item);
     const statusColor = getPickupStatusColor(item.pickup_status);
 

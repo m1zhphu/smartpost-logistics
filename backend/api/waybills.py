@@ -680,8 +680,8 @@ async def ocr_pickup_waybill(
     - Nếu mã vận đơn tồn tại: Cập nhật thông tin (trọng lượng, cước phí...) và chuyển trạng thái PICKED_UP.
     - Nếu mã vận đơn chưa có: Tạo mới và chuyển trạng thái PICKED_UP.
     """
-    if data.shipping_fee <= 0:
-        raise HTTPException(status_code=400, detail="Vui lòng nhập Phí vận chuyển (VNĐ) > 0")
+    # Phí vận chuyển sẽ được tự động tính toán sau khi hoàn thiện/lập phiếu gửi hàng, không bắt buộc nhập khi OCR
+    pass
 
     origin_id = current_user.get("primary_hub_id") if current_user.get("role_id") != 1 else (data.origin_hub_id or current_user.get("primary_hub_id"))
     dest_id = data.dest_hub_id or origin_id
@@ -970,18 +970,30 @@ def _bag_payload(db: Session, bag: models.Bags):
     }
 
 
-def _waybill_hub_scoped_query(db: Session, hub_id: int):
-    return (
-        db.query(models.Waybills)
-        .outerjoin(models.BookingRequests, models.BookingRequests.request_id == models.Waybills.request_id)
-        .filter(
+def _waybill_hub_scoped_query(db: Session, hub_id: int, current_user: dict = None):
+    filters = [
+        models.Waybills.is_deleted == False,
+        (
+            (models.BookingRequests.target_hub_id == hub_id)
+            | (models.Waybills.origin_hub_id == hub_id)
+            | (models.Waybills.holding_hub_id == hub_id)
+        )
+    ]
+    if current_user and current_user.get("role_id") == 4:
+        filters = [
             models.Waybills.is_deleted == False,
             (
                 (models.BookingRequests.target_hub_id == hub_id)
                 | (models.Waybills.origin_hub_id == hub_id)
                 | (models.Waybills.holding_hub_id == hub_id)
-            ),
-        )
+                | (models.BookingRequests.assigned_shipper_id == current_user.get("user_id"))
+                | (models.Waybills.holding_shipper_id == current_user.get("user_id"))
+            )
+        ]
+    return (
+        db.query(models.Waybills)
+        .outerjoin(models.BookingRequests, models.BookingRequests.request_id == models.Waybills.request_id)
+        .filter(*filters)
     )
 
 
@@ -1386,14 +1398,22 @@ def list_mobile_ocr_customers(
 ):
     """Mobile OCR: lay khach hang co pickup/tui thu thuoc buu cuc, khong gioi han theo buu ta hien tai."""
     scoped_hub_id = _mobile_ocr_hub_id(current_user, hub_id)
+    filters = [
+        models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
+        models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
+    ]
+    if current_user.get("role_id") == 4:
+        filters.append(
+            (models.BookingRequests.target_hub_id == scoped_hub_id) |
+            (models.BookingRequests.assigned_shipper_id == current_user.get("user_id"))
+        )
+    else:
+        filters.append(models.BookingRequests.target_hub_id == scoped_hub_id)
+
     query = (
         db.query(models.Customers)
         .join(models.BookingRequests, models.BookingRequests.customer_id == models.Customers.customer_id)
-        .filter(
-            models.BookingRequests.target_hub_id == scoped_hub_id,
-            models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
-            models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
-        )
+        .filter(*filters)
     )
     if q:
         keyword = f"%{q.strip()}%"
@@ -1407,12 +1427,20 @@ def list_mobile_ocr_customers(
     customers = query.distinct(models.Customers.customer_id).order_by(models.Customers.customer_id.desc()).limit(limit).all()
     items = []
     for customer in customers:
-        pickups = db.query(models.BookingRequests).filter(
+        pickup_filters = [
             models.BookingRequests.customer_id == customer.customer_id,
-            models.BookingRequests.target_hub_id == scoped_hub_id,
             models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
             models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
-        ).all()
+        ]
+        if current_user.get("role_id") == 4:
+            pickup_filters.append(
+                (models.BookingRequests.target_hub_id == scoped_hub_id) |
+                (models.BookingRequests.assigned_shipper_id == current_user.get("user_id"))
+            )
+        else:
+            pickup_filters.append(models.BookingRequests.target_hub_id == scoped_hub_id)
+            
+        pickups = db.query(models.BookingRequests).filter(*pickup_filters).all()
         request_ids = [row.request_id for row in pickups]
         bag_count = db.query(models.Bags).filter(models.Bags.booking_request_id.in_(request_ids)).count() if request_ids else 0
         waybill_query = db.query(models.Waybills).filter(
@@ -1443,12 +1471,20 @@ def list_mobile_ocr_customer_pickups(
     if not customer:
         raise HTTPException(status_code=404, detail="Khong tim thay khach hang")
 
-    requests = db.query(models.BookingRequests).filter(
+    req_filters = [
         models.BookingRequests.customer_id == customer_id,
-        models.BookingRequests.target_hub_id == scoped_hub_id,
         models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
         models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
-    ).order_by(models.BookingRequests.request_id.desc()).all()
+    ]
+    if current_user.get("role_id") == 4:
+        req_filters.append(
+            (models.BookingRequests.target_hub_id == scoped_hub_id) |
+            (models.BookingRequests.assigned_shipper_id == current_user.get("user_id"))
+        )
+    else:
+        req_filters.append(models.BookingRequests.target_hub_id == scoped_hub_id)
+
+    requests = db.query(models.BookingRequests).filter(*req_filters).order_by(models.BookingRequests.request_id.desc()).all()
 
     bags = []
     single_waybills = []
@@ -1482,10 +1518,16 @@ def get_mobile_ocr_bag_waybills(
     current_user: dict = Depends(get_current_user),
 ):
     scoped_hub_id = _mobile_ocr_hub_id(current_user, hub_id)
-    bag = db.query(models.Bags).join(models.BookingRequests, models.BookingRequests.request_id == models.Bags.booking_request_id).filter(
-        models.Bags.bag_code == bag_code,
-        models.BookingRequests.target_hub_id == scoped_hub_id,
-    ).first()
+    bag_filters = [models.Bags.bag_code == bag_code]
+    if current_user.get("role_id") == 4:
+        bag_filters.append(
+            (models.BookingRequests.target_hub_id == scoped_hub_id) |
+            (models.BookingRequests.assigned_shipper_id == current_user.get("user_id"))
+        )
+    else:
+        bag_filters.append(models.BookingRequests.target_hub_id == scoped_hub_id)
+
+    bag = db.query(models.Bags).join(models.BookingRequests, models.BookingRequests.request_id == models.Bags.booking_request_id).filter(*bag_filters).first()
     if not bag:
         raise HTTPException(status_code=404, detail="Khong tim thay tui thu tai buu cuc hien tai")
     return _bag_payload(db, bag)
@@ -1507,7 +1549,7 @@ def update_mobile_ocr_waybill(
         scoped_hub_id,
         sorted(data.model_dump(exclude_unset=True).keys()),
     )
-    waybill = _waybill_hub_scoped_query(db, scoped_hub_id).filter(models.Waybills.waybill_code == waybill_code).first()
+    waybill = _waybill_hub_scoped_query(db, scoped_hub_id, current_user).filter(models.Waybills.waybill_code == waybill_code).first()
     if not waybill:
         logger.warning(
             "Không tìm thấy vận đơn OCR waybill_code=%s user_id=%s hub_id=%s",
@@ -1592,10 +1634,16 @@ def create_mobile_ocr_extra_waybills(
     current_user: dict = Depends(get_current_user),
 ):
     scoped_hub_id = _mobile_ocr_hub_id(current_user, hub_id)
-    bag = db.query(models.Bags).join(models.BookingRequests, models.BookingRequests.request_id == models.Bags.booking_request_id).filter(
-        models.Bags.bag_code == bag_code,
-        models.BookingRequests.target_hub_id == scoped_hub_id,
-    ).first()
+    bag_filters = [models.Bags.bag_code == bag_code]
+    if current_user.get("role_id") == 4:
+        bag_filters.append(
+            (models.BookingRequests.target_hub_id == scoped_hub_id) |
+            (models.BookingRequests.assigned_shipper_id == current_user.get("user_id"))
+        )
+    else:
+        bag_filters.append(models.BookingRequests.target_hub_id == scoped_hub_id)
+
+    bag = db.query(models.Bags).join(models.BookingRequests, models.BookingRequests.request_id == models.Bags.booking_request_id).filter(*bag_filters).first()
     if not bag:
         raise HTTPException(status_code=404, detail="Khong tim thay tui thu tai buu cuc hien tai")
 

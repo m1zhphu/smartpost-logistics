@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
+import localProvincesData from "../utils/vietnam_provinces.json";
 import { CustomAlert } from '../components/CustomAlert';
 
 import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
@@ -12,7 +13,7 @@ import { COLORS } from "../constants/colors";
 import { useQueue } from "../context/QueueContext";
 import { useUser } from "../context/UserContext";
 import AddressPickerModal from "../components/AddressPickerModal";
-import { PROVINCES_34 } from "../utils/provinces";
+import { PROVINCES_34, resolveToNewProvince } from "../utils/provinces";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
@@ -47,95 +48,49 @@ export default function CreateOrderScreen({ route, navigation }) {
   const [sPhone, setSPhone] = useState(senderData?.phone || "");
   const [sAddress, setSAddress] = useState(senderData?.address || "");
   const [sProvince, setSProvince] = useState(senderData?.province_name || "");
-  const [sDistrict, setSDistrict] = useState(senderData?.district_name || "");
   const [sWard, setSWard] = useState(senderData?.ward_name || "");
   const [showSProvincePicker, setShowSProvincePicker] = useState(false);
-
-  const [rProvince, setRProvince] = useState(receiverData?.province_name || "");
-  const [rDistrict, setRDistrict] = useState(receiverData?.district_name || "");
-  const [rWard, setRWard] = useState(receiverData?.ward_name || "");
-  const [showRProvincePicker, setShowRProvincePicker] = useState(false);
-
-  const [provincesRaw, setProvincesRaw] = useState([]);
-  
-  const [sDistrictsRaw, setSDistrictsRaw] = useState([]);
-  const [sWardsRaw, setSWardsRaw] = useState([]);
-  const [showSDistrictPicker, setShowSDistrictPicker] = useState(false);
   const [showSWardPicker, setShowSWardPicker] = useState(false);
 
-  const [rDistrictsRaw, setRDistrictsRaw] = useState([]);
-  const [rWardsRaw, setRWardsRaw] = useState([]);
-  const [showRDistrictPicker, setShowRDistrictPicker] = useState(false);
+  const [rProvince, setRProvince] = useState(receiverData?.province_name || "");
+  const [rWard, setRWard] = useState(receiverData?.ward_name || "");
+  const [showRProvincePicker, setShowRProvincePicker] = useState(false);
   const [showRWardPicker, setShowRWardPicker] = useState(false);
-
-  React.useEffect(() => {
-    fetch("https://provinces.open-api.vn/api/v2/")
-      .then(res => res.json())
-      .then(data => setProvincesRaw(data))
-      .catch(e => console.log(e));
-  }, []);
-
-  const getProvCode = (name) => {
-    const normalized = name.replace("TP. ", "Thành phố ").replace("Tỉnh ", "");
-    const match = provincesRaw.find(p => p.name.includes(normalized) || normalized.includes(p.name));
-    return match ? match.code : null;
-  };
-
-  const fetchDistricts = async (provCode, setRawData) => {
-    try {
-      const res = await fetch(`https://provinces.open-api.vn/api/v2/p/${provCode}?depth=2`);
-      const data = await res.json();
-      setRawData(data.districts || []);
-    } catch (e) {}
-  };
-
-  const fetchWards = async (distCode, setRawData) => {
-    try {
-      const res = await fetch(`https://provinces.open-api.vn/api/v2/d/${distCode}?depth=2`);
-      const data = await res.json();
-      setRawData(data.wards || []);
-    } catch (e) {}
-  };
-
-  React.useEffect(() => {
-    if (provincesRaw.length > 0) {
-      if (sProvince) {
-        const code = getProvCode(sProvince);
-        if (code) fetchDistricts(code, setSDistrictsRaw);
-      }
-      if (rProvince) {
-        const code = getProvCode(rProvince);
-        if (code) fetchDistricts(code, setRDistrictsRaw);
-      }
-    }
-  }, [provincesRaw]);
 
   const handleSProvinceSelect = (val) => {
     setSProvince(val);
-    setSDistrict("");
     setSWard("");
-    const code = getProvCode(val);
-    if (code) fetchDistricts(code, setSDistrictsRaw);
   };
-  const handleSDistrictSelect = (val) => {
-    setSDistrict(val);
-    setSWard("");
-    const match = sDistrictsRaw.find(d => d.name === val);
-    if (match) fetchWards(match.code, setSWardsRaw);
-  };
+
   const handleRProvinceSelect = (val) => {
     setRProvince(val);
-    setRDistrict("");
     setRWard("");
-    const code = getProvCode(val);
-    if (code) fetchDistricts(code, setRDistrictsRaw);
   };
-  const handleRDistrictSelect = (val) => {
-    setRDistrict(val);
-    setRWard("");
-    const match = rDistrictsRaw.find(d => d.name === val);
-    if (match) fetchWards(match.code, setRWardsRaw);
+
+  const cleanProvinceName = (name) => {
+    if (!name) return "";
+    const resolved = resolveToNewProvince(name);
+    return resolved
+      .toLowerCase()
+      .replace(/^(thành phố|tỉnh|tp\.|tp)\s*/i, "")
+      .replace(/\s+/g, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   };
+
+  const availableSenderWards = useMemo(() => {
+    if (!sProvince) return [];
+    const cleanS = cleanProvinceName(sProvince);
+    const found = localProvincesData.find(p => cleanProvinceName(p.FullName) === cleanS);
+    return found ? found.Wards.map(w => w.FullName) : [];
+  }, [sProvince]);
+
+  const availableReceiverWards = useMemo(() => {
+    if (!rProvince) return [];
+    const cleanR = cleanProvinceName(rProvince);
+    const found = localProvincesData.find(p => cleanProvinceName(p.FullName) === cleanR);
+    return found ? found.Wards.map(w => w.FullName) : [];
+  }, [rProvince]);
 
   const [loading, setLoading] = useState(false);
   // Ẩn thông tin đơn vị và phí — web không sử dụng
@@ -256,10 +211,10 @@ export default function CreateOrderScreen({ route, navigation }) {
       receiver_phone: rPhone.trim(),
       receiver_address: rAddress.trim(),
       sender_province_name: sProvince.trim(),
-      sender_district_name: sDistrict.trim(),
+      sender_district_name: "",
       sender_ward_name: sWard.trim(),
       receiver_province_name: rProvince.trim(),
-      receiver_district_name: rDistrict.trim(),
+      receiver_district_name: "",
       receiver_ward_name: rWard.trim(),
       actual_weight: weightParsed,
       cod_amount: parseFloat(codAmount) || 0,
@@ -612,10 +567,7 @@ export default function CreateOrderScreen({ route, navigation }) {
               <Text style={{ flex: 1, color: sProvince ? '#0F172A' : '#94A3B8' }}>{sProvince || "Tỉnh/Thành phố"}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.inputWrapper, { marginTop: 12 }]} onPress={() => setShowSDistrictPicker(true)}>
-              <Ionicons name="business-outline" size={18} color="#94A3B8" style={{ marginRight: 10 }} />
-              <Text style={{ flex: 1, color: sDistrict ? '#0F172A' : '#94A3B8' }}>{sDistrict || "Quận/Huyện"}</Text>
-            </TouchableOpacity>
+
 
             <TouchableOpacity style={[styles.inputWrapper, { marginTop: 12 }]} onPress={() => setShowSWardPicker(true)}>
               <Ionicons name="home-outline" size={18} color="#94A3B8" style={{ marginRight: 10 }} />
@@ -742,10 +694,7 @@ export default function CreateOrderScreen({ route, navigation }) {
               <Text style={{ flex: 1, color: rProvince ? '#0F172A' : '#94A3B8' }}>{rProvince || "Tỉnh/Thành phố"}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.inputWrapper, { marginTop: 12 }]} onPress={() => setShowRDistrictPicker(true)}>
-              <Ionicons name="business-outline" size={18} color="#94A3B8" style={{ marginRight: 10 }} />
-              <Text style={{ flex: 1, color: rDistrict ? '#0F172A' : '#94A3B8' }}>{rDistrict || "Quận/Huyện"}</Text>
-            </TouchableOpacity>
+
 
             <TouchableOpacity style={[styles.inputWrapper, { marginTop: 12 }]} onPress={() => setShowRWardPicker(true)}>
               <Ionicons name="home-outline" size={18} color="#94A3B8" style={{ marginRight: 10 }} />
@@ -971,16 +920,9 @@ export default function CreateOrderScreen({ route, navigation }) {
         onSelect={handleSProvinceSelect}
       />
       <AddressPickerModal
-        visible={showSDistrictPicker}
-        onClose={() => setShowSDistrictPicker(false)}
-        data={sDistrictsRaw.map(d => d.name)}
-        title="Chọn Quận/Huyện gửi"
-        onSelect={handleSDistrictSelect}
-      />
-      <AddressPickerModal
         visible={showSWardPicker}
         onClose={() => setShowSWardPicker(false)}
-        data={sWardsRaw.map(w => w.name)}
+        data={availableSenderWards}
         title="Chọn Phường/Xã gửi"
         onSelect={setSWard}
       />
@@ -993,16 +935,9 @@ export default function CreateOrderScreen({ route, navigation }) {
         onSelect={handleRProvinceSelect}
       />
       <AddressPickerModal
-        visible={showRDistrictPicker}
-        onClose={() => setShowRDistrictPicker(false)}
-        data={rDistrictsRaw.map(d => d.name)}
-        title="Chọn Quận/Huyện nhận"
-        onSelect={handleRDistrictSelect}
-      />
-      <AddressPickerModal
         visible={showRWardPicker}
         onClose={() => setShowRWardPicker(false)}
-        data={rWardsRaw.map(w => w.name)}
+        data={availableReceiverWards}
         title="Chọn Phường/Xã nhận"
         onSelect={setRWard}
       />

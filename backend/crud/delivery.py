@@ -419,6 +419,11 @@ def mobile_pickup_task_payload(db_req: models.BookingRequests) -> dict:
         "waybill_code": waybill.waybill_code if waybill else None,
         "bill_code": waybill.waybill_code if waybill else None,
         "pickup_status": db_req.status,
+        "ocr_status": (
+            "VERIFIED" if (waybill.verify_status == "VERIFIED" or waybill.ocr_status in ["SUCCESS", "CONVERTED"])
+            else (waybill.ocr_status or "PENDING")
+        ) if waybill else "PENDING",
+        "verify_status": waybill.verify_status if waybill else "PENDING",
         "waybill_status": waybill.status if waybill else None,
         "shop_order_code": db_req.shop_order_code,
         "customer_id": db_req.customer_id,

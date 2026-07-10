@@ -15,7 +15,8 @@ import {
 } from "../services/pickupService";
 import styles from "../styles/OcrWaybillDetailScreenStyles";
 import AddressPickerModal from "../components/AddressPickerModal";
-import { PROVINCES_34 } from "../utils/provinces";
+import { PROVINCES_34, resolveToNewProvince } from "../utils/provinces";
+import localProvincesData from "../utils/vietnam_provinces.json";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
@@ -66,6 +67,26 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showProvincePicker, setShowProvincePicker] = useState(false);
+  const [showWardPicker, setShowWardPicker] = useState(false);
+
+  const cleanProvinceName = (name) => {
+    if (!name) return "";
+    const resolved = resolveToNewProvince(name);
+    return resolved
+      .toLowerCase()
+      .replace(/^(thành phố|tỉnh|tp\.|tp)\s*/i, "")
+      .replace(/\s+/g, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  };
+
+  const availableWards = useMemo(() => {
+    const prov = form.receiver_province_name;
+    if (!prov) return [];
+    const cleanR = cleanProvinceName(prov);
+    const found = localProvincesData.find(p => cleanProvinceName(p.FullName) === cleanR);
+    return found ? found.Wards.map(w => w.FullName) : [];
+  }, [form.receiver_province_name]);
 
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -184,7 +205,7 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
       receiver_phone: form.receiver_phone.trim(),
       receiver_address: form.receiver_address.trim(),
       receiver_province_name: form.receiver_province_name.trim(),
-      receiver_district_name: form.receiver_district_name.trim(),
+      receiver_district_name: "",
       receiver_ward_name: form.receiver_ward_name.trim(),
       service_type: form.service_type,
       product_name: form.product_name.trim(),
@@ -389,8 +410,12 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
               "Chọn Tỉnh/Thành",
               () => setShowProvincePicker(true)
             )}
-            {renderField("Quan/Huyen", "receiver_district_name", "Quan 1")}
-            {renderField("Phuong/Xa", "receiver_ward_name", "Ben Nghe")}
+            {renderSelectField(
+              "Phuong/Xa",
+              "receiver_ward_name",
+              "Chọn Phường/Xã",
+              () => setShowWardPicker(true)
+            )}
           </View>
 
           <View style={styles.card}>
@@ -502,8 +527,19 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
         visible={showProvincePicker}
         onClose={() => setShowProvincePicker(false)}
         data={PROVINCES_34}
-        onSelect={(val) => setField("receiver_province_name", val)}
+        onSelect={(val) => {
+          setField("receiver_province_name", val);
+          setField("receiver_ward_name", "");
+          setField("receiver_district_name", "");
+        }}
         title="Chọn Tỉnh/Thành"
+      />
+      <AddressPickerModal
+        visible={showWardPicker}
+        onClose={() => setShowWardPicker(false)}
+        data={availableWards}
+        onSelect={(val) => setField("receiver_ward_name", val)}
+        title="Chọn Phường/Xã"
       />
     </View>
   );

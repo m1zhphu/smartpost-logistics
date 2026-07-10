@@ -35,7 +35,7 @@ export default function HomeScreen({ navigation }) {
       const result = await getShipperAssignedPickups();
       if (result.success && result.data) {
         // Lọc các đơn đang chờ xử lý
-        const pending = result.data.filter(p => p.pickup_status === 'ASSIGNED' || p.pickup_status === 'PENDING');
+        const pending = result.data.filter(p => p.pickup_status === 'ASSIGNED_PICKUP' || p.pickup_status === 'ASSIGNED' || p.pickup_status === 'PENDING');
         setPendingPickupsCount(pending.length);
       }
     };

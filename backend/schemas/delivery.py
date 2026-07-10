@@ -1,4 +1,4 @@
-﻿# File: schemas/delivery.py
+# File: schemas/delivery.py
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional
 from datetime import datetime
@@ -178,6 +178,8 @@ class MobilePickupTaskResponse(BaseModel):
     waybill_count: int = 0
     waybills: List[dict] = Field(default_factory=list)
     materialization_status: Optional[str] = None
+    ocr_status: Optional[str] = None
+    verify_status: Optional[str] = None
 
 class BookingRequestLogResponse(BaseModel):
     log_id: int

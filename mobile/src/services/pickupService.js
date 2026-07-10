@@ -205,6 +205,15 @@ export const getShipperAssignedPickups = async () => {
     }
 };
 
+export const getShipperPickedPickups = async () => {
+    try {
+        const response = await apiClient.get(ADMIN_ENDPOINTS.GET_PICKED_PICKUPS);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
 export const getShipperPickupDetail = async (requestCode) => {
     try {
         const response = await apiClient.get(ADMIN_ENDPOINTS.GET_PICKUP_DETAIL(requestCode));
@@ -615,7 +624,7 @@ export const getCustomerDepartments = async () => {
         const response = await apiClient.get(url);
         return { success: true, data: response.data };
     } catch (error) {
-        console.error('L?i l?y danh sách phòng ban:', error);
+        console.error('L?i l?y danh sch phng ban:', error);
         return { success: false, message: error.message };
     }
 };

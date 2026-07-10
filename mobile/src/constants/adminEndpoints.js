@@ -9,6 +9,7 @@ export const ADMIN_ENDPOINTS = {
   
   // Shipper Mobile Endpoints
   GET_ASSIGNED_PICKUPS: `${API_BASE_URL}/api/delivery/mobile/shipper/pickup-requests?status=ASSIGNED_PICKUP`,
+  GET_PICKED_PICKUPS: `${API_BASE_URL}/api/delivery/mobile/shipper/pickup-requests?status=PICKED`,
   GET_PICKUP_DETAIL: (requestCode) => `${API_BASE_URL}/api/delivery/mobile/shipper/pickup-requests/${requestCode}`,
   CONFIRM_PICKED: (requestCode) => `${API_BASE_URL}/api/delivery/pickup-requests/${requestCode}/picked`,
   SEND_GPS_LOCATION: `${API_BASE_URL}/api/delivery/mobile/shipper/location`,
