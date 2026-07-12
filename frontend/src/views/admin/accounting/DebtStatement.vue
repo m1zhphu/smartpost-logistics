@@ -309,7 +309,7 @@ import { useRoute } from 'vue-router';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, Refresh, Delete, Tickets, Money, CircleCheck, Printer, Wallet } from '@element-plus/icons-vue';
-import { formatCurrencyManual, formatVietnamDateTime } from '@/utils/formatters';
+import { formatVietnamDateTime } from '@/utils/dateTime';
 
 const getWaybillStatusLabel = (status) => {
   const map = {
@@ -439,7 +439,10 @@ const newStatement = ref({
   custom_code: ''
 });
 
-
+const formatCurrencyManual = (val) => {
+  if (!val) return '0 đ';
+  return Number(val).toLocaleString('vi-VN') + ' đ';
+};
 
 const handleSelectionChange = (val) => {
   waybills.value.forEach(w => {
