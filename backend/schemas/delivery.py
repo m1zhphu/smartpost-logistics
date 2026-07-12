@@ -270,6 +270,7 @@ class BookingRequestResponse(BaseModel):
     actual_quantity: int = 0
     materialization_status: Optional[str] = None
     waybill_items: List[dict] = Field(default_factory=list)
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

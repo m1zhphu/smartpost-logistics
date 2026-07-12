@@ -187,8 +187,9 @@
           <!-- Bảng dành cho Quản trị viên (Gom nhóm theo Khách hàng) -->
           <el-table 
             v-if="isAdmin"
-            :data="displayCustomers" 
+            :data="paginatedCustomers" 
             v-loading="loading" 
+            element-loading-text="Đang tải dữ liệu..."
             class="modern-table"
             style="width: 100%;"
             row-key="customer_id"
@@ -209,17 +210,19 @@
                   </div>
 
                   <el-table
-                    :data="customerWaybills[customer.customer_id] || []"
+                    :data="(customerWaybills[customer.customer_id] || []).slice(((innerCurrentPage[customer.customer_id] || 1) - 1) * 10, (innerCurrentPage[customer.customer_id] || 1) * 10)"
                     v-loading="customerWaybillsLoading[customer.customer_id]"
-                    style="width: 100%; min-width: 1400px;"
+                    element-loading-text="Đang tải dữ liệu..."
+                    style="width: 100%;"
                     class="inner-waybill-table"
+                    row-key="waybill_code"
                     @selection-change="(val) => handleWaybillSelectionChange(customer.customer_id, val)"
                   >
                     <!-- Checkbox -->
-                    <el-table-column type="selection" width="55" align="center" />
+                    <el-table-column type="selection" width="55" align="center" :reserve-selection="true" />
 
                     <!-- Mã vận đơn -->
-                    <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="220">
+                    <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="240">
                       <template #default="{ row }">
                         <div class="code-link" @click="viewTracking(row.waybill_code)" title="Xem hành trình" style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
                           <span class="fw-bold">{{ row.waybill_code }}</span>
@@ -230,6 +233,24 @@
                             ✓ ĐÃ DUYỆT
                           </el-tag>
                         </div>
+                      </template>
+                    </el-table-column>
+
+                    <!-- Dịch vụ chuyển -->
+                    <el-table-column label="Dịch vụ" min-width="140" align="center">
+                      <template #default="{ row }">
+                        <el-tag v-if="row.service_type && (row.service_type.toUpperCase() === 'EXPRESS' || row.service_type.toUpperCase() === 'HT')" size="small" effect="dark" style="background-color: #ff4d4f !important; color: white !important; font-weight: 800; border: none; box-shadow: 0 0 8px rgba(255, 77, 79, 0.8); padding: 2px 8px;">
+                          🔥 HỎA TỐC
+                        </el-tag>
+                        <el-tag v-else-if="row.service_type && (row.service_type.toUpperCase() === 'STANDARD' || row.service_type.toUpperCase() === 'CPN')" type="primary" size="small" effect="plain">
+                          CPN (Nhanh)
+                        </el-tag>
+                        <el-tag v-else-if="row.service_type && (row.service_type.toUpperCase() === 'TK' || row.service_type.toUpperCase() === 'ECONOMY')" type="info" size="small" effect="plain">
+                          Tiết kiệm
+                        </el-tag>
+                        <el-tag v-else type="info" size="small" effect="plain">
+                          {{ row.service_type || 'Tiết kiệm' }}
+                        </el-tag>
                       </template>
                     </el-table-column>
 
@@ -287,8 +308,12 @@
                     <el-table-column label="SLA & Đang giữ" min-width="150">
                       <template #default="{ row }">
                         <div style="display: flex; flex-direction: column; gap: 2px;">
-                          <el-tag :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
-                            {{ row.sla_status || 'ON_TIME' }}
+                          <!-- Cảnh báo Trễ hạn -->
+                          <el-tag v-if="row.sla_status === 'OVERDUE'" size="small" effect="dark" style="width: fit-content; background-color: #f5222d; color: white; font-weight: bold; border: none; margin-bottom: 2px; animation: pulse 1s infinite alternate;">
+                            ⚠️ TRỄ HẠN
+                          </el-tag>
+                          <el-tag v-else :type="row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
+                            {{ getSlaStatusLabel(row.sla_status) }}
                           </el-tag>
                           <span style="font-size: 11px; color: #64748b;">
                             <b>Giữ:</b> {{ row.holding_hub?.hub_name || row.holding_shipper?.full_name || '---' }}
@@ -369,6 +394,15 @@
                       </template>
                     </el-table-column>
                   </el-table>
+                  <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+                    <el-pagination
+                      v-if="(customerWaybills[customer.customer_id] || []).length > 0"
+                      v-model:current-page="innerCurrentPage[customer.customer_id]"
+                      :page-size="10"
+                      layout="total, prev, pager, next"
+                      :total="(customerWaybills[customer.customer_id] || []).length"
+                    />
+                  </div>
                 </div>
               </template>
             </el-table-column>
@@ -411,10 +445,11 @@
             v-loading="loading" 
             class="modern-table"
             style="width: 100%;"
+            row-key="waybill_code"
             @selection-change="handleFlatSelectionChange"
           >
             <!-- Checkbox -->
-            <el-table-column type="selection" width="55" align="center" />
+            <el-table-column type="selection" width="55" align="center" :reserve-selection="true" />
 
             <!-- Mã vận đơn -->
             <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="220">
@@ -428,6 +463,24 @@
                     ✓ ĐÃ DUYỆT
                   </el-tag>
                 </div>
+              </template>
+            </el-table-column>
+
+            <!-- Dịch vụ chuyển -->
+            <el-table-column label="Dịch vụ" min-width="140" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.service_type && (row.service_type.toUpperCase() === 'EXPRESS' || row.service_type.toUpperCase() === 'HT')" size="small" effect="dark" style="background-color: #ff4d4f !important; color: white !important; font-weight: 800; border: none; box-shadow: 0 0 8px rgba(255, 77, 79, 0.8); padding: 2px 8px;">
+                  🔥 HỎA TỐC
+                </el-tag>
+                <el-tag v-else-if="row.service_type && (row.service_type.toUpperCase() === 'STANDARD' || row.service_type.toUpperCase() === 'CPN')" type="primary" size="small" effect="plain">
+                  CPN (Nhanh)
+                </el-tag>
+                <el-tag v-else-if="row.service_type && (row.service_type.toUpperCase() === 'TK' || row.service_type.toUpperCase() === 'ECONOMY')" type="info" size="small" effect="plain">
+                  Tiết kiệm
+                </el-tag>
+                <el-tag v-else type="info" size="small" effect="plain">
+                  {{ row.service_type || 'Tiết kiệm' }}
+                </el-tag>
               </template>
             </el-table-column>
 
@@ -490,8 +543,12 @@
             <el-table-column label="SLA & Đang giữ" min-width="150">
               <template #default="{ row }">
                 <div style="display: flex; flex-direction: column; gap: 2px;">
-                  <el-tag :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
-                    {{ row.sla_status || 'ON_TIME' }}
+                  <!-- Cảnh báo Trễ hạn -->
+                  <el-tag v-if="row.sla_status === 'OVERDUE'" size="small" effect="dark" style="width: fit-content; background-color: #f5222d; color: white; font-weight: bold; border: none; margin-bottom: 2px; animation: pulse 1s infinite alternate;">
+                    ⚠️ TRỄ HẠN
+                  </el-tag>
+                  <el-tag v-else :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
+                    {{ getSlaStatusLabel(row.sla_status) }}
                   </el-tag>
                   <span style="font-size: 11px; color: #64748b;">
                     <b>Giữ:</b> {{ row.holding_hub?.hub_name || row.holding_shipper?.full_name || '---' }}
@@ -580,18 +637,18 @@
 
         <!-- Phân trang -->
         <div class="pagination-wrapper mt-24 flex-between">
-          <span class="pagination-info" v-if="isAdmin">Hiển thị {{ displayCustomers.length }} khách hàng</span>
+          <span class="pagination-info" v-if="isAdmin">Hiển thị {{ paginatedCustomers.length }} / {{ displayCustomers.length }} khách hàng</span>
           <span class="pagination-info" v-else>Tổng số vận đơn hiển thị: {{ total }}</span>
           
           <el-pagination
-            v-if="!isAdmin"
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
+            :total="isAdmin ? displayCustomers.length : total"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
+            class="modern-pagination"
           />
         </div>
       </div>
@@ -1240,7 +1297,15 @@ const dateRange = ref([]);
 const waybills = ref([]);
 const total = ref(0);
 const currentPage = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(10);
+const innerCurrentPage = ref({});
+
+const paginatedCustomers = computed(() => {
+  if (!isAdmin.value) return [];
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return displayCustomers.value.slice(start, end);
+});
 
 const trackingDialog = ref(false);
 const trackingLoading = ref(false);
@@ -1307,6 +1372,7 @@ const formatCurrencyManual = (amount) => {
 const handleSearch = async () => {
   loading.value = true;
   activeWaybillSelection.value = {};
+  currentPage.value = 1;
   try {
     const filters = {
       page: !isAdmin.value ? currentPage.value : 1,
@@ -1377,6 +1443,7 @@ const handleCustomerExpand = async (row, expandedRows) => {
           customer_id: row.customer_id
         });
         customerWaybills.value[row.customer_id] = response.data.items || [];
+        innerCurrentPage.value[row.customer_id] = 1;
       } catch (err) {
         console.error(err);
         ElMessage.error('Không thể tải vận đơn cho khách hàng này');
@@ -1643,6 +1710,15 @@ const getStatusLabel = (status) => {
     'CANCELLED': 'Đã hủy'
   };
   return map[status] || status;
+};
+
+const getSlaStatusLabel = (status) => {
+  const map = {
+    'ON_TIME': 'Đúng hạn',
+    'WARNING': 'Sắp trễ',
+    'OVERDUE': 'Quá hạn'
+  };
+  return map[status] || 'Đúng hạn';
 };
 
 const getVerifyClass = (status) => {

@@ -92,7 +92,7 @@
             </div>
             <div class="stat-container">
               <div class="stat-box">
-                <span class="stat-label">Tổng số túi đã quét</span>
+                <span class="stat-label">Tổng số túi đã nhập</span>
                 <div class="stat-value-group">
                   <span class="stat-value" :class="bags.length > 0 ? 'text-primary' : 'text-dark'">{{ bags.length }}</span>
                   <span v-if="scanType === 'UNLOAD'" class="stat-total text-muted">/ {{ expectedBags.length }}</span>
@@ -220,7 +220,7 @@
                   <el-table-column label="Trạng thái" width="100" align="center">
                      <template #default="{ row }">
                         <div v-if="row.is_scanned" class="status-badge success"><el-icon><Check /></el-icon> Đã nhận</div>
-                        <div v-else class="status-badge default">Chờ quét</div>
+                        <div v-else class="status-badge default">Chờ nhập</div>
                      </template>
                   </el-table-column>
                   
@@ -241,7 +241,7 @@
           <div class="content-card compact-card scanner-container">
              <el-input 
                 v-model="barcode" 
-                placeholder="QUÉT MÃ TÚI VÀO ĐÂY..." 
+                placeholder="NHẬP MÃ TÚI VÀO ĐÂY..." 
                 ref="barcodeRef"
                 :disabled="!isLocked || loading"
                 @keyup.enter="handleScan(barcode)"
@@ -250,7 +250,7 @@
                 <template #prefix><el-icon class="scanner-icon"><Aim /></el-icon></template>
                 <template #append>
                    <button class="btn-scan" @click="handleScan(barcode)" :disabled="!isLocked || loading">
-                     <span>QUÉT</span>
+                     <span>NHẬP</span>
                    </button>
                 </template>
              </el-input>
@@ -258,7 +258,7 @@
              <!-- Overlay for un-locked state -->
              <div v-if="!isLocked" class="lock-overlay">
                 <el-icon class="lock-icon"><Lock /></el-icon>
-                <span>BẠN PHẢI CHỐT THÔNG TIN CHUYẾN XE TRƯỚC KHI QUÉT!</span>
+                <span>BẠN PHẢI CHỐT THÔNG TIN CHUYẾN XE TRƯỚC KHI NHẬP!</span>
              </div>
           </div>
 
@@ -300,7 +300,7 @@
                 </el-table-column>
                 
                 <template #empty>
-                  <el-empty description="Chưa quét túi nào" :image-size="80" />
+                  <el-empty description="Chưa nhập túi nào" :image-size="80" />
                 </template>
              </el-table>
 

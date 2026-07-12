@@ -67,6 +67,7 @@
                 v-loading="loading" 
                 class="modern-table" 
                 stripe
+                table-layout="auto"
               >
                 <el-table-column type="expand">
                   <template #default="{ row }">
@@ -86,9 +87,9 @@
                           @selection-change="selection => handlePendingRequestSelectionChange(row, selection)"
                         >
                       <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
-                      <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
+                      <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="220">
                         <template #default="scope">
-                          <el-link type="warning" class="fw-bold" @click="viewRequestDetails(scope.row)">
+                          <el-link type="warning" class="fw-bold" style="white-space: nowrap;" @click="viewRequestDetails(scope.row)">
                             {{ scope.row.request_code }}
                           </el-link>
                         </template>
@@ -152,20 +153,20 @@
                   </template>
                 </el-table-column>
               
-              <el-table-column label="Khách hàng / Shop" min-width="200">
+              <el-table-column label="Khách hàng / Shop" min-width="280">
                 <template #default="{ row }">
                   <div class="sender-info">
                     <span class="fw-bold text-dark">
                       {{ row.customer_name }}
-                      <span class="text-xs text-muted" v-if="row.customer_code">({{ row.customer_code }})</span>
+                      <span class="text-xs text-muted" v-if="row.customer_code" style="white-space: nowrap;">({{ row.customer_code }})</span>
                     </span>
                     <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.customer_phone }}</span>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="Nguồn" width="110" align="center">
+              <el-table-column label="Nguồn" min-width="180" align="center">
                 <template #default="{ row }">
-                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
+                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ getSourceLabel(row.source) }}</el-tag>
                 </template>
               </el-table-column>
               <el-table-column label="Địa chỉ lấy hàng" min-width="320" prop="pickup_address" />
@@ -267,9 +268,9 @@
                           @selection-change="selection => handleDispatchRequestSelectionChange(row, selection)"
                         >
                       <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
-                      <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
+                      <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="220">
                         <template #default="scope">
-                          <el-link type="warning" class="fw-bold" @click="viewRequestDetails(scope.row)">
+                          <el-link type="warning" class="fw-bold" style="white-space: nowrap;" @click="viewRequestDetails(scope.row)">
                             {{ scope.row.request_code }}
                           </el-link>
                         </template>
@@ -351,7 +352,7 @@
               </el-table-column>
               <el-table-column label="Nguồn" width="110" align="center">
                 <template #default="{ row }">
-                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
+                  <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ getSourceLabel(row.source) }}</el-tag>
                 </template>
               </el-table-column>
               <el-table-column label="Địa chỉ lấy hàng" min-width="320" prop="pickup_address" />
@@ -433,10 +434,11 @@
             <div class="pickup-table-scroll">
               <el-table 
                 style="width: 100%; min-width: 1250px;"
-                :data="groupedReceived" 
+                :data="paginatedGroupedReceived" 
                 v-loading="loading" 
                 class="modern-table" 
                 stripe
+                table-layout="auto"
               >
                 <el-table-column type="expand">
                   <template #default="{ row }">
@@ -447,7 +449,7 @@
                       <div class="inner-table-scroll">
                         <el-table 
                           style="width: 100%; min-width: 1200px;"
-                          :data="row.requests" 
+                          :data="getPaginatedRequests(row)" 
                           class="modern-table inner-table" 
                           size="small" 
                           border 
@@ -456,34 +458,69 @@
                           @selection-change="selection => handleReceivedRequestSelectionChange(row, selection)"
                         >
                           <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
-                          <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
+                          <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="250">
                             <template #default="scope">
-                              <el-link type="success" class="fw-bold" @click="viewRequestDetails(scope.row)">
-                                {{ scope.row.request_code }}
-                              </el-link>
+                              <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                                <el-link type="success" class="fw-bold" @click="viewRequestDetails(scope.row)">
+                                  {{ scope.row.request_code }}
+                                </el-link>
+                                <el-tag v-if="isNewRequest(scope.row.created_at)" type="danger" size="small" effect="dark" round>Mới</el-tag>
+                              </div>
                             </template>
                           </el-table-column>
                           <el-table-column label="Mã Vận Đơn" min-width="210">
                             <template #default="scope">
-                              <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list">
+                              <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
                                 <span
-                                  v-for="code in getWaybillCodes(scope.row)"
+                                  v-for="code in getWaybillCodes(scope.row).slice(0, 2)"
                                   :key="code"
                                   class="code-badge info text-xs"
-                                  style="background: rgba(67, 24, 255, 0.1); color: #4318ff;"
+                                  style="background: rgba(67, 24, 255, 0.1); color: #4318ff; margin: 0;"
                                 >
                                   {{ code }}
                                 </span>
+                                <el-popover
+                                  v-if="getWaybillCodes(scope.row).length > 2"
+                                  placement="bottom"
+                                  title="Danh sách mã vận đơn"
+                                  :width="250"
+                                  trigger="click"
+                                >
+                                  <template #reference>
+                                    <el-button type="primary" link size="small" style="font-size: 11px; font-weight: bold; margin-left: 4px;">
+                                      +{{ getWaybillCodes(scope.row).length - 2 }} đơn khác
+                                    </el-button>
+                                  </template>
+                                  <div style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                                    <span
+                                      v-for="code in getWaybillCodes(scope.row)"
+                                      :key="code"
+                                      class="code-badge info text-xs"
+                                      style="background: rgba(67, 24, 255, 0.1); color: #4318ff; padding: 4px 8px; border-radius: 4px; display: block; text-align: center;"
+                                    >
+                                      {{ code }}
+                                    </span>
+                                  </div>
+                                </el-popover>
                               </div>
                               <span v-else class="text-muted text-xs">Chưa có</span>
                             </template>
                           </el-table-column>
-                          <el-table-column label="Văn phòng nhận" width="150" show-overflow-tooltip>
+                          <el-table-column label="Thời gian gửi" width="160" align="center">
                             <template #default="scope">
-                              <span class="fw-bold text-primary">{{ scope.row.target_hub_name || getHubName(scope.row.target_hub_id) || 'N/A' }}</span>
+                              <span class="text-xs fw-bold">{{ formatDate(scope.row.created_at) }}</span>
                             </template>
                           </el-table-column>
-                          <el-table-column prop="notes" label="Ghi chú khách" min-width="120" show-overflow-tooltip />
+                          <el-table-column label="Văn phòng nhận" min-width="250">
+                            <template #default="scope">
+                              <span class="fw-bold text-primary" style="white-space: nowrap;">{{ scope.row.target_hub_name || getHubName(scope.row.target_hub_id) || 'N/A' }}</span>
+                            </template>
+                          </el-table-column>
+                          <el-table-column label="Ghi chú khách" min-width="250">
+                            <template #default="scope">
+                              <span style="white-space: nowrap;">{{ scope.row.notes || '' }}</span>
+                            </template>
+                          </el-table-column>
                           <el-table-column label="Thao tác" width="220" align="center">
                             <template #default="scope">
                               <div class="flex justify-center gap-2">
@@ -495,25 +532,36 @@
                             </template>
                           </el-table-column>
                         </el-table>
+                        <div v-if="row.requests.length > 5" style="display: flex; justify-content: center; margin-top: 12px;">
+                          <el-pagination
+                            layout="prev, pager, next, total"
+                            :total="row.requests.length"
+                            :page-size="5"
+                            v-model:current-page="innerTableCurrentPages[row.group_key || 'default']"
+                            size="small"
+                            background
+                          />
+                        </div>
                       </div>
                     </div>
                   </template>
                 </el-table-column>
                 
-                <el-table-column label="Khách hàng / Shop" min-width="200">
+                <el-table-column label="Khách hàng / Shop" min-width="280">
                   <template #default="{ row }">
                     <div class="sender-info">
                       <span class="fw-bold text-dark">
                         {{ row.customer_name }}
-                        <span class="text-xs text-muted" v-if="row.customer_code">({{ row.customer_code }})</span>
+                        <span class="text-xs text-muted" v-if="row.customer_code" style="white-space: nowrap;">({{ row.customer_code }})</span>
+                        <el-tag v-if="row.requests.some(r => isNewRequest(r.created_at))" type="danger" size="small" effect="dark" round style="margin-left: 8px;">Có đơn mới</el-tag>
                       </span>
                       <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.customer_phone }}</span>
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column label="Nguồn" width="110" align="center">
+                <el-table-column label="Nguồn" min-width="180" align="center">
                   <template #default="{ row }">
-                    <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ row.source }}</el-tag>
+                    <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ getSourceLabel(row.source) }}</el-tag>
                   </template>
                 </el-table-column>
                 <el-table-column label="Địa chỉ lấy hàng" min-width="320" prop="pickup_address" />
@@ -539,6 +587,16 @@
                   <el-empty description="Không có yêu cầu lấy hàng nào tại văn phòng của bạn" :image-size="100" />
                 </template>
               </el-table>
+            </div>
+
+            <div class="flex justify-end mt-4">
+              <el-pagination
+                v-model:current-page="receivedCurrentPage"
+                v-model:page-size="receivedPageSize"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="groupedReceived.length"
+              />
             </div>
           </el-tab-pane>
 
@@ -586,9 +644,9 @@
                 class="modern-table" 
                 stripe
               >
-              <el-table-column prop="request_code" label="Mã Yêu Cầu" width="160">
+              <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="220">
                 <template #default="{ row }">
-                  <div class="flex flex-col gap-1">
+                  <div class="flex flex-col gap-1" style="white-space: nowrap;">
                     <el-link type="info" class="fw-bold" style="font-size: 13px;" @click="viewRequestDetails(row)">
                       {{ row.request_code }}
                     </el-link>
@@ -885,14 +943,14 @@
       >
         <div v-if="selectedRequest" class="detail-dialog-content" v-loading="detailLoading">
           <!-- Header Status Cards -->
-          <div class="flex justify-between items-center mb-4 p-3 rounded" style="background: var(--bg-hover, #f8fafc);">
-            <div>
-              <span class="text-xs text-muted block mb-1">MÃ YÊU CẦU</span>
-              <strong class="text-lg text-primary" style="color: var(--sp-primary, #4318ff);">{{ selectedRequest.request_code }}</strong>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 16px; border-radius: 8px; background-color: #f8fafc; border: 1px solid #e2e8f0;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Mã yêu cầu lấy hàng</span>
+              <strong style="font-size: 18px; color: var(--sp-primary, #4318ff); font-weight: 700;">{{ selectedRequest.request_code }}</strong>
             </div>
-            <div class="text-right">
-              <span class="text-xs text-muted block mb-1">TRẠNG THÁI</span>
-              <el-tag :type="getStatusTagType(selectedRequest.status)" effect="dark" class="fw-bold">
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+              <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Trạng thái</span>
+              <el-tag :type="getStatusTagType(selectedRequest.status)" effect="dark" class="fw-bold" style="font-weight: 700; font-size: 13px; padding: 6px 12px; height: auto;">
                 {{ getStatusLabel(selectedRequest.status) }}
               </el-tag>
             </div>
@@ -1025,7 +1083,7 @@
                       <span class="label">Nguồn đơn:</span>
                       <span class="value">
                         <el-tag :type="getSourceTagType(selectedRequest.source)" size="small" effect="dark">
-                          {{ selectedRequest.source || 'PORTAL' }}
+                          {{ getSourceLabel(selectedRequest.source || 'PORTAL') }}
                         </el-tag>
                       </span>
                     </div>
@@ -1138,7 +1196,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, reactive, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { Location, Refresh, Search, Bicycle, OfficeBuilding, Phone, Plus, Check, Close, User, Box, DocumentAdd, List } from '@element-plus/icons-vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
 import api from '@/api/axios';
 import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
 import { getPickupImages } from '@/utils/imageHelpers';
@@ -1247,6 +1305,11 @@ const formatCurrencyManual = (amount) => {
 const formatDate = (val) => {
   return formatVietnamDateTime(val);
 };
+const isNewRequest = (createdAt) => {
+  if (!createdAt) return false;
+  const diffMs = new Date().getTime() - new Date(createdAt).getTime();
+  return diffMs > 0 && diffMs < 2 * 60 * 60 * 1000; // 2 hours
+};
 
 const getSourceTagType = (source) => {
   switch (source) {
@@ -1255,6 +1318,16 @@ const getSourceTagType = (source) => {
     case 'CSKH': return 'primary';
     case 'ADMIN': return 'info';
     default: return 'info';
+  }
+};
+
+const getSourceLabel = (source) => {
+  switch (source) {
+    case 'PORTAL': return 'CỔNG KHÁCH HÀNG';
+    case 'HOTLINE': return 'HOTLINE';
+    case 'CSKH': return 'CSKH';
+    case 'ADMIN': return 'ADMIN';
+    default: return source || 'N/A';
   }
 };
 
@@ -1643,12 +1716,52 @@ const groupRequestsByCustomer = (requests) => {
     groups[key].total_weight += Number(req.est_weight || 0);
     groups[key].total_quantity += Number(req.est_quantity || 0);
   });
-  return Object.values(groups);
+  
+  // Sort requests inside each group by created_at DESC (newest first)
+  Object.values(groups).forEach(g => {
+    g.requests.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  });
+
+  // Sort groups by the newest request's created_at DESC
+  return Object.values(groups).sort((a, b) => {
+    const timeA = Math.max(...a.requests.map(r => new Date(r.created_at || 0).getTime()));
+    const timeB = Math.max(...b.requests.map(r => new Date(r.created_at || 0).getTime()));
+    return timeB - timeA;
+  });
 };
 
 const groupedPending = computed(() => groupRequestsByCustomer(filteredPending.value));
 const groupedDispatch = computed(() => groupRequestsByCustomer(filteredDispatch.value));
 const groupedReceived = computed(() => groupRequestsByCustomer(filteredReceived.value));
+
+const receivedCurrentPage = ref(1);
+const receivedPageSize = ref(10);
+const innerTableCurrentPages = ref({});
+
+const getPaginatedRequests = (row) => {
+  const key = row.group_key || 'default';
+  if (innerTableCurrentPages.value[key] === undefined) {
+    innerTableCurrentPages.value[key] = 1;
+  }
+  const currentPage = innerTableCurrentPages.value[key];
+  const pageSize = 5;
+  const start = (currentPage - 1) * pageSize;
+  return row.requests.slice(start, start + pageSize);
+};
+
+const paginatedGroupedReceived = computed(() => {
+  const start = (receivedCurrentPage.value - 1) * receivedPageSize.value;
+  const end = start + receivedPageSize.value;
+  return groupedReceived.value.slice(start, end);
+});
+
+watch([searchReceived, selectedHubId], () => {
+  receivedCurrentPage.value = 1;
+});
+
+watch(receivedRequests, () => {
+  innerTableCurrentPages.value = {};
+});
 
 const openGroupAssignShipperDialog = (group) => {
   multipleSelection.value = group.requests;
@@ -2308,8 +2421,20 @@ const handleReceivedRequestSelectionChange = (group, selection) => {
 };
 
 const handleRealtimeEvent = (e) => {
-  const { event } = e.detail;
+  const { event, payload } = e.detail;
   if (event && event.startsWith('pickup.')) {
+    const targetEvents = ['pickup.created', 'pickup.bulk_mail_created', 'pickup.created_by_admin', 'pickup.hub_accepted'];
+    if (targetEvents.includes(event)) {
+      const code = payload?.request_code || payload?.code || '';
+      const customer = payload?.customer_name || payload?.sender_name || 'Khách hàng';
+      ElNotification({
+        title: 'Có đơn pickup mới',
+        message: `Yêu cầu lấy hàng mới từ ${customer} (mã: ${code}) đã vào hàng chờ gán bưu tá!`,
+        type: 'success',
+        duration: 8000,
+        position: 'top-right'
+      });
+    }
     handleRefresh();
   }
 };

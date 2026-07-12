@@ -466,6 +466,14 @@ def setup_roles_v2(
                 "notification_view": True,
                 "report_view": True,
             }},
+            {"role_id": 9, "role_name": "SUB_ADMIN", "permissions": {
+                "hub_manage": True,
+                "assign_shipper": True,
+                "warehouse_ops": True,
+                "view_report": True,
+                "report_view": True,
+                "hub_switch": True,
+            }},
         ]
 
         crud_auth.upsert_roles_bulk(db, roles_data)

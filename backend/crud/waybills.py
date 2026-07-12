@@ -538,9 +538,9 @@ def customer_pickup_payload(request: models.BookingRequests, waybill: models.Way
         "product_type_label": get_product_type_definition(request.product_type or "PARCEL")["label"],
         
         # Sender Info
-        "sender_name": waybill.sender_name,
-        "sender_phone": waybill.sender_phone,
-        "sender_address": waybill.sender_address,
+        "sender_name": waybill.sender_name or (request.customer.company_name if request.customer else None) or (request.customer.transaction_name if getattr(request.customer, 'transaction_name', None) else None),
+        "sender_phone": waybill.sender_phone or request.sender_phone or (request.customer.phone_number if request.customer else None),
+        "sender_address": waybill.sender_address or request.pickup_address or (request.customer.address if request.customer else None),
         "sender_province_name": waybill.sender_province_name,
         "sender_district_name": waybill.sender_district_name,
         "sender_ward_name": waybill.sender_ward_name,

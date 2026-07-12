@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/pricing", tags=["Pricing System"])
 
 # --- HÀM GÁC CỔNG DÀNH RIÊNG CHO CHÍNH SÁCH GIÁ ---
 def verify_pricing_edit_access(user: dict):
-    if user.get("role_id") not in [1, 5]: # Chỉ Admin và Kế toán
+    if user.get("actual_role_id") == 9 or user.get("role_id") not in [1, 5]: # Chỉ Admin và Kế toán
         raise HTTPException(status_code=403, detail="Chỉ Admin và Kế toán mới có quyền thiết lập Bảng giá.")
 # --------------------------------------------------
 

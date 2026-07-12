@@ -128,7 +128,7 @@
           <el-table-column type="index" label="STT" width="60" align="center" />
           
           <!-- Mã túi -->
-          <el-table-column prop="bag_code" label="Mã Túi" min-width="170">
+          <el-table-column prop="bag_code" label="Mã Túi" min-width="260">
             <template #default="{ row }">
               <span class="code-badge primary">{{ row.bag_code }}</span>
             </template>
@@ -195,9 +195,9 @@
           </el-table-column>
           
           <!-- Thao tác -->
-          <el-table-column label="Thao tác" width="220" align="center">
+          <el-table-column label="Thao tác" width="280" align="center">
             <template #default="{ row }">
-              <div class="action-btn-group">
+              <div class="action-btn-group" style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap;">
                 <!-- Chi tiết -->
                 <button class="icon-btn edit" @click="viewBagDetails(row)" title="Xem chi tiết & Hành trình">
                   <el-icon><View /></el-icon>
@@ -496,13 +496,13 @@
               <div class="scanner-card">
                 <div class="section-header text-primary">
                   <el-icon><Scan /></el-icon>
-                  <span>Màn hình quét mã vạch</span>
+                  <span>Màn hình nhập mã vận đơn</span>
                 </div>
 
                 <div class="barcode-input-area mb-24">
                   <el-input
                     v-model="scanBarcode"
-                    placeholder="Quét hoặc nhập mã vận đơn tại đây..."
+                    placeholder="Nhập mã vận đơn tại đây..."
                     ref="scanBarcodeRef"
                     @keyup.enter="handleScanWaybill"
                     class="modern-scanner-input"
@@ -511,11 +511,11 @@
                     <template #prefix><el-icon class="scanner-icon"><Scan /></el-icon></template>
                     <template #append>
                        <button class="btn-scan" @click="handleScanWaybill" :disabled="scanLoading">
-                         <span>QUÉT</span>
+                         <span>NHẬP</span>
                        </button>
                     </template>
                   </el-input>
-                  <p class="text-xs text-muted mt-2">Hệ thống hỗ trợ quét liên tục. Nhấn Enter để gửi mã.</p>
+                  <p class="text-xs text-muted mt-2">Hệ thống hỗ trợ nhập liên tục. Nhấn Enter để gửi mã.</p>
                 </div>
 
                 <!-- Alert summary stats for scanner -->
@@ -1080,6 +1080,7 @@ const formatDate = (dateStr) => {
 const getStatusName = (status) => {
   const map = {
     'CREATED': 'Mới tạo',
+    'ASSIGNED': 'Đã gán bưu tá',
     'PICKED': 'Bưu tá đã lấy',
     'INBOUND': 'Đã về kho',
     'OPENED': 'Đã mở túi',
@@ -1093,6 +1094,7 @@ const getStatusName = (status) => {
 const getStatusClass = (status) => {
   const map = {
     'CREATED': 'tag-info',
+    'ASSIGNED': 'tag-warning',
     'PICKED': 'tag-warning',
     'INBOUND': 'tag-success-outline',
     'OPENED': 'tag-warning-outline',

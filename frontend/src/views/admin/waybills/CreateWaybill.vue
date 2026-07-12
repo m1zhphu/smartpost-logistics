@@ -1284,6 +1284,7 @@ const saveWaybill = async () => {
         height: waybillForm.items[0]?.height || 0,
         product_name: combinedNames,
         product_group: waybillForm.items[0]?.product_group || 'PARCEL',
+        service_type: waybillForm.service_type,
         declared_value: totalDeclaredValueCalc.value,
         payment_method: waybillForm.payment_method,
         cod_amount: waybillForm.cod_amount,

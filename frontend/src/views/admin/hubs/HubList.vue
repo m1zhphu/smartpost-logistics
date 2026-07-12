@@ -99,9 +99,9 @@
           style="width: 100%"
         >
           <!-- Mã Bưu cục -->
-          <el-table-column prop="hub_code" label="Mã BC" min-width="120">
+          <el-table-column prop="hub_code" label="Mã BC" min-width="140">
             <template #default="{ row }">
-              <span class="code-text">{{ row.hub_code }}</span>
+              <span class="code-text" style="white-space: nowrap;">{{ row.hub_code }}</span>
             </template>
           </el-table-column>
           

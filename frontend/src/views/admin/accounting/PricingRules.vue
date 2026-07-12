@@ -956,12 +956,21 @@
           </div>
 
           <!-- Add Rule Trigger -->
-          <div class="drawer-action-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div class="drawer-action-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
             <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--sp-text-main);">Quy tắc cước tuyến theo dịch vụ</h4>
-            <button v-if="canEditPricing" class="btn-primary" @click="openDialogForPolicy(selectedPolicy)">
-              <el-icon><Plus /></el-icon> Thêm Tuyến Giá mới
-            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn-secondary" @click="exportToExcel" title="Xuất toàn bộ bảng cước ra Excel" style="display: flex; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--sp-border, #d9d9d9); background: #fff; cursor: pointer; font-weight: 600; font-size: 13px;">
+                <el-icon><Download /></el-icon> Xuất Excel
+              </button>
+              <button v-if="canEditPricing" class="btn-secondary" @click="triggerExcelImport" title="Nhập bảng cước từ Excel" style="display: flex; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--sp-border, #d9d9d9); background: #fff; cursor: pointer; font-weight: 600; font-size: 13px;">
+                <el-icon><Upload /></el-icon> Nhập Excel
+              </button>
+              <button v-if="canEditPricing" class="btn-primary" @click="openDialogForPolicy(selectedPolicy)">
+                <el-icon><Plus /></el-icon> Thêm Tuyến Giá mới
+              </button>
+            </div>
           </div>
+          <input type="file" ref="excelInput" style="display: none;" accept=".xlsx, .xls" @change="importFromExcel" />
 
           <!-- Tabs of Service Types -->
           <el-tabs v-if="selectedPolicyRules.length > 0" v-model="activeDrawerServiceTab" class="drawer-tabs">
@@ -1014,29 +1023,13 @@
                   </template>
                 </el-table-column>
 
-                <el-table-column v-if="canEditPricing" label="Thao tác" min-width="120" align="center">      <template #default="{ row }">
-                    <span class="fw-bold text-dark">{{ formatMoney(row.price) }} đ</span>
-                  </template>
-                </el-table-column>
-
-                <el-table-column label="Trạng thái" width="120" align="center">
-                  <template #default="{ row }">
-                    <el-switch
-                      v-model="row.is_active"
-                      :disabled="!canEditPricing"
-                      @change="toggleRuleStatus(row)"
-                      style="--el-switch-on-color: #05CD99"
-                    />
-                  </template>
-                </el-table-column>
-
                 <el-table-column v-if="canEditPricing" label="Thao tác" width="120" align="center">
                   <template #default="{ row }">
-                    <div class="action-buttons">
-                      <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa">
+                    <div class="action-buttons" style="display: flex; gap: 8px; justify-content: center;">
+                      <button class="icon-btn edit" @click="openDialog(row)" title="Chỉnh sửa" style="padding: 4px; border: none; background: none; cursor: pointer;">
                         <el-icon><Edit /></el-icon>
                       </button>
-                      <button class="icon-btn delete" @click="handleDelete(row)" title="Xóa">
+                      <button class="icon-btn delete" @click="handleDelete(row)" title="Xóa" style="padding: 4px; border: none; background: none; cursor: pointer; color: var(--el-color-danger, #f56c6c);">
                         <el-icon><Delete /></el-icon>
                       </button>
                     </div>
@@ -1063,8 +1056,9 @@ import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { 
   Plus, Edit, Delete, List, Right, Refresh, RefreshRight, LocationFilled, 
   CircleCheck, ScaleToOriginal, Ticket, Setting, Lightning, Van, 
-  MapLocation, Box, Money, Loading, Key
+  MapLocation, Box, Money, Loading, Key, Download, Upload
 } from '@element-plus/icons-vue';
+import * as XLSX from 'xlsx';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
@@ -1808,6 +1802,144 @@ const fetchProvinces = async () => {
   }
 };
 
+const excelInput = ref(null);
+
+const triggerExcelImport = () => {
+  if (excelInput.value) {
+    excelInput.value.value = '';
+    excelInput.value.click();
+  }
+};
+
+const exportToExcel = () => {
+  if (!selectedPolicyRules.value || selectedPolicyRules.value.length === 0) {
+    ElMessage.warning('Không có dữ liệu cước tuyến nào để xuất!');
+    return;
+  }
+
+  const rows = selectedPolicyRules.value.map(rule => ({
+    'Mã quy tắc (Không sửa)': rule.rule_id || '',
+    'Tỉnh đi': getProvinceName(rule.from_province_id) || '',
+    'Tỉnh nhận': getProvinceName(rule.to_province_id) || '',
+    'Phân vùng (Zone)': rule.zone_name || '',
+    'Dịch vụ (CPN/TK/HT)': rule.service_type || 'CPN',
+    'Khối lượng từ (kg)': rule.min_weight !== null ? Number(rule.min_weight) : 0,
+    'Khối lượng đến (kg)': rule.max_weight !== null ? Number(rule.max_weight) : 0,
+    'Đơn giá (VNĐ)': rule.price !== null ? Number(rule.price) : 0,
+    'Kiểu tính giá (FIXED/INCREMENTAL)': rule.pricing_method || 'FIXED',
+    'Mốc cân gốc (kg)': rule.base_weight !== null ? Number(rule.base_weight) : '',
+    'Khối lượng cộng thêm (kg)': rule.increment_weight !== null ? Number(rule.increment_weight) : '',
+    'Giá cộng thêm (VNĐ)': rule.increment_price !== null ? Number(rule.increment_price) : '',
+    'Phụ phí xăng dầu (%)': rule.fuel_surcharge_percent !== null ? Number(rule.fuel_surcharge_percent) : 10,
+    'VAT (%)': rule.vat_percent !== null ? Number(rule.vat_percent) : 8,
+    'Trạng thái (Áp dụng/Tạm dừng)': rule.is_active ? 'Áp dụng' : 'Tạm dừng'
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Quy tắc cước');
+  
+  const filename = `Bang_cuoc_${selectedPolicy.value.policy_code || 'Policy'}_${Date.now()}.xlsx`;
+  XLSX.writeFile(workbook, filename);
+  ElMessage.success('Xuất file Excel thành công!');
+};
+
+const findProvinceIdByName = (name) => {
+  if (!name) return null;
+  const cleanName = name.toString().toLowerCase()
+    .normalize('NFC').trim()
+    .replace(/^(tỉnh|thành phố|tp\.|tp)\s+/i, '')
+    .trim();
+  
+  const found = provinces.value.find(p => {
+    const cleanPName = p.name.toLowerCase()
+      .normalize('NFC').trim()
+      .replace(/^(tỉnh|thành phố|tp\.|tp)\s+/i, '')
+      .trim();
+    return cleanPName === cleanName || cleanPName.includes(cleanName) || cleanName.includes(cleanPName);
+  });
+  return found ? found.id : null;
+};
+
+const importFromExcel = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+      if (jsonData.length === 0) {
+        ElMessage.warning('File Excel trống hoặc không đúng định dạng!');
+        return;
+      }
+
+      ElMessage.info(`Đang xử lý ${jsonData.length} quy tắc cước từ Excel...`);
+      loading.value = true;
+
+      const promises = jsonData.map(async (row, idx) => {
+        const ruleId = row['Mã quy tắc (Không sửa)'];
+        const fromProvinceId = findProvinceIdByName(row['Tỉnh đi']);
+        const toProvinceId = findProvinceIdByName(row['Tỉnh nhận']);
+        const zoneName = row['Phân vùng (Zone)'] || null;
+
+        if (!zoneName && (!fromProvinceId || !toProvinceId)) {
+          throw new Error(`Dòng #${idx + 2}: Thiếu tuyến đường (Tỉnh gửi, nhận hoặc Phân vùng không hợp lệ).`);
+        }
+
+        const payload = {
+          policy_id: selectedPolicy.value.policy_id,
+          from_province_id: fromProvinceId,
+          to_province_id: toProvinceId,
+          zone_name: zoneName,
+          service_type: row['Dịch vụ (CPN/TK/HT)'] || 'CPN',
+          min_weight: Number(row['Khối lượng từ (kg)'] || 0),
+          max_weight: Number(row['Khối lượng đến (kg)'] || 0),
+          price: Number(row['Đơn giá (VNĐ)'] || 0),
+          pricing_method: row['Kiểu tính giá (FIXED/INCREMENTAL)'] || 'FIXED',
+          base_weight: row['Mốc cân gốc (kg)'] !== undefined && row['Mốc cân gốc (kg)'] !== '' ? Number(row['Mốc cân gốc (kg)']) : null,
+          increment_weight: row['Khối lượng cộng thêm (kg)'] !== undefined && row['Khối lượng cộng thêm (kg)'] !== '' ? Number(row['Khối lượng cộng thêm (kg)']) : null,
+          increment_price: row['Giá cộng thêm (VNĐ)'] !== undefined && row['Giá cộng thêm (VNĐ)'] !== '' ? Number(row['Giá cộng thêm (VNĐ)']) : null,
+          fuel_surcharge_percent: Number(row['Phụ phí xăng dầu (%)'] !== undefined ? row['Phụ phí xăng dầu (%)'] : 10),
+          vat_percent: Number(row['VAT (%)'] !== undefined ? row['VAT (%)'] : 8),
+          is_active: row['Trạng thái (Áp dụng/Tạm dừng)'] === 'Tạm dừng' ? false : true
+        };
+
+        if (ruleId) {
+          return api.put(`/api/pricing/rules/${ruleId}`, payload);
+        } else {
+          return api.post('/api/pricing/rules', payload);
+        }
+      });
+
+      const results = await Promise.allSettled(promises);
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected');
+
+      if (succeeded > 0) {
+        ElMessage.success(`Nhập Excel thành công: Đã xử lý ${succeeded}/${jsonData.length} dòng.`);
+      }
+      if (failed.length > 0) {
+        console.error('Lỗi khi nhập một số dòng:', failed);
+        ElMessage.error(`${failed.length} dòng gặp lỗi khi lưu. Chi tiết: ${failed[0].reason?.response?.data?.detail || failed[0].reason?.message || 'Lỗi trùng lặp hoặc sai cấu hình'}`);
+      }
+
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      ElMessage.error(`Lỗi đọc file Excel: ${err.message}`);
+    } finally {
+      loading.value = false;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+};
+
 onMounted(() => {
   fetchData();
   fetchServices(); 
@@ -1818,7 +1950,9 @@ onMounted(() => {
 });
 </script>
 
-<style scoped src="@/styles/admin/accounting/PricingRules.css"></style>
+<style scoped>
+@import '@/styles/admin/accounting/PricingRules.css';
+</style>
 
 <style>
 /* Global CSS overrrides for teleported Element Plus components on Mobile */

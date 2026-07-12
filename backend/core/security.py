@@ -78,10 +78,10 @@ def get_current_user(
     is_hub_admin = user.role_id == 2
     
     selected_hub_id = request.headers.get("X-Selected-Hub-Id")
-    if user.role_id == 1 and selected_hub_id:
+    if user.role_id in (1, 9) and selected_hub_id:
         try:
             primary_hub_id = int(selected_hub_id)
-            # Khi Admin chuyển đổi sang bưu cục cụ thể, cho phép hoạt động với quyền hạn như Hub Admin của bưu cục đó
+            # Khi Admin/Sub-admin chuyển đổi sang bưu cục cụ thể, cho phép hoạt động với quyền hạn như Hub Admin của bưu cục đó
             role_id = 2
             is_hub_admin = True
         except ValueError:
@@ -92,6 +92,7 @@ def get_current_user(
         "user_id": user.user_id,
         "username": user.username,
         "role_id": role_id,
+        "actual_role_id": user.role_id,
         "customer_id": user.customer_id,
         "primary_hub_id": primary_hub_id,
         "permissions": permissions,

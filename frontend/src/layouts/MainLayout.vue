@@ -65,8 +65,8 @@
         </div>
         
         <div class="header-right">
-          <!-- Bộ chuyển đổi bưu cục (Chỉ dành cho Admin) -->
-          <div v-if="isAdmin" class="hub-selector-wrapper" style="margin-right: 16px;">
+          <!-- Bộ chuyển đổi bưu cục (Dành cho Admin và Sub-admin) -->
+          <div v-if="showHubSelector" class="hub-selector-wrapper" style="margin-right: 16px;">
             <el-select
               v-model="selectedHub"
               placeholder="Tất cả bưu cục"
@@ -158,10 +158,16 @@ const { user, isAdmin } = storeToRefs(authStore);
 
 const isSidebarCollapsed = ref(true);
 
+const showHubSelector = computed(() => {
+  const role = user.value?.role_id;
+  return role === 1 || role === 9;
+});
+
 const userRoleLabel = computed(() => {
   if (authStore.isCustomer) return 'Khách hàng';
   if (authStore.isAdmin) return 'Quản trị viên';
   const role = user.value?.role_id;
+  if (role === 9) return 'Phó Quản trị viên (Sub-admin)';
   if (role === 2) return 'Quản lý bưu cục';
   if (role === 3) return 'Nhân viên kho';
   if (role === 4) return 'Bưu tá (Shipper)';
@@ -210,7 +216,7 @@ const handleHubChange = (val) => {
 };
 
 const activeHubDisplay = computed(() => {
-  if (isAdmin.value && selectedHub.value) {
+  if (showHubSelector.value && selectedHub.value) {
     const activeHub = hubList.value.find(h => h.hub_id === selectedHub.value);
     return activeHub ? activeHub.hub_name : (userHubName.value || 'Đang tải...');
   }
@@ -230,7 +236,7 @@ onMounted(async () => {
          if (myHub) userHubName.value = myHub.hub_name;
       }
 
-      if (isAdmin.value) {
+      if (showHubSelector.value) {
         const hubRes = await api.get('/api/hubs');
         hubList.value = hubRes.data || [];
       }
@@ -245,9 +251,9 @@ const menuData = computed(() => {
   const role = user.value?.role_id;
   
   const allMenus = [
-    { id: 'dashboard', icon: Monitor, label: 'Bảng điều khiển', path: '/admin/dashboard', roles: [1, 2, 5, 7] },
+    { id: 'dashboard', icon: Monitor, label: 'Bảng điều khiển', path: '/admin/dashboard', roles: [1, 2, 5, 7, 9] },
     { 
-      id: 'system', icon: Management, label: 'Hệ thống', roles: [1, 2], // Chỉ Admin
+      id: 'system', icon: Management, label: 'Hệ thống', roles: [1, 2, 9], // Chỉ Admin
       children: [
         { title: 'HỆ THỐNG', items: [
           { label: 'Bưu cục', path: '/admin/hubs' },
@@ -256,7 +262,7 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'customer', icon: User, label: 'Khách hàng', roles: [1, 2, 5, 7], // Admin, Manager, Kế toán, CSKH
+      id: 'customer', icon: User, label: 'Khách hàng', roles: [1, 2, 5, 7, 9], // Admin, Manager, Kế toán, CSKH, Sub-admin
       children: [
         { title: 'KHÁCH HÀNG', items: [
           { label: 'Danh sách khách hàng', path: '/admin/customers' },
@@ -267,7 +273,7 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'waybill', icon: Document, label: 'Vận đơn', roles: [1, 2, 3, 7], // Admin, Manager, Kho, CSKH
+      id: 'waybill', icon: Document, label: 'Vận đơn', roles: [1, 2, 3, 7, 9], // Admin, Manager, Kho, CSKH, Sub-admin
       children: [
         { title: 'VẬN ĐƠN', items: [
           { label: 'Tạo mới Vận đơn', path: '/admin/waybills/create' },
@@ -279,7 +285,7 @@ const menuData = computed(() => {
     },
     // { id: 'scan-in', icon: Box, label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in', roles: [1, 2, 3] },
     {
-      id: 'warehouse', icon: Box, label: 'Kho hàng', roles: [1, 2, 3], // Admin, Manager, Kho
+      id: 'warehouse', icon: Box, label: 'Kho hàng', roles: [1, 2, 3, 9], // Admin, Manager, Kho, Sub-admin
       children: [
         { title: 'VẬN HÀNH KHO', items: [
           // { label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in' },
@@ -292,14 +298,14 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'delivery', icon: Location, label: 'Điều phối', roles: [1, 2, 3, 4, 7], // Admin, Manager, Kho, Shipper, CSKH
+      id: 'delivery', icon: Location, label: 'Điều phối', roles: [1, 2, 3, 4, 7, 9], // Admin, Manager, Kho, Shipper, CSKH, Sub-admin
       children: role === 4 ? [
         { title: 'GIAO HÀNG', items: [
           { label: 'Nhiệm vụ của tôi', path: '/admin/delivery/my-tasks' }
         ]}
       ] : [
         { title: 'LẤY HÀNG', items: [
-          ...([1, 2, 7].includes(role) ? [{ label: 'Thêm mới yêu cầu', path: '/admin/delivery/pickup-create' }] : []),
+          ...([1, 2, 7, 9].includes(role) ? [{ label: 'Thêm mới yêu cầu', path: '/admin/delivery/pickup-create' }] : []),
           // Tạm ẩn hai menu con cho luồng gán bưu tá trực tiếp
           // ...([1, 7].includes(role) ? [{ label: 'Chờ xác nhận văn phòng', path: '/admin/delivery/pickup-management?tab=pending' }] : []),
           // { label: 'Chờ bưu cục xác nhận', path: '/admin/delivery/pickup-management?tab=dispatch-hub' },
@@ -312,7 +318,7 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'accounting', icon: Money, label: 'Kế toán', roles: [1, 2, 5], // Admin, Manager, Kế toán
+      id: 'accounting', icon: Money, label: 'Kế toán', roles: [1, 2, 5, 9], // Admin, Manager, Kế toán, Sub-admin
       children: [
         { title: 'KẾ TOÁN', items: [
           { label: 'Tạo Bảng Kê', path: '/admin/accounting/statements' },
@@ -322,7 +328,7 @@ const menuData = computed(() => {
       ]
     },
     {
-      id: 'cskh', icon: Service, label: 'CSKH', roles: [1, 2, 3, 5, 7], // Thêm Role 7 (CSKH)
+      id: 'cskh', icon: Service, label: 'CSKH', roles: [1, 2, 3, 5, 7, 9], // Thêm Role 7 (CSKH)
       children: [
         { title: 'TRUNG TÂM CSKH', items: [
           { label: 'Khách hàng tôi quản lý', path: '/admin/customers?mine=1' },

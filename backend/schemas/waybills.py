@@ -27,6 +27,7 @@ class WaybillCreate(BaseModel):
     # ĐÃ BỔ SUNG: Trường này bắt buộc phải có để Backend nhận tiền từ Frontend gửi xuống
     shipping_fee: float = Field(default=0.0, description="Phí vận chuyển tính từ Frontend")
     old_province: Optional[str] = None
+    is_internal: Optional[bool] = Field(default=False, description="Đơn nội bộ")
 
     # Bổ sung phục vụ Tạo Bill thông minh
     sender_name: Optional[str] = Field(default=None, description="Tên người gửi thực tế")

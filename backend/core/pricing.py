@@ -210,7 +210,16 @@ def calculate_sla_status(waybill: models.Waybills) -> Tuple[str, Optional[float]
 
     if time_diff < 0:
         return "OVERDUE", 0.0
-    if remaining_hours <= 4:
+
+    # Ngưỡng cảnh báo sắp trễ linh hoạt theo dịch vụ
+    service = str(getattr(waybill, 'service_type', 'STANDARD') or 'STANDARD').upper()
+    warning_threshold = 4.0  # Mặc định 4 tiếng
+    if service in ('HT', 'FAST', 'EXPRESS'):
+        warning_threshold = 1.0  # Hỏa tốc chỉ cảnh báo khi còn <= 1 tiếng
+    elif service in ('CPN', 'EXPRESS_STANDARD'):
+        warning_threshold = 3.0  # CPN cảnh báo khi còn <= 3 tiếng
+
+    if remaining_hours <= warning_threshold:
         return "WARNING", remaining_hours
     return "ON_TIME", remaining_hours
 

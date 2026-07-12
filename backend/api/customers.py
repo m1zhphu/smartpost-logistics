@@ -15,7 +15,7 @@ def _require_customer_view_role(current_user: dict):
         raise HTTPException(status_code=403, detail="Không có quyền xem khách hàng")
 
 def _require_customer_manage_role(current_user: dict):
-    if current_user.get("role_id") not in [1, 2, 7]:
+    if current_user.get("actual_role_id") == 9 or current_user.get("role_id") not in [1, 2, 7]:
         raise HTTPException(status_code=403, detail="Không có quyền quản lý khách hàng")
 
 def _validate_staff_in_charge(db: Session, staff_id: int):
@@ -294,7 +294,7 @@ def list_customers(
     """API lấy danh sách khách hàng (Shop) với đầy đủ thông tin để hiển thị FE"""
     _require_customer_view_role(current_user)
     # 1. Lấy dữ liệu thô từ CRUD
-    effective_staff_id = current_user.get("user_id") if mine else staff_in_charge_id
+    effective_staff_id = current_user.get("user_id") if (mine or current_user.get("role_id") == 7) else staff_in_charge_id
 
     customers = crud_customers.get_all_customers_with_bank(
         db,

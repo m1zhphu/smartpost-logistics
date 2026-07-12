@@ -19,7 +19,7 @@
                       <el-icon class="mr-1"><Close /></el-icon>Xóa mục đã chọn ({{ selectedDrafts.length }})
                     </el-button>
                     <el-button v-if="draftsList.length > 0" type="success" :disabled="selectedDrafts.length === 0" @click="submitSelectedDrafts" :loading="submitLoading">
-                      <el-icon class="mr-1"><Upload /></el-icon>Gửi đơn đã chọn ({{ selectedDrafts.length }})
+                      <el-icon class="mr-1"><Upload /></el-icon>Gửi pickup đơn đã chọn ({{ selectedDrafts.length }})
                     </el-button>
                   </div>
                 </div>

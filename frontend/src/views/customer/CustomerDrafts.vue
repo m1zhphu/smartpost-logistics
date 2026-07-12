@@ -20,7 +20,7 @@
                 <el-button type="primary" class="mt-3" @click="router.push('/customer/create')">Tạo đơn mới</el-button>
               </div>
 
-              <el-table v-else :data="savedDraftsList" stripe class="modern-table">
+              <el-table v-else :data="paginatedSavedDrafts" stripe class="modern-table">
                 <el-table-column label="Thời gian lưu" width="160">
                   <template #default="{ row }">
                     <span class="text-xs fw-bold">{{ formatDate(row.created_at) }}</span>
@@ -49,6 +49,16 @@
                   </template>
                 </el-table-column>
               </el-table>
+
+              <div v-if="savedDraftsList.length > draftsPageSize" class="flex justify-end mt-4" style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                <el-pagination
+                  v-model:current-page="draftsCurrentPage"
+                  v-model:page-size="draftsPageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  :total="savedDraftsList.length"
+                />
+              </div>
             </el-card>
           </div>
         </el-col>
@@ -155,6 +165,21 @@ const simulateLoading = ref(false);
 const pickupsList = ref([]);
 const draftsList = ref([]);
 const savedDraftsList = ref([]);
+const draftsCurrentPage = ref(1);
+const draftsPageSize = ref(10);
+
+const paginatedSavedDrafts = computed(() => {
+  const start = (draftsCurrentPage.value - 1) * draftsPageSize.value;
+  const end = start + draftsPageSize.value;
+  return savedDraftsList.value.slice(start, end);
+});
+
+watch(() => savedDraftsList.value.length, () => {
+  const maxPage = Math.ceil(savedDraftsList.value.length / draftsPageSize.value) || 1;
+  if (draftsCurrentPage.value > maxPage) {
+    draftsCurrentPage.value = maxPage;
+  }
+});
 
 // Available Extra Services List
 const availableServices = ref([]);

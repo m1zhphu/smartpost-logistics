@@ -27,6 +27,10 @@ def seed_data():
             {
                 "name": "ACCOUNTANT",
                 "perms": {"accounting_manage": True, "report_view": True, "pricing_manage": True}
+            },
+            {
+                "name": "SUB_ADMIN",
+                "perms": {"hub_manage": True, "assign_shipper": True, "warehouse_ops": True, "view_report": True, "report_view": True, "hub_switch": True}
             }
         ]
 

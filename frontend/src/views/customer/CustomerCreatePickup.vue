@@ -448,9 +448,9 @@
                     <el-button @click="addToQueue" type="warning" plain size="large">
                       <el-icon class="mr-1"><FolderAdd /></el-icon>Đưa vào hàng chờ
                     </el-button>
-                    <el-button @click="submitPickupRequest" type="primary" size="large" :loading="submitLoading">
+                    <!-- <el-button @click="submitPickupRequest" type="primary" size="large" :loading="submitLoading">
                       <el-icon class="mr-1"><Upload /></el-icon>Gửi pickup
-                    </el-button>
+                    </el-button> -->
                   </div>
                 </el-form>
               </el-col>

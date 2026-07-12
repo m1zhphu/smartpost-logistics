@@ -29,7 +29,7 @@
             </template>
 
             <!-- Table List of Saved Recipients -->
-            <el-table :data="filteredRecipients" style="width: 100%" v-loading="loading">
+            <el-table :data="paginatedRecipients" style="width: 100%" v-loading="loading">
               <el-table-column type="index" label="STT" width="60" align="center" />
               <el-table-column prop="name" label="Họ và tên" min-width="150" sortable>
                 <template #default="{ row }">
@@ -61,6 +61,16 @@
                 </div>
               </template>
             </el-table>
+
+            <div v-if="filteredRecipients.length > pageSize" class="flex justify-end mt-4" style="margin-top: 16px; display: flex; justify-content: flex-end;">
+              <el-pagination
+                v-model:current-page="currentPage"
+                v-model:page-size="pageSize"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="filteredRecipients.length"
+              />
+            </div>
           </el-card>
         </el-col>
       </el-row>
@@ -121,7 +131,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted } from 'vue';
+import { ref, computed, reactive, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Notebook, Search, Plus, Edit, Delete, FolderOpened } from '@element-plus/icons-vue';
@@ -171,6 +181,19 @@ const filteredRecipients = computed(() => {
     (item.name && item.name.toLowerCase().includes(query)) ||
     (item.phone && item.phone.includes(query))
   );
+});
+
+const currentPage = ref(1);
+const pageSize = ref(10);
+
+const paginatedRecipients = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return filteredRecipients.value.slice(start, end);
+});
+
+watch(searchQuery, () => {
+  currentPage.value = 1;
 });
 
 // Load provinces, districts, and wards

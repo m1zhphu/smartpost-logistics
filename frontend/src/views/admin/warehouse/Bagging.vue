@@ -117,7 +117,7 @@
               class="modern-table compact-table borderless"
               height="550px"
             >
-              <el-table-column prop="waybill_code" label="Mã Vận đơn" width="150">
+              <el-table-column prop="waybill_code" label="Mã Vận đơn" width="160">
                  <template #default="{ row }">
                    <div style="display: flex; flex-direction: column; gap: 4px;">
                      <span class="code-badge default">{{ row.waybill_code }}</span>
@@ -125,6 +125,13 @@
                      <span v-else-if="row.verify_status === 'MISMATCH'" class="verify-badge mismatch"><el-icon><WarningFilled /></el-icon> Sai lệch</span>
                      <span v-else class="verify-badge pending"><el-icon><Clock /></el-icon> Chờ duyệt</span>
                    </div>
+                 </template>
+              </el-table-column>
+              
+              <!-- Khách hàng -->
+              <el-table-column label="Khách hàng" width="150" show-overflow-tooltip>
+                 <template #default="{ row }">
+                   <span class="fw-semibold text-dark" style="font-size: 11px;">{{ row.customer_name || 'Khách lẻ' }}</span>
                  </template>
               </el-table-column>
               
@@ -159,16 +166,16 @@
           <div class="content-card compact-card scanner-container">
              <el-input 
                 v-model="barcode" 
-                placeholder="QUÉT MÃ VẬN ĐƠN VÀO ĐÂY..." 
+                placeholder="NHẬP MÃ VẬN ĐƠN VÀO ĐÂY..." 
                 ref="barcodeRef"
                 :disabled="!isBagLocked || loading"
                 @keyup.enter="handleScan"
                 class="modern-scanner-input"
              >
-                <template #prefix><el-icon class="scanner-icon"><Scan /></el-icon></template>
+                <template #prefix><el-icon class="scanner-icon"><Edit /></el-icon></template>
                 <template #append>
                    <button class="btn-scan" @click="handleScan" :disabled="!isBagLocked || loading">
-                     <span>QUÉT</span>
+                     <span>KIỂM TRA</span>
                    </button>
                 </template>
              </el-input>
@@ -176,7 +183,7 @@
              <!-- Overlay for un-locked state -->
              <div v-if="!isBagLocked" class="lock-overlay">
                 <el-icon class="lock-icon"><Lock /></el-icon>
-                <span>Vui lòng chọn Đích đến & Bắt đầu đóng túi trước khi quét</span>
+                <span>Vui lòng chọn Đích đến & Bắt đầu đóng túi trước khi nhập</span>
              </div>
           </div>
 

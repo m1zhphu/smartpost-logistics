@@ -78,7 +78,7 @@
               <el-table-column label="TRẠNG THÁI" width="120">
                 <template #default="{ row }">
                   <el-tag :type="row.status === 'DELIVERED' ? 'success' : 'info'" size="small">
-                    {{ row.status }}
+                    {{ getWaybillStatusLabel(row.status) }}
                   </el-tag>
                 </template>
               </el-table-column>
@@ -198,7 +198,7 @@
             <div class="stmt-info">
               <div class="code-row">
                 <span class="code">{{ stmt.statement_code }}</span>
-                <span class="badge" :class="stmt.status.toLowerCase()">{{ stmt.status }}</span>
+                <span class="badge" :class="stmt.status.toLowerCase()">{{ getStatementStatusLabel(stmt.status) }}</span>
               </div>
               <div class="meta">
                 <span>Loại: <b>{{ stmt.type }}</b></span>
@@ -308,14 +308,34 @@ import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { 
-  Search, Refresh, Tickets, Download, 
-  CircleCheck, Wallet, Money, Collection, Printer,
-  Edit
-} from '@element-plus/icons-vue';
+import { Download, Refresh, Delete, Tickets, Money, CircleCheck, Printer, Wallet } from '@element-plus/icons-vue';
+import { formatCurrencyManual, formatVietnamDateTime } from '@/utils/formatters';
 
-// --- STATE ---
-const route = useRoute();
+const getWaybillStatusLabel = (status) => {
+  const map = {
+    'PENDING_OCR': 'Chờ OCR',
+    'CREATED': 'Mới tạo',
+    'PICKED_PENDING_VERIFY': 'Chờ duyệt OCR',
+    'IN_HUB': 'Trong kho',
+    'DELIVERING': 'Đang giao',
+    'DELIVERED': 'Giao xong',
+    'SETTLED': 'Đối soát xong',
+    'CANCELLED': 'Đã hủy'
+  };
+  return map[status] || status;
+};
+
+const getStatementStatusLabel = (status) => {
+  const map = {
+    'DRAFT': 'Bản nháp',
+    'CONFIRMED': 'Đã xác nhận',
+    'PAID': 'Đã thanh toán',
+    'CANCELLED': 'Đã hủy'
+  };
+  return map[status] || status;
+};
+
+const dateRange = ref([]);
 const loading = ref(false);
 const creating = ref(false);
 const waybills = ref([]);

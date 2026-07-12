@@ -48,7 +48,7 @@
               <el-table-column prop="from_hub_name" label="Nơi Gửi" min-width="110" show-overflow-tooltip />
               <el-table-column prop="to_hub_name" label="Nơi Nhận" min-width="110" show-overflow-tooltip />
 
-              <el-table-column label="Thao Tác" width="90" align="center">
+              <el-table-column label="Thao Tác" width="120" align="center">
                 <template #default="{ row }">
                   <el-button type="primary" size="small" plain @click="viewManifestDetail(row.manifest_code)">
                     Xem chi tiết
@@ -127,7 +127,7 @@
                 
                 <div class="divider"></div>
                 <div class="flex-end gap-2">
-                  <el-button type="info" plain icon="Printer" @click="printManifest">In Manifest</el-button>
+                  <el-button type="info" plain icon="Printer" @click="printManifest">In bản kê</el-button>
                 </div>
               </div>
 
@@ -151,7 +151,7 @@
                 <el-table-column prop="status" label="Trạng Thái Túi" width="130" align="center">
                   <template #default="{ row }">
                     <el-tag :type="getBagStatusType(row.status)" effect="light">
-                      {{ row.status }}
+                      {{ getBagStatusLabel(row.status) }}
                     </el-tag>
                   </template>
                 </el-table-column>
@@ -237,6 +237,16 @@ const getBagStatusType = (status) => {
   return map[status] || 'primary';
 };
 
+const getBagStatusLabel = (status) => {
+  const map = {
+    'CREATED': 'Mới tạo',
+    'IN_TRANSIT': 'Đang luân chuyển',
+    'ARRIVED': 'Đã đến',
+    'UNLOADED': 'Đã dỡ hàng'
+  };
+  return map[status] || status;
+};
+
 const printManifest = () => {
   if (!manifestDetail.value) return;
   const printWindow = window.open('', '_blank');
@@ -249,7 +259,7 @@ const printManifest = () => {
         <td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${bag.bag_code}</td>
         <td style="border: 1px solid #ddd; padding: 8px;">${bag.dest_hub_name || ''}</td>
         <td style="text-align: center; border: 1px solid #ddd; padding: 8px;">${bag.total_waybills || 0}</td>
-        <td style="text-align: center; border: 1px solid #ddd; padding: 8px; font-weight: 600;">${bag.status}</td>
+        <td style="text-align: center; border: 1px solid #ddd; padding: 8px; font-weight: 600;">${getBagStatusLabel(bag.status)}</td>
       </tr>
     `;
   });

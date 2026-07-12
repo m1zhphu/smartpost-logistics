@@ -3,11 +3,16 @@
   min-height: 100vh;
   padding: 24px;
   font-family: 'Plus Jakarta Sans', sans-serif;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .portal-container {
   max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .portal-header {

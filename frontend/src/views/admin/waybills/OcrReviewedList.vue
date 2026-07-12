@@ -99,7 +99,7 @@
         </el-table-column>
         <el-table-column label="OCR" width="150">
           <template #default="{ row }">
-            <el-tag :type="row.ocr_status === 'REVIEW' ? 'success' : 'warning'">{{ row.ocr_status }}</el-tag>
+            <el-tag :type="row.ocr_status === 'REVIEW' ? 'success' : 'warning'">{{ getOcrStatusLabel(row.ocr_status) }}</el-tag>
             <div v-if="row.missing_fields?.length" class="missing">{{ row.missing_fields.join(', ') }}</div>
           </template>
         </el-table-column>
@@ -143,6 +143,16 @@ import { formatVietnamDateTime } from '@/utils/dateTime';
 
 const router = useRouter();
 const loading = ref(false);
+const getOcrStatusLabel = (status) => {
+  const map = {
+    'REVIEW': 'Chờ duyệt',
+    'PENDING': 'Chờ xử lý',
+    'VERIFIED': 'Đã duyệt',
+    'MISMATCH': 'Sai lệch'
+  };
+  return map[status] || status;
+};
+
 const rows = ref([]);
 const customers = ref([]);
 const hubs = ref([]);

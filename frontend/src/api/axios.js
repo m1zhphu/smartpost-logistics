@@ -233,6 +233,18 @@ api.interceptors.response.use(
     const isAuthInvalid = error.response?.headers?.['x-auth-invalid'] === '1';
     const requestUrl = error.config?.url || '';
     const isLoginRequest = requestUrl.includes('/api/auth/login');
+    
+    // Xử lý thông báo phân quyền 403 thân thiện
+    if (status === 403) {
+      const message = error.response?.data?.detail || 'Tài khoản của bạn không được cấp quyền thực hiện hành động này.';
+      ElMessage.warning({
+        message: message,
+        type: 'warning',
+        duration: 4000
+      });
+      return Promise.reject(error);
+    }
+
     if (!isLoginRequest && (status === 401 || isAuthInvalid) && !authInvalidHandled) {
       authInvalidHandled = true;
       const authStore = useAuthStore();

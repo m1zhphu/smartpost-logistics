@@ -1751,7 +1751,12 @@ const getWaybillStatusLabel = (status) => {
     case 'IN_TRANSIT': return 'Đang luân chuyển';
     case 'DELIVERING': return 'Đang giao hàng';
     case 'DELIVERED': return 'Giao thành công';
+    case 'DELIVERY_FAILED': return 'Giao thất bại';
+    case 'RETURNING': return 'Đang chuyển hoàn';
     case 'RETURNED': return 'Đã chuyển hoàn';
+    case 'CANCELLED': return 'Đã hủy đơn';
+    case 'PENDING_OCR': return 'Chờ xử lý thông tin';
+    case 'SETTLED': return 'Đã đối soát';
     default: return status || 'Chờ xử lý';
   }
 };
@@ -1765,7 +1770,12 @@ const getWaybillStatusType = (status) => {
     case 'PENDING_PICKUP': return 'info';
     case 'DELIVERING': return 'primary';
     case 'DELIVERED': return 'success';
+    case 'DELIVERY_FAILED': return 'danger';
+    case 'RETURNING': return 'warning';
     case 'RETURNED': return 'danger';
+    case 'CANCELLED': return 'danger';
+    case 'PENDING_OCR': return 'warning';
+    case 'SETTLED': return 'success';
     default: return 'info';
   }
 };

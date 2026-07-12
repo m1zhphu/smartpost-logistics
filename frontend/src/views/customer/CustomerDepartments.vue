@@ -30,10 +30,12 @@
                         <strong class="text-dark">{{ row.name }}</strong>
                       </template>
                     </el-table-column>
-                    <el-table-column label="Thao tác" width="140" align="center">
+                    <el-table-column label="Thao tác" min-width="160" align="center">
                       <template #default="{ row }">
-                        <el-button type="primary" size="small" link @click="openEditDialog(row)">Sửa</el-button>
-                        <el-button type="danger" size="small" link @click="deleteDepartment(row.id)">Xóa</el-button>
+                        <div style="display: flex; justify-content: center; gap: 8px; align-items: center;">
+                          <el-button type="primary" size="small" link @click="openEditDialog(row)">Sửa</el-button>
+                          <el-button type="danger" size="small" link @click="deleteDepartment(row.id)">Xóa</el-button>
+                        </div>
                       </template>
                     </el-table-column>
                   </el-table>
@@ -128,58 +130,70 @@
               </div>
             </template>
 
-            <el-table :data="filteredPickups" v-loading="listLoading" stripe class="modern-table" style="width: 100%">
-              <el-table-column prop="request_code" label="Mã Yêu Cầu" width="140">
-                <template #default="{ row }">
-                  <span class="code-badge warning">{{ row.request_code }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="waybill_code" label="Mã Vận Đơn" width="140">
-                <template #default="{ row }">
-                  <span class="code-badge success">{{ row.waybill_code || '---' }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column label="Ngày tạo" width="150">
-                <template #default="{ row }">
-                  <span class="text-xs">{{ formatDate(row.created_at) }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column label="Phòng ban" width="140">
-                <template #default="{ row }">
-                  <el-tag size="small" :type="row.parsedDept ? 'primary' : 'info'">
-                    {{ row.parsedDept || 'Chưa gán' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="Người nhận" min-width="160" show-overflow-tooltip>
-                <template #default="{ row }">
-                  <div v-if="row.pickup_mode === 'BULK_MAIL'" class="text-xs text-muted">
-                    Hàng loạt ({{ row.actual_quantity || row.est_quantity || 0 }} thư)
-                  </div>
-                  <div v-else>
-                    <div class="fw-bold text-xs">{{ row.receiver_name || '---' }}</div>
-                    <div class="text-xs text-muted">{{ row.receiver_phone || '---' }}</div>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column label="Trạng thái" width="140" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getPickupStatusType(row.pickup_status)" size="small">
-                    {{ getPickupStatusLabel(row.pickup_status) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="Cước phí" width="140" align="right">
-                <template #default="{ row }">
-                  <div v-if="row.price_status === 'FINALIZED' || row.price_status === 'ADJUSTED'">
-                    <strong class="text-success">{{ (row.final_total_amount || 0).toLocaleString() }}đ</strong>
-                  </div>
-                  <div v-else>
-                    <span class="text-primary">{{ (row.estimated_total_amount || 0).toLocaleString() }}đ</span>
-                  </div>
-                </template>
-              </el-table-column>
-            </el-table>
+            <div class="table-scroll-container">
+              <el-table :data="paginatedPickups" v-loading="listLoading" stripe class="modern-table" style="width: 100%; min-width: 1100px;" table-layout="auto">
+                <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="180">
+                  <template #default="{ row }">
+                    <span class="code-badge warning">{{ row.request_code }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="waybill_code" label="Mã Vận Đơn" min-width="180">
+                  <template #default="{ row }">
+                    <span class="code-badge success">{{ row.waybill_code || '---' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Ngày tạo" min-width="150">
+                  <template #default="{ row }">
+                    <span class="text-xs">{{ formatDate(row.created_at) }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Phòng ban" min-width="140">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="row.parsedDept ? 'primary' : 'info'">
+                      {{ row.parsedDept || 'Chưa gán' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Người nhận" min-width="180" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <div v-if="row.pickup_mode === 'BULK_MAIL'" class="text-xs text-muted">
+                      Hàng loạt ({{ row.actual_quantity || row.est_quantity || 0 }} thư)
+                    </div>
+                    <div v-else>
+                      <div class="fw-bold text-xs">{{ row.receiver_name || '---' }}</div>
+                      <div class="text-xs text-muted">{{ row.receiver_phone || '---' }}</div>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Trạng thái" min-width="140" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="getPickupStatusType(row.pickup_status)" size="small">
+                      {{ getPickupStatusLabel(row.pickup_status) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Cước phí" min-width="140" align="right">
+                  <template #default="{ row }">
+                    <div v-if="row.price_status === 'FINALIZED' || row.price_status === 'ADJUSTED'">
+                      <strong class="text-success">{{ (row.final_total_amount || 0).toLocaleString() }}đ</strong>
+                    </div>
+                    <div v-else>
+                      <span class="text-primary">{{ (row.estimated_total_amount || 0).toLocaleString() }}đ</span>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <div class="flex justify-end mt-4">
+              <el-pagination
+                v-model:current-page="currentPage"
+                v-model:page-size="pageSize"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="filteredPickups.length"
+              />
+            </div>
           </el-card>
 
         </el-col>
@@ -215,7 +229,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { Collection, Plus, TrendCharts, Refresh, Search } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
@@ -446,6 +460,19 @@ const filteredPickups = computed(() => {
   });
 });
 
+const currentPage = ref(1);
+const pageSize = ref(10);
+
+const paginatedPickups = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return filteredPickups.value.slice(start, end);
+});
+
+watch(filterDeptName, () => {
+  currentPage.value = 1;
+});
+
 // Format dates
 const formatDate = (val) => {
   if (!val) return '---';
@@ -649,5 +676,15 @@ onMounted(() => {
 }
 .italic {
   font-style: italic;
+}
+.table-scroll-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+}
+.mt-4 {
+  margin-top: 16px;
 }
 </style>
