@@ -829,6 +829,11 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
         joinedload(models.Waybills.request).joinedload(models.BookingRequests.customer_department),
     ).filter(models.Waybills.is_deleted == False)
 
+    if hasattr(filters, 'start_date') and filters.start_date:
+        query = query.filter(models.Waybills.requested_pickup_time >= filters.start_date)
+    if hasattr(filters, 'end_date') and filters.end_date:
+        query = query.filter(models.Waybills.requested_pickup_time <= filters.end_date)
+
     if cskh_id:
         assigned_customer_ids = db.query(models.Customers.customer_id).filter(models.Customers.staff_in_charge_id == cskh_id)
         query = query.filter(models.Waybills.customer_id.in_(assigned_customer_ids))
@@ -855,6 +860,10 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
     # Lọc theo Khách hàng (Quan trọng cho Accounting)
     if hasattr(filters, 'customer_id') and filters.customer_id:
         query = query.filter(models.Waybills.customer_id == filters.customer_id)
+
+    # Lọc theo Phương thức thanh toán (SENDER_DEBT, SENDER_PAY, RECEIVER_PAY)
+    if hasattr(filters, 'payment_method') and filters.payment_method:
+        query = query.filter(models.Waybills.payment_method == filters.payment_method)
         
     # Logic "Bỏ qua đơn đã lập bảng kê" (Theo yêu cầu Sếp)
     # Nếu đang tìm kiếm đơn để lập bảng kê (thường lọc theo status DELIVERED/RETURNED)
@@ -878,6 +887,11 @@ def get_waybills_with_filters(db: Session, filters: WaybillFilter, current_hub_i
             query = query.filter(models.Waybills.status.in_([
                 WaybillStatus.PICKED_PENDING_VERIFY,
                 WaybillStatus.VERIFY_ERROR
+            ]))
+        elif filters.status == WaybillStatus.DELIVERED:
+            query = query.filter(models.Waybills.status.in_([
+                WaybillStatus.DELIVERED,
+                WaybillStatus.SETTLED
             ]))
         else:
             query = query.filter(models.Waybills.status == filters.status)

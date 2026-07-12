@@ -91,10 +91,24 @@
                   </template>
                 </el-table-column>
 
-                <!-- COD Phải thu -->
+                <!-- Tiền COD thu hộ -->
+                <el-table-column label="Tiền COD thu hộ" min-width="140" align="right">
+                  <template #default="{ row }">
+                    <span class="text-danger fw-bold">{{ formatMoney(row.expected_cod) }} đ</span>
+                  </template>
+                </el-table-column>
+
+                <!-- Tiền cước mặt -->
+                <el-table-column label="Tiền cước mặt" min-width="140" align="right">
+                  <template #default="{ row }">
+                    <span class="text-primary fw-bold">{{ formatMoney(row.expected_fee) }} đ</span>
+                  </template>
+                </el-table-column>
+
+                <!-- Hệ thống yêu cầu -->
                 <el-table-column label="Hệ thống yêu cầu" min-width="160" align="right">
                   <template #default="{ row }">
-                    <span class="amount-expected">{{ formatMoney(row.expected_cod) }} đ</span>
+                    <span class="amount-expected fw-bold">{{ formatMoney(row.total_expected_cash) }} đ</span>
                   </template>
                 </el-table-column>
 
@@ -120,7 +134,7 @@
                     <button 
                       class="btn-primary w-full justify-center fw-800" 
                       @click="confirmShipper(row)" 
-                      :disabled="row.confirming || (row.expected_cod === 0 && row.delivered_count === 0)"
+                      :disabled="row.confirming || (row.total_expected_cash === 0 && row.delivered_count === 0)"
                     >
                       <el-icon class="is-loading mr-1" v-if="row.confirming"><Loading /></el-icon>
                       <span>CHỐT CA</span>
@@ -154,7 +168,21 @@
               
               <div class="stat-box">
                 <span class="stat-label">Tổng COD chờ thu:</span>
-                <span class="stat-value text-danger">{{ formatMoney(totalExpected) }} <span class="text-sm fw-500">đ</span></span>
+                <span class="stat-value text-danger">{{ formatMoney(totalExpectedCOD) }} <span class="text-sm fw-500">đ</span></span>
+              </div>
+
+              <div class="stat-divider"></div>
+
+              <div class="stat-box">
+                <span class="stat-label">Tổng cước mặt chờ thu:</span>
+                <span class="stat-value text-primary">{{ formatMoney(totalExpectedFee) }} <span class="text-sm fw-500">đ</span></span>
+              </div>
+
+              <div class="stat-divider"></div>
+
+              <div class="stat-box" style="background: rgba(67, 24, 255, 0.05); padding: 12px; border-radius: 8px; border: 1px dashed #4318FF;">
+                <span class="stat-label" style="color: #4318FF; font-weight: 700;">Tổng tiền nộp:</span>
+                <span class="stat-value" style="color: #4318FF; font-weight: 800;">{{ formatMoney(totalExpectedCash) }} <span class="text-sm fw-500">đ</span></span>
               </div>
             </div>
 
@@ -242,8 +270,16 @@ const shipperReports = ref([]);
 
 const formatMoney = (v) => Number(v || 0).toLocaleString('vi-VN');
 
-const totalExpected = computed(() => {
+const totalExpectedCOD = computed(() => {
   return shipperReports.value.reduce((sum, row) => sum + (row.expected_cod || 0), 0);
+});
+
+const totalExpectedFee = computed(() => {
+  return shipperReports.value.reduce((sum, row) => sum + (row.expected_fee || 0), 0);
+});
+
+const totalExpectedCash = computed(() => {
+  return shipperReports.value.reduce((sum, row) => sum + (row.total_expected_cash || 0), 0);
 });
 
 const fetchData = async () => {
@@ -252,7 +288,7 @@ const fetchData = async () => {
     const res = await api.get('/api/accounting/cash-confirmation');
     shipperReports.value = res.data.map(item => ({
       ...item,
-      actual_cash: item.expected_cod || 0,
+      actual_cash: item.total_expected_cash || 0,
       confirming: false
     }));
   } catch (err) {
@@ -264,10 +300,10 @@ const fetchData = async () => {
 
 const confirmShipper = async (row) => {
   // Lệch tiền Check
-  if (row.actual_cash !== row.expected_cod) {
+  if (row.actual_cash !== row.total_expected_cash) {
     try {
       await ElMessageBox.confirm(
-        `Số tiền Shipper nộp (<b style="color:#4318FF">${formatMoney(row.actual_cash)}đ</b>) đang <span style="color:#EE5D50; font-weight:bold;">KHÁC</span> với hệ thống yêu cầu (<b>${formatMoney(row.expected_cod)}đ</b>).<br><br>Bạn có chắc chắn muốn chốt ca và ghi nhận khoản lệch này vào công nợ không?`,
+        `Số tiền Shipper nộp (<b style="color:#4318FF">${formatMoney(row.actual_cash)}đ</b>) đang <span style="color:#EE5D50; font-weight:bold;">KHÁC</span> với hệ thống yêu cầu (<b>${formatMoney(row.total_expected_cash)}đ</b>).<br><br>Bạn có chắc chắn muốn chốt ca và ghi nhận khoản lệch này vào công nợ không?`,
         'CẢNH BÁO LỆCH TIỀN',
         { 
           confirmButtonText: 'Vẫn chốt ca', 

@@ -476,6 +476,7 @@ class WaybillFilter(BaseModel):
     holding_shipper_id: Optional[int] = None
     sla_status: Optional[str] = None
     cod_status: Optional[str] = None
+    payment_method: Optional[str] = None
 
 
 # --- NEW: SCHEMAS FOR VERIFY & OCR ---

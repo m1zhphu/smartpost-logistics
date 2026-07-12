@@ -418,3 +418,71 @@ def get_statement_adjustments(
     """Lấy danh sách phiếu điều chỉnh của bảng kê (Mục 18)"""
     verify_accounting_access(current_user)
     return crud_acc.get_adjustments_for_statement(db, statement_id, statement_type)
+
+@router.get("/statements")
+def list_statements(
+    customer_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy danh sách các bảng kê cước (DEBT) và COD đã lập"""
+    verify_accounting_access(current_user)
+    
+    query_debt = db.query(models.StatementDebt)
+    query_cod = db.query(models.StatementCOD)
+    
+    if customer_id:
+        query_debt = query_debt.filter(models.StatementDebt.customer_id == customer_id)
+        query_cod = query_cod.filter(models.StatementCOD.customer_id == customer_id)
+        
+    debts = query_debt.order_by(models.StatementDebt.statement_id.desc()).all()
+    cods = query_cod.order_by(models.StatementCOD.statement_id.desc()).all()
+    
+    results = []
+    for d in debts:
+        results.append({
+            "statement_id": d.statement_id,
+            "statement_code": d.statement_code,
+            "customer_id": d.customer_id,
+            "grand_total": float(d.grand_total or 0),
+            "status": d.status,
+            "type": "DEBT",
+            "created_at": d.created_at.isoformat() if d.created_at else None,
+            "created_by": d.created_by
+        })
+    for c in cods:
+        results.append({
+            "statement_id": c.statement_id,
+            "statement_code": c.statement_code,
+            "customer_id": c.customer_id,
+            "grand_total": float(c.total_amount or 0),
+            "status": c.status,
+            "type": "COD",
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+            "created_by": c.created_by
+        })
+        
+    results.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+    return results
+
+@router.get("/statements/{statement_id}/waybills")
+def get_statement_waybills(
+    statement_id: int,
+    statement_type: str = "DEBT",
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy danh sách vận đơn chi tiết trong bảng kê cước (DEBT) hoặc COD"""
+    verify_accounting_access(current_user)
+    
+    details = db.query(models.StatementDetails).filter(
+        models.StatementDetails.statement_id == statement_id,
+        models.StatementDetails.statement_type == statement_type
+    ).all()
+    
+    waybill_ids = [d.waybill_id for d in details]
+    if not waybill_ids:
+        return []
+        
+    waybills = db.query(models.Waybills).filter(models.Waybills.waybill_id.in_(waybill_ids)).all()
+    return waybills

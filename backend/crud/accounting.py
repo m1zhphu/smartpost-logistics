@@ -28,19 +28,24 @@ def create_ledger_entry(db: Session, waybill_id: int, account_id: int, entry_typ
 # --- 1. LẤY DANH SÁCH SHIPPER CHỜ CHỐT CA ---
 def get_shippers_for_cash_confirmation(db: Session, hub_id: int):
     """
-    Lấy danh sách Shipper có đơn DELIVERED kèm tên thật từ bảng Users.
+    Lấy danh sách Shipper kèm các khoản tiền mặt phải nộp (COD + Cước mặt thu khi gửi/nhận).
     """
+    # 1. Tìm các vận đơn do shipper đi giao thành công (DELIVERED)
     latest_delivery = db.query(
         models.DeliveryResults.waybill_id,
         func.max(models.DeliveryResults.delivery_id).label("last_id")
     ).group_by(models.DeliveryResults.waybill_id).subquery()
 
-    query = db.query(
+    query_delivered = db.query(
+        models.Waybills.waybill_id,
+        models.Waybills.waybill_code,
+        models.Waybills.cod_amount,
+        models.Waybills.shipping_fee,
+        models.Waybills.extra_services_fee,
+        models.Waybills.vat_amount,
+        models.Waybills.payment_method,
         models.Users.user_id.label("shipper_id"),
-        models.Users.full_name.label("shipper_name"),
-        func.count(models.Waybills.waybill_id).label("total_bills"),
-        func.sum(models.Waybills.cod_amount).label("total_cod"),
-        func.string_agg(models.Waybills.waybill_code, ',').label("all_codes")
+        models.Users.full_name.label("shipper_name")
     ).join(
         latest_delivery, models.Waybills.waybill_id == latest_delivery.c.waybill_id
     ).join(
@@ -50,91 +55,229 @@ def get_shippers_for_cash_confirmation(db: Session, hub_id: int):
     ).filter(
         models.Waybills.status == WaybillStatus.DELIVERED
     )
-    
+
     if hub_id:
-        query = query.filter(models.Waybills.dest_hub_id == hub_id)
+        query_delivered = query_delivered.filter(models.Waybills.dest_hub_id == hub_id)
 
-    results = query.group_by(models.Users.user_id, models.Users.full_name).all()
+    delivered_waybills = query_delivered.all()
 
-    return [
-        {
-            "shipper_id": r.shipper_id,
-            "shipper_name": r.shipper_name or f"Shipper #{r.shipper_id}",
-            "delivered_count": r.total_bills,
-            "expected_cod": float(r.total_cod or 0),
-            "waybill_codes": r.all_codes.split(',') if r.all_codes else []
-        } for r in results
-    ]
+    # 2. Tìm các vận đơn do shipper đi lấy thành công (status >= IN_HUB) có SENDER_PAY
+    reconciled_fee_sub = db.query(models.TransactionLedger.waybill_id).filter(
+        models.TransactionLedger.account_type == "FEE",
+        models.TransactionLedger.entry_type == "CREDIT",
+        models.TransactionLedger.status == "RECONCILED"
+    )
+
+    query_picked = db.query(
+        models.Waybills.waybill_id,
+        models.Waybills.waybill_code,
+        models.Waybills.shipping_fee,
+        models.Waybills.extra_services_fee,
+        models.Waybills.vat_amount,
+        models.Waybills.payment_method,
+        models.BookingRequests.assigned_shipper_id.label("shipper_id"),
+        models.Users.full_name.label("shipper_name")
+    ).join(
+        models.BookingRequests, models.Waybills.request_id == models.BookingRequests.request_id
+    ).join(
+        models.Users, models.Users.user_id == models.BookingRequests.assigned_shipper_id
+    ).filter(
+        models.Waybills.payment_method == "SENDER_PAY",
+        models.Waybills.status.in_([
+            WaybillStatus.IN_HUB,
+            WaybillStatus.IN_TRANSIT,
+            WaybillStatus.DELIVERING,
+            WaybillStatus.DELIVERED,
+            WaybillStatus.SETTLED
+        ]),
+        ~models.Waybills.waybill_id.in_(reconciled_fee_sub)
+    )
+
+    if hub_id:
+        query_picked = query_picked.filter(models.Waybills.origin_hub_id == hub_id)
+
+    picked_waybills = query_picked.all()
+
+    # Gom nhóm theo shipper_id
+    shippers_data = {}
+
+    # Xử lý đơn giao thành công
+    for w in delivered_waybills:
+        s_id = w.shipper_id
+        if s_id not in shippers_data:
+            shippers_data[s_id] = {
+                "shipper_id": s_id,
+                "shipper_name": w.shipper_name or f"Shipper #{s_id}",
+                "delivered_count": 0,
+                "expected_cod": 0.0,
+                "expected_fee": 0.0,
+                "waybill_codes": set()
+            }
+        
+        shippers_data[s_id]["delivered_count"] += 1
+        shippers_data[s_id]["expected_cod"] += float(w.cod_amount or 0)
+        shippers_data[s_id]["waybill_codes"].add(w.waybill_code)
+        
+        # Nếu người nhận trả cước thì shipper thu thêm cước phí khi giao
+        if w.payment_method == "RECEIVER_PAY":
+            fee_total = float(w.shipping_fee or 0) + float(w.extra_services_fee or 0) + float(w.vat_amount or 0)
+            shippers_data[s_id]["expected_fee"] += fee_total
+
+    # Xử lý đơn lấy thành công
+    for w in picked_waybills:
+        s_id = w.shipper_id
+
+        if s_id not in shippers_data:
+            shippers_data[s_id] = {
+                "shipper_id": s_id,
+                "shipper_name": w.shipper_name or f"Shipper #{s_id}",
+                "delivered_count": 0,
+                "expected_cod": 0.0,
+                "expected_fee": 0.0,
+                "waybill_codes": set()
+            }
+        
+        shippers_data[s_id]["waybill_codes"].add(w.waybill_code)
+        # Shop trả cước ngay khi gửi thì shipper thu cước phí khi đi lấy
+        fee_total = float(w.shipping_fee or 0) + float(w.extra_services_fee or 0) + float(w.vat_amount or 0)
+        shippers_data[s_id]["expected_fee"] += fee_total
+
+    # Định dạng lại dữ liệu trả về cho API
+    results = []
+    for s_id, s_info in shippers_data.items():
+        s_info["expected_cod"] = float(s_info["expected_cod"])
+        s_info["expected_fee"] = float(s_info["expected_fee"])
+        s_info["total_expected_cash"] = s_info["expected_cod"] + s_info["expected_fee"]
+        s_info["waybill_codes"] = list(s_info["waybill_codes"])
+        results.append(s_info)
+
+    return results
 
 # --- 2. GHI NHẬN THU TIỀN MẶT (CHỐT CA) ---
 def record_cash_collection(db: Session, waybill_codes: list, hub_id: int, user_id: int, note: str):
     """
-    Xử lý nộp tiền: Ghi Ledger và đổi trạng thái sang SETTLED
+    Xử lý nộp tiền: Ghi Ledger và đổi trạng thái sang SETTLED cho các đơn đã giao,
+    và ghi bút toán cước mặt cho các đơn đã lấy (SENDER_PAY) mà không đổi trạng thái.
     """
     processed_count = 0
     for code in waybill_codes:
         waybill = db.query(models.Waybills).filter(models.Waybills.waybill_code == code).first()
-        if not waybill or waybill.status != WaybillStatus.DELIVERED:
+        if not waybill:
             continue
 
         p_trans_id = f"TXN-{uuid.uuid4().hex[:10].upper()}"
-        amount = waybill.cod_amount
+        actual_hub_id = hub_id or waybill.dest_hub_id or waybill.origin_hub_id or 1
         
-        delivery = db.query(models.DeliveryResults).filter(
-            models.DeliveryResults.waybill_id == waybill.waybill_id
-        ).order_by(models.DeliveryResults.delivery_id.desc()).first()
-        
-        if not delivery:
-            continue
+        # 1. Cước gửi (SENDER_PAY)
+        if waybill.payment_method == "SENDER_PAY":
+            reconciled_fee = db.query(models.TransactionLedger).filter(
+                models.TransactionLedger.waybill_id == waybill.waybill_id,
+                models.TransactionLedger.account_type == "FEE",
+                models.TransactionLedger.entry_type == "CREDIT",
+                models.TransactionLedger.status == "RECONCILED"
+            ).first()
             
-        shipper_id = delivery.shipper_id
-        actual_hub_id = hub_id or waybill.dest_hub_id
-        
-        if not actual_hub_id:
-            shipper_record = db.query(models.Users).filter(models.Users.user_id == shipper_id).first()
-            actual_hub_id = shipper_record.primary_hub_id if shipper_record else 1
-        
-        db.add(models.TransactionLedger(
-            parent_transaction_id=p_trans_id,
-            waybill_id=waybill.waybill_id,
-            account_id=actual_hub_id,
-            entry_type="DEBIT", 
-            amount=amount,
-            account_type="COD",
-            status="RECONCILED"
-        ))
-        db.add(models.TransactionLedger(
-            parent_transaction_id=p_trans_id,
-            waybill_id=waybill.waybill_id,
-            account_id=shipper_id,
-            entry_type="CREDIT",
-            amount=amount,
-            account_type="COD",
-            status="RECONCILED"
-        ))
+            if not reconciled_fee:
+                booking = db.query(models.BookingRequests).filter(models.BookingRequests.request_id == waybill.request_id).first()
+                shipper_id = booking.assigned_shipper_id if booking else None
+                if shipper_id:
+                    total_fee = float(waybill.shipping_fee or 0) + float(waybill.extra_services_fee or 0) + float(waybill.vat_amount or 0)
+                    if total_fee > 0:
+                        db.add(models.TransactionLedger(
+                            parent_transaction_id=p_trans_id,
+                            waybill_id=waybill.waybill_id,
+                            account_id=actual_hub_id,
+                            entry_type="DEBIT",
+                            amount=total_fee,
+                            account_type="FEE",
+                            status="RECONCILED"
+                        ))
+                        db.add(models.TransactionLedger(
+                            parent_transaction_id=p_trans_id,
+                            waybill_id=waybill.waybill_id,
+                            account_id=shipper_id,
+                            entry_type="CREDIT",
+                            amount=total_fee,
+                            account_type="FEE",
+                            status="RECONCILED"
+                        ))
+                        processed_count += 1
 
-        if waybill.customer_id:
-            db.add(models.TransactionLedger(
-                parent_transaction_id=p_trans_id,
-                waybill_id=waybill.waybill_id,
-                account_id=waybill.customer_id,
-                entry_type="CREDIT",
-                amount=amount,
-                account_type="COD",
-                status="RECONCILED"
-            ))
-
-        waybill.status = WaybillStatus.SETTLED
-        waybill.version += 1
-        db.add(models.TrackingLogs(
-            waybill_id=waybill.waybill_id, 
-            status_id=WaybillStatus.SETTLED,
-            hub_id=actual_hub_id, 
-            user_id=user_id, 
-            system_time=datetime.utcnow(), 
-            note=note
-        ))
-        processed_count += 1
+        # 2. Đơn đã giao (DELIVERED) -> Chuyển sang SETTLED
+        if waybill.status == WaybillStatus.DELIVERED:
+            delivery = db.query(models.DeliveryResults).filter(
+                models.DeliveryResults.waybill_id == waybill.waybill_id
+            ).order_by(models.DeliveryResults.delivery_id.desc()).first()
+            
+            if delivery:
+                shipper_id = delivery.shipper_id
+                
+                # A. Thu hồi COD
+                cod_amount = float(waybill.cod_amount or 0)
+                if cod_amount > 0:
+                    db.add(models.TransactionLedger(
+                        parent_transaction_id=p_trans_id,
+                        waybill_id=waybill.waybill_id,
+                        account_id=actual_hub_id,
+                        entry_type="DEBIT",
+                        amount=cod_amount,
+                        account_type="COD",
+                        status="RECONCILED"
+                    ))
+                    db.add(models.TransactionLedger(
+                        parent_transaction_id=p_trans_id,
+                        waybill_id=waybill.waybill_id,
+                        account_id=shipper_id,
+                        entry_type="CREDIT",
+                        amount=cod_amount,
+                        account_type="COD",
+                        status="RECONCILED"
+                    ))
+                    if waybill.customer_id:
+                        db.add(models.TransactionLedger(
+                            parent_transaction_id=p_trans_id,
+                            waybill_id=waybill.waybill_id,
+                            account_id=waybill.customer_id,
+                            entry_type="CREDIT",
+                            amount=cod_amount,
+                            account_type="COD",
+                            status="RECONCILED"
+                        ))
+                
+                # B. Thu cước mặt khi giao (RECEIVER_PAY)
+                if waybill.payment_method == "RECEIVER_PAY":
+                    total_fee = float(waybill.shipping_fee or 0) + float(waybill.extra_services_fee or 0) + float(waybill.vat_amount or 0)
+                    if total_fee > 0:
+                        db.add(models.TransactionLedger(
+                            parent_transaction_id=p_trans_id,
+                            waybill_id=waybill.waybill_id,
+                            account_id=actual_hub_id,
+                            entry_type="DEBIT",
+                            amount=total_fee,
+                            account_type="FEE",
+                            status="RECONCILED"
+                        ))
+                        db.add(models.TransactionLedger(
+                            parent_transaction_id=p_trans_id,
+                            waybill_id=waybill.waybill_id,
+                            account_id=shipper_id,
+                            entry_type="CREDIT",
+                            amount=total_fee,
+                            account_type="FEE",
+                            status="RECONCILED"
+                        ))
+                
+                waybill.status = WaybillStatus.SETTLED
+                waybill.version += 1
+                db.add(models.TrackingLogs(
+                    waybill_id=waybill.waybill_id,
+                    status_id=WaybillStatus.SETTLED,
+                    hub_id=actual_hub_id,
+                    user_id=user_id,
+                    system_time=datetime.utcnow(),
+                    note=note
+                ))
+                processed_count += 1
     
     db.commit()
     return processed_count

@@ -24,15 +24,30 @@
           </template>
           
           <el-row :gutter="20">
-            <el-col :xs="24" :sm="24" :md="12" :lg="10" class="mb-12-mobile">
+            <el-col :xs="24" :sm="24" :md="8" :lg="6" class="mb-12-mobile">
               <div class="filter-item">
                 <label>KHÁCH HÀNG / SHOP</label>
                 <el-select v-model="filters.customer_id" placeholder="Tất cả khách hàng..." filterable class="w-full">
-                  <el-option v-for="c in customers" :key="c.customer_id" :label="c.company_name" :value="c.customer_id" />
+                  <el-option v-for="c in customers" :key="c.customer_id" :label="c.company_name || c.name || c.customer_code" :value="c.customer_id" />
                 </el-select>
               </div>
             </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="10" class="mb-12-mobile">
+            <el-col :xs="24" :sm="24" :md="10" :lg="10" class="mb-12-mobile">
+              <div class="filter-item">
+                <label>KHOẢNG THỜI GIAN GỬI</label>
+                <el-date-picker
+                  v-model="dateRange"
+                  type="daterange"
+                  range-separator="Tới"
+                  start-placeholder="Từ ngày"
+                  end-placeholder="Đến ngày"
+                  value-format="YYYY-MM-DD"
+                  class="w-full"
+                  style="width: 100%;"
+                />
+              </div>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="3" :lg="4" class="mb-12-mobile">
               <div class="filter-item">
                 <label>TRẠNG THÁI ĐƠN</label>
                 <el-select v-model="filters.status" class="w-full">
@@ -41,7 +56,7 @@
                 </el-select>
               </div>
             </el-col>
-            <el-col :xs="24" :sm="12" :md="4" :lg="4" class="flex-bottom mb-12-mobile">
+            <el-col :xs="24" :sm="12" :md="3" :lg="4" class="flex-bottom mb-12-mobile">
               <el-button type="primary" :loading="loading" @click="fetchWaybills" class="w-full">
                 <el-icon><Search /></el-icon> Tải danh sách
               </el-button>
@@ -514,18 +529,29 @@ const fetchWaybills = async () => {
   }
   loading.value = true;
   try {
-    // BE không có endpoint unlisted-waybills, ta dùng endpoint chung /api/waybills với filter
-    const res = await api.post('/api/waybills/search', {
+    const payload = {
       customer_id: filters.value.customer_id,
       status: filters.value.status,
+      payment_method: 'SENDER_DEBT',
       page: 1,
       size: 1000
-    });
-    // BE trả về { items: [], total: 0 } cho endpoint /api/waybills
+    };
+    if (dateRange.value && dateRange.value.length === 2) {
+      payload.start_date = dateRange.value[0] + 'T00:00:00';
+      payload.end_date = dateRange.value[1] + 'T23:59:59';
+    }
+    // BE không có endpoint unlisted-waybills, ta dùng endpoint chung /api/waybills với filter
+    const res = await api.post('/api/waybills/search', payload);
     const items = normalizeListResponse(res.data);
     waybills.value = items.map(w => ({ ...w, selected: false }));
+
+    // Tải danh sách bảng kê lịch sử của khách hàng này
+    const stmtRes = await api.get('/api/accounting/statements', {
+      params: { customer_id: filters.value.customer_id }
+    });
+    createdStatements.value = normalizeListResponse(stmtRes.data);
   } catch (err) {
-    ElMessage.error('Lỗi tải vận đơn');
+    ElMessage.error('Lỗi tải dữ liệu');
   } finally {
     loading.value = false;
   }
@@ -616,7 +642,7 @@ const exportStatement = async (stmt, format = 'xlsx') => {
   }
 };
 
-const printStatement = (stmt) => {
+const printStatement = async (stmt) => {
   // Tìm thông tin khách hàng
   const customer = normalizeListResponse(customers.value).find(c => c.customer_id === stmt.customer_id) || {};
   const customerName = customer.company_name || 'Khách hàng lẻ';
@@ -624,10 +650,23 @@ const printStatement = (stmt) => {
   const customerAddress = customer.address_detail || 'N/A';
 
   // Lấy danh sách vận đơn thuộc bảng kê
-  const items = stmt.waybills || [];
+  let items = stmt.waybills || [];
   
   if (items.length === 0) {
-    ElMessage.warning('Không có danh sách vận đơn chi tiết của bảng kê này để in. Bảng kê chỉ hỗ trợ in ngay khi vừa lập.');
+    try {
+      const res = await api.get(`/api/accounting/statements/${stmt.statement_id}/waybills`, {
+        params: { statement_type: stmt.type }
+      });
+      items = normalizeListResponse(res.data);
+      stmt.waybills = items;
+    } catch (err) {
+      ElMessage.error('Không thể tải danh sách vận đơn chi tiết của bảng kê này');
+      return;
+    }
+  }
+  
+  if (items.length === 0) {
+    ElMessage.warning('Không có danh sách vận đơn chi tiết của bảng kê này để in.');
     return;
   }
   
@@ -649,16 +688,16 @@ const printStatement = (stmt) => {
     const mainFee = Number(item.shipping_fee || 0);
     const extraFee = Number(item.extra_services_fee || 0);
     const vat = Number(item.vat_amount || 0);
-    const totalCollect = Number(item.total_amount_to_collect || 0);
     const cod = Number(item.cod_amount || 0);
+    const shippingTotal = mainFee + extraFee + vat;
 
     totalMain += mainFee;
     totalCOD += cod;
     totalExtra += extraFee;
     totalVat += vat;
-    grandTotal += totalCollect;
 
     if (stmt.type === 'COD') {
+      grandTotal += cod;
       rowsHtml += `
         <tr>
           <td style="text-align: center;">${index + 1}</td>
@@ -670,6 +709,7 @@ const printStatement = (stmt) => {
         </tr>
       `;
     } else {
+      grandTotal += shippingTotal;
       rowsHtml += `
         <tr>
           <td style="text-align: center;">${index + 1}</td>
@@ -678,7 +718,7 @@ const printStatement = (stmt) => {
           <td style="text-align: right;">${mainFee.toLocaleString('vi-VN')} đ</td>
           <td style="text-align: right;">${extraFee.toLocaleString('vi-VN')} đ</td>
           <td style="text-align: right;">${vat.toLocaleString('vi-VN')} đ</td>
-          <td style="text-align: right; font-weight: bold; color: #7c3aed;">${totalCollect.toLocaleString('vi-VN')} đ</td>
+          <td style="text-align: right; font-weight: bold; color: #7c3aed;">${shippingTotal.toLocaleString('vi-VN')} đ</td>
         </tr>
       `;
     }
