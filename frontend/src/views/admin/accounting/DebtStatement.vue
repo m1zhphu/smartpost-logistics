@@ -439,10 +439,7 @@ const newStatement = ref({
   custom_code: ''
 });
 
-const formatCurrencyManual = (val) => {
-  if (!val) return '0 đ';
-  return Number(val).toLocaleString('vi-VN') + ' đ';
-};
+
 
 const handleSelectionChange = (val) => {
   waybills.value.forEach(w => {
