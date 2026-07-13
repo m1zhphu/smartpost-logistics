@@ -756,6 +756,8 @@ def mark_online_pickup_picked(
     all_pickup_urls = _normalize_image_urls(pickup_image_url, pickup_image_urls)
     for item in waybills:
         item.status = WaybillStatus.PICKED_PENDING_VERIFY if item.ocr_status not in ["PENDING", "INCOMPLETE"] else WaybillStatus.PENDING_OCR
+        if not item.requested_pickup_time:
+            item.requested_pickup_time = now
         item.pickup_image_url = all_pickup_urls[0] if all_pickup_urls else item.pickup_image_url
         item.pickup_image_urls = json.dumps(all_pickup_urls) if all_pickup_urls else item.pickup_image_urls
         item.version = (item.version or 1) + 1
