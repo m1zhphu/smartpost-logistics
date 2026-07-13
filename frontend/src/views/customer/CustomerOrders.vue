@@ -79,7 +79,7 @@
                                 <el-tag v-else :type="waybill.service_type && waybill.service_type.toUpperCase() === 'HT' ? 'danger' : 'info'" size="small" effect="dark">
                                   {{ getServiceTypeLabel(waybill.service_type) }}
                                 </el-tag>
-                                <el-tag v-if="waybill.sla_status === 'OVERDUE'" size="small" effect="dark" style="background-color: #f5222d; color: white; font-weight: bold; border: none; animation: pulse 1s infinite alternate;">
+                                <el-tag v-if="waybill.sla_status === 'OVERDUE'" type="danger" size="small" effect="dark" style="background-color: #f5222d !important; color: white !important; font-weight: bold; border: none; animation: pulse 1s infinite alternate;">
                                   ⚠️ TRỄ HẠN
                                 </el-tag>
                               </div>

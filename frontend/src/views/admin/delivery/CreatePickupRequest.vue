@@ -69,6 +69,10 @@
       <el-card v-if="form.pickup_mode === 'BULK_MAIL'" class="form-card">
         <template #header><strong>Danh sách thư trong túi</strong></template>
         <el-row :gutter="20"><el-col :md="8"><el-form-item label="Loại bưu gửi"><el-select v-model="form.bulk_product_type" class="w-full"><el-option v-for="type in productTypes" :key="type.code" :label="type.label" :value="type.code" /></el-select></el-form-item></el-col><el-col :md="8"><el-form-item label="Hình thức giao hàng"><el-select v-model="form.service_type" class="w-full" :class="{ 'urgent-select': form.service_type === 'HT' }"><el-option label="Tiết kiệm" value="TK" /><el-option label="Chuyển phát nhanh" value="CPN" /><el-option label="Hỏa tốc" value="HT" /></el-select></el-form-item></el-col><el-col :md="8"><el-form-item label="Số lượng dự kiến"><el-input-number v-model="form.bulk_estimated_quantity" :min="1" :max="1000" class="w-full" @change="syncBulkRows" /></el-form-item></el-col></el-row>
+        <div v-if="form.bulk_estimated_quantity > 1" class="bulk-info-msg mb-3" style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 12px; border-radius: 8px; font-size: 13px; color: #15803d; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <el-icon style="font-size: 16px;"><InfoFilled /></el-icon>
+          <span>Số lượng yêu cầu dự kiến là <strong>{{ form.bulk_estimated_quantity }}</strong>. Khi bạn muốn nhập thông tin chi tiết hãy nhấn thêm thư.</span>
+        </div>
         <div v-for="(mail,index) in form.bulk_draft_items" :key="mail.local_id" class="mail-row">
           <div class="mail-row-title"><strong>Thư {{ index + 1 }}</strong><el-button v-if="form.bulk_draft_items.length > 1" type="danger" link @click="removeMail(index)">Xóa</el-button></div>
           <el-row :gutter="12"><el-col :md="5"><el-input v-model="mail.customer_reference_code" placeholder="Mã tham chiếu" /></el-col><el-col :md="5"><el-input v-model="mail.receiver_name" placeholder="Tên người nhận (nếu có)" /></el-col><el-col :md="5"><el-input v-model="mail.receiver_phone" placeholder="SĐT (nếu có)" /></el-col><el-col :md="6"><el-input v-model="mail.receiver_address" placeholder="Địa chỉ (nếu có)" /></el-col><el-col :md="3"><el-input v-model="mail.note" placeholder="Ghi chú" /></el-col></el-row>
@@ -98,6 +102,7 @@
 import { onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
+import { InfoFilled } from '@element-plus/icons-vue';
 
 const ADDR_API = 'https://provinces.open-api.vn/api';
 const formRef = ref();
@@ -147,9 +152,22 @@ const fillCustomer = async (id) => {
   form.sender.ward_id = customer.ward_id || null;
 };
 
-const syncBulkRows = (quantity) => { const target = Number(quantity || 1); while (form.bulk_draft_items.length < target) form.bulk_draft_items.push(createMail()); if (form.bulk_draft_items.length > target) form.bulk_draft_items.splice(target); };
-const addMail = () => { form.bulk_draft_items.push(createMail()); form.bulk_estimated_quantity = form.bulk_draft_items.length; };
-const removeMail = (index) => { form.bulk_draft_items.splice(index, 1); form.bulk_estimated_quantity = Math.max(1, form.bulk_draft_items.length); };
+const syncBulkRows = (quantity) => {
+  const target = Number(quantity || 1);
+  if (form.bulk_draft_items.length > target) {
+    form.bulk_draft_items.splice(target);
+  }
+};
+const addMail = () => {
+  form.bulk_draft_items.push(createMail());
+  form.bulk_estimated_quantity = Math.max(form.bulk_estimated_quantity, form.bulk_draft_items.length);
+};
+const removeMail = (index) => {
+  form.bulk_draft_items.splice(index, 1);
+  if (form.bulk_estimated_quantity < form.bulk_draft_items.length) {
+    form.bulk_estimated_quantity = Math.max(1, form.bulk_draft_items.length);
+  }
+};
 
 watch(() => form.target_hub_id, async (hubId) => {
   form.assigned_shipper_id = null;

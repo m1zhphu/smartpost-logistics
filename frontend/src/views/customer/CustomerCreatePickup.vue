@@ -55,7 +55,7 @@
                   <!-- SENDER & RECEIVER INFO -->
                   <el-row :gutter="20">
                     <!-- SENDER CARD -->
-                    <el-col :xs="24" :sm="isBulkMail ? 24 : 12">
+                    <el-col :xs="24" :sm="12">
                       <el-card class="form-section-card sender-card mb-4" shadow="never">
                         <template #header>
                           <div class="form-card-title text-primary">
@@ -210,6 +210,78 @@
                         </div>
                       </el-card>
                     </el-col>
+
+                    <!-- SETTINGS CARD (Side-by-side with Sender Card when BULK mode) -->
+                    <el-col v-if="isBulkMail" :xs="24" :sm="12">
+                      <el-card class="form-section-card settings-card mb-4" shadow="never">
+                        <template #header>
+                          <div class="form-card-title text-info">
+                            <el-icon><Setting /></el-icon><span>Cấu hình Vận chuyển</span>
+                          </div>
+                        </template>
+
+                        <el-form-item label="Dịch vụ vận chuyển" required>
+                          <el-radio-group v-model="form.service_type" class="shipping-service-group" :class="{ 'is-express': isExpressService }" @change="debouncedSimulate">
+                            <el-radio-button label="TK">Tiết kiệm</el-radio-button>
+                            <el-radio-button label="CPN">Chuyển phát nhanh</el-radio-button>
+                            <el-radio-button label="HT">Hỏa tốc</el-radio-button>
+                          </el-radio-group>
+                        </el-form-item>
+                        <el-form-item label="Đóng kiện">
+                          <el-radio-group v-model="form.packing_type" class="packing-type-group" @change="debouncedSimulate">
+                            <el-radio-button :label="null">Không đóng kiện</el-radio-button>
+                            <el-radio-button label="WOOD">Đóng kiện gỗ</el-radio-button>
+                            <el-radio-button label="FOAM">Đóng kiện xốp</el-radio-button>
+                          </el-radio-group>
+                        </el-form-item>
+                        <el-row :gutter="20">
+                          <el-col :xs="24" :sm="12">
+                            <el-form-item label="Số tiền thu hộ">
+                              <el-input-number v-model="form.cod_amount" :min="0" :step="10000" class="w-full" @change="debouncedSimulate" />
+                            </el-form-item>
+                          </el-col>
+                          <el-col :xs="24" :sm="12">
+                            <el-form-item label="Phương thức thanh toán">
+                              <el-select v-model="form.payment_method" class="w-full">
+                                <el-option label="Shop trả cước cuối tháng" value="SENDER_DEBT" />
+                                <el-option label="Shop trả cước ngay khi gửi" value="SENDER_PAY" />
+                                <el-option label="Người nhận thanh toán cước" value="RECEIVER_PAY" />
+                              </el-select>
+                            </el-form-item>
+                          </el-col>
+                        </el-row>
+                        <el-row :gutter="20">
+                          <el-col :span="24">
+                            <el-form-item label="Phòng ban quản lý (Để theo dõi chi phí)">
+                              <el-select v-model="form.customer_department_id" placeholder="Chọn phòng ban (nếu có)" class="w-full" clearable filterable>
+                                <el-option
+                                  v-for="dept in departmentsList"
+                                  :key="dept.id"
+                                  :label="dept.name"
+                                  :value="dept.id"
+                                />
+                              </el-select>
+                            </el-form-item>
+                          </el-col>
+                        </el-row>
+                        <el-row :gutter="20">
+                          <el-col :xs="24" :sm="12">
+                            <el-form-item label="Ghi chú khi giao">
+                              <el-select v-model="form.delivery_note_option" class="w-full">
+                                <el-option label="Cho xem hàng, không thử" value="CHO_XEM_HANG" />
+                                <el-option label="Cho thử hàng" value="CHO_THU_HANG" />
+                                <el-option label="Không cho xem hàng" value="KHONG_CHO_XEM_HANG" />
+                              </el-select>
+                            </el-form-item>
+                          </el-col>
+                          <el-col :xs="24" :sm="12">
+                            <el-form-item label="Ghi chú thêm">
+                              <el-input v-model="form.note" placeholder="Ghi chú thêm cho bưu tá..." />
+                            </el-form-item>
+                          </el-col>
+                        </el-row>
+                      </el-card>
+                    </el-col>
                   </el-row>
 
                   <!-- ITEMS DETAILS -->
@@ -322,6 +394,10 @@
                       </el-col>
                     </el-row>
                     <div class="bulk-recipient-list">
+                      <div v-if="form.bulk_estimated_quantity > 1" class="bulk-info-msg mb-3" style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 12px; border-radius: 8px; font-size: 13px; color: #15803d; display: flex; align-items: center; gap: 8px;">
+                        <el-icon style="font-size: 16px;"><InfoFilled /></el-icon>
+                        <span>Số lượng yêu cầu dự kiến là <strong>{{ form.bulk_estimated_quantity }}</strong>. Khi bạn muốn nhập thông tin chi tiết hãy nhấn thêm thư bên dưới.</span>
+                      </div>
                       <div v-for="(mail, index) in form.bulk_draft_items" :key="mail.local_id" class="bulk-recipient-row">
                         <div class="bulk-recipient-header">
                           <strong>{{ form.bulk_product_type === 'DOCUMENT' ? 'Thư' : 'Bưu phẩm' }} {{ index + 1 }}</strong>
@@ -347,7 +423,7 @@
                   </el-card>
 
                   <!-- SETTINGS & EXTRA SERVICES -->
-                  <el-card class="form-section-card settings-card mb-4" shadow="never">
+                  <el-card v-if="!isBulkMail" class="form-section-card settings-card mb-4" shadow="never">
                     <template #header>
                       <div class="form-card-title text-info">
                         <el-icon><Setting /></el-icon><span>Cấu hình Vận chuyển</span>
@@ -745,19 +821,25 @@ const createBulkDraftItem = () => ({
 const syncBulkDraftItems = (quantity) => {
   const target = Math.max(1, Number(quantity || 1));
   if (!Array.isArray(form.bulk_draft_items)) form.bulk_draft_items = [];
-  while (form.bulk_draft_items.length < target) form.bulk_draft_items.push(createBulkDraftItem());
-  if (form.bulk_draft_items.length > target) form.bulk_draft_items.splice(target);
+  if (form.bulk_draft_items.length === 0) {
+    form.bulk_draft_items.push(createBulkDraftItem());
+  }
+  if (form.bulk_draft_items.length > target) {
+    form.bulk_draft_items.splice(target);
+  }
 };
 
 const addBulkDraftItem = () => {
   if (form.bulk_draft_items.length >= 10000) return;
   form.bulk_draft_items.push(createBulkDraftItem());
-  form.bulk_estimated_quantity = form.bulk_draft_items.length;
+  form.bulk_estimated_quantity = Math.max(form.bulk_estimated_quantity, form.bulk_draft_items.length);
 };
 
 const removeBulkDraftItem = (index) => {
   form.bulk_draft_items.splice(index, 1);
-  form.bulk_estimated_quantity = Math.max(1, form.bulk_draft_items.length);
+  if (form.bulk_estimated_quantity < form.bulk_draft_items.length) {
+    form.bulk_estimated_quantity = Math.max(1, form.bulk_draft_items.length);
+  }
 };
 
 watch(() => form.bulk_estimated_quantity, syncBulkDraftItems);

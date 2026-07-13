@@ -216,6 +216,7 @@
                     style="width: 100%;"
                     class="inner-waybill-table"
                     row-key="waybill_code"
+                    :row-class-name="tableRowClassName"
                     @selection-change="(val) => handleWaybillSelectionChange(customer.customer_id, val)"
                   >
                     <!-- Checkbox -->
@@ -309,7 +310,7 @@
                       <template #default="{ row }">
                         <div style="display: flex; flex-direction: column; gap: 2px;">
                           <!-- Cảnh báo Trễ hạn -->
-                          <el-tag v-if="row.sla_status === 'OVERDUE'" size="small" effect="dark" style="width: fit-content; background-color: #f5222d; color: white; font-weight: bold; border: none; margin-bottom: 2px; animation: pulse 1s infinite alternate;">
+                          <el-tag v-if="row.sla_status === 'OVERDUE'" type="danger" size="small" effect="dark" style="width: fit-content; background-color: #f5222d !important; color: white !important; font-weight: bold; border: none; margin-bottom: 2px; animation: pulse 1s infinite alternate;">
                             ⚠️ TRỄ HẠN
                           </el-tag>
                           <el-tag v-else :type="row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
@@ -446,6 +447,7 @@
             class="modern-table"
             style="width: 100%;"
             row-key="waybill_code"
+            :row-class-name="tableRowClassName"
             @selection-change="handleFlatSelectionChange"
           >
             <!-- Checkbox -->
@@ -544,7 +546,7 @@
               <template #default="{ row }">
                 <div style="display: flex; flex-direction: column; gap: 2px;">
                   <!-- Cảnh báo Trễ hạn -->
-                  <el-tag v-if="row.sla_status === 'OVERDUE'" size="small" effect="dark" style="width: fit-content; background-color: #f5222d; color: white; font-weight: bold; border: none; margin-bottom: 2px; animation: pulse 1s infinite alternate;">
+                  <el-tag v-if="row.sla_status === 'OVERDUE'" type="danger" size="small" effect="dark" style="width: fit-content; background-color: #f5222d !important; color: white !important; font-weight: bold; border: none; margin-bottom: 2px; animation: pulse 1s infinite alternate;">
                     ⚠️ TRỄ HẠN
                   </el-tag>
                   <el-tag v-else :type="row.sla_status === 'OVERDUE' ? 'danger' : row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
