@@ -587,6 +587,8 @@ class BookingRequests(Base):
 
     @property
     def waybill_items(self):
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
         source_waybills = []
         if self.pickup_bag:
             source_waybills = [
@@ -605,6 +607,26 @@ class BookingRequests(Base):
                 "receiver_name": waybill.receiver_name,
                 "receiver_phone": waybill.receiver_phone,
                 "receiver_address": waybill.receiver_address,
+                "verify_status": waybill.verify_status,
+                "service_type": waybill.service_type,
+                "customer_department_name": self.customer_department.name if self.customer_department else None,
+                "sender_name": waybill.sender_name or (self.customer.company_name if self.customer else None),
+                "sender_phone": waybill.sender_phone or self.sender_phone,
+                "sender_address": waybill.sender_address or self.pickup_address,
+                "sla_status": "ON_TIME" if waybill.status in ["DELIVERED", "SETTLED", "RETURNED", "CANCELLED"]
+                              else ("OVERDUE" if waybill.sla_deadline and now > waybill.sla_deadline
+                              else ("WARNING" if waybill.sla_deadline and now + timedelta(hours=2) > waybill.sla_deadline
+                              else "ON_TIME")),
+                "holding_hub_name": waybill.holding_hub.hub_name if waybill.holding_hub else (waybill.holding_shipper.full_name if waybill.holding_shipper else "---"),
+                "actual_weight": float(waybill.actual_weight or 0),
+                "estimated_weight": float(waybill.estimated_weight or 0),
+                "length": float(waybill.length or 0),
+                "width": float(waybill.width or 0),
+                "height": float(waybill.height or 0),
+                "shipping_fee": float(waybill.shipping_fee or 0),
+                "cod_amount": float(waybill.cod_amount or 0),
+                "total_amount_to_collect": float(waybill.total_amount_to_collect or 0),
+                "payment_method": waybill.payment_method,
             }
             for waybill in source_waybills
         ]

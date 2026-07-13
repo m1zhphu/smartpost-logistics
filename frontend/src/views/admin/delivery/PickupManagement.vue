@@ -439,147 +439,201 @@
                 class="modern-table" 
                 stripe
                 table-layout="auto"
+                @selection-change="handleReceivedSelectionChange"
               >
+                <el-table-column type="selection" width="50" align="center" />
+
                 <el-table-column type="expand">
                   <template #default="{ row }">
                     <div style="padding: 15px 30px; background-color: #f8fafc; border-radius: 8px; margin: 10px;">
                       <h4 style="margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                        <el-icon><List /></el-icon> Danh sách đơn chi tiết chờ lấy ({{ row.requests.length }} đơn)
+                        <el-icon><List /></el-icon> Danh sách đơn chi tiết trong yêu cầu ({{ getBagItemCount(row) }} đơn)
                       </h4>
                       <div class="inner-table-scroll">
-                        <el-table 
+                        <el-table
                           style="width: 100%; min-width: 1200px;"
-                          :data="getPaginatedRequests(row)" 
-                          class="modern-table inner-table" 
-                          size="small" 
-                          border 
+                          :data="row.waybills || row.waybill_items || []"
+                          class="modern-table inner-table"
+                          size="small"
+                          border
                           stripe
-                          row-key="request_id"
-                          @selection-change="selection => handleReceivedRequestSelectionChange(row, selection)"
                         >
-                          <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
-                          <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="250">
+                          <!-- Mã vận đơn -->
+                          <el-table-column prop="waybill_code" label="Mã vận đơn" min-width="180">
                             <template #default="scope">
-                              <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
-                                <el-link type="success" class="fw-bold" @click="viewRequestDetails(scope.row)">
-                                  {{ scope.row.request_code }}
-                                </el-link>
-                                <el-tag v-if="isNewRequest(scope.row.created_at)" type="danger" size="small" effect="dark" round>Mới</el-tag>
+                              <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                                <span class="fw-bold">{{ scope.row.waybill_code || scope.row.bill_code || scope.row.code }}</span>
+                                <el-tag v-if="scope.row.verify_status !== 'VERIFIED'" type="danger" size="small" effect="dark" style="font-size: 9px; font-weight: 700; border-radius: 4px; padding: 1px 4px; border: none;">
+                                  ⚠️ CHƯA DUYỆT
+                                </el-tag>
+                                <el-tag v-else type="success" size="small" effect="plain" style="font-size: 9px; font-weight: 600; border-radius: 4px; padding: 1px 4px;">
+                                  ✓ ĐÃ DUYỆT
+                                </el-tag>
                               </div>
                             </template>
                           </el-table-column>
-                          <el-table-column label="Mã Vận Đơn" min-width="210">
+
+                          <!-- Dịch vụ -->
+                          <el-table-column label="Dịch vụ" min-width="120" align="center">
                             <template #default="scope">
-                              <div v-if="getWaybillCodes(scope.row).length" class="waybill-chip-list" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
-                                <span
-                                  v-for="code in getWaybillCodes(scope.row).slice(0, 2)"
-                                  :key="code"
-                                  class="code-badge info text-xs"
-                                  style="background: rgba(67, 24, 255, 0.1); color: #4318ff; margin: 0;"
-                                >
-                                  {{ code }}
+                              <el-tag v-if="scope.row.service_type && (scope.row.service_type.toUpperCase() === 'EXPRESS' || scope.row.service_type.toUpperCase() === 'HT')" size="small" effect="dark" style="background-color: #ff4d4f !important; color: white !important; font-weight: 800; border: none; padding: 2px 8px;">
+                                🔥 HỎA TỐC
+                              </el-tag>
+                              <el-tag v-else-if="scope.row.service_type && (scope.row.service_type.toUpperCase() === 'STANDARD' || scope.row.service_type.toUpperCase() === 'CPN')" type="primary" size="small" effect="plain">
+                                CPN (Nhanh)
+                              </el-tag>
+                              <el-tag v-else-if="scope.row.service_type && (scope.row.service_type.toUpperCase() === 'TK' || scope.row.service_type.toUpperCase() === 'ECONOMY')" type="info" size="small" effect="plain">
+                                Tiết kiệm
+                              </el-tag>
+                              <el-tag v-else type="info" size="small" effect="plain">
+                                {{ scope.row.service_type || 'CPN (Nhanh)' }}
+                              </el-tag>
+                            </template>
+                          </el-table-column>
+
+                          <!-- Người nhận -->
+                          <el-table-column label="Người nhận" min-width="200" show-overflow-tooltip>
+                            <template #default="scope">
+                              <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <span class="fw-bold text-dark">{{ scope.row.receiver_name }}</span>
+                                <span style="font-size: 11px; color: #475569;"><el-icon><Phone /></el-icon> {{ scope.row.receiver_phone }}</span>
+                                <span style="font-size: 11px; color: #64748b;"><el-icon><Location /></el-icon> {{ scope.row.receiver_address }}</span>
+                              </div>
+                            </template>
+                          </el-table-column>
+
+                          <!-- Phòng ban -->
+                          <el-table-column label="Phòng ban" min-width="130">
+                            <template #default="scope">
+                              <el-tag v-if="scope.row.customer_department_name" type="info" effect="light" class="fw-semibold">
+                                {{ scope.row.customer_department_name }}
+                              </el-tag>
+                              <span v-else style="color: #94a3b8; font-style: italic;">---</span>
+                            </template>
+                          </el-table-column>
+
+                          <!-- Người gửi -->
+                          <el-table-column label="Người gửi" min-width="180" show-overflow-tooltip>
+                            <template #default="scope">
+                              <div style="display: flex; flex-direction: column; gap: 2px; font-size: 12px;">
+                                <span class="fw-bold text-dark">{{ scope.row.sender_name || row.customer_name }}</span>
+                                <span style="font-size: 11px; color: #64748b;"><el-icon><Phone /></el-icon> {{ scope.row.sender_phone || row.sender_phone || row.customer_phone }}</span>
+                                <span style="font-size: 11px; color: #94a3b8;"><el-icon><Location /></el-icon> {{ scope.row.sender_address || row.pickup_address }}</span>
+                              </div>
+                            </template>
+                          </el-table-column>
+
+                          <!-- Trạng thái -->
+                          <el-table-column prop="status" label="Trạng thái" min-width="130" align="center">
+                            <template #default="scope">
+                              <el-tag size="small" :type="getStatusTagType(scope.row.status)">
+                                {{ getStatusLabel(scope.row.status) }}
+                              </el-tag>
+                            </template>
+                          </el-table-column>
+
+                          <!-- SLA & Đang giữ -->
+                          <el-table-column label="SLA & Đang giữ" min-width="150">
+                            <template #default="scope">
+                              <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <el-tag v-if="scope.row.sla_status === 'OVERDUE'" type="danger" size="small" effect="dark" style="width: fit-content; background-color: #f5222d !important; color: white !important; font-weight: bold; border: none; margin-bottom: 2px; animation: pulse 1s infinite alternate;">
+                                  ⚠️ TRỄ HẠN
+                                </el-tag>
+                                <el-tag v-else :type="scope.row.sla_status === 'WARNING' ? 'warning' : 'success'" size="small" effect="dark" style="width: fit-content;">
+                                  {{ getSlaStatusLabel(scope.row.sla_status) }}
+                                </el-tag>
+                                <span style="font-size: 11px; color: #64748b;">
+                                  <b>Giữ:</b> {{ scope.row.holding_hub?.hub_name || scope.row.holding_hub_name || '---' }}
                                 </span>
-                                <el-popover
-                                  v-if="getWaybillCodes(scope.row).length > 2"
-                                  placement="bottom"
-                                  title="Danh sách mã vận đơn"
-                                  :width="250"
-                                  trigger="click"
-                                >
-                                  <template #reference>
-                                    <el-button type="primary" link size="small" style="font-size: 11px; font-weight: bold; margin-left: 4px;">
-                                      +{{ getWaybillCodes(scope.row).length - 2 }} đơn khác
-                                    </el-button>
-                                  </template>
-                                  <div style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
-                                    <span
-                                      v-for="code in getWaybillCodes(scope.row)"
-                                      :key="code"
-                                      class="code-badge info text-xs"
-                                      style="background: rgba(67, 24, 255, 0.1); color: #4318ff; padding: 4px 8px; border-radius: 4px; display: block; text-align: center;"
-                                    >
-                                      {{ code }}
-                                    </span>
-                                  </div>
-                                </el-popover>
                               </div>
-                              <span v-else class="text-muted text-xs">Chưa có</span>
                             </template>
                           </el-table-column>
-                          <el-table-column label="Thời gian gửi" width="160" align="center">
+
+                          <!-- Chi tiết hàng -->
+                          <el-table-column label="Chi tiết hàng" min-width="140">
                             <template #default="scope">
-                              <span class="text-xs fw-bold">{{ formatDate(scope.row.created_at) }}</span>
+                              <div style="font-size: 12px; color: #334155; line-height: 1.4;">
+                                <div><b>Trọng lượng:</b> {{ scope.row.actual_weight || scope.row.estimated_weight || scope.row.weight || 0.5 }} kg</div>
+                                <div v-if="scope.row.length"><b>Kích thước:</b> {{ scope.row.length }}x{{ scope.row.width }}x{{ scope.row.height }}</div>
+                              </div>
                             </template>
                           </el-table-column>
-                          <el-table-column label="Văn phòng nhận" min-width="250">
+
+                          <!-- Tài chính -->
+                          <el-table-column label="Tài chính (VNĐ)" min-width="200" align="right">
                             <template #default="scope">
-                              <span class="fw-bold text-primary" style="white-space: nowrap;">{{ scope.row.target_hub_name || getHubName(scope.row.target_hub_id) || 'N/A' }}</span>
-                            </template>
-                          </el-table-column>
-                          <el-table-column label="Ghi chú khách" min-width="250">
-                            <template #default="scope">
-                              <span style="white-space: nowrap;">{{ scope.row.notes || '' }}</span>
-                            </template>
-                          </el-table-column>
-                          <el-table-column label="Thao tác" width="220" align="center">
-                            <template #default="scope">
-                              <div class="flex justify-center gap-2">
-                                <el-button type="info" size="small" plain @click="viewRequestDetails(scope.row)">Chi tiết</el-button>
-                                <el-button type="primary" size="small" plain @click="openAssignShipperDialog(scope.row)">
-                                  <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá
-                                </el-button>
+                              <div class="finance-display" style="font-size: 12px; display: flex; flex-direction: column; gap: 2px;">
+                                <div class="finance-line">
+                                  <span class="label" style="color: #64748b;">Cước: </span>
+                                  <span class="value text-primary fw-bold">{{ formatCurrencyManual(scope.row.shipping_fee || 0) }}</span>
+                                </div>
+                                <div class="finance-line" v-if="scope.row.cod_amount > 0">
+                                  <span class="label" style="color: #64748b;">Thu hộ: </span>
+                                  <span class="value text-warning fw-bold">{{ formatCurrencyManual(scope.row.cod_amount) }}</span>
+                                </div>
+                                <div class="finance-line" style="border-top: 1px dashed #e2e8f0; margin-top: 2px; padding-top: 2px;">
+                                  <span class="label" style="color: #64748b;">Tổng thu: </span>
+                                  <span class="value text-danger fw-bold">{{ formatCurrencyManual(scope.row.total_amount_to_collect || (scope.row.cod_amount + (scope.row.payment_method === 'RECEIVER_PAY' ? scope.row.shipping_fee : 0))) }}</span>
+                                </div>
                               </div>
                             </template>
                           </el-table-column>
                         </el-table>
-                        <div v-if="row.requests.length > 5" style="display: flex; justify-content: center; margin-top: 12px;">
-                          <el-pagination
-                            layout="prev, pager, next, total"
-                            :total="row.requests.length"
-                            :page-size="5"
-                            v-model:current-page="innerTableCurrentPages[row.group_key || 'default']"
-                            size="small"
-                            background
-                          />
-                        </div>
                       </div>
                     </div>
                   </template>
                 </el-table-column>
                 
-                <el-table-column label="Khách hàng / Shop" min-width="280">
+                <el-table-column prop="request_code" label="Mã Yêu Cầu" min-width="180">
+                  <template #default="{ row }">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <el-link type="warning" class="fw-bold" @click="viewRequestDetails(row)">
+                        {{ row.request_code }}
+                      </el-link>
+                      <el-tag v-if="isNewRequest(row.created_at)" type="danger" size="small" effect="dark" round>Mới</el-tag>
+                    </div>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="Khách hàng / Shop" min-width="250">
                   <template #default="{ row }">
                     <div class="sender-info">
                       <span class="fw-bold text-dark">
                         {{ row.customer_name }}
                         <span class="text-xs text-muted" v-if="row.customer_code" style="white-space: nowrap;">({{ row.customer_code }})</span>
-                        <el-tag v-if="row.requests.some(r => isNewRequest(r.created_at))" type="danger" size="small" effect="dark" round style="margin-left: 8px;">Có đơn mới</el-tag>
                       </span>
-                      <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.customer_phone }}</span>
+                      <span class="text-xs text-muted">
+                        <el-icon class="mr-1"><Phone /></el-icon>{{ row.sender_phone || row.customer_phone }}
+                      </span>
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column label="Nguồn" min-width="180" align="center">
+                <el-table-column label="Nguồn" min-width="120" align="center">
                   <template #default="{ row }">
                     <el-tag :type="getSourceTagType(row.source)" effect="dark" size="small" class="fw-bold">{{ getSourceLabel(row.source) }}</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="Địa chỉ lấy hàng" min-width="320" prop="pickup_address" />
-                <el-table-column label="Tổng số đơn" width="120" align="center">
+                <el-table-column label="Địa chỉ lấy hàng" min-width="320" prop="pickup_address" show-overflow-tooltip />
+                <el-table-column label="Số lượng" width="100" align="center">
                   <template #default="{ row }">
-                    <el-tag type="primary" effect="dark" size="large" style="font-weight: bold; font-size: 14px;">{{ row.requests.length }}</el-tag>
+                    <el-tag type="primary" effect="dark" class="fw-bold">{{ getBagItemCount(row) }} đơn</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="Tổng khối lượng" width="140" align="center">
+                <el-table-column label="Khối lượng" width="120" align="center">
                   <template #default="{ row }">
-                    <span class="fw-bold" style="color: #4318ff;">{{ row.total_weight.toFixed(1) }} kg</span>
+                    <span class="fw-bold" style="color: #4318ff;">
+                      {{ (row.total_estimated_weight || row.est_weight || 0).toFixed(1) }} kg
+                    </span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Thao tác chung" min-width="200" align="center">
+                <el-table-column label="Thao tác" width="200" align="center">
                   <template #default="{ row }">
-                    <el-button type="primary" size="small" @click="openGroupAssignShipperDialog(row)">
-                      <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá tất cả
-                    </el-button>
+                    <div class="flex justify-center gap-2">
+                      <el-button type="info" size="small" plain @click="viewRequestDetails(row)">Chi tiết</el-button>
+                      <el-button type="primary" size="small" @click="openAssignShipperDialog(row)">
+                        <el-icon class="mr-1"><Bicycle /></el-icon> Gán bưu tá
+                      </el-button>
+                    </div>
                   </template>
                 </el-table-column>
 
@@ -1321,6 +1375,15 @@ const getSourceTagType = (source) => {
   }
 };
 
+const getSlaStatusLabel = (status) => {
+  const map = {
+    'ON_TIME': 'Đúng hạn',
+    'WARNING': 'Sắp trễ',
+    'OVERDUE': 'Quá hạn'
+  };
+  return map[status] || 'Đúng hạn';
+};
+
 const getSourceLabel = (source) => {
   switch (source) {
     case 'PORTAL': return 'CỔNG KHÁCH HÀNG';
@@ -1732,7 +1795,9 @@ const groupRequestsByCustomer = (requests) => {
 
 const groupedPending = computed(() => groupRequestsByCustomer(filteredPending.value));
 const groupedDispatch = computed(() => groupRequestsByCustomer(filteredDispatch.value));
-const groupedReceived = computed(() => groupRequestsByCustomer(filteredReceived.value));
+const groupedReceived = computed(() => {
+  return [...filteredReceived.value].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+});
 
 const receivedCurrentPage = ref(1);
 const receivedPageSize = ref(10);
@@ -2412,12 +2477,8 @@ const handleDispatchRequestSelectionChange = (group, selection) => {
   dispatchSelection.value = [...selectionsFromOtherGroups, ...selectionsFromThisGroup];
 };
 
-const handleReceivedRequestSelectionChange = (group, selection) => {
-  const groupRequestIds = new Set((group.requests || []).map(req => req.request_id));
-  const selectedIds = new Set((selection || []).map(req => req.request_id));
-  const selectionsFromOtherGroups = receivedSelection.value.filter(req => !groupRequestIds.has(req.request_id));
-  const selectionsFromThisGroup = (group.requests || []).filter(req => selectedIds.has(req.request_id));
-  receivedSelection.value = [...selectionsFromOtherGroups, ...selectionsFromThisGroup];
+const handleReceivedSelectionChange = (selection) => {
+  receivedSelection.value = selection;
 };
 
 const handleRealtimeEvent = (e) => {

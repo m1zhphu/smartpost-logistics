@@ -277,7 +277,11 @@ def search_waybills(
                 "total_amount_to_collect": float(w.total_amount_to_collect or 0),
                 "sender_name": w.sender_name,
                 "sender_phone": w.sender_phone,
-                "sender_address": w.sender_address
+                "sender_address": w.sender_address,
+                "request_id": w.request_id,
+                "request_code": w.request.request_code if w.request else None,
+                "requested_pickup_time": w.request.requested_pickup_time.isoformat() if (w.request and w.request.requested_pickup_time) else None,
+                "request_created_at": w.request.created_at.isoformat() if (w.request and w.request.created_at) else None
             })
 
         return {"items": result, "total": total, "page": filters.page, "size": filters.size}

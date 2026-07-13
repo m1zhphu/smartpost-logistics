@@ -415,9 +415,22 @@
               </template>
             </el-table-column>
             
-            <el-table-column prop="company_name" label="Tên Shop / Doanh nghiệp" min-width="250">
+            <el-table-column prop="company_name" label="Tên Shop / Doanh nghiệp" min-width="280">
               <template #default="{ row }">
-                <span class="fw-bold">{{ row.company_name || row.name }}</span>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span class="fw-bold" style="color: #1e293b; font-size: 14px;">{{ row.company_name || row.name }}</span>
+                  <div v-if="row.request_code" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <el-tag type="danger" size="small" effect="dark" class="fw-bold" style="background-color: #ef4444; border: none; font-size: 11px; padding: 2px 6px;">
+                      📦 Yêu cầu: {{ row.request_code }}
+                    </el-tag>
+                    <span v-if="row.request_created_at" style="font-size: 11px; color: #64748b; font-weight: 500;">
+                      ({{ moment(row.request_created_at).format('DD/MM/YYYY HH:mm') }})
+                    </span>
+                  </div>
+                  <el-tag v-else type="info" size="small" effect="plain" style="width: fit-content; font-size: 11px;">
+                    📝 Đơn lẻ / Tạo trực tiếp
+                  </el-tag>
+                </div>
               </template>
             </el-table-column>
 
@@ -435,7 +448,7 @@
             </el-table-column>
 
             <template #empty>
-              <el-empty description="Không tìm thấy khách hàng nào phù hợp" :image-size="100" />
+              <el-empty description="Không tìm thấy yêu cầu hoặc vận đơn nào phù hợp" :image-size="100" />
             </template>
           </el-table>
 
@@ -639,7 +652,7 @@
 
         <!-- Phân trang -->
         <div class="pagination-wrapper mt-24 flex-between">
-          <span class="pagination-info" v-if="isAdmin">Hiển thị {{ paginatedCustomers.length }} / {{ displayCustomers.length }} khách hàng</span>
+          <span class="pagination-info" v-if="isAdmin">Hiển thị {{ paginatedCustomers.length }} / {{ displayCustomers.length }} yêu cầu/lần gửi</span>
           <span class="pagination-info" v-else>Tổng số vận đơn hiển thị: {{ total }}</span>
           
           <el-pagination
@@ -1360,7 +1373,6 @@ const fetchHubsAndShippers = async () => {
     const allUsers = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data.items || usersRes.data.data || []);
     shippers.value = allUsers.filter(u => u.role_id === 4);
     customers.value = Array.isArray(customersRes.data) ? customersRes.data : (customersRes.data.items || customersRes.data.data || []);
-    displayCustomers.value = [...customers.value];
   } catch (err) {
     console.error('Không thể tải danh sách bưu cục/bưu tá/khách hàng:', err);
   }
@@ -1399,28 +1411,46 @@ const handleSearch = async () => {
       const allWaybills = response.data.items || [];
       
       const grouped = {};
+      const groupMeta = {};
+
       allWaybills.forEach(w => {
         const cId = w.customer_id;
-        if (!grouped[cId]) {
-          grouped[cId] = [];
+        const reqCode = w.request_code || null;
+        const reqId = w.request_id || null;
+        const groupKey = `${cId}_${reqCode || 'direct'}`;
+        
+        if (!grouped[groupKey]) {
+          grouped[groupKey] = [];
+          
+          const cust = customers.value.find(c => c.customer_id === cId) || {};
+          groupMeta[groupKey] = {
+            customer_id: groupKey, // For row-key compatibility in el-table
+            real_customer_id: cId,
+            customer_code: cust.customer_code || w.customer_code || '---',
+            company_name: cust.company_name || cust.name || w.customer_name || '---',
+            name: cust.name || w.customer_name || '---',
+            phone: cust.phone_number || w.sender_phone || '---',
+            address: cust.address_detail || cust.street_address || w.sender_address || '---',
+            staff_in_charge_name: cust.staff_in_charge_name || cust.staff_in_charge?.full_name || '---',
+            
+            request_id: reqId,
+            request_code: reqCode,
+            request_created_at: w.request_created_at || w.requested_pickup_time || null,
+          };
         }
-        grouped[cId].push(w);
+        grouped[groupKey].push(w);
       });
       
       customerWaybills.value = grouped;
       
-      const isFiltering = !!(
-        searchQuery.value || statusFilter.value || dateRange.value?.[0] ||
-        holdingHubFilter.value || holdingShipperFilter.value || codStatusFilter.value ||
-        serviceTypeFilter.value || slaStatusFilter.value || auth.selectedHubId
-      );
+      // Convert groupMeta to array and sort by request_created_at (newest first)
+      const groupsArray = Object.values(groupMeta).sort((a, b) => {
+        const dateA = a.request_created_at ? new Date(a.request_created_at) : new Date(0);
+        const dateB = b.request_created_at ? new Date(b.request_created_at) : new Date(0);
+        return dateB - dateA;
+      });
       
-      if (isFiltering) {
-        displayCustomers.value = customers.value.filter(c => !!grouped[c.customer_id]);
-      } else {
-        displayCustomers.value = [...customers.value];
-      }
-      
+      displayCustomers.value = groupsArray;
       total.value = allWaybills.length;
     }
   } catch (err) {
@@ -1439,10 +1469,11 @@ const handleCustomerExpand = async (row, expandedRows) => {
     if (!customerWaybills.value[row.customer_id] || customerWaybills.value[row.customer_id].length === 0) {
       customerWaybillsLoading.value[row.customer_id] = true;
       try {
+        const cId = row.real_customer_id || row.customer_id;
         const response = await api.post('/api/waybills/search', {
           page: 1,
           size: 500,
-          customer_id: row.customer_id
+          customer_id: typeof cId === 'string' && cId.includes('_') ? parseInt(cId.split('_')[0]) : cId
         });
         customerWaybills.value[row.customer_id] = response.data.items || [];
         innerCurrentPage.value[row.customer_id] = 1;
@@ -1856,14 +1887,14 @@ const submitTransfer = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   const searchCode = route.query.search;
   if (searchCode) {
     searchQuery.value = String(searchCode).trim();
   }
+  await fetchHubsAndShippers();
   handleSearch();
   fetchSLAStats();
-  fetchHubsAndShippers();
   fetchProductTypes();
 });
 </script>
