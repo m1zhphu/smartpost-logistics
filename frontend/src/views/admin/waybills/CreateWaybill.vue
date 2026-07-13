@@ -30,10 +30,16 @@
             </template>
           </el-dropdown>
 
-          <button class="btn-primary" @click="saveWaybill" :disabled="loading">
+          <button class="btn-primary" @click="() => saveWaybill(false)" :disabled="loading">
             <el-icon class="is-loading mr-2" v-if="loading"><Loading /></el-icon>
             <el-icon v-else><DocumentAdd /></el-icon>
             <span>Tạo vận đơn</span>
+          </button>
+
+          <button class="btn-primary" @click="() => saveWaybill(true)" :disabled="loading" style="margin-left: 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: #10b981;">
+            <el-icon class="is-loading mr-2" v-if="loading"><Loading /></el-icon>
+            <el-icon v-else><Printer /></el-icon>
+            <span>Tạo & In vận đơn</span>
           </button>
         </div>
       </header>
@@ -1224,7 +1230,7 @@ const loadOcrPrefill = async () => {
   }
 };
 
-const saveWaybill = async () => {
+const saveWaybill = async (printAfterSave = false) => {
   if (!formRef.value) return;
   
   await formRef.value.validate(async (valid) => {
@@ -1301,6 +1307,11 @@ const saveWaybill = async () => {
         });
 
       ElMessage({ message: `Đã tạo vận đơn thành công: ${response.data.waybill_code}`, type: 'success' });
+      
+      if (printAfterSave && response.data.waybill_code) {
+        const baseUrl = import.meta.env.VITE_API_URL || '';
+        window.open(`${baseUrl}/api/print/${response.data.waybill_code}`, '_blank');
+      }
       
       if (isOcrFinalizeMode.value) {
         router.push('/admin/waybills/ocr-reviewed');
