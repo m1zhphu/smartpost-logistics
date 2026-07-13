@@ -83,6 +83,7 @@ def _customer_response_payload(customer):
         "tax_code": customer.tax_code,
         "staff_in_charge_id": customer.staff_in_charge_id,
         "staff_in_charge_name": customer.staff_in_charge.full_name if customer.staff_in_charge else None,
+        "staff_in_charge_primary_hub_id": customer.staff_in_charge.primary_hub_id if customer.staff_in_charge else None,
         "province_id": customer.province_id,
         "district_id": customer.district_id,
         "ward_id": customer.ward_id,

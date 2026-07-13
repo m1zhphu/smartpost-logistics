@@ -1212,6 +1212,11 @@ const isActiveHub = (hub) => hub?.status === true || hub?.status === 1 || hub?.s
 const activeHubsList = computed(() => hubsList.value.filter(isActiveHub));
 
 const autoProcessingHub = computed(() => {
+  if (customerInfo.value?.staff_in_charge_primary_hub_id) {
+    const assignedHub = activeHubsList.value.find(h => h.hub_id === customerInfo.value.staff_in_charge_primary_hub_id);
+    if (assignedHub) return assignedHub;
+  }
+
   const provinceId = Number(getSenderProvinceId() || 0);
   if (!provinceId) return null;
 
