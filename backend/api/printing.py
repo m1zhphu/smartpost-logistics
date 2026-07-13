@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from core.database import get_db
@@ -138,11 +138,8 @@ async def generate_bill_html(waybill_code: str, request: Request, db: Session = 
 
     now_str = datetime.now().strftime('%H:%M %d/%m/%Y')
     total_val = (wb.cod_amount or 0) + (wb.shipping_fee or 0)
-    logo_html = (
-        f'<img class="brand-logo" src="data:image/png;base64,{logo_b64}" alt="SpeedLight">'
-        if logo_b64
-        else '<div class="brand-fallback"><div>SpeedLight</div><span>SPEED UP</span></div>'
-    )
+    logo_src = f"data:image/png;base64,{logo_b64}" if logo_b64 else "https://res.cloudinary.com/gpxz1nku/image/upload/v1783944901/smartpost/assets/CompanyLogo4.png"
+    logo_html = f'<img class="brand-logo" src="{logo_src}" alt="SpeedLight">'
 
     # 3. Giao dien HTML chuan mau Speed Light
     html_content = f"""
