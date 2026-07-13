@@ -298,9 +298,9 @@ def create_booking_request(db: Session, data: schema_delivery.BookingRequestCrea
             if not sender_phone:
                 sender_phone = cust.phone_number
             if not pickup_address:
-                addr_parts = []
-                if cust.address_detail: addr_parts.append(cust.address_detail)
                 pickup_address = cust.address_detail or ""
+            if not target_hub_id and cust.staff_in_charge and cust.staff_in_charge.primary_hub_id:
+                target_hub_id = cust.staff_in_charge.primary_hub_id
                 
     db_req = models.BookingRequests(
         request_code=req_code,

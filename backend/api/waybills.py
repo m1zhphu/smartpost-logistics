@@ -1199,11 +1199,19 @@ def create_customer_pickup_waybill(
         raise HTTPException(status_code=403, detail="Ho so khach hang khong con hoat dong")
 
     sender_province_id = data.sender.province_id or customer.province_id
-    origin_hub = _find_hub_for_province(
-        db,
-        sender_province_id,
-        data.sender.province_name or customer.province_name,
-    )
+    origin_hub = None
+    if customer.staff_in_charge and customer.staff_in_charge.primary_hub_id:
+        origin_hub = db.query(models.Hubs).filter(
+            models.Hubs.hub_id == customer.staff_in_charge.primary_hub_id,
+            models.Hubs.status == True
+        ).first()
+        
+    if not origin_hub:
+        origin_hub = _find_hub_for_province(
+            db,
+            sender_province_id,
+            data.sender.province_name or customer.province_name,
+        )
     if not origin_hub:
         origin_hub = db.query(models.Hubs).filter(models.Hubs.hub_id == current_user.get("primary_hub_id")).first()
     if not origin_hub:
@@ -1289,6 +1297,11 @@ def create_customer_bulk_mail_pickup(
         target_hub = db.query(models.Hubs).filter(
             models.Hubs.hub_id == data.target_hub_id,
             models.Hubs.status == True,
+        ).first()
+    if not target_hub and customer.staff_in_charge and customer.staff_in_charge.primary_hub_id:
+        target_hub = db.query(models.Hubs).filter(
+            models.Hubs.hub_id == customer.staff_in_charge.primary_hub_id,
+            models.Hubs.status == True
         ).first()
     if not target_hub:
         target_hub = _find_hub_for_province(
