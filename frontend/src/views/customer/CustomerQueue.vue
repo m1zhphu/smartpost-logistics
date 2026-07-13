@@ -484,7 +484,8 @@ const submitSelectedDrafts = async () => {
           } : null,
           draft_items: draftItems,
           target_hub_id: draft.target_hub_id || null,
-          note: deptPrefix + (draft.note || '') || null
+          note: deptPrefix + (draft.note || '') || null,
+          customer_department_id: draft.customer_department_id || null
         });
         successCount++;
         successIds.push(draft.draft_id);
@@ -548,7 +549,8 @@ const submitSelectedDrafts = async () => {
         pickup_method: 'OUR_STAFF_PICKUP',
         delivery_method: 'OUR_STAFF_DELIVERY',
         target_hub_id: draft.target_hub_id || null,
-        save_as_draft: false
+        save_as_draft: false,
+        customer_department_id: draft.customer_department_id || null
       };
 
       await api.post('/api/waybills/customer/pickups', payload);

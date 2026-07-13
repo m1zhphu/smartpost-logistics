@@ -644,7 +644,8 @@ const submitPickupRequest = async () => {
       pickup_method: 'OUR_STAFF_PICKUP',
       delivery_method: 'OUR_STAFF_DELIVERY',
       target_hub_id: form.target_hub_id || null,
-      save_as_draft: false
+      save_as_draft: false,
+      customer_department_id: form.customer_department_id || null
     };
 
     const res = await api.post('/api/waybills/customer/pickups', payload);
@@ -730,7 +731,8 @@ const submitAllDrafts = async () => {
         pickup_method: 'OUR_STAFF_PICKUP',
         delivery_method: 'OUR_STAFF_DELIVERY',
         target_hub_id: draft.target_hub_id || null,
-        save_as_draft: false
+        save_as_draft: false,
+        customer_department_id: draft.customer_department_id || null
       };
 
       await api.post('/api/waybills/customer/pickups', payload);
