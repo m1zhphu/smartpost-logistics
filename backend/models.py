@@ -541,6 +541,10 @@ class BookingRequests(Base):
 
 
     @property
+    def customer_department_name(self):
+        return self.customer_department.name if self.customer_department else None
+
+    @property
     def customer_code(self):
         return self.customer.customer_code if self.customer else None
 

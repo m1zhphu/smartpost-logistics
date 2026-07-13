@@ -617,6 +617,9 @@
                       <span class="text-xs text-muted">
                         <el-icon class="mr-1"><Phone /></el-icon>{{ row.sender_phone || row.customer_phone }}
                       </span>
+                      <span class="text-xs mt-1" v-if="row.customer_department_name">
+                        <el-tag size="small" type="primary" effect="plain">{{ row.customer_department_name }}</el-tag>
+                      </span>
                     </div>
                   </template>
                 </el-table-column>
@@ -734,6 +737,9 @@
                       <span class="text-xs text-muted" v-if="row.customer_code">({{ row.customer_code }})</span>
                     </span>
                     <span class="text-xs text-muted"><el-icon class="mr-1"><Phone /></el-icon>{{ row.sender_phone }}</span>
+                    <span class="text-xs mt-1" v-if="row.customer_department_name">
+                      <el-tag size="small" type="primary" effect="plain">{{ row.customer_department_name }}</el-tag>
+                    </span>
                   </div>
                 </template>
               </el-table-column>
@@ -1168,6 +1174,12 @@
                     <div class="info-row">
                       <span class="label">Người tạo đơn:</span>
                       <span class="value fw-semibold text-dark">{{ getCreatorName(selectedRequest) }}</span>
+                    </div>
+                    <div class="info-row" v-if="selectedRequest.customer_department_name">
+                      <span class="label">Phòng ban:</span>
+                      <span class="value">
+                        <el-tag size="small" type="primary" effect="plain">{{ selectedRequest.customer_department_name }}</el-tag>
+                      </span>
                     </div>
                   </div>
                 </el-col>

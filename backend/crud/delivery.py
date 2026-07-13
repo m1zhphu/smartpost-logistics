@@ -317,7 +317,8 @@ def create_booking_request(db: Session, data: schema_delivery.BookingRequestCrea
         est_quantity=data.est_quantity,
         priority=data.priority,
         sla_deadline=data.sla_deadline,
-        notes=data.notes
+        notes=data.notes,
+        customer_department_id=data.customer_department_id
     )
     db.add(db_req)
     db.flush()

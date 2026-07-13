@@ -64,6 +64,7 @@ class BookingRequestCreate(BaseModel):
     priority: str = Field(default="NORMAL", description="NORMAL, URGENT, VIP, HT")
     sla_deadline: Optional[datetime] = None
     notes: Optional[str] = None
+    customer_department_id: Optional[int] = None
 
     @field_validator("product_type", mode="before")
     @classmethod
@@ -271,6 +272,8 @@ class BookingRequestResponse(BaseModel):
     materialization_status: Optional[str] = None
     waybill_items: List[dict] = Field(default_factory=list)
     created_at: Optional[datetime] = None
+    customer_department_id: Optional[int] = None
+    customer_department_name: Optional[str] = None
 
     class Config:
         from_attributes = True
