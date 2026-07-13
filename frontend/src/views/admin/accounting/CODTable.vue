@@ -416,7 +416,7 @@ const selectedSumFee = computed(() => selectedRows.value.reduce((s, r) => s + (N
 const formatMoney = (v) => Number(v || 0).toLocaleString('vi-VN');
 
 const handleSelectionChange = (val) => { selectedRows.value = val; };
-const canSelectRow = (row) => row.status !== 'SETTLED';
+const canSelectRow = (row) => true;
 
 const getCustomerInfo = (id) => {
   return customers.value.find(c => c.customer_id === id) || {};

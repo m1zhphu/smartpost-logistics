@@ -63,7 +63,7 @@ async def create_shop_statement(
     bills = crud_acc.get_settled_bills(db, customer_id)
     if not bills:
         raise HTTPException(status_code=404, detail="Không có đơn hàng nào chờ đối soát.")
-    stmt = crud_acc.create_cod_statement(db, customer_id, current_user['user_id'])
+    stmt = crud_acc.create_cod_settlement(db, customer_id, current_user.get('user_id'))
     if not stmt:
         raise HTTPException(status_code=400, detail="Lỗi tạo bảng kê")
     db.commit()
