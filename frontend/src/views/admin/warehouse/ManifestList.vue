@@ -77,22 +77,26 @@
 
             <!-- Khung tìm kiếm nhanh -->
             <div class="search-box mb-24">
-              <el-input
+              <RecentSearchInput
                 v-model="searchCode"
                 placeholder="Nhập mã chuyến xe (Manifest Code) cần tra cứu..."
                 class="search-input"
                 clearable
-                @keyup.enter="viewManifestDetail(searchCode)"
+                storageKey="recentSearches_manifest"
+                popoverWidth="400"
+                @keyup.enter="searchInputRef?.saveSearch(searchCode); viewManifestDetail(searchCode)"
+                @search="viewManifestDetail(searchCode)"
+                ref="searchInputRef"
               >
                 <template #prefix>
                   <el-icon><Search /></el-icon>
                 </template>
                 <template #append>
-                  <el-button type="primary" @click="viewManifestDetail(searchCode)" :loading="loadingDetail">
+                  <el-button type="primary" @click="searchInputRef?.saveSearch(searchCode); viewManifestDetail(searchCode)" :loading="loadingDetail">
                     Tra Cứu
                   </el-button>
                 </template>
-              </el-input>
+              </RecentSearchInput>
             </div>
 
             <!-- Chi tiết Chuyến xe hiển thị động -->
@@ -173,12 +177,14 @@ import { ref, onMounted } from 'vue';
 import { List, Van, Search, Printer, Refresh } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage } from 'element-plus';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
 const loadingIncoming = ref(false);
 const loadingDetail = ref(false);
 const incomingManifests = ref([]);
 const searchCode = ref('');
 const manifestDetail = ref(null);
+const searchInputRef = ref(null);
 const manifestBags = ref([]);
 
 const fetchIncoming = async () => {

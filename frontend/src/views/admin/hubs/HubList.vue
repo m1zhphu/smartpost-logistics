@@ -27,16 +27,20 @@
       <div class="content-card filter-card animate-fade-in" style="margin-bottom: 20px; padding: 20px;">
         <el-form :inline="true" class="filter-form-inline" style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: -18px;">
           <el-form-item label="Tìm kiếm">
-            <el-input 
+            <RecentSearchInput 
               v-model="filters.searchText" 
               placeholder="Mã, tên, địa chỉ..." 
               clearable 
               style="width: 220px;"
+              storageKey="recentSearches_hubs"
+              popoverWidth="300"
+              @search="searchInputRef?.saveSearch(filters.searchText)"
+              ref="searchInputRef"
             >
               <template #prefix>
                 <el-icon><Search /></el-icon>
               </template>
-            </el-input>
+            </RecentSearchInput>
           </el-form-item>
 
           <el-form-item label="Phân cấp">
@@ -83,7 +87,7 @@
 
           <el-form-item>
             <el-button type="info" plain @click="resetFilters">
-              <el-icon class="mr-1"><Refresh /></el-icon> Reset
+              <el-icon class="mr-1"><Refresh /></el-icon> Làm mới
             </el-button>
           </el-form-item>
         </el-form>
@@ -415,12 +419,14 @@ import {
   Plus, Edit, Delete, Box, Location, UserFilled, User, Key, OfficeBuilding, Loading, Search, Refresh
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 const loading = ref(false);
 const saveLoading = ref(false);
 const dialogVisible = ref(false);
 const formRef = ref(null);
+const searchInputRef = ref(null);
 const hubs = ref([]);
 const admins = ref([]);
 const provinces = ref([]);

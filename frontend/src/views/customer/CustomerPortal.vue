@@ -351,7 +351,7 @@
                             srv.calculation_base === 'MAIN_FEE' ? 'Theo cước chính' :
                             srv.calculation_base === 'COD_AMOUNT' ? 'Theo tiền thu hộ COD' :
                             srv.calculation_base === 'QUANTITY' ? 'Theo số lượng sản phẩm' :
-                            'Theo bill'
+                            'Theo vận đơn'
                           }})
                         </span>
                       </el-checkbox>

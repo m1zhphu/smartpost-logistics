@@ -289,10 +289,10 @@ const menuData = computed(() => {
       children: [
         { title: 'VẬN HÀNH KHO', items: [
           // { label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in' },
-          { label: 'Đóng túi (Bagging)', path: '/admin/warehouse/bagging' },
+          { label: 'Đóng túi', path: '/admin/warehouse/bagging' },
           { label: 'Danh sách túi', path: '/admin/warehouse/bags' },
           { label: 'Túi gom lấy hàng', path: '/admin/warehouse/pickup-bags' },
-          { label: 'Lên/Xuống xe (Manifest)', path: '/admin/warehouse/manifest' },
+          { label: 'Lên/Xuống xe', path: '/admin/warehouse/manifest' },
           { label: 'Lịch sử Chuyến xe', path: '/admin/warehouse/manifests' }
         ]}
       ]

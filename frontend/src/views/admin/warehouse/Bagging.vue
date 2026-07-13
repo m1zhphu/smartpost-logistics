@@ -10,7 +10,7 @@
               <el-icon><Suitcase /></el-icon>
             </div>
             <div>
-              <h2 class="page-title">Đóng túi (Bagging)</h2>
+              <h2 class="page-title">Đóng túi</h2>
               <p class="page-subtitle">Gom nhiều vận đơn vào một túi để vận chuyển liên tỉnh</p>
             </div>
           </div>

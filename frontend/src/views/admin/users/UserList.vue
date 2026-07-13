@@ -35,14 +35,18 @@
         <el-row :gutter="20" class="filter-row">
           <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Tìm kiếm trực tiếp</div>
-            <el-input 
+            <RecentSearchInput 
               v-model="filter.query" 
               placeholder="Tên, SĐT, Username..." 
               clearable 
               class="modern-input"
+              storageKey="recentSearches_users"
+              popoverWidth="300"
+              @search="searchInputRef?.saveSearch(filter.query)"
+              ref="searchInputRef"
             >
               <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
+            </RecentSearchInput>
           </el-col>
           
           <el-col :xs="24" :sm="12" :lg="5" class="filter-col">
@@ -502,6 +506,7 @@ import {
   UserFilled, RefreshRight, Refresh, Message, Phone, OfficeBuilding, User, Key, Loading, InfoFilled
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
@@ -517,6 +522,7 @@ const saveLoading = ref(false);
 const dialogVisible = ref(false);
 const detailDrawerVisible = ref(false);
 const selectedUser = ref(null);
+const searchInputRef = ref(null);
 
 const viewStaffDetails = (row) => {
   selectedUser.value = row;

@@ -49,14 +49,18 @@
                 </el-button>
               </div>
               <div class="search-wrapper">
-                <el-input 
+                <RecentSearchInput 
                   v-model="searchPending" 
                   placeholder="Tìm mã, SĐT, địa chỉ..." 
                   class="modern-input-small"
                   clearable
+                  storageKey="recentSearches_pickup_pending"
+                  popoverWidth="350"
+                  @search="searchInputPendingRef?.saveSearch(searchPending)"
+                  ref="searchInputPendingRef"
                 >
                   <template #prefix><el-icon><Search /></el-icon></template>
-                </el-input>
+                </RecentSearchInput>
               </div>
             </div>
 
@@ -231,14 +235,18 @@
                 </el-button>
               </div>
               <div class="search-wrapper">
-                <el-input 
+                <RecentSearchInput 
                   v-model="searchDispatch" 
                   placeholder="Tìm mã, SĐT, địa chỉ..." 
                   class="modern-input-small"
                   clearable
+                  storageKey="recentSearches_pickup_dispatch"
+                  popoverWidth="350"
+                  @search="searchInputDispatchRef?.saveSearch(searchDispatch)"
+                  ref="searchInputDispatchRef"
                 >
                   <template #prefix><el-icon><Search /></el-icon></template>
-                </el-input>
+                </RecentSearchInput>
               </div>
             </div>
 
@@ -420,14 +428,18 @@
                 </el-button>
               </div>
               <div class="search-wrapper">
-                <el-input 
+                <RecentSearchInput 
                   v-model="searchReceived" 
                   placeholder="Tìm mã, SĐT, địa chỉ..." 
                   class="modern-input-small"
                   clearable
+                  storageKey="recentSearches_pickup"
+                  popoverWidth="350"
+                  @search="searchInputReceivedRef?.saveSearch(searchReceived)"
+                  ref="searchInputReceivedRef"
                 >
                   <template #prefix><el-icon><Search /></el-icon></template>
-                </el-input>
+                </RecentSearchInput>
               </div>
             </div>
 
@@ -679,14 +691,18 @@
                 </el-select>
               </div>
               <div class="search-wrapper">
-                <el-input 
+                <RecentSearchInput 
                   v-model="searchAssigned" 
                   placeholder="Tìm mã, SĐT, bưu tá..." 
                   class="modern-input-small"
                   clearable
+                  storageKey="recentSearches_pickup"
+                  popoverWidth="350"
+                  @search="searchInputAssignedRef?.saveSearch(searchAssigned)"
+                  ref="searchInputAssignedRef"
                 >
                   <template #prefix><el-icon><Search /></el-icon></template>
-                </el-input>
+                </RecentSearchInput>
               </div>
             </div>
 
@@ -1257,6 +1273,7 @@ import { getPickupImages } from '@/utils/imageHelpers';
 import { formatVietnamDateTime } from '@/utils/dateTime';
 import * as XLSX from 'xlsx';
 import { useAuthStore } from '@/stores/auth';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -1279,6 +1296,11 @@ const searchPending = ref('');
 const searchReceived = ref('');
 const searchAssigned = ref('');
 const searchDispatch = ref('');
+
+const searchInputPendingRef = ref(null);
+const searchInputDispatchRef = ref(null);
+const searchInputReceivedRef = ref(null);
+const searchInputAssignedRef = ref(null);
 
 const rejectDialogVisible = ref(false);
 const rejectForm = reactive({

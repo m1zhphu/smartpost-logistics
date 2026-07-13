@@ -216,7 +216,7 @@
                 <span class="badge" :class="stmt.status.toLowerCase()">{{ getStatementStatusLabel(stmt.status) }}</span>
               </div>
               <div class="meta">
-                <span>Loại: <b>{{ stmt.type }}</b></span>
+                <span>Loại: <b>{{ getStatementTypeName(stmt.type) }}</b></span>
                 <span class="dot"></span>
                 <span>Tổng tiền: <b class="text-primary">{{ formatCurrencyManual(stmt.grand_total || stmt.total_amount) }}</b></span>
               </div>
@@ -456,7 +456,17 @@ const newStatement = ref({
 
 const formatCurrencyManual = (val) => {
   if (!val) return '0 đ';
-  return Number(val).toLocaleString('vi-VN') + ' đ';
+  const num = Number(val);
+  return String(num).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ' đ';
+};
+
+const getStatementTypeName = (type) => {
+  const map = {
+    'DEBT': 'Cước phí',
+    'COD': 'Thu hộ',
+    'SETTLEMENT': 'Chốt bảng'
+  };
+  return map[type] || type;
 };
 
 const handleSelectionChange = (val) => {

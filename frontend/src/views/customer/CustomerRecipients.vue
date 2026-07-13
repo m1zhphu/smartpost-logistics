@@ -11,16 +11,20 @@
                   <span>Sổ địa chỉ người nhận</span>
                 </div>
                 <div class="flex-center gap-2">
-                  <el-input
+                  <RecentSearchInput
                     v-model="searchQuery"
                     placeholder="Tìm theo tên hoặc SĐT..."
                     clearable
+                    storageKey="recentSearches_customer_recipients"
+                    popoverWidth="250"
                     style="width: 250px;"
+                    @keyup.enter="searchInputRef?.saveSearch(searchQuery)"
+                    ref="searchInputRef"
                   >
                     <template #prefix>
                       <el-icon><Search /></el-icon>
                     </template>
-                  </el-input>
+                  </RecentSearchInput>
                   <el-button type="primary" @click="openAddDialog">
                     <el-icon class="mr-6"><Plus /></el-icon>Thêm địa chỉ mới
                   </el-button>
@@ -89,7 +93,7 @@
         </el-form-item>
 
         <el-form-item label="Số điện thoại" prop="phone" required>
-          <el-input v-model="form.phone" placeholder="Nhập số điện thoại liên hệ..." />
+          <el-input v-model="form.phone" placeholder="Nhập số điện thoại liên hệ..." maxlength="10" show-word-limit @input="val => form.phone = val.replace(/[^0-9]/g, '')" />
         </el-form-item>
 
         <el-row :gutter="16">
@@ -135,6 +139,7 @@ import { ref, computed, reactive, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Notebook, Search, Plus, Edit, Delete, FolderOpened } from '@element-plus/icons-vue';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
 // Address Dynamic API
 const ADDR_API = 'https://provinces.open-api.vn/api';
@@ -147,6 +152,7 @@ const wards = ref([]);
 const loading = ref(false);
 const submitLoading = ref(false);
 const searchQuery = ref('');
+const searchInputRef = ref(null);
 
 const authStore = useAuthStore();
 const storageKey = computed(() => 'customer_recipients_' + (authStore.user?.id || authStore.user?.username || 'global'));
@@ -168,7 +174,10 @@ const form = reactive({
 
 const rules = {
   name: [{ required: true, message: 'Vui lòng nhập họ tên người nhận', trigger: 'blur' }],
-  phone: [{ required: true, message: 'Vui lòng nhập số điện thoại', trigger: 'blur' }],
+  phone: [
+    { required: true, message: 'Vui lòng nhập số điện thoại', trigger: 'blur' },
+    { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải gồm đúng 10 chữ số', trigger: 'blur' }
+  ],
   province_id: [{ required: true, message: 'Vui lòng chọn Tỉnh/Thành', trigger: 'change' }],
   district_id: [{ required: true, message: 'Vui lòng chọn Quận/Huyện', trigger: 'change' }]
 };

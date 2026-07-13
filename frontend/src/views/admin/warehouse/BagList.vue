@@ -28,15 +28,19 @@
         <el-row :gutter="20" class="filter-row">
           <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Mã túi hàng</div>
-            <el-input 
+            <RecentSearchInput 
               v-model="filters.bag_code" 
               placeholder="Nhập mã túi cần tìm..." 
               clearable 
               class="modern-input"
+              storageKey="recentSearches_bags"
+              popoverWidth="300"
               @keyup.enter="fetchBags"
+              @search="fetchBags"
+              ref="searchInputRef"
             >
               <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
+            </RecentSearchInput>
           </el-col>
           
           <el-col :xs="24" :sm="12" :lg="5" class="filter-col">
@@ -246,6 +250,7 @@ import {
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
 const router = useRouter();
 
@@ -253,6 +258,7 @@ const router = useRouter();
 const loading = ref(false);
 const bags = ref([]);
 const hubs = ref([]);
+const searchInputRef = ref(null);
 
 // Lọc & Phân trang
 const filters = reactive({
@@ -285,6 +291,7 @@ const fetchHubs = async () => {
 
 const fetchBags = async () => {
   loading.value = true;
+  searchInputRef.value?.saveSearch(filters.bag_code);
   try {
     const params = {
       page: pagination.page,

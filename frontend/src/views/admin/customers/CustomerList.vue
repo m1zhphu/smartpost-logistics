@@ -39,19 +39,23 @@
             :closable="false"
             class="mb-12"
           />
-          <el-input
+          <RecentSearchInput
             v-model="searchQuery"
             placeholder="Tìm theo tên shop, SĐT hoặc mã khách hàng..."
             class="modern-input search-input"
             clearable
+            storageKey="recentSearches_customers"
+            popoverWidth="400"
             @clear="fetchData"
             @keyup.enter="fetchData"
+            @search="fetchData"
+            ref="searchInputRef"
           >
             <template #prefix><el-icon><Search /></el-icon></template>
             <template #append>
               <el-button @click="fetchData" class="search-btn">Tìm kiếm</el-button>
             </template>
-          </el-input>
+          </RecentSearchInput>
           <el-select
             v-if="!isMineView"
             v-model="staffFilterId"
@@ -892,6 +896,7 @@ import {
   CreditCard, Menu, UserFilled, Loading, Location
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
 import { useRoute } from 'vue-router';
@@ -923,6 +928,7 @@ const viewCustomerDetails = (row) => {
 };
 const activeTab = ref('all');
 const searchQuery = ref('');
+const searchInputRef = ref(null);
 const staffFilterId = ref(null);
 const formRef = ref(null);
 const customers = ref([]);
@@ -1158,6 +1164,7 @@ const fetchPricingPolicies = async () => {
 
 const fetchData = async () => {
   loading.value = true;
+  searchInputRef.value?.saveSearch(searchQuery.value);
   try {
     const params = {
       q: searchQuery.value,

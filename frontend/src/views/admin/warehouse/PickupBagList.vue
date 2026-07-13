@@ -76,15 +76,19 @@
         <el-row :gutter="20" class="filter-row">
           <el-col :xs="24" :sm="12" :lg="7" class="filter-col">
             <div class="filter-label">Mã túi hàng</div>
-            <el-input 
+            <RecentSearchInput 
               v-model="filters.bag_code" 
               placeholder="Nhập mã túi cần tìm..." 
               clearable 
               class="modern-input"
-              @keyup.enter="fetchBags"
+              storageKey="recentSearches_pickupbags"
+              popoverWidth="300"
+              @keyup.enter="searchInputRef?.saveSearch(filters.bag_code); fetchBags()"
+              @search="fetchBags"
+              ref="searchInputRef"
             >
               <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
+            </RecentSearchInput>
           </el-col>
           
           <el-col :xs="24" :sm="12" :lg="7" class="filter-col">
@@ -639,6 +643,7 @@ import {
 import { Aim as Scan } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
 // States
 const loading = ref(false);
@@ -660,6 +665,8 @@ const filters = reactive({
   bag_code: '',
   status: ''
 });
+
+const searchInputRef = ref(null);
 
 // Create Modal
 const createDialogVisible = ref(false);

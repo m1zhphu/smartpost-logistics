@@ -80,15 +80,19 @@
         <el-row :gutter="20" class="filter-row">
           <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
             <div class="filter-label">Tìm kiếm</div>
-            <el-input 
+            <RecentSearchInput 
               v-model="searchQuery" 
               placeholder="Mã vận đơn, SĐT hoặc Tên nhận..." 
               clearable 
               class="modern-input"
+              storageKey="recentSearches_admin"
+              popoverWidth="100%"
               @keyup.enter="handleSearch"
+              @search="handleSearch"
+              ref="searchInputRef"
             >
               <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
+            </RecentSearchInput>
           </el-col>
           
           <el-col :xs="24" :sm="12" :lg="6" class="filter-col">
@@ -1159,11 +1163,12 @@ import {
   Phone, Right, Loading, UserFilled, Money, Warning, Position, Upload, UploadFilled
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import moment from 'moment';
 import api from '@/api/axios';
 import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
 import { getPickupImages, getPodImages } from '@/utils/imageHelpers';
-import moment from 'moment';
 import { useAuthStore } from '@/stores/auth';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
 const route = useRoute();
 const auth = useAuthStore();
@@ -1179,6 +1184,8 @@ const isCSKH = computed(() => auth.user?.role_id === 7);
 
 const loading = ref(false);
 const searchQuery = ref('');
+const searchInputRef = ref(null);
+
 const statusFilter = ref('');
 const serviceTypeFilter = ref('');
 const slaStatusFilter = ref('');
@@ -1385,13 +1392,14 @@ const formatCurrencyManual = (amount) => {
 
 const handleSearch = async () => {
   loading.value = true;
+  searchInputRef.value?.saveSearch(searchQuery.value);
   activeWaybillSelection.value = {};
   currentPage.value = 1;
   try {
     const filters = {
       page: !isAdmin.value ? currentPage.value : 1,
       size: !isAdmin.value ? pageSize.value : 10000,
-      waybill_code: searchQuery.value || null,
+      keyword: searchQuery.value || null,
       status: statusFilter.value || null,
       start_date: dateRange.value?.[0] ? moment(dateRange.value[0]).toISOString() : null,
       end_date: dateRange.value?.[1] ? moment(dateRange.value[1]).toISOString() : null,

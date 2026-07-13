@@ -42,14 +42,16 @@
               </div>
               
               <div class="search-wrapper">
-                <el-input 
+                <RecentSearchInput 
                   v-model="search" 
                   placeholder="Tìm mã, tên, SĐT..." 
                   class="modern-input-small"
-                  clearable 
+                  clearable
+                  storageKey="recentSearches_assign_shipper"
+                  popoverWidth="300"
                 >
                   <template #prefix><el-icon><Search /></el-icon></template>
-                </el-input>
+                </RecentSearchInput>
               </div>
             </div>
 
@@ -200,6 +202,7 @@ import {
 } from '@element-plus/icons-vue';
 import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
 const loading = ref(false);
 const submitting = ref(false);

@@ -11,7 +11,16 @@
     <el-card shadow="never" class="filter-card">
       <el-form :inline="true" :model="filters" class="filters">
         <el-form-item label="Từ khóa">
-          <el-input v-model="filters.q" clearable placeholder="Mã vận đơn, SĐT, người nhận..." @keyup.enter="search" />
+          <RecentSearchInput 
+            v-model="filters.q" 
+            clearable 
+            placeholder="Mã vận đơn, SĐT, người nhận..." 
+            storageKey="recentSearches_admin"
+            popoverWidth="300"
+            @keyup.enter="search" 
+            @search="search"
+            ref="searchInputRef"
+          />
         </el-form-item>
         <el-form-item label="Trạng thái OCR">
           <el-select v-model="filters.ocr_status" clearable placeholder="Tất cả" style="width: 170px">
@@ -134,15 +143,21 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import api from '@/api/axios';
 import { getMediaUrl } from '@/utils/mediaUrl';
 import { formatVietnamDateTime } from '@/utils/dateTime';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role === 1 || authStore.user?.role === 4);
+const searchInputRef = ref(null);
 const loading = ref(false);
+
 const getOcrStatusLabel = (status) => {
   const map = {
     'REVIEW': 'Chờ duyệt',
@@ -195,6 +210,7 @@ const fetchRows = async () => {
 
 const search = () => {
   filters.page = 1;
+  searchInputRef.value?.saveSearch(filters.q);
   fetchRows();
 };
 

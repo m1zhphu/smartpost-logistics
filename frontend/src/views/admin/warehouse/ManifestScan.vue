@@ -10,7 +10,7 @@
               <el-icon><Van /></el-icon>
             </div>
             <div>
-              <h2 class="page-title">Lập Manifest (Chuyến xe)</h2>
+              <h2 class="page-title">Chuyến xe</h2>
               <p class="page-subtitle">Gắn các túi hàng lên xe trung chuyển hoặc dỡ xuống kho đích</p>
             </div>
           </div>

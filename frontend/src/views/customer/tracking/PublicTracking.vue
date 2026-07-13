@@ -9,16 +9,20 @@
         </div>
 
         <div class="search-section mb-6">
-          <el-input 
+          <RecentSearchInput 
             v-model="waybillCode" 
             placeholder="Nhập mã vận đơn (SP...)" 
             size="large"
+            storageKey="recentSearches_public"
+            popoverWidth="100%"
             @keyup.enter="handleTrack"
+            @search="handleTrack"
+            ref="searchInputRef"
           >
             <template #append>
               <el-button type="primary" :icon="Search" @click="handleTrack" :loading="loading">TÌM KIẾM</el-button>
             </template>
-          </el-input>
+          </RecentSearchInput>
         </div>
 
         <div v-if="trackingData" class="tracking-results">
@@ -27,7 +31,7 @@
               <div class="info">
                 <h3>{{ trackingData.waybill_code }}</h3>
                 <p>Người nhận: <span class="font-bold">{{ trackingData.receiver_name }}</span></p>
-                <p>Trạng thái hiện tại: <el-tag size="small" type="success">{{ trackingData.status }}</el-tag></p>
+                <p>Trạng thái hiện tại: <el-tag size="small" type="success">{{ getStatusLabel(trackingData.status) }}</el-tag></p>
               </div>
               <div class="qr-code">
                  <qrcode-vue :value="trackingData.waybill_code" :size="80" level="H" />
@@ -44,7 +48,7 @@
                 placement="top"
               >
                 <el-card class="timeline-card">
-                  <h4 class="font-bold">{{ log.status_id }}</h4>
+                  <h4 class="font-bold">{{ getStatusLabel(log.status_id) }}</h4>
                   <p class="text-muted">{{ log.note }}</p>
                   <p v-if="log.hub_name" class="hub-loc">@ {{ log.hub_name }}</p>
                 </el-card>
@@ -75,6 +79,7 @@ import QrcodeVue from 'qrcode.vue';
 import api from '@/api/axios';
 import moment from 'moment';
 import { ElMessage } from 'element-plus';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -83,6 +88,7 @@ const loading = ref(false);
 const searched = ref(false);
 const trackingData = ref(null);
 const trackingLogs = ref([]);
+const searchInputRef = ref(null);
 
 const goBack = () => {
   if (window.history.length > 1) {
@@ -97,6 +103,7 @@ const handleTrack = async () => {
   loading.value = true;
   searched.value = true;
   try {
+    searchInputRef.value?.saveSearch(waybillCode.value);
     const res = await api.get(`/api/waybills/public/${waybillCode.value}`);
     trackingData.value = res.data.waybill;
     trackingLogs.value = res.data.logs;
@@ -110,6 +117,22 @@ const handleTrack = async () => {
 };
 
 const formatTime = (t) => moment(t).format('DD/MM/YYYY HH:mm');
+
+const getStatusLabel = (status) => {
+  const map = {
+    'CREATED': 'Mới tạo',
+    'PICKED': 'Đã lấy hàng',
+    'INBOUND': 'Nhập kho',
+    'PROCESSING': 'Đang xử lý',
+    'OUTBOUND': 'Xuất kho',
+    'IN_TRANSIT': 'Đang luân chuyển',
+    'DELIVERING': 'Đang giao hàng',
+    'DELIVERED': 'Giao thành công',
+    'RETURNED': 'Đã hoàn hàng',
+    'CANCELLED': 'Đã hủy'
+  };
+  return map[status] || status;
+};
 
 onMounted(() => {
   const code = route.params.code;

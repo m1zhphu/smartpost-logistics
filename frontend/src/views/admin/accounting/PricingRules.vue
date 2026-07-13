@@ -87,7 +87,11 @@
                 </template>
               </el-table-column>
               <el-table-column prop="policy_name" label="Tên bảng giá" min-width="260" />
-              <el-table-column prop="policy_type" label="Loại bảng giá" min-width="150" align="center" />
+              <el-table-column prop="policy_type" label="Loại bảng giá" min-width="150" align="center">
+                <template #default="{ row }">
+                  {{ getPolicyTypeName(row.policy_type) }}
+                </template>
+              </el-table-column>
               <el-table-column label="Duyệt" min-width="120" align="center">
                 <template #default="{ row }">
                   <div class="status-pill" :class="row.is_approved ? 'active' : 'locked'">
@@ -485,12 +489,12 @@
             </el-form-item>
             <el-form-item v-if="ruleForm.scope_type === 'ZONE'" label="Zone áp dụng" prop="zone_name">
               <el-select v-model="ruleForm.zone_name" filterable allow-create placeholder="Chọn hoặc nhập zone" class="w-full">
-                <el-option label="NOI_THANH_HCM" value="NOI_THANH_HCM" />
-                <el-option label="DUOI_300KM" value="DUOI_300KM" />
-                <el-option label="DAC_BIET_HN_DN" value="DAC_BIET_HN_DN" />
-                <el-option label="TREN_300KM" value="TREN_300KM" />
-                <el-option label="HCM_DN" value="HCM_DN" />
-                <el-option label="HCM_HN" value="HCM_HN" />
+                <el-option label="Nội thành HCM" value="NOI_THANH_HCM" />
+                <el-option label="Dưới 300KM" value="DUOI_300KM" />
+                <el-option label="Đặc biệt HN - ĐN" value="DAC_BIET_HN_DN" />
+                <el-option label="Trên 300KM" value="TREN_300KM" />
+                <el-option label="HCM - Đà Nẵng" value="HCM_DN" />
+                <el-option label="HCM - Hà Nội" value="HCM_HN" />
               </el-select>
             </el-form-item>
             <div v-if="ruleForm.scope_type === 'PROVINCE'" class="route-selector-container">
@@ -746,12 +750,12 @@
             </el-form-item>
             <el-form-item label="Zone áp dụng" prop="zone_name">
               <el-select v-model="zoneForm.zone_name" filterable allow-create placeholder="Chọn hoặc nhập zone" class="w-full">
-                <el-option label="NOI_THANH_HCM" value="NOI_THANH_HCM" />
-                <el-option label="DUOI_300KM" value="DUOI_300KM" />
-                <el-option label="DAC_BIET_HN_DN" value="DAC_BIET_HN_DN" />
-                <el-option label="TREN_300KM" value="TREN_300KM" />
-                <el-option label="HCM_DN" value="HCM_DN" />
-                <el-option label="HCM_HN" value="HCM_HN" />
+                <el-option label="Nội thành HCM" value="NOI_THANH_HCM" />
+                <el-option label="Dưới 300KM" value="DUOI_300KM" />
+                <el-option label="Đặc biệt HN - ĐN" value="DAC_BIET_HN_DN" />
+                <el-option label="Trên 300KM" value="TREN_300KM" />
+                <el-option label="HCM - Đà Nẵng" value="HCM_DN" />
+                <el-option label="HCM - Hà Nội" value="HCM_HN" />
               </el-select>
             </el-form-item>
           </div>
@@ -856,7 +860,7 @@
 
           <el-form-item label="Tính trên" prop="calculation_base">
             <el-select v-model="serviceForm.calculation_base" class="w-full">
-              <el-option label="Giá cố định / theo bill" value="FIXED" />
+              <el-option label="Giá cố định / theo vận đơn" value="FIXED" />
               <el-option label="Giá trị đơn hàng" value="DECLARED_VALUE" />
               <el-option label="Tiền thu hộ COD" value="COD_AMOUNT" />
               <el-option label="Cước chính" value="MAIN_FEE" />
@@ -1146,6 +1150,16 @@ const getServiceTagClass = (type) => {
   return 'tag-info';
 };
 
+const getPolicyTypeName = (type) => {
+  const map = {
+    'CUSTOMER': 'Khách hàng',
+    'SYSTEM': 'Hệ thống',
+    'PARTNER': 'Đối tác',
+    'INTERNAL': 'Nội bộ'
+  };
+  return map[type] || type;
+};
+
 // ================= STATE CHO CƯỚC CHÍNH =================
 const loading = ref(false);
 const saveLoading = ref(false);
@@ -1327,13 +1341,13 @@ const getServiceFeeTypeLabel = (type) => {
 
 const getCalculationBaseLabel = (base) => {
   const map = {
-    FIXED: 'Theo bill',
+    FIXED: 'Theo vận đơn',
     DECLARED_VALUE: 'Giá trị đơn hàng',
     COD_AMOUNT: 'Tiền thu hộ COD',
     MAIN_FEE: 'Cước chính',
     QUANTITY: 'Số lượng sản phẩm'
   };
-  return map[base] || base || 'Theo bill';
+  return map[base] || base || 'Theo vận đơn';
 };
 
 const refreshAll = () => {

@@ -26,7 +26,17 @@
 
     <section class="content-card">
       <div class="toolbar">
-        <el-input v-model="keyword" clearable placeholder="Tìm mã vận đơn, người nhận, số điện thoại" :prefix-icon="Search" @keyup.enter="loadWaybills" />
+        <RecentSearchInput 
+          v-model="keyword" 
+          clearable 
+          placeholder="Tìm mã vận đơn, người nhận, số điện thoại" 
+          storageKey="recentSearches_admin"
+          popoverWidth="300"
+          :prefix-icon="Search" 
+          @keyup.enter="loadWaybills" 
+          @search="loadWaybills"
+          ref="searchInputRef"
+        />
         <div class="toolbar-actions">
           <el-button @click="loadWaybills">Tìm kiếm</el-button>
           <el-button type="primary" :loading="submitting" :disabled="!selectedRows.length" @click="prepareSelected">
@@ -96,13 +106,15 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Refresh, Search } from '@element-plus/icons-vue'
+import { Refresh, Search, Right } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
-import api from '@/api/axios'
+import api from '@/api/axios';
+import RecentSearchInput from '@/components/RecentSearchInput.vue';
 import { getMediaUrl } from '@/utils/mediaUrl'
 
 const router = useRouter()
+const searchInputRef = ref(null);
 const loading = ref(false)
 const submitting = ref(false)
 const keyword = ref('')
@@ -120,7 +132,8 @@ const rowClassName = ({ row }) => isUrgent(row) ? 'urgent-row' : ''
 const assetUrl = getMediaUrl
 
 const loadWaybills = async () => {
-  loading.value = true
+  loading.value = true;
+  searchInputRef.value?.saveSearch(keyword.value);
   try {
     const response = await api.get('/api/delivery/development/ocr-ready', { params: { q: keyword.value || undefined } })
     waybills.value = Array.isArray(response.data) ? response.data : []
