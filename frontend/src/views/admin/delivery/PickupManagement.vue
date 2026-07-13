@@ -427,7 +427,18 @@
                   <span>Gán bưu tá hàng loạt ({{ receivedSelection.length }} đơn)</span>
                 </el-button>
               </div>
-              <div class="search-wrapper">
+              <div class="search-wrapper flex items-center gap-2">
+                <el-date-picker
+                  v-model="filterDateRangeReceived"
+                  type="daterange"
+                  range-separator="-"
+                  start-placeholder="Từ ngày"
+                  end-placeholder="Đến ngày"
+                  value-format="YYYY-MM-DD"
+                  class="modern-date-picker"
+                  style="width: 240px;"
+                  clearable
+                />
                 <RecentSearchInput 
                   v-model="searchReceived" 
                   placeholder="Tìm mã, SĐT, địa chỉ..." 
@@ -607,6 +618,14 @@
                   </template>
                 </el-table-column>
 
+                <el-table-column label="Thời gian gửi" min-width="160" align="center">
+                  <template #default="{ row }">
+                    <span style="font-size: 13px; color: #475569;" class="fw-semibold">
+                      {{ formatDate(row.created_at) }}
+                    </span>
+                  </template>
+                </el-table-column>
+
                 <el-table-column label="Khách hàng / Shop" min-width="250">
                   <template #default="{ row }">
                     <div class="sender-info">
@@ -693,7 +712,18 @@
                   <el-option v-for="h in hubs" :key="h.hub_id" :label="h.hub_name" :value="h.hub_id" />
                 </el-select>
               </div>
-              <div class="search-wrapper">
+              <div class="search-wrapper flex items-center gap-2">
+                <el-date-picker
+                  v-model="filterDateRangeAssigned"
+                  type="daterange"
+                  range-separator="-"
+                  start-placeholder="Từ ngày"
+                  end-placeholder="Đến ngày"
+                  value-format="YYYY-MM-DD"
+                  class="modern-date-picker"
+                  style="width: 240px;"
+                  clearable
+                />
                 <RecentSearchInput 
                   v-model="searchAssigned" 
                   placeholder="Tìm mã, SĐT, bưu tá..." 
@@ -727,6 +757,14 @@
                       {{ getWaybillCode(row) }}
                     </span>
                   </div>
+                </template>
+              </el-table-column>
+
+              <el-table-column label="Thời gian gửi" min-width="160" align="center">
+                <template #default="{ row }">
+                  <span style="font-size: 13px; color: #475569;" class="fw-semibold">
+                    {{ formatDate(row.created_at) }}
+                  </span>
                 </template>
               </el-table-column>
               <el-table-column label="Người gửi / Shop" min-width="160">
@@ -1309,6 +1347,11 @@ const searchReceived = ref('');
 const searchAssigned = ref('');
 const searchDispatch = ref('');
 
+const filterDateRangePending = ref(null);
+const filterDateRangeDispatch = ref(null);
+const filterDateRangeReceived = ref(null);
+const filterDateRangeAssigned = ref(null);
+
 const searchInputPendingRef = ref(null);
 const searchInputDispatchRef = ref(null);
 const searchInputReceivedRef = ref(null);
@@ -1728,9 +1771,18 @@ const getCustomerName = (row) => {
 
 // Filtered data computed properties
 const filteredPending = computed(() => {
-  if (!searchPending.value) return pendingRequests.value;
+  let list = pendingRequests.value;
+  if (filterDateRangePending.value && filterDateRangePending.value.length === 2) {
+    const start = filterDateRangePending.value[0];
+    const end = filterDateRangePending.value[1];
+    list = list.filter(r => {
+      const dateStr = r.created_at ? r.created_at.split('T')[0] : '';
+      return dateStr >= start && dateStr <= end;
+    });
+  }
+  if (!searchPending.value) return list;
   const q = searchPending.value.toLowerCase().trim();
-  return pendingRequests.value.filter(r => {
+  return list.filter(r => {
     const wb = getWaybillCode(r).toLowerCase();
     const custName = getCustomerName(r).toLowerCase();
     return r.request_code.toLowerCase().includes(q) ||
@@ -1742,9 +1794,18 @@ const filteredPending = computed(() => {
 });
 
 const filteredDispatch = computed(() => {
-  if (!searchDispatch.value) return dispatchRequests.value;
+  let list = dispatchRequests.value;
+  if (filterDateRangeDispatch.value && filterDateRangeDispatch.value.length === 2) {
+    const start = filterDateRangeDispatch.value[0];
+    const end = filterDateRangeDispatch.value[1];
+    list = list.filter(r => {
+      const dateStr = r.created_at ? r.created_at.split('T')[0] : '';
+      return dateStr >= start && dateStr <= end;
+    });
+  }
+  if (!searchDispatch.value) return list;
   const q = searchDispatch.value.toLowerCase().trim();
-  return dispatchRequests.value.filter(r => {
+  return list.filter(r => {
     const wb = getWaybillCode(r).toLowerCase();
     const custName = getCustomerName(r).toLowerCase();
     return r.request_code.toLowerCase().includes(q) ||
@@ -1756,9 +1817,18 @@ const filteredDispatch = computed(() => {
 });
 
 const filteredReceived = computed(() => {
-  if (!searchReceived.value) return receivedRequests.value;
+  let list = receivedRequests.value;
+  if (filterDateRangeReceived.value && filterDateRangeReceived.value.length === 2) {
+    const start = filterDateRangeReceived.value[0];
+    const end = filterDateRangeReceived.value[1];
+    list = list.filter(r => {
+      const dateStr = r.created_at ? r.created_at.split('T')[0] : '';
+      return dateStr >= start && dateStr <= end;
+    });
+  }
+  if (!searchReceived.value) return list;
   const q = searchReceived.value.toLowerCase().trim();
-  return receivedRequests.value.filter(r => {
+  return list.filter(r => {
     const wb = getWaybillCode(r).toLowerCase();
     const custName = getCustomerName(r).toLowerCase();
     return r.request_code.toLowerCase().includes(q) ||
@@ -1770,9 +1840,18 @@ const filteredReceived = computed(() => {
 });
 
 const filteredAssigned = computed(() => {
-  if (!searchAssigned.value) return assignedRequests.value;
+  let list = assignedRequests.value;
+  if (filterDateRangeAssigned.value && filterDateRangeAssigned.value.length === 2) {
+    const start = filterDateRangeAssigned.value[0];
+    const end = filterDateRangeAssigned.value[1];
+    list = list.filter(r => {
+      const dateStr = r.created_at ? r.created_at.split('T')[0] : '';
+      return dateStr >= start && dateStr <= end;
+    });
+  }
+  if (!searchAssigned.value) return list;
   const q = searchAssigned.value.toLowerCase().trim();
-  return assignedRequests.value.filter(r => {
+  return list.filter(r => {
     const wb = getWaybillCode(r).toLowerCase();
     const custName = getCustomerName(r).toLowerCase();
     return r.request_code.toLowerCase().includes(q) ||
