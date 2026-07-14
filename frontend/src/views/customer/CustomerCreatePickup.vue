@@ -1831,7 +1831,18 @@ onMounted(async () => {
       found = parsed.find(d => d.draft_id === resumeDraftId);
     }
     if (found) {
-      Object.assign(form, JSON.parse(JSON.stringify(found)));
+      const parsedFound = JSON.parse(JSON.stringify(found));
+      for (const key in parsedFound) {
+        if (key === 'sender' || key === 'receiver') {
+          Object.assign(form[key], parsedFound[key]);
+        } else if (key === 'bulk_draft_items') {
+          form.bulk_draft_items = parsedFound.bulk_draft_items || [];
+        } else if (key === 'items') {
+          form.items = parsedFound.items || [];
+        } else {
+          form[key] = parsedFound[key];
+        }
+      }
       syncBulkDraftItems(form.bulk_estimated_quantity || 1);
       if (form.sender.province_id) senderDistricts.value = await fetchDistrictsForProvince(form.sender.province_id);
       if (form.sender.district_id) senderWards.value = await fetchWardsForDistrict(form.sender.district_id);

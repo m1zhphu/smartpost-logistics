@@ -49,7 +49,18 @@
                   </el-table-column>
                   <el-table-column label="Người nhận" min-width="160">
                     <template #default="{ row }">
-                      <el-tag v-if="row.pickup_mode === 'BULK_MAIL'" type="warning" size="small">Bổ sung sau OCR</el-tag>
+                      <template v-if="row.pickup_mode === 'BULK_MAIL'">
+                        <template v-if="row.bulk_draft_items && row.bulk_draft_items.length > 0 && (row.bulk_draft_items[0].receiver_name || row.bulk_draft_items[0].receiver_phone)">
+                          <div class="fw-bold">
+                            {{ row.bulk_draft_items[0].receiver_name || 'Chưa nhập' }}
+                            <el-tag v-if="row.bulk_draft_items.length > 1" size="small" type="info" style="margin-left: 4px;">
+                              +{{ row.bulk_draft_items.length - 1 }}
+                            </el-tag>
+                          </div>
+                          <div class="text-xs text-muted">{{ row.bulk_draft_items[0].receiver_phone || '---' }}</div>
+                        </template>
+                        <el-tag v-else type="warning" size="small">Bổ sung sau OCR</el-tag>
+                      </template>
                       <template v-else>
                         <div class="fw-bold">{{ row.receiver.name || '---' }}</div>
                         <div class="text-xs text-muted">{{ row.receiver.phone || '---' }}</div>

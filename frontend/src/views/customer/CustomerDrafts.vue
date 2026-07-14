@@ -26,16 +26,33 @@
                     <span class="text-xs fw-bold">{{ formatDate(row.created_at) }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Người nhận" min-width="160">
+                 <el-table-column label="Người nhận" min-width="160">
                   <template #default="{ row }">
-                    <div class="fw-bold">{{ row.receiver.name || 'Chưa nhập' }}</div>
-                    <div class="text-xs text-muted">{{ row.receiver.phone || '---' }}</div>
+                    <template v-if="row.pickup_mode === 'BULK_MAIL' && row.bulk_draft_items && row.bulk_draft_items.length > 0">
+                      <div class="fw-bold">
+                        {{ row.bulk_draft_items[0].receiver_name || 'Chưa nhập' }}
+                        <el-tag v-if="row.bulk_draft_items.length > 1" size="small" type="info" style="margin-left: 4px;">
+                          +{{ row.bulk_draft_items.length - 1 }}
+                        </el-tag>
+                      </div>
+                      <div class="text-xs text-muted">{{ row.bulk_draft_items[0].receiver_phone || '---' }}</div>
+                    </template>
+                    <template v-else>
+                      <div class="fw-bold">{{ row.receiver?.name || 'Chưa nhập' }}</div>
+                      <div class="text-xs text-muted">{{ row.receiver?.phone || '---' }}</div>
+                    </template>
                   </template>
                 </el-table-column>
-                <el-table-column label="Hàng hóa" min-width="150">
+                 <el-table-column label="Hàng hóa" min-width="150">
                   <template #default="{ row }">
-                    <div class="text-xs">{{ row.items[0]?.product_name || 'Chưa nhập' }}</div>
-                    <div class="text-xs fw-bold text-primary">{{ row.items[0]?.weight || 0 }} kg</div>
+                    <template v-if="row.pickup_mode === 'BULK_MAIL'">
+                      <div class="text-xs">Số lượng thư/bưu phẩm:</div>
+                      <div class="text-xs fw-bold text-primary">{{ row.bulk_estimated_quantity || row.bulk_draft_items?.length || 1 }} kiện</div>
+                    </template>
+                    <template v-else>
+                      <div class="text-xs">{{ row.items[0]?.product_name || 'Chưa nhập' }}</div>
+                      <div class="text-xs fw-bold text-primary">{{ row.items[0]?.weight || 0 }} kg</div>
+                    </template>
                   </template>
                 </el-table-column>
                 <el-table-column label="Thao tác" width="180" align="center" fixed="right">
