@@ -474,7 +474,7 @@ import {
   LocationInformation, Location, Avatar, Phone, Warning, Loading, Setting,
   Download, ArrowDown
 } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api/axios';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth'; 
@@ -1251,6 +1251,31 @@ const saveWaybill = async (printAfterSave = false) => {
 
     if (!isOcrFinalizeMode.value && totalFee.value <= 0) {
       ElMessage.error('Tuyến đường này chưa được cấu hình giá cước');
+      return;
+    }
+
+    const destHub = hubs.value.find(h => h.hub_id === waybillForm.dest_hub_id);
+    const destHubName = destHub ? `${destHub.hub_code} - ${destHub.hub_name}` : 'Chưa xác định';
+
+    try {
+      await ElMessageBox.confirm(
+        `<div style="font-size: 14px; line-height: 1.5;">
+          <p style="margin-bottom: 8px;">Vui lòng kiểm tra lại thông tin thật chính xác trước khi tiếp tục.</p>
+          <p style="margin-bottom: 4px; font-weight: bold; color: #1f2937;">Đặc biệt là bưu cục nhận để giao hàng cho đơn này:</p>
+          <p style="color: #ea580c; font-size: 15px; font-weight: bold; margin-top: 8px; padding: 8px 12px; background: #fff7ed; border-radius: 6px; border-left: 4px solid #ea580c; display: flex; align-items: center; gap: 6px;">
+            📍 BƯU CỤC NHẬN: ${destHubName}
+          </p>
+        </div>`,
+        'Xác nhận thông tin vận đơn',
+        {
+          confirmButtonText: 'Đồng ý & Tiếp tục',
+          cancelButtonText: 'Hủy / Kiểm tra lại',
+          type: 'warning',
+          dangerouslyUseHTMLString: true,
+          confirmButtonClass: 'el-button--primary'
+        }
+      );
+    } catch (e) {
       return;
     }
     

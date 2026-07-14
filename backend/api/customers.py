@@ -11,11 +11,11 @@ import models
 router = APIRouter(prefix="/api/customers", tags=["Customers"])
 
 def _require_customer_view_role(current_user: dict):
-    if current_user.get("role_id") not in [1, 2, 5, 7]:
+    if current_user.get("role_id") not in [1, 2, 5, 7, 9]:
         raise HTTPException(status_code=403, detail="Không có quyền xem khách hàng")
 
 def _require_customer_manage_role(current_user: dict):
-    if current_user.get("actual_role_id") == 9 or current_user.get("role_id") not in [1, 2, 7]:
+    if current_user.get("role_id") not in [1, 2, 7, 9]:
         raise HTTPException(status_code=403, detail="Không có quyền quản lý khách hàng")
 
 def _validate_staff_in_charge(db: Session, staff_id: int):

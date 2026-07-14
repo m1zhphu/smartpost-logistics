@@ -325,6 +325,7 @@ import api from '@/api/axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, Refresh, Delete, Tickets, Money, CircleCheck, Printer, Wallet } from '@element-plus/icons-vue';
 import { formatVietnamDateTime } from '@/utils/dateTime';
+import logoUrl from '@/assets/CompanyLogo4.png';
 
 const getWaybillStatusLabel = (status) => {
   const map = {
@@ -791,6 +792,10 @@ const printStatement = async (stmt) => {
             border-collapse: collapse;
             margin-bottom: 30px;
           }
+          .logo-img {
+            height: 50px;
+            width: auto;
+          }
           .company-name {
             font-size: 20px;
             font-weight: 800;
@@ -891,7 +896,7 @@ const printStatement = async (stmt) => {
         <table class="header-table">
           <tr>
             <td>
-              <div class="company-name">SmartPost Logistics</div>
+              <div class="company-name"><img src="${logoUrl}" alt="SpeedLight" class="logo-img" style="vertical-align: middle;" /></div>
               <div class="company-info">Hotline: 1900 6789 | Email: support@smartpost.vn</div>
               <div class="company-info">Địa chỉ: 123 Nguyễn Văn Cừ, Quận 5, TP. Hồ Chí Minh</div>
             </td>

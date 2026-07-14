@@ -473,6 +473,14 @@ def setup_roles_v2(
                 "view_report": True,
                 "report_view": True,
                 "hub_switch": True,
+                "customer_view": True,
+                "customer_create": True,
+                "customer_update": True,
+                "customer_delete": True,
+                "pricing_quote": True,
+                "notification_view": True,
+                "user_manage": True,
+                "hub_manage_all": True,
             }},
         ]
 

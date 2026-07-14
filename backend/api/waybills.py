@@ -40,7 +40,7 @@ def _read_image_urls(stored_urls: str | None, primary_url: str | None = None) ->
 
 
 def _require_ocr_admin_role(current_user: dict):
-    if current_user.get("role_id") not in [1, 2, 3, 7]:
+    if current_user.get("role_id") not in [1, 2, 3, 7, 9]:
         raise HTTPException(status_code=403, detail="Bạn không có quyền xử lý vận đơn OCR")
 
 

@@ -66,26 +66,28 @@
         
         <div class="header-right">
           <!-- Bộ chuyển đổi bưu cục (Dành cho Admin và Sub-admin) -->
-          <div v-if="showHubSelector" class="hub-selector-wrapper" style="margin-right: 16px;">
-            <el-select
-              v-model="selectedHub"
-              placeholder="Tất cả bưu cục"
-              clearable
-              filterable
-              class="modern-hub-select"
-              @change="handleHubChange"
-              style="width: 200px;"
-            >
-              <template #prefix>
+          <div v-if="showHubSelector" class="hub-selector-wrapper">
+            <div class="hub-selector-container">
+              <div class="hub-selector-label">
                 <el-icon><Location /></el-icon>
-              </template>
-              <el-option
-                v-for="hub in hubList"
-                :key="hub.hub_id"
-                :label="hub.hub_name"
-                :value="hub.hub_id"
-              />
-            </el-select>
+                <span>Bưu cục:</span>
+              </div>
+              <el-select
+                v-model="selectedHub"
+                placeholder="Tất cả bưu cục"
+                clearable
+                filterable
+                class="modern-hub-select"
+                @change="handleHubChange"
+              >
+                <el-option
+                  v-for="hub in hubList"
+                  :key="hub.hub_id"
+                  :label="hub.hub_name"
+                  :value="hub.hub_id"
+                />
+              </el-select>
+            </div>
           </div>
           
           <!-- Chuông thông báo -->
@@ -147,7 +149,7 @@ import api from '@/api/axios';
 import { ElMessage } from 'element-plus';
 import { 
   Monitor, Management, Document, Box, Bicycle, Money, 
-  Close, Search, HomeFilled, ArrowDown, User, Collection, Location, List, TrendCharts, Service, Fold, Expand
+  Close, Search, HomeFilled, ArrowDown, User, Collection, Location, List, TrendCharts, Service, Fold, Expand, Check
 } from '@element-plus/icons-vue';
 import NotificationBell from '@/components/NotificationBell.vue';
 
@@ -206,13 +208,18 @@ const selectedHub = ref(authStore.selectedHubId ? Number(authStore.selectedHubId
 const handleHubChange = (val) => {
   authStore.setSelectedHubId(val);
   ElMessage.success({
-    message: val ? `Đã chuyển đổi sang bưu cục: ${hubList.value.find(h => h.hub_id === val)?.hub_name}` : 'Đã quay lại chế độ xem Tất cả bưu cục',
+    message: val ? `Đã chuyển sang bưu cục: ${hubList.value.find(h => h.hub_id === val)?.hub_name}` : 'Đã quay lại xem Tất cả bưu cục',
     type: 'success',
     duration: 2000
   });
   setTimeout(() => {
     window.location.reload();
   }, 500);
+};
+
+const clearHub = () => {
+  selectedHub.value = null;
+  handleHubChange(null);
 };
 
 const activeHubDisplay = computed(() => {
@@ -412,21 +419,76 @@ const handleLogout = () => {
 <style scoped src="@/styles/layouts/MainLayout.css"></style>
 
 <style scoped>
-:deep(.modern-hub-select .el-input__wrapper) {
-  background: var(--sp-surface, #ffffff);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02) !important;
-  border: 1px solid var(--sp-border, #e2e8f0);
+.hub-selector-wrapper {
+  margin-right: 16px;
+}
+.hub-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+  border: 1.5px solid #a5d6a7;
+  border-radius: 12px;
+  padding: 4px 12px 4px 10px;
   transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(56, 142, 60, 0.08);
+}
+.hub-selector-container:hover {
+  border-color: #388e3c;
+  box-shadow: 0 4px 16px rgba(56, 142, 60, 0.15);
+  background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e9 100%);
+}
+.hub-selector-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2e7d32;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.hub-selector-label .el-icon {
+  font-size: 16px;
+}
+:deep(.modern-hub-select) {
+  width: 180px;
+}
+:deep(.modern-hub-select .el-input__wrapper) {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #c8e6c9;
+  transition: all 0.3s;
+  min-height: 32px;
 }
 :deep(.modern-hub-select .el-input__wrapper.is-focus) {
-  border-color: var(--sp-primary, #388e3c);
-  box-shadow: 0 4px 15px rgba(56, 142, 60, 0.1) !important;
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1) !important;
 }
 :deep(.modern-hub-select .el-input__inner) {
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 600;
-  color: var(--sp-text-main, #1b2559);
+  font-size: 13px;
+  color: #1b5e20;
+}
+:deep(.modern-hub-select .el-input__inner::placeholder) {
+  color: #81c784;
+  font-weight: 500;
+}
+.hub-active-icon {
+  color: #2e7d32;
+  font-weight: bold;
+}
+.hub-active-tag {
+  margin-left: 4px;
+  background: #2e7d32 !important;
+  border-color: #1b5e20 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0 8px;
+  height: 26px;
+  line-height: 26px;
 }
 </style>

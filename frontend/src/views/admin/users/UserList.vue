@@ -53,6 +53,7 @@
             <div class="filter-label">Chức vụ</div>
             <el-select v-model="filter.role_id" placeholder="Tất cả chức vụ" clearable class="w-full modern-select">
               <el-option label="Quản trị hệ thống" :value="1" />
+              <el-option label="Sub Admin" :value="9" />
               <el-option label="Quản lý bưu cục" :value="2" />
               <el-option label="Nhân viên kho" :value="3" />
               <el-option label="Bưu tá" :value="4" />
@@ -321,6 +322,7 @@
               <el-form-item label="Vai trò / Chức vụ" prop="role_id">
                 <el-select v-model="userForm.role_id" class="w-full" placeholder="Chọn vị trí công tác">
                   <el-option v-if="userForm.role_id === 1" label="Quản trị hệ thống" :value="1" />
+                  <el-option label="Quản Lý" :value="9" />
                   <el-option label="Quản lý bưu cục" :value="2" />
                   <el-option label="Nhân viên kho" :value="3" />
                   <el-option label="Bưu tá" :value="4" />
@@ -331,7 +333,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="Bưu cục trực thuộc" prop="primary_hub_id">
-                <el-select v-model="userForm.primary_hub_id" class="w-full" placeholder="Chọn kho làm việc" @change="syncPrimaryHubAccess">
+                <el-select v-model="userForm.primary_hub_id" class="w-full" placeholder="Chọn kho làm việc" filterable clearable @change="syncPrimaryHubAccess">
                   <el-option v-for="hub in hubs" :key="hub.hub_id" :label="hub.hub_name" :value="hub.hub_id" />
                 </el-select>
               </el-form-item>
@@ -824,6 +826,7 @@ const handleDelete = (row) => {
 const getRoleType = (id) => {
   const map = {
     1: 'danger',  // Admin
+    9: 'primary', // Sub Admin
     2: 'primary', // Manager
     3: 'info',    // Warehouse
     4: 'warning', // Shipper
@@ -836,6 +839,7 @@ const getRoleType = (id) => {
 const getRoleName = (id) => {
   const map = {
     1: 'Quản trị hệ thống',
+    9: 'Quản Lý',
     2: 'Quản lý bưu cục',
     3: 'Nhân viên kho',
     4: 'Bưu tá',
