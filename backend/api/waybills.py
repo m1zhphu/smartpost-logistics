@@ -589,7 +589,12 @@ def get_waybill_timeline(
         
         # Format time
         action_time = log.action_time or log.system_time
-        time_str = action_time.strftime("%H:%M %d/%m") if action_time else ""
+        if action_time:
+            from datetime import timedelta
+            vietnam_time = action_time + timedelta(hours=7)
+            time_str = vietnam_time.strftime("%H:%M %d/%m")
+        else:
+            time_str = ""
         
         # Get action description
         action = status_descriptions.get(log.status_id, log.status_id)

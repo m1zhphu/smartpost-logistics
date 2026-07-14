@@ -192,7 +192,9 @@ def confirm_delivery_record(
     dt = datetime.utcnow()
     if delivery_time_str:
         try:
-            dt = datetime.strptime(delivery_time_str.strip(), "%Y-%m-%d %H:%M:%S")
+            from datetime import timedelta
+            local_dt = datetime.strptime(delivery_time_str.strip(), "%Y-%m-%d %H:%M:%S")
+            dt = local_dt - timedelta(hours=7)
         except Exception:
             pass
 

@@ -1167,6 +1167,7 @@ import moment from 'moment';
 import api from '@/api/axios';
 import { getMediaUrl as resolveMediaUrl } from '@/utils/mediaUrl';
 import { getPickupImages, getPodImages } from '@/utils/imageHelpers';
+import { formatVietnamDateTime } from '@/utils/dateTime';
 import { useAuthStore } from '@/stores/auth';
 import RecentSearchInput from '@/components/RecentSearchInput.vue';
 
@@ -1778,7 +1779,7 @@ const getVerifyLabel = (status) => {
   return map[status] || '🟠 Chờ duyệt';
 };
 
-const formatTime = (t) => moment(t).format('DD/MM/YYYY HH:mm');
+const formatTime = (t) => formatVietnamDateTime(t);
 const handleSizeChange = () => handleSearch();
 const handleCurrentChange = () => handleSearch();
 

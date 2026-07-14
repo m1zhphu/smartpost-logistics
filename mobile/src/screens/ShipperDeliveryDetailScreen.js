@@ -34,7 +34,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
   const [podImages, setPodImages] = useState([]);
   const [podPreviews, setPodPreviews] = useState([]);
   const [codCollected, setCodCollected] = useState("0");
-  const [note, setNote] = useState("Đã giao hàng thành công");
+  const [note, setNote] = useState("");
   
   const formatDateTimeLocal = (d) => {
     const pad = (n) => n < 10 ? '0' + n : n;
