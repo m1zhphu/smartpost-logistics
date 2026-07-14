@@ -76,7 +76,9 @@ async def create_shop_statement(
 # --- 4. API ĐỐI SOÁT KẾ TOÁN (STATEMENT DEBT) ---
 
 def verify_accounting_access(user: dict):
-    if user.get("role_id") not in [1, 5]: # Chỉ Admin và Kế toán (giả định role 5 là Kế toán)
+    role_id = user.get("role_id")
+    actual_role_id = user.get("actual_role_id")
+    if role_id not in [1, 5] and actual_role_id not in [1, 5]:
         raise HTTPException(status_code=403, detail="Chỉ Admin và Kế toán mới có quyền truy cập chức năng này.")
 
 @router.post("/statements", response_model=schema_acc.StatementDebtResponse)
