@@ -292,7 +292,10 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
     );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
       <StatusBar style="light" />
 
       {/* HEADER CHUẨN FORM */}
@@ -305,17 +308,12 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
         <View style={{ width: 38 }} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 0}
-        style={{ flex: 1 }}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-          showsVerticalScrollIndicator={false}
-        >
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>THÔNG TIN ĐƠN</Text>
           <Row label="Mã vận đơn" value={task.waybill_code} bold />
@@ -455,7 +453,6 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
           />
         </View>
       </ScrollView>
-      </KeyboardAvoidingView>
 
       {/* BOTTOM BAR */}
       <View style={styles.bottomBar}>
@@ -494,7 +491,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
           </>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
