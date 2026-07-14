@@ -5,7 +5,11 @@ export const PICKUP_STATUS_LABELS = {
   RECEIVED: 'Chờ gán bưu tá',
   ASSIGNED_PICKUP: 'Đã gán bưu tá',
   PICKED: 'Bưu tá đã lấy hàng',
+  COMPLETED: 'Hoàn thành',
   CANCELLED: 'Đã hủy yêu cầu',
+  // Alias variants
+  ASSIGNED: 'Đã gán bưu tá',
+  PENDING: 'Chờ xử lý',
 };
 
 export const WAYBILL_STATUS_LABELS = {
@@ -13,10 +17,14 @@ export const WAYBILL_STATUS_LABELS = {
   PICKED_PENDING_VERIFY: 'Đã lấy hàng, chờ nhập kho',
   READY_WAREHOUSE: 'Sẵn sàng nhập kho',
   IN_HUB: 'Đã nhập kho',
+  IN_TRANSIT: 'Đang vận chuyển',
   DELIVERING: 'Đang giao hàng',
   DELIVERED: 'Giao hàng thành công',
   DELIVERY_FAILED: 'Giao hàng thất bại',
+  CUSTOMER_UNAVAILABLE: 'Khách không có mặt',
+  RECIPIENT_REFUSED: 'Khách từ chối nhận',
   RETURNED: 'Đã hoàn trả',
+  CANCELLED: 'Đã hủy',
 };
 
 export const PRICE_STATUS_LABELS = {

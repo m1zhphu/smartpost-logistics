@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
   DeviceEventEmitter,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -28,6 +29,25 @@ const PRIMARY = COLORS.primary || "#1B5E20";
 export default function ShipperPickupListScreen({ navigation }) {
   const [pickups, setPickups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchPickups = useCallback(async () => {
+    setLoading(true);
+    const result = await getShipperAssignedPickups();
+    if (result.success) {
+      setPickups(result.data || []);
+    }
+    setLoading(false);
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    const result = await getShipperAssignedPickups();
+    if (result.success) {
+      setPickups(result.data || []);
+    }
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -47,16 +67,7 @@ export default function ShipperPickupListScreen({ navigation }) {
       unsubscribe();
       realtimeListener.remove();
     };
-  }, [navigation]);
-
-  const fetchPickups = async () => {
-    setLoading(true);
-    const result = await getShipperAssignedPickups();
-    if (result.success) {
-      setPickups(result.data || []);
-    }
-    setLoading(false);
-  };
+  }, [navigation, fetchPickups]);
 
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
@@ -223,6 +234,11 @@ export default function ShipperPickupListScreen({ navigation }) {
         )}
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Đơn lấy hàng</Text>
+          {pickups.length > 0 && (
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2, fontWeight: '600' }}>
+              {pickups.length} đơn cần lấy
+            </Text>
+          )}
         </View>
         <HeaderButton icon="reload" onPress={fetchPickups} />
       </View>
@@ -248,6 +264,14 @@ export default function ShipperPickupListScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[PRIMARY]}
+              tintColor={PRIMARY}
+            />
+          }
         />
       )}
     </View>

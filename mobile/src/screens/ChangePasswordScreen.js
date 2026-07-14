@@ -5,10 +5,9 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
@@ -157,9 +156,13 @@ export default function ChangePasswordScreen({ navigation }) {
   );
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      contentContainerStyle={{ flexGrow: 1 }}
+      keyboardShouldPersistTaps="handled"
+      enableOnAndroid={true}
+      extraScrollHeight={100}
+      showsVerticalScrollIndicator={false}
     >
       <StatusBar style="light" />
 
@@ -180,11 +183,7 @@ export default function ChangePasswordScreen({ navigation }) {
         <View style={styles.headerRightPlaceholder} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={[styles.scrollContent, { flex: 1 }]}>
         <View style={styles.card}>
           <View style={styles.cardIconBox}>
             <Ionicons
@@ -237,8 +236,7 @@ export default function ChangePasswordScreen({ navigation }) {
             </Text>
           </View>
         </View>
-      </ScrollView>
-
+      </View>
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
@@ -253,6 +251,6 @@ export default function ChangePasswordScreen({ navigation }) {
           )}
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }

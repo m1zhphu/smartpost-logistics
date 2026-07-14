@@ -2,7 +2,8 @@ import React, { useState, useRef, useMemo } from "react";
 import localProvincesData from "../utils/vietnam_provinces.json";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import styles from "../styles/CreateOrderScreenStyles";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,7 +14,7 @@ import { COLORS } from "../constants/colors";
 import { useQueue } from "../context/QueueContext";
 import { useUser } from "../context/UserContext";
 import AddressPickerModal from "../components/AddressPickerModal";
-import { PROVINCES_34, resolveToNewProvince } from "../utils/provinces";
+import { PROVINCES_34, resolveToNewProvince, getOldProvinceNames } from "../utils/provinces";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
 
@@ -337,16 +338,15 @@ export default function CreateOrderScreen({ route, navigation }) {
         <View style={{ width: 38 }} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <KeyboardAwareScrollView
         style={{ flex: 1 }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={100}
+        showsVerticalScrollIndicator={false}
+        ref={scrollViewRef}
       >
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContent}
-        >
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="qr-code-outline" size={20} color="#0F766E" />
@@ -560,11 +560,20 @@ export default function CreateOrderScreen({ route, navigation }) {
             </View>
 
             <TouchableOpacity
-              style={[styles.inputWrapper, { marginTop: 12 }]}
+              style={[styles.inputWrapper, { marginTop: 12, alignItems: 'flex-start', paddingVertical: 10 }]}
               onPress={() => setShowSProvincePicker(true)}
             >
-              <Ionicons name="map-outline" size={18} color="#94A3B8" style={{ marginRight: 10 }} />
-              <Text style={{ flex: 1, color: sProvince ? '#0F172A' : '#94A3B8' }}>{sProvince || "Tỉnh/Thành phố"}</Text>
+              <Ionicons name="map-outline" size={18} color="#94A3B8" style={{ marginRight: 10, marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: sProvince ? '#0F172A' : '#94A3B8', fontWeight: sProvince ? '600' : '400' }}>
+                  {sProvince || "Tỉnh/Thành phố"}
+                </Text>
+                {sProvince && getOldProvinceNames(sProvince).filter(n => n !== sProvince).length > 0 && (
+                  <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                    Sáp nhập từ: {getOldProvinceNames(sProvince).filter(n => n !== sProvince).join(', ')}
+                  </Text>
+                )}
+              </View>
             </TouchableOpacity>
 
 
@@ -687,11 +696,20 @@ export default function CreateOrderScreen({ route, navigation }) {
             </View>
 
             <TouchableOpacity
-              style={[styles.inputWrapper, { marginTop: 12 }]}
+              style={[styles.inputWrapper, { marginTop: 12, alignItems: 'flex-start', paddingVertical: 10 }]}
               onPress={() => setShowRProvincePicker(true)}
             >
-              <Ionicons name="map-outline" size={18} color="#94A3B8" style={{ marginRight: 10 }} />
-              <Text style={{ flex: 1, color: rProvince ? '#0F172A' : '#94A3B8' }}>{rProvince || "Tỉnh/Thành phố"}</Text>
+              <Ionicons name="map-outline" size={18} color="#94A3B8" style={{ marginRight: 10, marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: rProvince ? '#0F172A' : '#94A3B8', fontWeight: rProvince ? '600' : '400' }}>
+                  {rProvince || "Tỉnh/Thành phố"}
+                </Text>
+                {rProvince && getOldProvinceNames(rProvince).filter(n => n !== rProvince).length > 0 && (
+                  <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                    Sáp nhập từ: {getOldProvinceNames(rProvince).filter(n => n !== rProvince).join(', ')}
+                  </Text>
+                )}
+              </View>
             </TouchableOpacity>
 
 
@@ -766,7 +784,7 @@ export default function CreateOrderScreen({ route, navigation }) {
                       onChangeText={setActualWeight}
                       placeholder="Nặng(kg)*"
                       placeholderTextColor="#94A3B8"
-                      keyboardType="decimal-pad"
+                      keyboardType="numeric"
                     />
                   </View>
                   <View
@@ -887,37 +905,36 @@ export default function CreateOrderScreen({ route, navigation }) {
               </View>
             )}
           </View>
-        </ScrollView>
-
-        <View style={styles.bottomDock}>
-          <TouchableOpacity
-            style={[styles.confirmBtn, loading && { opacity: 0.7 }]}
-            onPress={handleConfirm}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <>
-                <Text style={styles.confirmBtnText}>LƯU & XÁC NHẬN</Text>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color="white"
-                  style={{ marginLeft: 8 }}
-                />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+      <View style={[styles.bottomDock, { position: 'absolute', bottom: 0, left: 0, right: 0 }]}>
+        <TouchableOpacity
+          style={[styles.confirmBtn, loading && { opacity: 0.7 }]}
+          onPress={handleConfirm}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <>
+              <Text style={styles.confirmBtnText}>LƯU & XÁC NHẬN</Text>
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color="white"
+                style={{ marginLeft: 8 }}
+              />
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
       <AddressPickerModal
         visible={showSProvincePicker}
         onClose={() => setShowSProvincePicker(false)}
         data={PROVINCES_34}
         title="Chọn Tỉnh/Thành phố gửi"
         onSelect={handleSProvinceSelect}
+        showMergeInfo={true}
       />
       <AddressPickerModal
         visible={showSWardPicker}
@@ -933,6 +950,7 @@ export default function CreateOrderScreen({ route, navigation }) {
         data={PROVINCES_34}
         title="Chọn Tỉnh/Thành phố nhận"
         onSelect={handleRProvinceSelect}
+        showMergeInfo={true}
       />
       <AddressPickerModal
         visible={showRWardPicker}

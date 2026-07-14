@@ -108,7 +108,11 @@ export default function CustomerHomeScreen({ navigation }) {
         {/* BANNER */}
         {activePickupsCount > 0 && (
           <View style={styles.bannerWrap}>
-            <View style={styles.banner}>
+            <TouchableOpacity
+              style={styles.banner}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate("CustomerPickupList")}
+            >
               <View style={styles.bannerIcon}>
                 <Ionicons name="time-outline" size={24} color="#1B5E20" />
               </View>
@@ -117,9 +121,9 @@ export default function CustomerHomeScreen({ navigation }) {
                 <Text style={styles.bannerSub}>Đang chờ điều phối và bưu tá lấy hàng</Text>
               </View>
               <View style={styles.bannerArrow}>
-                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                <Ionicons name="chevron-forward" size={16} color="#1B5E20" />
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         )}
 

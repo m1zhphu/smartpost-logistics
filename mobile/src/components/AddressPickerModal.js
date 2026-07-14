@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -13,10 +13,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { getOldProvinceNames } from '../utils/provinces';
 
 const PRIMARY = COLORS.primary || '#1B5E20';
 
-export default function AddressPickerModal({ visible, onClose, data, onSelect, title }) {
+/**
+ * AddressPickerModal
+ * @param {boolean} showMergeInfo - Khi true, hiển thị tên tỉnh cũ bên dưới tên tỉnh mới (dùng cho picker tỉnh/thành)
+ */
+export default function AddressPickerModal({ visible, onClose, data, onSelect, title, showMergeInfo = false }) {
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
@@ -25,24 +30,65 @@ export default function AddressPickerModal({ visible, onClose, data, onSelect, t
     }
   }, [visible]);
 
-  const filteredData = (data || []).filter(item => {
-    if (!item) return false;
-    const cleanItem = String(item).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const cleanSearch = searchText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    return cleanItem.includes(cleanSearch) || String(item).toLowerCase().includes(searchText.toLowerCase());
-  });
+  // Chuẩn hóa chuỗi để tìm kiếm không dấu
+  const normalize = (str) =>
+    String(str || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.item}
-      onPress={() => {
-        onSelect(item);
-        onClose();
-      }}
-    >
-      <Text style={styles.itemText}>{item}</Text>
-    </TouchableOpacity>
-  );
+  // Xây dựng index tìm kiếm theo cả tên mới lẫn tên cũ
+  const searchIndex = useMemo(() => {
+    if (!showMergeInfo) return {};
+    const idx = {};
+    (data || []).forEach((item) => {
+      const oldNames = getOldProvinceNames(item);
+      idx[item] = [normalize(item), ...oldNames.map(normalize)].join(' ');
+    });
+    return idx;
+  }, [data, showMergeInfo]);
+
+  const filteredData = useMemo(() => {
+    const cleanSearch = normalize(searchText);
+    return (data || []).filter((item) => {
+      if (!item) return false;
+      if (!cleanSearch) return true;
+      if (showMergeInfo) {
+        // Tìm kiếm theo cả tên mới + tên cũ
+        return (searchIndex[item] || normalize(item)).includes(cleanSearch);
+      }
+      return normalize(item).includes(cleanSearch);
+    });
+  }, [data, searchText, searchIndex, showMergeInfo]);
+
+  const renderItem = ({ item }) => {
+    const oldNames = showMergeInfo ? getOldProvinceNames(item) : [];
+    // Lọc bỏ tên trùng với tên mới
+    const oldDisplay = oldNames.filter((n) => n !== item);
+
+    return (
+      <TouchableOpacity
+        style={styles.item}
+        onPress={() => {
+          onSelect(item);
+          onClose();
+        }}
+        activeOpacity={0.7}
+      >
+        {/* Tên tỉnh mới — ưu tiên */}
+        <Text style={styles.itemText}>{item}</Text>
+        {/* Tên tỉnh cũ — phụ, chỉ hiển thị khi showMergeInfo và có tên cũ */}
+        {showMergeInfo && oldDisplay.length > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+            <Ionicons name="git-merge-outline" size={11} color="#94A3B8" style={{ marginRight: 3 }} />
+            <Text style={styles.itemSubText}>
+              Sáp nhập từ: {oldDisplay.join(', ')}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <Modal
@@ -57,6 +103,7 @@ export default function AddressPickerModal({ visible, onClose, data, onSelect, t
           style={styles.keyboardView}
         >
           <View style={styles.container} onStartShouldSetResponder={() => true}>
+            <View style={styles.handle} />
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -64,21 +111,37 @@ export default function AddressPickerModal({ visible, onClose, data, onSelect, t
               </TouchableOpacity>
             </View>
             <View style={styles.searchContainer}>
+              <Ionicons name="search-outline" size={16} color="#94A3B8" style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Nhập để tìm kiếm..."
+                placeholder={showMergeInfo ? "Tìm theo tên mới hoặc tên cũ..." : "Nhập để tìm kiếm..."}
                 placeholderTextColor="#94A3B8"
                 value={searchText}
                 onChangeText={setSearchText}
                 autoCorrect={false}
                 autoCapitalize="none"
               />
+              {searchText.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchText('')}>
+                  <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                </TouchableOpacity>
+              )}
             </View>
             <FlatList
               data={filteredData}
               keyExtractor={(item, index) => `${item}-${index}`}
               renderItem={renderItem}
               contentContainerStyle={styles.listContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                  <Ionicons name="search-outline" size={32} color="#CBD5E1" />
+                  <Text style={{ fontSize: 14, color: '#94A3B8', marginTop: 8 }}>
+                    Không tìm thấy kết quả
+                  </Text>
+                </View>
+              }
             />
           </View>
         </KeyboardAvoidingView>
@@ -90,7 +153,7 @@ export default function AddressPickerModal({ visible, onClose, data, onSelect, t
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
   keyboardView: {
@@ -100,21 +163,31 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '70%',
-    paddingBottom: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '75%',
+    paddingBottom: 24,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#0F172A',
   },
@@ -122,29 +195,38 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
   },
   searchInput: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flex: 1,
     fontSize: 14,
     color: '#0F172A',
+    paddingVertical: 0,
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   item: {
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
   itemText: {
     fontSize: 16,
-    color: '#334155',
+    fontWeight: '500',
+    color: '#0F172A',
+  },
+  itemSubText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 3,
+    fontStyle: 'italic',
   },
 });

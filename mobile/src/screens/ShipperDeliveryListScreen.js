@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
   Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -23,6 +24,7 @@ const PRIMARY = COLORS.primary || "#1B5E20";
 export default function ShipperDeliveryListScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("delivering");
 
   useEffect(() => {
@@ -30,14 +32,23 @@ export default function ShipperDeliveryListScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     setLoading(true);
     const result = await getDeliveryTasks();
     if (result.success) {
       setTasks(result.data || []);
     }
     setLoading(false);
-  };
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    const result = await getDeliveryTasks();
+    if (result.success) {
+      setTasks(result.data || []);
+    }
+    setRefreshing(false);
+  }, []);
 
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
@@ -82,6 +93,7 @@ export default function ShipperDeliveryListScreen({ navigation }) {
         onPress={() =>
           navigation.navigate("ShipperDeliveryDetail", {
             waybillCode: item.waybill_code,
+            taskData: item,
           })
         }
         activeOpacity={0.8}
@@ -157,19 +169,13 @@ export default function ShipperDeliveryListScreen({ navigation }) {
           style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'delivering' ? PRIMARY : 'transparent' }}
           onPress={() => setActiveTab('delivering')}
         >
-          <Text style={{ fontWeight: activeTab === 'delivering' ? '700' : '500', color: activeTab === 'delivering' ? PRIMARY : '#64748B' }}>Đang giao</Text>
+          <Text numberOfLines={1} style={{ fontWeight: activeTab === 'delivering' ? '700' : '500', color: activeTab === 'delivering' ? PRIMARY : '#64748B', fontSize: 13 }}>Đang giao</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'retry_tomorrow' ? PRIMARY : 'transparent' }}
-          onPress={() => setActiveTab('retry_tomorrow')}
+          style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'failed' ? '#EF4444' : 'transparent' }}
+          onPress={() => setActiveTab('failed')}
         >
-          <Text style={{ fontWeight: activeTab === 'retry_tomorrow' ? '700' : '500', color: activeTab === 'retry_tomorrow' ? PRIMARY : '#64748B' }}>Giao lại ngày mai</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: activeTab === 'refused' ? PRIMARY : 'transparent' }}
-          onPress={() => setActiveTab('refused')}
-        >
-          <Text style={{ fontWeight: activeTab === 'refused' ? '700' : '500', color: activeTab === 'refused' ? PRIMARY : '#64748B' }}>Khách từ chối</Text>
+          <Text numberOfLines={1} style={{ fontWeight: activeTab === 'failed' ? '700' : '500', color: activeTab === 'failed' ? '#EF4444' : '#64748B', fontSize: 13 }}>Giao thất bại</Text>
         </TouchableOpacity>
       </View>
 
@@ -179,21 +185,29 @@ export default function ShipperDeliveryListScreen({ navigation }) {
         </View>
       ) : (() => {
         const filteredTasks = tasks.filter(t => {
+          const status = t.status || t.waybill_status;
           if (activeTab === 'delivering') {
-            return t.status !== 'DELIVERY_FAILED';
-          } else if (activeTab === 'retry_tomorrow') {
-            return t.status === 'DELIVERY_FAILED' && t.failure_reason_code === 'CUSTOMER_UNAVAILABLE';
-          } else if (activeTab === 'refused') {
-            return t.status === 'DELIVERY_FAILED' && t.failure_reason_code === 'RECIPIENT_REFUSED';
+            // Chỉ lấy đơn đang trong quá trình giao — loại bỏ đã giao thành công và thất bại
+            return status !== 'DELIVERY_FAILED' && status !== 'CUSTOMER_UNAVAILABLE' && status !== 'DELIVERED' && status !== 'RETURNED';
+          } else if (activeTab === 'failed') {
+            // Tất cả đơn thất bại — bao gồm cả khách hẹn giao lại
+            return status === 'DELIVERY_FAILED' || status === 'CUSTOMER_UNAVAILABLE';
           }
           return false;
         });
+
         return filteredTasks.length === 0 ? (
           <View style={styles.center}>
             <View style={styles.emptyIconBox}>
-              <Ionicons name="car-outline" size={36} color="#94A3B8" />
+              <Ionicons
+                name={activeTab === 'failed' ? "close-circle-outline" : "car-outline"}
+                size={36}
+                color="#94A3B8"
+              />
             </View>
-            <Text style={styles.emptyText}>Hiện chưa có đơn giao nào.</Text>
+            <Text style={styles.emptyText}>
+              {activeTab === 'failed' ? 'Không có đơn giao thất bại.' : 'Hiện chưa có đơn giao nào.'}
+            </Text>
           </View>
         ) : (
           <FlatList
@@ -202,6 +216,14 @@ export default function ShipperDeliveryListScreen({ navigation }) {
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={[PRIMARY]}
+                tintColor={PRIMARY}
+              />
+            }
           />
         );
       })()}

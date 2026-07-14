@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
   StyleSheet,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -28,17 +29,18 @@ const PRIMARY = COLORS.primary || "#1B5E20";
 export default function ShipperPickedOrdersScreen({ navigation }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     const result = await getShipperPickedPickups();
     if (result.success) {
-      // Lọc các đơn đã lấy thành công, cần OCR
+      // Lọc đơn đã lấy thành công — dùng includes để bắt mọi variant có chứa 'PICKED'
       const picked = (result.data || []).filter(
-        (item) =>
-          item.pickup_status === "PICKED" ||
-          item.pickup_status === "PICKED_PENDING_VERIFY" ||
-          item.pickup_status === "PICKED_PENDING_OCR"
+        (item) => {
+          const s = item.pickup_status || '';
+          return s === 'PICKED' || s.startsWith('PICKED_') || s.includes('PICKED');
+        }
       );
       setOrders(picked);
     } else {
@@ -49,6 +51,21 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
       });
     }
     setLoading(false);
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    const result = await getShipperPickedPickups();
+    if (result.success) {
+      const picked = (result.data || []).filter(
+        (item) => {
+          const s = item.pickup_status || '';
+          return s === 'PICKED' || s.startsWith('PICKED_') || s.includes('PICKED');
+        }
+      );
+      setOrders(picked);
+    }
+    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -71,13 +88,42 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
           materialization_status: item.materialization_status,
         },
       });
+    } else if (item.waybill_code) {
+      // Đơn lẻ đã có mã VĐ → Mở màn hình OCR detail để fill/sửa thông tin
+      // Tự động fill thông tin người gửi từ dữ liệu yêu cầu lấy hàng
+      navigation.navigate("OcrWaybillDetail", {
+        waybillCode: item.waybill_code,
+        waybillData: {
+          waybill_code: item.waybill_code,
+          // Pre-fill thông tin đã biết từ yêu cầu lấy hàng
+          sender_name: item.sender_name || "",
+          sender_phone: item.sender_phone || "",
+          sender_address: item.pickup_address || "",
+          // Các trường OCR để bưu tá điền thêm
+          receiver_name: item.receiver_name || "",
+          receiver_phone: item.receiver_phone || "",
+          receiver_address: item.receiver_address || "",
+          receiver_province_name: item.receiver_province_name || "",
+          receiver_ward_name: item.receiver_ward_name || "",
+          actual_weight: item.actual_weight != null ? String(item.actual_weight) : "",
+          cod_amount: item.cod_amount != null ? String(item.cod_amount) : "0",
+          product_name: item.product_name || "",
+          service_type: item.service_type || "STANDARD",
+          product_group: item.product_group || "DOCUMENT",
+          ocr_status: item.ocr_status || "PENDING",
+          verify_status: item.verify_status || "",
+          status: item.pickup_status || "",
+          bill_image_url: item.bill_image_url || "",
+          note: item.note || "",
+        },
+      });
     } else {
-      // Đơn lẻ → Mở Camera với cấu hình tự động điền
+      // Đơn chưa có mã VĐ → Mở Camera để tạo đơn mới
       navigation.navigate("ShipperCamera", {
         waybillCode: item.waybill_code,
         customer: {
           customer_name: item.sender_name || "",
-          customer_id: item.customer_id || null, // Nếu có
+          customer_id: item.customer_id || null,
         },
         senderData: {
           name: item.sender_name || "",
@@ -193,7 +239,7 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
           <View style={styles.ocrBtn}>
             <Ionicons name="scan-outline" size={14} color="#FFF" />
             <Text style={styles.ocrBtnText}>
-              {isBulkMail ? "Mở túi & OCR" : "OCR đơn này"}
+              {isBulkMail ? "Mở túi & OCR" : item.waybill_code ? "Xem & OCR" : "Tạo & OCR"}
             </Text>
           </View>
         </View>
@@ -216,7 +262,9 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Đơn chờ OCR</Text>
-          <Text style={styles.headerSub}>Nhấn vào đơn để bắt đầu OCR</Text>
+          <Text style={styles.headerSub}>
+            {orders.length > 0 ? `${orders.length} đơn — nhấn để bắt đầu OCR` : 'Nhấn vào đơn để bắt đầu OCR'}
+          </Text>
         </View>
         <TouchableOpacity
           onPress={fetchOrders}
@@ -248,6 +296,14 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[PRIMARY]}
+              tintColor={PRIMARY}
+            />
+          }
         />
       )}
     </View>

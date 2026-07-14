@@ -1,4 +1,5 @@
 export const WAREHOUSE_API_URL = process.env.EXPO_PUBLIC_WAREHOUSE_API_URL || 'https://warehouse.speedlight.com.vn';
+export const LOGISTICS_API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://speedlight.minhhien.click';
 
 export const WAREHOUSE_ENDPOINTS = {
   // Authentication
@@ -55,9 +56,9 @@ export const WAREHOUSE_ENDPOINTS = {
   ACTION_NOI_BO_URL: (id) => `${WAREHOUSE_API_URL}/api/warehouse/noi-bo/${id}/action`,
 
   // Mobile OCR on logistics backend
-  OCR_CUSTOMERS: `${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://speedlight.minhhien.click'}/api/waybills/mobile/ocr/customers`,
-  OCR_CUSTOMER_PICKUPS: (customerId) => `${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://speedlight.minhhien.click'}/api/waybills/mobile/ocr/customers/${customerId}/pickups`,
-  OCR_BAG_WAYBILLS: (bagCode) => `${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://speedlight.minhhien.click'}/api/waybills/mobile/ocr/bags/${bagCode}/waybills`,
-  OCR_UPDATE_WAYBILL: (waybillCode) => `${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://speedlight.minhhien.click'}/api/waybills/mobile/ocr/waybills/${waybillCode}`,
-  OCR_EXTRA_WAYBILLS: (bagCode) => `${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://speedlight.minhhien.click'}/api/waybills/mobile/ocr/bags/${bagCode}/extra-waybills`,
+  OCR_CUSTOMERS: `${LOGISTICS_API_URL}/api/waybills/mobile/ocr/customers`,
+  OCR_CUSTOMER_PICKUPS: (customerId) => `${LOGISTICS_API_URL}/api/waybills/mobile/ocr/customers/${customerId}/pickups`,
+  OCR_BAG_WAYBILLS: (bagCode) => `${LOGISTICS_API_URL}/api/waybills/mobile/ocr/bags/${bagCode}/waybills`,
+  OCR_UPDATE_WAYBILL: (waybillCode) => `${LOGISTICS_API_URL}/api/waybills/mobile/ocr/waybills/${waybillCode}`,
+  OCR_EXTRA_WAYBILLS: (bagCode) => `${LOGISTICS_API_URL}/api/waybills/mobile/ocr/bags/${bagCode}/extra-waybills`,
 };

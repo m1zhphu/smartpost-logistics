@@ -5,10 +5,9 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
@@ -67,9 +66,13 @@ export default function ShipperReportIncidentScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <KeyboardAwareScrollView
+      enableOnAndroid={true}
+      extraScrollHeight={100}
+      showsVerticalScrollIndicator={false}
       style={styles.container}
+      contentContainerStyle={{ flexGrow: 1 }}
+      keyboardShouldPersistTaps="handled"
     >
       <StatusBar style="light" />
 
@@ -90,10 +93,7 @@ export default function ShipperReportIncidentScreen({ route, navigation }) {
         <View style={{ width: 38 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={[styles.content, { flex: 1 }]}>
         {/* INFO BOX */}
         <View style={styles.infoBox}>
           <View style={styles.infoIconBox}>
@@ -163,8 +163,8 @@ export default function ShipperReportIncidentScreen({ route, navigation }) {
             <Text style={styles.submitBtnText}>GỬI BÁO CÁO</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </KeyboardAwareScrollView>
   );
 }
 

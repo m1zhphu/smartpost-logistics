@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Platform, Image, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Platform, Image } from 'react-native';
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
@@ -26,9 +27,9 @@ import styles from "../styles/ShipperDeliveryDetailScreenStyles";
 const PRIMARY = COLORS.primary || "#1B5E20";
 
 export default function ShipperDeliveryDetailScreen({ route, navigation }) {
-  const { waybillCode } = route.params;
-  const [task, setTask] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { waybillCode, taskData } = route.params;
+  const [task, setTask] = useState(taskData || null);
+  const [loading, setLoading] = useState(!taskData);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [podImages, setPodImages] = useState([]);
@@ -44,20 +45,27 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
   const [deliveryTime, setDeliveryTime] = useState(formatDateTimeLocal(new Date()));
 
   useEffect(() => {
-    fetchTask();
+    if (!taskData) {
+      fetchTask();
+    } else {
+      // Pre-fill COD from task data
+      setCodCollected(String(taskData.cod_amount || 0));
+    }
   }, []);
 
   const fetchTask = async () => {
     setLoading(true);
     const result = await getDeliveryTasks();
     if (result.success) {
-      setTask(
-        (result.data || []).find((item) => item.waybill_code === waybillCode) ||
-          null,
-      );
+      const found = (result.data || []).find((item) => item.waybill_code === waybillCode) || null;
+      setTask(found);
+      if (found) {
+        setCodCollected(String(found.cod_amount || 0));
+      }
     }
     setLoading(false);
   };
+
 
   const uploadSelectedImages = async (assets) => {
     setUploadingImage(true);
@@ -223,7 +231,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
   const handleRetry = () => {
     CustomAlert.alert(
       "Giao lại",
-      "Xác nhận gưởi đơn này vào danh sách giao lại?",
+      "Xác nhận gửi đơn này vào danh sách giao lại?",
       [
         { text: "Hủy", style: "cancel" },
         {
@@ -278,24 +286,35 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
         </View>
         <Text style={styles.emptyText}>Không tìm thấy đơn giao này.</Text>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={fetchTask}
           style={{
-            marginTop: 20,
+            marginTop: 16,
             backgroundColor: PRIMARY,
-            padding: 12,
+            paddingHorizontal: 24,
+            paddingVertical: 12,
             borderRadius: 12,
           }}
         >
-          <Text style={{ color: "white", fontWeight: "bold" }}>Quay lại</Text>
+          <Text style={{ color: "white", fontWeight: "bold" }}>Thử lại</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{
+            marginTop: 10,
+            backgroundColor: "#F1F5F9",
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ color: "#475569", fontWeight: "bold" }}>Quay lại</Text>
         </TouchableOpacity>
       </View>
     );
 
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <StatusBar style="light" />
 
       {/* HEADER CHUẨN FORM */}
@@ -308,10 +327,11 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
         <View style={{ width: 38 }} />
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
+        enableOnAndroid={true}
+        extraScrollHeight={100}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
@@ -361,6 +381,8 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
           />
         </View>
 
+        {/* Form xác nhận giao — chỉ hiển thị khi đơn đang trong quá trình giao */}
+        {task.status !== 'DELIVERY_FAILED' && task.status !== 'CUSTOMER_UNAVAILABLE' ? (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>XÁC NHẬN GIAO</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
@@ -452,7 +474,34 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
             multiline
           />
         </View>
-      </ScrollView>
+        ) : (
+          /* Đơn đã thất bại: hiển thị banner lý do và hướng dẫn giao lại */
+          <View style={[styles.card, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA', borderWidth: 1 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <Ionicons name="warning-outline" size={20} color="#D97706" style={{ marginRight: 8 }} />
+              <Text style={[styles.sectionTitle, { color: '#D97706', marginBottom: 0 }]}>ĐƠN GIAO THẤT BẠI</Text>
+            </View>
+            <Text style={{ fontSize: 14, color: '#92400E', lineHeight: 20 }}>
+              Lý do: {task.failure_reason_code === 'CUSTOMER_UNAVAILABLE'
+                ? 'Khách hẹn giao lại ngày sau'
+                : task.failure_reason_code === 'RECIPIENT_REFUSED'
+                  ? 'Khách từ chối nhận hàng'
+                  : 'Giao không thành công'}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#78350F', marginTop: 8 }}>
+              Nhấn nút "Giao lại" bên dưới để đưa đơn vào danh sách giao lần tiếp theo.
+            </Text>
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              placeholder="Ghi chú cho lần giao lại (Không bắt buộc)"
+              style={[styles.input, { marginTop: 12, minHeight: 60, textAlignVertical: 'top' }]}
+              placeholderTextColor="#94A3B8"
+              multiline
+            />
+          </View>
+        )}
+      </KeyboardAwareScrollView>
 
       {/* BOTTOM BAR */}
       <View style={styles.bottomBar}>
@@ -491,7 +540,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
           </>
         )}
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Platform, Modal, FlatList } from 'react-native';
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import {
   SafeAreaView,
@@ -1066,9 +1067,12 @@ export default function WarehouseActionScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardShouldPersistTaps="handled"
+      enableOnAndroid={true}
+      extraScrollHeight={100}
+      showsVerticalScrollIndicator={false}
     >
       <StatusBar style="light" />
 
@@ -2845,7 +2849,7 @@ export default function WarehouseActionScreen({ route, navigation }) {
         }}
       >
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
 

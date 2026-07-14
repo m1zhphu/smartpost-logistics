@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Linking, Image, TextInput, KeyboardAvoidingView, Platform, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Linking, Image, TextInput, Platform, Modal, Pressable } from 'react-native';
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
@@ -385,11 +386,18 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
         </View>
         <Text style={styles.errorText}>Không thể tải chi tiết lấy hàng.</Text>
         <TouchableOpacity
+          onPress={fetchDetail}
+          style={[styles.backButton, { backgroundColor: PRIMARY, marginBottom: 10 }]}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.backButtonText, { color: '#fff' }]}>Thử lại</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           activeOpacity={0.8}
         >
-          <Text style={styles.backButtonText}>Quay lai</Text>
+          <Text style={styles.backButtonText}>Quay lại</Text>
         </TouchableOpacity>
       </View>
     );
@@ -416,17 +424,13 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
         <HeaderButton icon="location-outline" onPress={handleSendLocation} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 0}
-        style={{ flex: 1 }}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={100}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-          showsVerticalScrollIndicator={false}
-        >
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>THÔNG TIN PICKUP</Text>
             <Row
@@ -735,8 +739,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
               </View>
             ) : null}
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
 
       <Modal
         visible={showBillModal}

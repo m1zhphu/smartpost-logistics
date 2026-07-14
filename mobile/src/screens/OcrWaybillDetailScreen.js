@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput, KeyboardAvoidingView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, TextInput, Image, ActivityIndicator } from 'react-native';
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -15,7 +16,7 @@ import {
 } from "../services/pickupService";
 import styles from "../styles/OcrWaybillDetailScreenStyles";
 import AddressPickerModal from "../components/AddressPickerModal";
-import { PROVINCES_34, resolveToNewProvince } from "../utils/provinces";
+import { PROVINCES_34, resolveToNewProvince, getOldProvinceNames } from "../utils/provinces";
 import localProvincesData from "../utils/vietnam_provinces.json";
 
 const PRIMARY = COLORS.primary || "#1B5E20";
@@ -285,17 +286,22 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
     </View>
   );
 
-  const renderSelectField = (label, key, placeholder, onPress) => (
+  const renderSelectField = (label, key, placeholder, onPress, showMerge = false) => (
     <View style={styles.fieldRow}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TouchableOpacity
-        style={[styles.input, { justifyContent: 'center' }]}
+        style={[styles.input, { justifyContent: 'center', minHeight: 44 }]}
         onPress={onPress}
         activeOpacity={0.7}
       >
-        <Text style={{ color: form[key] ? '#0F172A' : '#94A3B8' }}>
+        <Text style={{ color: form[key] ? '#0F172A' : '#94A3B8', fontWeight: form[key] ? '500' : '400' }}>
           {form[key] || placeholder}
         </Text>
+        {showMerge && form[key] && getOldProvinceNames(form[key]).filter(n => n !== form[key]).length > 0 && (
+          <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+            Sáp nhập từ: {getOldProvinceNames(form[key]).filter(n => n !== form[key]).join(', ')}
+          </Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -333,15 +339,38 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={100}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+          {/* Card người gửi — chỉ hiển thị khi được truyền từ yêu cầu lấy hàng */}
+          {(waybillData?.sender_name || waybillData?.sender_phone || waybillData?.sender_address) && (
+            <View style={[styles.card, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0", borderWidth: 1 }]}>
+              <Text style={[styles.sectionTitle, { color: PRIMARY }]}>NGƯỜI GỬI</Text>
+              {waybillData.sender_name ? (
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+                  <Ionicons name="person-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 14, color: "#0F172A", fontWeight: "600" }}>{waybillData.sender_name}</Text>
+                </View>
+              ) : null}
+              {waybillData.sender_phone ? (
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+                  <Ionicons name="call-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 14, color: "#475569" }}>{waybillData.sender_phone}</Text>
+                </View>
+              ) : null}
+              {waybillData.sender_address ? (
+                <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                  <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginRight: 6, marginTop: 2 }} />
+                  <Text style={{ fontSize: 13, color: "#64748B", flex: 1 }}>{waybillData.sender_address}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>ANH BILL</Text>
             <View style={styles.imageActions}>
@@ -408,7 +437,8 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
               "Tinh/Thanh",
               "receiver_province_name",
               "Chọn Tỉnh/Thành",
-              () => setShowProvincePicker(true)
+              () => setShowProvincePicker(true),
+              true  // hiển thị tên tỉnh cũ
             )}
             {renderSelectField(
               "Phuong/Xa",
@@ -421,31 +451,31 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>THONG TIN VAN DON</Text>
             {renderField("Can nang thuc te (kg)", "actual_weight", "0.5", {
-              keyboardType: "decimal-pad",
+              keyboardType: "numeric",
             })}
             <View style={styles.row}>
               <View style={styles.col}>
                 {renderField("Dai", "length", "30", {
-                  keyboardType: "decimal-pad",
+                  keyboardType: "numeric",
                 })}
               </View>
               <View style={styles.col}>
                 {renderField("Rong", "width", "20", {
-                  keyboardType: "decimal-pad",
+                  keyboardType: "numeric",
                 })}
               </View>
               <View style={styles.col}>
                 {renderField("Cao", "height", "10", {
-                  keyboardType: "decimal-pad",
+                  keyboardType: "numeric",
                 })}
               </View>
             </View>
             {renderField("COD", "cod_amount", "0", {
-              keyboardType: "decimal-pad",
+              keyboardType: "numeric",
             })}
             {renderField("Ten hang", "product_name", "Thu 1")}
             {renderField("Gia tri khai bao", "declared_value", "0", {
-              keyboardType: "decimal-pad",
+              keyboardType: "numeric",
             })}
           </View>
 
@@ -521,8 +551,7 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
             )}
             <Text style={styles.saveButtonText}>Xác nhận và duyệt OCR</Text>
           </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
       <AddressPickerModal
         visible={showProvincePicker}
         onClose={() => setShowProvincePicker(false)}
@@ -533,6 +562,7 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
           setField("receiver_district_name", "");
         }}
         title="Chọn Tỉnh/Thành"
+        showMergeInfo={true}
       />
       <AddressPickerModal
         visible={showWardPicker}

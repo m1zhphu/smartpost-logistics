@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
-  KeyboardAvoidingView,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import styles from "../styles/ForgotPasswordScreenStyles";
@@ -225,9 +225,13 @@ export default function ForgotPasswordScreen({ route, navigation }) {
         <View style={{ width: 38 }} />
       </View>
 
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
         style={styles.keyboardRoot}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={100}
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
           <View style={styles.formCard}>
@@ -339,7 +343,7 @@ export default function ForgotPasswordScreen({ route, navigation }) {
             )}
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

@@ -150,6 +150,17 @@ export default function OcrBagDetailScreen({ route, navigation }) {
           renderItem={renderWaybill}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          // Tối ưu performance cho danh sách lớn (1000+ thư)
+          maxToRenderPerBatch={20}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={15}
+          windowSize={10}
+          removeClippedSubviews={true}
+          getItemLayout={(data, index) => ({
+            length: 76, // chiều cao ước tính mỗi waybillCard
+            offset: 76 * index,
+            index,
+          })}
           ListHeaderComponent={
             <View>
               {/* Stats card */}

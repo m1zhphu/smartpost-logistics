@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
@@ -20,9 +20,34 @@ import {
 const PRIMARY = COLORS.primary || "#1B5E20";
 const SECONDARY = COLORS.secondary || "#0F766E";
 
+// Format ngày dd/MM/yyyy từ ISO string để làm key cho bộ lọc
+const toDateKey = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
+// Label hiển thị cho chip ngày: "Hôm nay", "DD/MM", hoặc "DD/MM/YYYY"
+const formatDateLabel = (key) => {
+  if (!key) return key;
+  const today = new Date();
+  const todayKey = toDateKey(today.toISOString());
+  if (key === todayKey) return 'Hôm nay';
+  // Nếu cùng năm hiện tại thì bỏ năm cho gọn
+  const parts = key.split('/');
+  if (parts[2] === String(today.getFullYear())) return `${parts[0]}/${parts[1]}`;
+  return key;
+};
+
 export default function CustomerPickupListScreen({ navigation }) {
   const [pickups, setPickups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null); // null = "Tất cả"
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -38,6 +63,15 @@ export default function CustomerPickupListScreen({ navigation }) {
       setPickups(result.data || []);
     }
     setLoading(false);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    const result = await getCustomerPickups();
+    if (result.success) {
+      setPickups(result.data || []);
+    }
+    setRefreshing(false);
   };
 
   const openPickupDetail = (waybillCode) => {
@@ -79,6 +113,29 @@ export default function CustomerPickupListScreen({ navigation }) {
     });
     return Array.from(map.values());
   }, [pickups]);
+
+  // Lấy danh sách ngày duy nhất từ dữ liệu, sắp xếp mới nhất trước
+  const availableDates = useMemo(() => {
+    const dateSet = new Set();
+    groupedPickups.forEach((item) => {
+      const key = toDateKey(item.created_at);
+      if (key) dateSet.add(key);
+    });
+    // Sort mới nhất trước: so sánh năm, tháng, ngày đầy đủ
+    return Array.from(dateSet).sort((a, b) => {
+      const [da, ma, ya] = a.split("/").map(Number);
+      const [db, mb, yb] = b.split("/").map(Number);
+      if (yb !== ya) return yb - ya; // năm trước
+      if (mb !== ma) return mb - ma; // rồi tháng
+      return db - da;               // cuối cùng ngày
+    });
+  }, [groupedPickups]);
+
+  // Lọc pickup theo ngày được chọn
+  const filteredPickups = useMemo(() => {
+    if (!selectedDate) return groupedPickups;
+    return groupedPickups.filter((item) => toDateKey(item.created_at) === selectedDate);
+  }, [groupedPickups, selectedDate]);
 
   const HeaderButton = ({ icon, onPress }) => (
     <TouchableOpacity
@@ -210,7 +267,7 @@ export default function CustomerPickupListScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* HEADER CHUẨN FORM MỚI */}
+      {/* HEADER */}
       <View style={styles.header}>
         <HeaderButton icon="arrow-back" onPress={() => navigation.goBack()} />
         <View style={styles.headerCenter}>
@@ -219,29 +276,99 @@ export default function CustomerPickupListScreen({ navigation }) {
         <HeaderButton icon="reload" onPress={fetchPickups} />
       </View>
 
+      {/* BỘ LỌC NGÀY — hiển thị khi có dữ liệu */}
+      {!loading && availableDates.length > 0 && (
+        <View style={{ backgroundColor: "#FFF", borderBottomWidth: 1, borderBottomColor: "#F1F5F9" }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 8, flexDirection: "row" }}
+          >
+            {/* Chip "Tất cả" */}
+            <TouchableOpacity
+              onPress={() => setSelectedDate(null)}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 20,
+                backgroundColor: selectedDate === null ? PRIMARY : "#F1F5F9",
+                borderWidth: 1,
+                borderColor: selectedDate === null ? PRIMARY : "#E2E8F0",
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "600", color: selectedDate === null ? "#FFF" : "#475569" }}>
+                Tất cả ({groupedPickups.length})
+              </Text>
+            </TouchableOpacity>
+
+            {/* Chip ngày */}
+            {availableDates.map((date) => {
+              const count = groupedPickups.filter((p) => toDateKey(p.created_at) === date).length;
+              const isActive = selectedDate === date;
+              return (
+                <TouchableOpacity
+                  key={date}
+                  onPress={() => setSelectedDate(isActive ? null : date)}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    backgroundColor: isActive ? PRIMARY : "#F1F5F9",
+                    borderWidth: 1,
+                    borderColor: isActive ? PRIMARY : "#E2E8F0",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="calendar-outline" size={12} color={isActive ? "#FFF" : "#64748B"} />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: isActive ? "#FFF" : "#475569" }}>
+                    {formatDateLabel(date)} ({count})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={PRIMARY} />
         </View>
-      ) : pickups.length === 0 ? (
+      ) : filteredPickups.length === 0 ? (
         <View style={styles.center}>
           <View style={styles.emptyIconBox}>
             <Ionicons name="file-tray-outline" size={36} color="#94A3B8" />
           </View>
-          <Text style={styles.emptyTitle}>Chưa có yêu cầu nào</Text>
+          <Text style={styles.emptyTitle}>
+            {selectedDate ? `Không có đơn ngày ${selectedDate}` : "Chưa có yêu cầu nào"}
+          </Text>
           <Text style={styles.emptyText}>
-            Bạn chưa có yêu cầu lấy hàng nào trên hệ thống.
+            {selectedDate
+              ? "Thử chọn ngày khác hoặc bấm Tất cả để xem toàn bộ."
+              : "Bạn chưa có yêu cầu lấy hàng nào trên hệ thống."}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={groupedPickups}
+          data={filteredPickups}
           keyExtractor={(item) =>
             String(item.request_code || item.bag_code || item.waybill_code)
           }
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[PRIMARY]}
+              tintColor={PRIMARY}
+            />
+          }
         />
       )}
     </View>

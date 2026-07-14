@@ -29,6 +29,10 @@ export default function HomeScreen({ navigation }) {
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [pendingPickupsCount, setPendingPickupsCount] = useState(0);
 
+  const roleId = user?.role_id || roles?.[0]?.role_id;
+  const isShipperRole = roleId === 4;
+  const isPickupOperator = [1, 2, 3, 7].includes(roleId);
+
   useEffect(() => {
     const fetchPickups = async () => {
       if (!isShipperRole) return;
@@ -44,10 +48,6 @@ export default function HomeScreen({ navigation }) {
     });
     return unsubscribe;
   }, [navigation, isShipperRole]);
-
-  const roleId = user?.role_id || roles?.[0]?.role_id;
-  const isShipperRole = roleId === 4;
-  const isPickupOperator = [1, 2, 3, 7].includes(roleId);
 
   const handleLogout = () => {
     CustomAlert.alert(
@@ -149,18 +149,22 @@ export default function HomeScreen({ navigation }) {
         {/* BANNER CẢNH BÁO */}
         {pendingPickupsCount > 0 && (
           <View style={styles.bannerWrap}>
-            <View style={[styles.banner, { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" }]}>
+            <TouchableOpacity
+              style={[styles.banner, { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" }]}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate("ShipperPickupList")}
+            >
               <View style={[styles.bannerIcon, { backgroundColor: "#FEF3C7" }]}>
                 <Ionicons name="warning-outline" size={24} color="#D97706" />
               </View>
               <View style={styles.bannerTextGroup}>
                 <Text style={styles.bannerTitle}>{pendingPickupsCount} đơn chờ xử lý</Text>
-                <Text style={styles.bannerSub}>Bạn có yêu cầu lấy hàng cần xác nhận</Text>
+                <Text style={styles.bannerSub}>Nhấn để xem danh sách lấy hàng</Text>
               </View>
               <View style={styles.bannerArrow}>
-                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                <Ionicons name="chevron-forward" size={16} color="#D97706" />
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         )}
 

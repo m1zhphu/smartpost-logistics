@@ -85,6 +85,13 @@ export default function CustomerPickupDetailScreen({ route, navigation }) {
         </View>
         <Text style={styles.errorText}>Không thể tải chi tiết đơn hàng.</Text>
         <TouchableOpacity
+          onPress={fetchDetail}
+          style={[styles.backBtn, { backgroundColor: PRIMARY, marginBottom: 10 }]}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.backBtnText, { color: '#fff' }]}>Thử lại</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           activeOpacity={0.8}

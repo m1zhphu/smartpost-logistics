@@ -428,7 +428,6 @@ export const UserProvider = ({ children }) => {
                         });
                     }
                     setPermissions(perms);
-                    setPermissions(perms);
                     setRoles([{ role_id: decoded.role_id }]);
                     
                     if (userType === 'customer' && profileData.role_id !== 6) {
@@ -570,15 +569,17 @@ export const UserProvider = ({ children }) => {
     };
 
     const logout = async (isAutoLogout = false) => {
-
-        if (logoutTimer.current) clearTimeout(logoutTimer.current);
-
-        if (logoutTimer.current) clearTimeout(logoutTimer.current);
+        // Xóa timer auto-logout trước khi dọn dẹp
+        if (logoutTimer.current) {
+            clearTimeout(logoutTimer.current);
+            logoutTimer.current = null;
+        }
 
         try {
             const currentToken = await AsyncStorage.getItem('access_token');
             const uType = await AsyncStorage.getItem('user_type') || 'employee';
             if (currentToken) {
+                // Xóa push token khi đăng xuất để không nhận thông báo nữa
                 if (uType === 'customer' || uType === 'admin') {
                     await apiClient.post(
                         `${API_BASE_URL}/api/users/register-push-token`,
@@ -592,15 +593,7 @@ export const UserProvider = ({ children }) => {
                         { headers: { Authorization: `Bearer ${currentToken}` }, ignore401: true }
                     ).catch(() => {});
                 }
-
-                // Set offline for admin/shipper
-                if (user && user.is_shipper && uType === 'admin') {
-                    await apiClient.post(
-                        ADMIN_ENDPOINTS.TOGGLE_AVAILABILITY,
-                        { is_online: false, note: "Bưu tá đăng xuất" },
-                        { headers: { Authorization: `Bearer ${currentToken}` }, ignore401: true }
-                    ).catch(() => {});
-                }
+                // Note: Đã bỏ toggle online/offline vì không dùng tính năng này nữa
             }
         } catch (err) { console.log("Logout error", err); }
 

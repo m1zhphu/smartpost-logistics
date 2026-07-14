@@ -56,6 +56,9 @@ export const getShipment = async (trackingNumber) => {
 
         if (data.status === 'success' && data.data) {
             return { success: true, data: data.data };
+        } else if (data.waybill_code || data.id) {
+            // Backend trả thẳng object không bọc trong {status, data}
+            return { success: true, data: data };
         } else {
             throw new Error('Cấu trúc dữ liệu không hợp lệ');
         }
@@ -67,6 +70,7 @@ export const getShipment = async (trackingNumber) => {
         if (error.message === 'Cấu trúc dữ liệu không hợp lệ') {
             throw error;
         }
-        // throw new Error('Lỗi không xác định. Vui lòng thử lại.');
+        throw new Error(error.message || 'Lỗi không xác định. Vui lòng thử lại.');
     }
 };
+

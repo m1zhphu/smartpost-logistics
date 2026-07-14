@@ -620,11 +620,10 @@ export const createAdminPickup = async (data) => {
 
 export const getCustomerDepartments = async () => {
     try {
-        const url = `/departments`;
-        const response = await apiClient.get(url);
+        const response = await apiClient.get('/api/departments');
         return { success: true, data: response.data };
     } catch (error) {
-        console.error('L?i l?y danh sch phng ban:', error);
+        console.error('Lỗi lấy danh sách phòng ban:', error);
         return { success: false, message: error.message };
     }
 };

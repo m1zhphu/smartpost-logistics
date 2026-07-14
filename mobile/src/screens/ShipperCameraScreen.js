@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet, Dimensions, Modal, Linking, Animated, Easing, TextInput, ScrollView, KeyboardAvoidingView, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet, Dimensions, Modal, Linking, Animated, Easing, TextInput, FlatList } from 'react-native';
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -842,9 +843,11 @@ export default function ShipperCameraScreen({ route, navigation }) {
         transparent={true}
         onRequestClose={() => setShowOcrConfig(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
+        <KeyboardAwareScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          enableOnAndroid={true}
+          extraScrollHeight={100}
         >
           <TouchableOpacity
             style={{
@@ -1036,7 +1039,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
       </Modal>
 
       {/* Modal Chọn Khách Hàng */}
