@@ -167,18 +167,21 @@
                 </el-table-column>
                 <el-table-column label="Trạng thái" min-width="140" align="center">
                   <template #default="{ row }">
-                    <el-tag :type="getPickupStatusType(row.pickup_status)" size="small">
+                    <el-tag v-if="row.waybill_status" :type="getWaybillStatusType(row.waybill_status)" size="small">
+                      {{ getWaybillStatusLabel(row.waybill_status) }}
+                    </el-tag>
+                    <el-tag v-else :type="getPickupStatusType(row.pickup_status)" size="small">
                       {{ getPickupStatusLabel(row.pickup_status) }}
                     </el-tag>
                   </template>
                 </el-table-column>
                 <el-table-column label="Cước phí" min-width="140" align="right">
                   <template #default="{ row }">
-                    <div v-if="row.price_status === 'FINALIZED' || row.price_status === 'ADJUSTED'">
-                      <strong class="text-success">{{ (row.final_total_amount || 0).toLocaleString() }}đ</strong>
+                    <div v-if="row.final_shipping_fee !== null && row.final_shipping_fee !== undefined">
+                      <strong class="text-success">{{ (row.final_shipping_fee || 0).toLocaleString() }}đ</strong>
                     </div>
                     <div v-else>
-                      <span class="text-primary">{{ (row.estimated_total_amount || 0).toLocaleString() }}đ</span>
+                      <span class="text-primary">{{ (row.estimated_shipping_fee || 0).toLocaleString() }}đ</span>
                     </div>
                   </template>
                 </el-table-column>
@@ -235,6 +238,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/api/axios';
 import moment from 'moment';
+import { formatVietnamDateTime } from '@/utils/dateTime';
 
 const authStore = useAuthStore();
 
@@ -422,9 +426,9 @@ const calculateStats = () => {
 
   monthPickups.forEach(row => {
     const dept = row.parsedDept;
-    const cost = row.price_status === 'FINALIZED' || row.price_status === 'ADJUSTED'
-      ? (row.final_total_amount || 0)
-      : (row.estimated_total_amount || 0);
+    const cost = (row.final_shipping_fee !== null && row.final_shipping_fee !== undefined)
+      ? (row.final_shipping_fee || 0)
+      : (row.estimated_shipping_fee || 0);
 
     const qty = row.pickup_mode === 'BULK_MAIL'
       ? (row.actual_quantity || row.est_quantity || 1)
@@ -476,7 +480,46 @@ watch(filterDeptName, () => {
 // Format dates
 const formatDate = (val) => {
   if (!val) return '---';
-  return moment(val).format('DD/MM/YYYY HH:mm');
+  return formatVietnamDateTime(val);
+};
+
+const getWaybillStatusLabel = (status) => {
+  switch (status) {
+    case 'CREATED': return 'Vừa tạo';
+    case 'PICKED_PENDING_VERIFY': return 'Chờ nhập kho';
+    case 'IN_HUB': return 'Đã nhập kho';
+    case 'PENDING_CONFIRMATION': return 'Chờ duyệt';
+    case 'PENDING_PICKUP': return 'Chờ lấy hàng';
+    case 'IN_TRANSIT': return 'Đang luân chuyển';
+    case 'DELIVERING': return 'Đang giao hàng';
+    case 'DELIVERED': return 'Giao thành công';
+    case 'DELIVERY_FAILED': return 'Giao thất bại';
+    case 'RETURNING': return 'Đang chuyển hoàn';
+    case 'RETURNED': return 'Đã chuyển hoàn';
+    case 'CANCELLED': return 'Đã hủy đơn';
+    case 'PENDING_OCR': return 'Chờ xử lý thông tin';
+    case 'SETTLED': return 'Đã đối soát';
+    default: return status || 'Chờ xử lý';
+  }
+};
+
+const getWaybillStatusType = (status) => {
+  switch (status) {
+    case 'CREATED': return 'info';
+    case 'PICKED_PENDING_VERIFY': return 'warning';
+    case 'IN_HUB': return 'success';
+    case 'PENDING_CONFIRMATION': return 'warning';
+    case 'PENDING_PICKUP': return 'info';
+    case 'DELIVERING': return 'primary';
+    case 'DELIVERED': return 'success';
+    case 'DELIVERY_FAILED': return 'danger';
+    case 'RETURNING': return 'warning';
+    case 'RETURNED': return 'danger';
+    case 'CANCELLED': return 'danger';
+    case 'PENDING_OCR': return 'warning';
+    case 'SETTLED': return 'success';
+    default: return 'info';
+  }
 };
 
 const getPickupStatusType = (status) => {

@@ -166,11 +166,11 @@
                       <span class="text-xs text-muted">OCR/cân đo</span>
                     </div>
                     <div v-else-if="row.price_status === 'FINALIZED' || row.price_status === 'ADJUSTED'">
-                      <div class="fw-bold text-success">{{ (row.final_total_amount || 0).toLocaleString() }}đ</div>
+                      <div class="fw-bold text-success">{{ (row.final_shipping_fee || row.final_total_amount || 0).toLocaleString() }}đ</div>
                       <span class="text-xs text-muted">(Đã cân đo)</span>
                     </div>
                     <div v-else>
-                      <div class="fw-bold text-primary">{{ (row.estimated_total_amount || 0).toLocaleString() }}đ</div>
+                      <div class="fw-bold text-primary">{{ (row.estimated_shipping_fee || row.estimated_total_amount || 0).toLocaleString() }}đ</div>
                       <span class="text-xs text-muted">(Tạm tính)</span>
                     </div>
                   </template>
