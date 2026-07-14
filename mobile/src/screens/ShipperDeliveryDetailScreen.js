@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CustomAlert } from '../components/CustomAlert';
 
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Platform, Image } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Platform, Image, KeyboardAvoidingView } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
@@ -305,10 +305,17 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
         <View style={{ width: 38 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 0}
+        style={{ flex: 1 }}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>THÔNG TIN ĐƠN</Text>
           <Row label="Mã vận đơn" value={task.waybill_code} bold />
@@ -448,6 +455,7 @@ export default function ShipperDeliveryDetailScreen({ route, navigation }) {
           />
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* BOTTOM BAR */}
       <View style={styles.bottomBar}>
