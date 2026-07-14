@@ -405,7 +405,24 @@
                         </div>
                         <el-row :gutter="12">
                           <el-col :xs="24" :sm="8">
-                            <el-input v-model="mail.receiver_name" placeholder="Tên người nhận (nếu biết)" />
+                            <el-autocomplete
+                              v-model="mail.receiver_name"
+                              :fetch-suggestions="querySearchRecipient"
+                              placeholder="Tên người nhận (nếu biết)"
+                              @select="(item) => handleSelectRecipient(item, index)"
+                              clearable
+                              class="w-full"
+                            >
+                              <template #default="{ item }">
+                                <div style="display: flex; flex-direction: column; padding: 4px 0; line-height: 1.4;">
+                                  <span style="font-weight: bold; color: #1f2937;">{{ item.raw.name }}</span>
+                                  <span style="font-size: 12px; color: #10b981; font-weight: 600;">{{ item.raw.phone }}</span>
+                                  <span style="font-size: 11px; color: #9ca3af; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                    {{ item.raw.address_detail }}
+                                  </span>
+                                </div>
+                              </template>
+                            </el-autocomplete>
                           </el-col>
                           <el-col :xs="24" :sm="8">
                             <el-input v-model="mail.receiver_phone" placeholder="Số điện thoại (nếu biết)" />
@@ -1724,10 +1741,76 @@ const handleBeforeUnload = (event) => {
   }
 };
 
+const savedRecipients = ref([]);
+
+const loadSavedRecipients = () => {
+  try {
+    const recipientsStorageKey = 'customer_recipients_' + (authStore.user?.id || authStore.user?.username || 'global');
+    const raw = localStorage.getItem(recipientsStorageKey);
+    savedRecipients.value = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Lỗi khi đọc sổ địa chỉ', e);
+  }
+};
+
+const querySearchRecipient = (queryString, cb) => {
+  const query = queryString ? queryString.trim().toLowerCase() : '';
+  const results = query
+    ? savedRecipients.value.filter(r => 
+        (r.name && r.name.toLowerCase().includes(query)) ||
+        (r.phone && r.phone.includes(query))
+      )
+    : savedRecipients.value;
+
+  const suggestions = results.map(r => ({
+    value: r.name,
+    label: `${r.name} - ${r.phone}`,
+    raw: r
+  }));
+  cb(suggestions);
+};
+
+const handleSelectRecipient = async (item, index) => {
+  const mail = form.bulk_draft_items[index];
+  if (!mail) return;
+
+  const recipient = item.raw;
+  mail.receiver_name = recipient.name;
+  mail.receiver_phone = recipient.phone;
+
+  // Phân tích tên Tỉnh/Quận/Phường từ ID
+  let pName = '';
+  let dName = '';
+  let wName = '';
+
+  try {
+    if (provinces.value.length === 0) {
+      await fetchProvinces();
+    }
+    pName = provinces.value.find(p => Number(p.id) === Number(recipient.province_id))?.name || '';
+
+    if (recipient.province_id) {
+      const districts = await fetchDistrictsForProvince(recipient.province_id);
+      dName = districts.find(d => Number(d.id) === Number(recipient.district_id))?.name || '';
+    }
+
+    if (recipient.district_id) {
+      const wards = await fetchWardsForDistrict(recipient.district_id);
+      wName = wards.find(w => Number(w.id) === Number(recipient.ward_id))?.name || '';
+    }
+  } catch (err) {
+    console.error('Lỗi khi lấy tên địa danh:', err);
+  }
+
+  const parts = [recipient.address_detail, wName, dName, pName].filter(Boolean);
+  mail.receiver_address = parts.join(', ');
+};
+
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload);
   if (!authStore.user) return;
 
+  loadSavedRecipients();
   loadDrafts();
   loadDepartments();
 
