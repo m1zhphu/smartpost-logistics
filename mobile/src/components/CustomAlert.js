@@ -60,36 +60,50 @@ export const CustomAlert = forwardRef((props, ref) => {
                     <Text style={styles.title}>{title}</Text>
                     {!!message && <Text style={styles.message}>{message}</Text>}
                     
-                    <View style={styles.buttonRow}>
-                        {buttons.map((btn, index) => {
-                            const isDestructive = btn.style === 'destructive';
-                            const isCancel = btn.style === 'cancel';
-                            return (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={[
-                                        styles.button,
-                                        isCancel ? styles.buttonCancel : styles.buttonPrimary,
-                                        isDestructive && styles.buttonDestructive,
-                                        { flex: 1, marginLeft: index > 0 ? 10 : 0 }
-                                    ]}
-                                    onPress={() => {
-                                        setVisible(false);
-                                        if (btn.onPress) btn.onPress();
-                                    }}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={[
-                                        styles.buttonText,
-                                        isCancel ? styles.buttonTextCancel : styles.buttonTextPrimary,
-                                        isDestructive && styles.buttonTextDestructive
-                                    ]}>
-                                        {btn.text || 'OK'}
-                                    </Text>
-                                </TouchableOpacity>
-                            )
-                        })}
-                    </View>
+                    {(() => {
+                        const shouldStackVertically = buttons.length > 2 || buttons.some(btn => btn.text && btn.text.length > 15);
+                        const sortedButtons = shouldStackVertically
+                            ? [...buttons].sort((a, b) => (a.style === 'cancel' ? 1 : b.style === 'cancel' ? -1 : 0))
+                            : buttons;
+
+                        return (
+                            <View style={[
+                                styles.buttonRow,
+                                shouldStackVertically && { flexDirection: 'column' }
+                            ]}>
+                                {sortedButtons.map((btn, index) => {
+                                    const isDestructive = btn.style === 'destructive';
+                                    const isCancel = btn.style === 'cancel';
+                                    return (
+                                        <TouchableOpacity
+                                            key={index}
+                                            style={[
+                                                styles.button,
+                                                isCancel ? styles.buttonCancel : styles.buttonPrimary,
+                                                isDestructive && styles.buttonDestructive,
+                                                shouldStackVertically 
+                                                    ? { width: '100%', marginBottom: index < sortedButtons.length - 1 ? 10 : 0 }
+                                                    : { flex: 1, marginLeft: index > 0 ? 10 : 0 }
+                                            ]}
+                                            onPress={() => {
+                                                setVisible(false);
+                                                if (btn.onPress) btn.onPress();
+                                            }}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[
+                                                styles.buttonText,
+                                                isCancel ? styles.buttonTextCancel : styles.buttonTextPrimary,
+                                                isDestructive && styles.buttonTextDestructive
+                                            ]}>
+                                                {btn.text || 'OK'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )
+                                })}
+                            </View>
+                        );
+                    })()}
                 </View>
             </View>
         </Modal>
