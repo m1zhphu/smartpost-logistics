@@ -18,27 +18,27 @@ router = APIRouter(prefix="/api/delivery", tags=["Delivery Operations"])
 
 # --- HÀM GÁC CỔNG PHÂN QUYỀN ---
 def verify_manager_access(user: dict):
-    if user.get("role_id") not in [1, 2]: # Super Admin, Hub Manager
+    if user.get("role_id") not in [1, 2] and user.get("actual_role_id") not in [1, 2]: # Super Admin, Hub Manager
         raise HTTPException(status_code=403, detail="Chỉ Quản lý bưu cục mới được phân công giao hàng.")
 
 def verify_shipper_access(user: dict):
-    if user.get("role_id") not in [1, 4]: # Super Admin, Shipper
+    if user.get("role_id") not in [1, 4] and user.get("actual_role_id") not in [1, 4]: # Super Admin, Shipper
         raise HTTPException(status_code=403, detail="Chỉ Shipper mới được báo cáo kết quả giao hàng.")
 # -------------------------------
 
 def _can_operate_hub(current_user: dict, hub_id: int | None) -> bool:
-    if current_user.get("role_id") in [1, 7]:
+    if current_user.get("role_id") in [1, 7] or current_user.get("actual_role_id") in [1, 7]:
         return True
     return bool(hub_id and current_user.get("primary_hub_id") == hub_id)
 
 
 def _require_pickup_operator(current_user: dict):
-    if current_user.get("role_id") not in [1, 2, 3, 7]:
+    if current_user.get("role_id") not in [1, 2, 3, 7] and current_user.get("actual_role_id") not in [1, 2, 3, 7]:
         raise HTTPException(status_code=403, detail="Khong co quyen thao tac yeu cau pickup")
 
 
 def _require_delivery_simulation_operator(current_user: dict):
-    if current_user.get("role_id") not in [1, 2, 7]:
+    if current_user.get("role_id") not in [1, 2, 7] and current_user.get("actual_role_id") not in [1, 2, 7]:
         raise HTTPException(status_code=403, detail="Khong co quyen gia lap chuan bi giao hang")
 
 
@@ -513,10 +513,10 @@ def list_pickup_requests(
     current_user: dict = Depends(get_current_user)
 ):
     """Lấy danh sách yêu cầu lấy hàng"""
-    if current_user.get("role_id") not in [1, 2, 3, 4, 6, 7]:
+    if current_user.get("role_id") not in [1, 2, 3, 4, 6, 7] and current_user.get("actual_role_id") not in [1, 2, 3, 4, 6, 7]:
         raise HTTPException(status_code=403, detail="Không có quyền truy cập.")
         
-    if current_user.get("role_id") == 2 and not hub_id:
+    if current_user.get("role_id") == 2 and current_user.get("actual_role_id") not in [1, 7, 9] and not hub_id:
         hub_id = current_user.get("primary_hub_id")
     if current_user.get("role_id") == 4:
         assigned_shipper_id = current_user["user_id"]
@@ -630,7 +630,7 @@ def list_hub_pickup_requests(
     current_user: dict = Depends(get_current_user)
 ):
     _require_pickup_operator(current_user)
-    target_hub_id = hub_id if current_user.get("role_id") == 1 else current_user.get("primary_hub_id")
+    target_hub_id = hub_id if (current_user.get("role_id") == 1 or current_user.get("actual_role_id") == 1) else current_user.get("primary_hub_id")
     if not target_hub_id:
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc van phong")
     return crud_delivery.get_online_pickup_requests(db, status=status, hub_id=target_hub_id)
@@ -644,9 +644,9 @@ def list_hub_dispatch_requests(
     current_user: dict = Depends(get_current_user)
 ):
     _require_pickup_operator(current_user)
-    if current_user.get("role_id") == 1 and not hub_id:
+    if (current_user.get("role_id") == 1 or current_user.get("actual_role_id") == 1) and not hub_id:
         return crud_delivery.get_online_pickup_requests(db, status=status)
-    target_hub_id = hub_id if current_user.get("role_id") == 1 else current_user.get("primary_hub_id")
+    target_hub_id = hub_id if (current_user.get("role_id") == 1 or current_user.get("actual_role_id") == 1) else current_user.get("primary_hub_id")
     if not target_hub_id:
         raise HTTPException(status_code=400, detail="Khong xac dinh duoc van phong")
     return crud_delivery.get_online_pickup_requests(db, status=status, hub_id=target_hub_id)

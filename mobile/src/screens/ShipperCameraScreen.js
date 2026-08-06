@@ -57,7 +57,8 @@ export default function ShipperCameraScreen({ route, navigation }) {
     customer: route.params?.customer || null, 
     bagCode: route.params?.bagCode || "", 
     waybillCode: route.params?.waybillCode || "",
-    senderData: route.params?.senderData || null
+    senderData: route.params?.senderData || null,
+    receiverData: route.params?.receiverData || null,
   });
   const [showOcrConfig, setShowOcrConfig] = useState(false);
 
@@ -330,6 +331,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
           bag_code: ocrConfig.bagCode,
           waybill_code: ocrConfig.waybillCode,
           senderData: ocrConfig.senderData,
+          receiverData: ocrConfig.receiverData,
         });
       } else {
         const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
@@ -395,6 +397,7 @@ export default function ShipperCameraScreen({ route, navigation }) {
           bag_code: ocrConfig.bagCode,
           waybill_code: ocrConfig.waybillCode,
           senderData: ocrConfig.senderData,
+          receiverData: ocrConfig.receiverData,
         });
         // processQueueItem(newItem);
       }

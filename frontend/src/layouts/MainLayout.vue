@@ -356,8 +356,8 @@ const menuData = computed(() => {
         { title: 'VẬN ĐƠN', items: [
           { label: 'Tạo yêu cầu lấy hàng', path: '/customer/create' },
           { label: 'Bản nháp', path: '/customer/drafts' },
-          { label: 'Hàng chờ tạo đơn', path: '/customer/queue' },
-          { label: 'Yêu cầu của tôi', path: '/customer/orders' },
+          { label: 'Hàng chờ tạo đơn trong ngày', path: '/customer/queue' },
+          { label: 'Quản lý vận đơn', path: '/customer/orders' },
           { label: 'Sổ địa chỉ người nhận', path: '/customer/recipients' },
           { label: 'Quản lý phòng ban', path: '/customer/departments' },
         ]},

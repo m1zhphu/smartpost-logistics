@@ -453,9 +453,55 @@ const submitSelectedDrafts = async () => {
 
   for (const draft of selectedDrafts.value) {
     try {
-      const sName = getProvinceName(draft.sender.province_id);
-      const sDist = getDistrictName(draft.sender.province_id, draft.sender.district_id);
-      const sWrd = getWardName(draft.sender.district_id, draft.sender.ward_id);
+      // Resolve Sender
+      let sName = draft.sender.province || '';
+      let sWrd = draft.sender.ward || '';
+      let sAddr = draft.sender.street_address || draft.sender.address_detail || '';
+      let sOldProvince = draft.sender.old_province || sName || '';
+      let sProvId = null;
+
+      if (!sName && draft.sender.province_id) {
+        sName = getProvinceName(draft.sender.province_id);
+        const sDist = getDistrictName(draft.sender.province_id, draft.sender.district_id);
+        const sWrdOld = getWardName(draft.sender.district_id, draft.sender.ward_id);
+        sWrd = sWrdOld;
+        sAddr = draft.sender.address_detail || '';
+        sOldProvince = sName;
+        sProvId = Number(draft.sender.province_id);
+      } else if (sName) {
+        const cleanProv = sName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+        const found = provinces.value.find(p => {
+          const pName = p.name.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+          return pName === cleanProv;
+        });
+        sProvId = found ? found.id : null;
+      }
+
+      // Resolve Receiver
+      let rName = draft.receiver?.province || '';
+      let rWrd = draft.receiver?.ward || '';
+      let rAddr = draft.receiver?.street_address || draft.receiver?.address_detail || '';
+      let rOldProvince = draft.receiver?.old_province || rName || '';
+      let rProvId = null;
+
+      if (draft.receiver) {
+        if (!rName && draft.receiver.province_id) {
+          rName = getProvinceName(draft.receiver.province_id);
+          const rDist = getDistrictName(draft.receiver.province_id, draft.receiver.district_id);
+          const rWrdOld = getWardName(draft.receiver.district_id, draft.receiver.ward_id);
+          rWrd = rWrdOld;
+          rAddr = draft.receiver.address_detail || '';
+          rOldProvince = rName;
+          rProvId = Number(draft.receiver.province_id);
+        } else if (rName) {
+          const cleanProv = rName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+          const found = provinces.value.find(p => {
+            const pName = p.name.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+            return pName === cleanProv;
+          });
+          rProvId = found ? found.id : null;
+        }
+      }
 
       const deptPrefix = draft.department ? `[Phòng ban: ${draft.department}] ` : '';
 
@@ -480,13 +526,14 @@ const submitSelectedDrafts = async () => {
           sender: {
             name: draft.sender.name,
             phone: draft.sender.phone,
-            address: [draft.sender.address_detail, sWrd, sDist, sName].filter(Boolean).join(', '),
-            province_id: Number(draft.sender.province_id),
-            district_id: Number(draft.sender.district_id),
-            ward_id: draft.sender.ward_id ? Number(draft.sender.ward_id) : null,
-            province_name: sName,
-            district_name: sDist,
-            ward_name: sWrd
+            address: [sAddr, sWrd, sName].filter(Boolean).join(', '),
+            province_id: sProvId,
+            district_id: null,
+            ward_id: null,
+            province_name: sName || null,
+            district_name: null,
+            ward_name: sWrd || null,
+            old_province: sOldProvince || null
           },
           receiver: hasReceiver ? {
             name: firstMail.receiver_name || null,
@@ -503,10 +550,6 @@ const submitSelectedDrafts = async () => {
         continue;
       }
 
-      const rName = getProvinceName(draft.receiver.province_id);
-      const rDist = getDistrictName(draft.receiver.province_id, draft.receiver.district_id);
-      const rWrd = getWardName(draft.receiver.district_id, draft.receiver.ward_id);
-
       const mappedExtra = draft.extra_services.map(code => {
         const srv = availableServices.value.find(s => s.service_code === code);
         return {
@@ -521,24 +564,26 @@ const submitSelectedDrafts = async () => {
         sender: {
           name: draft.sender.name,
           phone: draft.sender.phone,
-          address: [draft.sender.address_detail, sWrd, sDist, sName].filter(Boolean).join(', '),
-          province_id: Number(draft.sender.province_id),
-          district_id: Number(draft.sender.district_id),
-          ward_id: Number(draft.sender.ward_id),
-          province_name: sName,
-          district_name: sDist,
-          ward_name: sWrd
+          address: [sAddr, sWrd, sName].filter(Boolean).join(', '),
+          province_id: sProvId,
+          district_id: null,
+          ward_id: null,
+          province_name: sName || null,
+          district_name: null,
+          ward_name: sWrd || null,
+          old_province: sOldProvince || null
         },
         receiver: {
           name: draft.receiver.name,
           phone: draft.receiver.phone,
-          address: [draft.receiver.address_detail, rWrd, rDist, rName].filter(Boolean).join(', '),
-          province_id: Number(draft.receiver.province_id),
-          district_id: Number(draft.receiver.district_id),
-          ward_id: Number(draft.receiver.ward_id),
-          province_name: rName,
-          district_name: rDist,
-          ward_name: rWrd
+          address: [rAddr, rWrd, rName].filter(Boolean).join(', '),
+          province_id: rProvId,
+          district_id: null,
+          ward_id: null,
+          province_name: rName || null,
+          district_name: null,
+          ward_name: rWrd || null,
+          old_province: rOldProvince || null
         },
         items: draft.items.map(i => ({
           product_group: i.product_group || 'PARCEL',

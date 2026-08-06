@@ -845,7 +845,7 @@
           <div class="dialog-form-item">
             <label>CHỌN VĂN PHÒNG NHẬN (HUB)</label>
             <el-select 
-              v-model="selectedHubId" 
+              v-model="confirmHubId" 
               placeholder="Chọn bưu cục nhận..." 
               filterable 
               class="dialog-select"
@@ -872,7 +872,7 @@
         <template #footer>
           <div class="flex justify-end gap-2">
             <el-button @click="confirmHubVisible = false">Hủy</el-button>
-            <el-button type="primary" :disabled="!selectedHubId || dialogLoading" @click="submitConfirmHub">
+            <el-button type="primary" :disabled="!confirmHubId || dialogLoading" @click="submitConfirmHub">
               Điều phối
             </el-button>
           </div>
@@ -1370,7 +1370,8 @@ const multipleSelection = ref([]);
 
 // Dialog States
 const confirmHubVisible = ref(false);
-const selectedHubId = ref(null);
+const confirmHubId = ref(null);
+const selectedHubId = ref(authStore.selectedHubId ? Number(authStore.selectedHubId) : null);
 const hubConfirmNote = ref('');
 
 const assignShipperVisible = ref(false);
@@ -2381,20 +2382,20 @@ const openConfirmHubDialog = () => {
       }
     }
   }
-  selectedHubId.value = defaultHubId || authStore.user?.primary_hub_id || null;
+  confirmHubId.value = defaultHubId || authStore.user?.primary_hub_id || null;
   hubConfirmNote.value = '';
   confirmHubVisible.value = true;
 };
 
 const submitConfirmHub = async () => {
-  if (!selectedHubId.value) return;
+  if (!confirmHubId.value) return;
   
   dialogLoading.value = true;
   try {
     const requestIds = multipleSelection.value.map(r => r.request_id);
     await api.post('/api/delivery/online-pickup-requests/dispatch-hub', {
       request_ids: requestIds,
-      hub_id: selectedHubId.value,
+      hub_id: confirmHubId.value,
       note: hubConfirmNote.value.trim() || 'Điều phối văn phòng lấy hàng online'
     });
     
@@ -2628,8 +2629,8 @@ onMounted(async () => {
     activeTab.value = route.query.tab;
   }
 
-  // Ràng buộc quyền: chuyển sang tab received mặc định
-  if (['pending', 'dispatch-hub'].includes(activeTab.value)) {
+  // Ràng buộc quyền: chuyển sang tab received mặc định cho người dùng không phải Admin/CSKH
+  if (![1, 7].includes(authStore.user?.role_id) && ['pending', 'dispatch-hub'].includes(activeTab.value)) {
     activeTab.value = 'received';
   }
 

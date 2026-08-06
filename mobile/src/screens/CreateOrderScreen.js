@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import localProvincesData from "../utils/vietnam_provinces.json";
 import { CustomAlert } from '../components/CustomAlert';
 
@@ -7,7 +7,7 @@ import styles from "../styles/CreateOrderScreenStyles";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
-import { submitShipment } from "../services/shipmentService";
+import { submitShipment, fetchWaybillDetails, fetchCustomerDetails } from "../services/shipmentService";
 import { checkNetworkConnection } from "../utils/networkUtils";
 import { COLORS } from "../constants/colors";
 import { useQueue } from "../context/QueueContext";
@@ -113,6 +113,79 @@ export default function CreateOrderScreen({ route, navigation }) {
   const [receiverCardY, setReceiverCardY] = useState(0);
 
   const { removeQueueItem } = useQueue();
+  const [fetchingWaybill, setFetchingWaybill] = useState(false);
+
+  useEffect(() => {
+    const loadExistingData = async () => {
+      let autofilled = false;
+      setFetchingWaybill(true);
+      try {
+        // 1. Load sender info from customer_id (always available from OCR config)
+        if (customer_id) {
+          try {
+            const custResult = await fetchCustomerDetails(customer_id);
+            if (custResult.success && custResult.data) {
+              const cust = custResult.data;
+              const cName = cust.company_name || cust.transaction_name || cust.name;
+              if (cName) { setSName(cName); autofilled = true; }
+              if (cust.phone) { setSPhone(cust.phone); autofilled = true; }
+              const fullAddr = [cust.street_address, cust.ward_name, cust.province_name]
+                .filter(Boolean).join(', ');
+              if (fullAddr) { setSAddress(fullAddr); autofilled = true; }
+              if (cust.province_name) { setSProvince(cust.province_name); autofilled = true; }
+              if (cust.ward_name) { setSWard(cust.ward_name); autofilled = true; }
+            }
+          } catch (err) {
+            console.log("[CreateOrder] Error loading customer details:", err);
+          }
+        }
+
+        // 2. Load receiver + waybill info from tracking code (if available)
+        if (trackingCode) {
+          try {
+            const result = await fetchWaybillDetails(trackingCode);
+            if (result.success && result.data) {
+              const wb = result.data;
+              
+              if (wb.receiver_name) { setRName(wb.receiver_name); autofilled = true; }
+              if (wb.receiver_phone) { setRPhone(wb.receiver_phone); autofilled = true; }
+              if (wb.receiver_address) { setRAddress(wb.receiver_address); autofilled = true; }
+              if (wb.receiver_province_name) { setRProvince(wb.receiver_province_name); autofilled = true; }
+              if (wb.receiver_ward_name) { setRWard(wb.receiver_ward_name); autofilled = true; }
+              
+              if (wb.sender_name) setSName(wb.sender_name);
+              if (wb.sender_phone) setSPhone(wb.sender_phone);
+              if (wb.sender_address) setSAddress(wb.sender_address);
+              if (wb.sender_province_name) setSProvince(wb.sender_province_name);
+              if (wb.sender_ward_name) setSWard(wb.sender_ward_name);
+              
+              if (wb.product_name) setProductName(wb.product_name);
+              if (wb.service_type) setServiceType(wb.service_type);
+              if (wb.cod_amount != null) setCodAmount(String(wb.cod_amount));
+              if (wb.actual_weight && wb.actual_weight > 0) setActualWeight(String(wb.actual_weight));
+              if (wb.length && wb.length > 0) setLength(String(wb.length));
+              if (wb.width && wb.width > 0) setWidth(String(wb.width));
+              if (wb.height && wb.height > 0) setHeight(String(wb.height));
+            }
+          } catch (err) {
+            console.log("[CreateOrder] Error loading waybill details:", err);
+          }
+        }
+
+        if (autofilled) {
+          Toast.show({
+            type: "success",
+            text1: "Tải thông tin thành công",
+            text2: "Đã tự động điền thông tin có sẵn từ hệ thống",
+            visibilityTime: 2500,
+          });
+        }
+      } finally {
+        setFetchingWaybill(false);
+      }
+    };
+    loadExistingData();
+  }, [trackingCode, customer_id]);
 
   const handleConfirm = async () => {
     const isConnected = await checkNetworkConnection();

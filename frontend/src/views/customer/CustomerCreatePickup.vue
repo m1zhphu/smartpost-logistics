@@ -40,7 +40,7 @@
               <!-- Left side of form: Input fields -->
               <el-col :xs="24" :sm="24" :md="isBulkMail ? 24 : 16">
                 <el-form :model="form" label-position="top">
-                  <!-- <div class="pickup-mode-bar mb-4">
+                  <div class="pickup-mode-bar mb-4">
                     <div>
                       <div class="pickup-mode-title">Hình thức gửi hàng</div>
                       <div class="pickup-mode-hint">Chọn gửi một đơn hàng đầy đủ hoặc tạo một túi gồm nhiều thư/bưu phẩm.</div>
@@ -50,7 +50,8 @@
                         {{ option.label }}
                       </el-radio-button>
                     </el-radio-group>
-                  </div> -->
+                  </div>
+
                   
                   <!-- SENDER & RECEIVER INFO -->
                   <el-row :gutter="20">
@@ -181,31 +182,60 @@
                             </template>
                           </el-autocomplete>
                         </el-form-item>
-                        <el-form-item label="Tỉnh/Thành" :required="!isBulkMail">
-                          <el-select v-model="form.receiver.province_id" placeholder="Chọn tỉnh" @change="handleReceiverProvinceChange" filterable style="width: 100%;">
-                            <el-option v-for="p in provinces" :key="p.id" :label="p.name" :value="p.id" />
-                          </el-select>
-                        </el-form-item>
-                        <el-form-item label="Quận/Huyện" :required="!isBulkMail">
-                          <el-select v-model="form.receiver.district_id" placeholder="Chọn huyện" @change="handleReceiverDistrictChange" :disabled="!form.receiver.province_id" filterable style="width: 100%;">
-                            <el-option v-for="d in receiverDistricts" :key="d.id" :label="d.name" :value="d.id" />
-                          </el-select>
-                        </el-form-item>
-                        <el-form-item label="Phường/Xã">
-                          <el-select v-model="form.receiver.ward_id" placeholder="Chọn xã" :disabled="!form.receiver.district_id" filterable clearable style="width: 100%;" @change="handleReceiverWardChange">
-                            <el-option v-for="w in receiverWards" :key="w.id" :label="w.name" :value="w.id" />
-                          </el-select>
-                        </el-form-item>
-                        <el-form-item label="Địa chỉ chi tiết (Số nhà, đường...)">
-                          <el-input v-model="form.receiver.address_detail" type="textarea" :rows="2" placeholder="Địa chỉ giao hàng chi tiết" />
+                        <el-row :gutter="20">
+                          <el-col :xs="24" :sm="12">
+                            <el-form-item label="Tỉnh / Thành phố nhận (Mới)" :required="!isBulkMail">
+                              <el-select
+                                v-model="selectedReceiverProvinceCode"
+                                filterable
+                                clearable
+                                class="w-full"
+                                placeholder="Chọn tỉnh / thành mới"
+                                @change="handleReceiverProvinceChange"
+                              >
+                                <template #prefix><el-icon><Location /></el-icon></template>
+                                <el-option
+                                  v-for="p in receiverProvinces"
+                                  :key="p.Code"
+                                  :label="p.FullName"
+                                  :value="p.Code"
+                                />
+                              </el-select>
+                            </el-form-item>
+                          </el-col>
+                          <el-col :xs="24" :sm="12">
+                            <el-form-item label="Phường / Xã nhận (Mới)" :required="!isBulkMail">
+                              <el-select
+                                v-model="selectedReceiverWardCode"
+                                filterable
+                                clearable
+                                class="w-full"
+                                placeholder="Chọn phường / xã mới"
+                                :disabled="!selectedReceiverProvinceCode"
+                                @change="handleReceiverWardChange"
+                              >
+                                <template #prefix><el-icon><Location /></el-icon></template>
+                                <el-option
+                                  v-for="w in availableReceiverWards"
+                                  :key="w.Code"
+                                  :label="w.FullName"
+                                  :value="w.Code"
+                                />
+                              </el-select>
+                            </el-form-item>
+                          </el-col>
+                        </el-row>
+
+                        <el-form-item label="Số nhà, tên đường nhận" :required="!isBulkMail">
+                          <el-input v-model="form.receiver.street_address" placeholder="VD: 12 Nguyễn Huệ" @input="debouncedSimulate" />
                         </el-form-item>
                         
                         <!-- Box hiển thị tỉnh cũ nhận -->
-                        <div v-if="form.receiver.province_id && receiverOldProvinceName" class="address-preview-container animate-fade-in" style="border: 2px solid #10b981; border-radius: 12px; padding: 12px; background-color: #f0fdf4; margin-top: 12px;">
+                        <div v-if="form.receiver.province && form.receiver.old_province" class="address-preview-container animate-fade-in" style="border: 2px solid #10b981; border-radius: 12px; padding: 12px; background-color: #f0fdf4; margin-top: 12px;">
                           <div style="display: flex; align-items: baseline; gap: 8px;">
                             <span style="font-size: 11px; color: #888; white-space: nowrap; min-width: 130px;">Tỉnh cũ nhận trước sáp nhập:</span>
                             <span v-if="receiverLegacyLoading" style="font-size: 12px; color: #999; font-style: italic;">Đang tra cứu...</span>
-                            <span v-else style="font-size: 13px; font-weight: 600; color: #059669;">{{ receiverOldProvinceName }}</span>
+                            <span v-else style="font-size: 13px; font-weight: 600; color: #059669;">{{ form.receiver.old_province }}</span>
                           </div>
                         </div>
                       </el-card>
@@ -636,6 +666,10 @@ const availableSenderWards = ref([]);
 const selectedSenderProvinceCode = ref(null);
 const selectedSenderWardCode = ref(null);
 const senderLegacyLoading = ref(false);
+const receiverProvinces = ref(localProvincesData);
+const availableReceiverWards = ref([]);
+const selectedReceiverProvinceCode = ref(null);
+const selectedReceiverWardCode = ref(null);
 const productTypes = ref([
   { code: 'DOCUMENT', label: 'Thư từ/Tài liệu', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Dùng cho thư từ, hồ sơ và tài liệu giấy.' },
   { code: 'PARCEL', label: 'Bưu phẩm, bưu kiện', special_handling: false, requires_declared_value: false, packing_recommended: false, handling_note: 'Dùng cho bưu phẩm và bưu kiện thông thường.' },
@@ -738,6 +772,7 @@ const savedDraftsList = ref([]);
 // Available Extra Services List
 const availableServices = ref([]);
 const pickupModeOptions = [
+  { label: 'Gửi một thư/bưu phẩm', value: 'SINGLE_WAYBILL' },
   { label: 'Thư từ/Bưu phẩm hàng loạt', value: 'BULK_MAIL' }
 ];
 
@@ -761,10 +796,11 @@ const form = reactive({
   receiver: {
     name: '',
     phone: '',
-    province_id: null,
-    district_id: null,
-    ward_id: null,
-    address_detail: ''
+    province: '',
+    ward: '',
+    street_address: '',
+    address_detail: '',
+    old_province: ''
   },
   items: [
     {
@@ -979,6 +1015,16 @@ const getSenderProvinceId = () => {
   return found ? found.id : null;
 };
 
+const getReceiverProvinceId = () => {
+  if (!form.receiver.province) return null;
+  const cleanProv = form.receiver.province.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+  const found = provinces.value.find(p => {
+    const pName = p.name.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+    return pName === cleanProv;
+  });
+  return found ? found.id : null;
+};
+
 const goToProfileTab = () => {
   router.push('/customer/portal?tab=profile');
 };
@@ -996,8 +1042,8 @@ const validateForm = () => {
       return false;
     }
   } else {
-    if (!form.receiver.name || !form.receiver.phone || !form.receiver.province_id || !form.receiver.district_id) {
-      ElMessage.warning('Vui lòng điền đủ thông tin người nhận trước khi tạo đơn.');
+    if (!form.receiver.name || !form.receiver.phone || !form.receiver.province || !form.receiver.ward || !form.receiver.street_address) {
+      ElMessage.warning('Vui lòng điền đầy đủ thông tin địa chỉ người nhận (Họ tên, SĐT, Tỉnh, Xã, Số nhà/đường) trước khi tạo đơn.');
       return false;
     }
     if (!form.items[0].product_name) {
@@ -1093,9 +1139,9 @@ const submitPickupRequest = async () => {
       await api.post('/api/waybills/customer/bulk-mail-pickups', payload);
       ElMessage.success('Tạo yêu cầu gửi hàng hàng loạt thành công!');
     } else {
-      const rName = getProvinceName(form.receiver.province_id);
-      const rDist = getDistrictName(form.receiver.province_id, form.receiver.district_id);
-      const rWrd = getWardName(form.receiver.district_id, form.receiver.ward_id);
+      const rName = form.receiver.province || '';
+      const rWrd = form.receiver.ward || '';
+      const rAddr = form.receiver.street_address || form.receiver.address_detail || '';
 
       const mappedExtra = form.extra_services.map(code => {
         const srv = availableServices.value.find(s => s.service_code === code);
@@ -1123,14 +1169,14 @@ const submitPickupRequest = async () => {
         receiver: {
           name: form.receiver.name,
           phone: form.receiver.phone,
-          address: [form.receiver.address_detail, rWrd, rDist, rName].filter(Boolean).join(', '),
-          province_id: Number(form.receiver.province_id),
-          district_id: Number(form.receiver.district_id),
-          ward_id: Number(form.receiver.ward_id),
-          province_name: rName,
-          district_name: rDist,
-          ward_name: rWrd,
-          old_province: receiverOldProvinceName.value || rName
+          address: [rAddr, rWrd, rName].filter(Boolean).join(', '),
+          province_id: getReceiverProvinceId(),
+          district_id: null,
+          ward_id: null,
+          province_name: rName || null,
+          district_name: null,
+          ward_name: rWrd || null,
+          old_province: form.receiver.old_province || rName || null
         },
         items: form.items.map(i => ({
           product_group: i.product_group || 'PARCEL',
@@ -1192,26 +1238,35 @@ const receiverLegacyLoading = ref(false);
 
 
 
-const handleReceiverWardChange = async (wardId) => {
-  if (!wardId) {
+const handleReceiverWardChange = async (wardCode) => {
+  if (!wardCode) {
+    form.receiver.ward = '';
+    form.receiver.old_province = '';
     receiverOldProvinceName.value = '';
+    debouncedSimulate();
     return;
   }
+
+  const wardObj = availableReceiverWards.value.find(w => w.Code === wardCode);
+  form.receiver.ward = wardObj ? wardObj.FullName : '';
+
   receiverLegacyLoading.value = true;
   try {
-    const res = await fetch(`https://provinces.open-api.vn/api/v2/w/${wardId}/to-legacies/`);
+    const res = await fetch(`https://provinces.open-api.vn/api/v2/w/${wardCode}/to-legacies/`);
     if (!res.ok) throw new Error();
     const legacies = await res.json();
     if (Array.isArray(legacies) && legacies.length > 0) {
       const code = legacies[0].province_code;
-      receiverOldProvinceName.value = OLD_PROVINCE_CODE_MAP[code] || getProvinceName(form.receiver.province_id);
+      form.receiver.old_province = OLD_PROVINCE_CODE_MAP[code] || form.receiver.province;
     } else {
-      receiverOldProvinceName.value = getProvinceName(form.receiver.province_id);
+      form.receiver.old_province = form.receiver.province;
     }
   } catch (err) {
-    receiverOldProvinceName.value = getProvinceName(form.receiver.province_id);
+    form.receiver.old_province = form.receiver.province;
   } finally {
+    receiverOldProvinceName.value = form.receiver.old_province;
     receiverLegacyLoading.value = false;
+    debouncedSimulate();
   }
 };
 
@@ -1258,25 +1313,14 @@ watch(autoProcessingHub, syncAutoProcessingHub);
 
 
 
-const handleReceiverProvinceChange = async () => {
-  form.receiver.district_id = null;
-  form.receiver.ward_id = null;
-  receiverWards.value = [];
-  if (form.receiver.province_id) {
-    receiverDistricts.value = await fetchDistrictsForProvince(form.receiver.province_id);
-  } else {
-    receiverDistricts.value = [];
-  }
+const handleReceiverProvinceChange = (code) => {
+  const found = receiverProvinces.value.find(p => p.Code === code);
+  form.receiver.province = found ? found.FullName : '';
+  form.receiver.ward = '';
+  form.receiver.old_province = '';
+  selectedReceiverWardCode.value = null;
+  availableReceiverWards.value = found ? found.Wards : [];
   debouncedSimulate();
-};
-
-const handleReceiverDistrictChange = async () => {
-  form.receiver.ward_id = null;
-  if (form.receiver.district_id) {
-    receiverWards.value = await fetchWardsForDistrict(form.receiver.district_id);
-  } else {
-    receiverWards.value = [];
-  }
 };
 
 const mapStandardProvinceToHubProvince = (standardId, targetHubId = null) => {
@@ -1301,7 +1345,8 @@ const triggerSimulation = async () => {
     return;
   }
   const senderProvinceId = getSenderProvinceId();
-  if (!senderProvinceId || !form.receiver.province_id) {
+  const receiverProvinceId = getReceiverProvinceId();
+  if (!senderProvinceId || !receiverProvinceId) {
     simulateResult.value = null;
     return;
   }
@@ -1317,7 +1362,7 @@ const triggerSimulation = async () => {
   simulateError.value = '';
   try {
     const mappedSender = mapStandardProvinceToHubProvince(senderProvinceId, form.target_hub_id);
-    const mappedReceiver = mapStandardProvinceToHubProvince(form.receiver.province_id);
+    const mappedReceiver = mapStandardProvinceToHubProvince(receiverProvinceId);
 
     const actualWeight = validItems.reduce((total, item) => {
       return total + (Number(item.weight || 0) * Number(item.quantity || 1));
@@ -1448,12 +1493,14 @@ const addToQueue = () => {
 
   form.receiver.name = '';
   form.receiver.phone = '';
-  form.receiver.province_id = null;
-  form.receiver.district_id = null;
-  form.receiver.ward_id = null;
+  form.receiver.province = '';
+  form.receiver.ward = '';
+  form.receiver.street_address = '';
   form.receiver.address_detail = '';
-  receiverDistricts.value = [];
-  receiverWards.value = [];
+  form.receiver.old_province = '';
+  selectedReceiverProvinceCode.value = null;
+  selectedReceiverWardCode.value = null;
+  availableReceiverWards.value = [];
 
   form.items = [{ product_group: 'PARCEL', product_name: '', weight: 0.5, length: 0, width: 0, height: 0, quantity: 1, declared_value: 0 }];
   form.cod_amount = 0;
@@ -1629,51 +1676,88 @@ const queryReceiverByPhone = (queryString, cb) => {
 const handleSelectReceiver = async (item) => {
   form.receiver.name = item.name || '';
   form.receiver.phone = item.phone || '';
-  form.receiver.province_id = item.province_id || null;
+  form.receiver.old_province = item.old_province || '';
+  receiverOldProvinceName.value = item.old_province || '';
   
-  if (item.province_id) {
-    receiverDistricts.value = await fetchDistrictsForProvince(item.province_id);
-    form.receiver.district_id = item.district_id || null;
-  } else {
-    receiverDistricts.value = [];
-    form.receiver.district_id = null;
+  selectedReceiverProvinceCode.value = null;
+  selectedReceiverWardCode.value = null;
+  availableReceiverWards.value = [];
+  form.receiver.province = '';
+  form.receiver.ward = '';
+  
+  // Try to match by province_code first, then name
+  let provObj = null;
+  if (item.province_code) {
+    provObj = receiverProvinces.value.find(p => p.Code === item.province_code);
+  }
+  if (!provObj && item.province_name) {
+    const cleanProvName = item.province_name.toLowerCase();
+    provObj = receiverProvinces.value.find(p => {
+      const pClean = p.FullName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+      const tClean = cleanProvName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+      return pClean === tClean || p.FullName.trim().toLowerCase() === cleanProvName;
+    });
   }
   
-  if (item.district_id) {
-    receiverWards.value = await fetchWardsForDistrict(item.district_id);
-    form.receiver.ward_id = item.ward_id || null;
-  } else {
-    receiverWards.value = [];
-    form.receiver.ward_id = null;
+  if (provObj) {
+    selectedReceiverProvinceCode.value = provObj.Code;
+    form.receiver.province = provObj.FullName;
+    availableReceiverWards.value = provObj.Wards || [];
+    
+    let wardObj = null;
+    if (item.ward_code) {
+      wardObj = availableReceiverWards.value.find(w => w.Code === item.ward_code);
+    }
+    if (!wardObj && item.ward_name) {
+      const cleanWardName = item.ward_name.toLowerCase();
+      wardObj = availableReceiverWards.value.find(w => {
+        const wClean = w.FullName.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
+        const tClean = cleanWardName.replace(/^(Phường|Xã|Thị trấn)\s+/i, '').trim().toLowerCase();
+        return wClean === tClean || w.FullName.trim().toLowerCase() === cleanWardName;
+      });
+    }
+    
+    if (wardObj) {
+      selectedReceiverWardCode.value = wardObj.Code;
+      form.receiver.ward = wardObj.FullName;
+      // Trigger legacy old province lookup
+      handleReceiverWardChange(wardObj.Code);
+    }
   }
   
+  form.receiver.street_address = item.address_detail || '';
   form.receiver.address_detail = item.address_detail || '';
   
   debouncedSimulate();
 };
 
 const saveToAddressBook = (receiver) => {
-  if (!receiver.name || !receiver.phone || !receiver.province_id) return;
+  if (!receiver.name || !receiver.phone) return;
   const list = getSavedRecipients();
   const index = list.findIndex(item => item.phone === receiver.phone);
+  
+  const provinceId = getReceiverProvinceId();
+  const recipientData = {
+    name: receiver.name,
+    phone: receiver.phone,
+    province_id: provinceId,
+    province_name: receiver.province || '',
+    ward_name: receiver.ward || '',
+    province_code: selectedReceiverProvinceCode.value || null,
+    ward_code: selectedReceiverWardCode.value || null,
+    address_detail: receiver.street_address || receiver.address_detail || '',
+    old_province: receiver.old_province || receiver.province || ''
+  };
+
   if (index >= 0) {
     list[index] = {
       ...list[index],
-      name: receiver.name,
-      province_id: receiver.province_id,
-      district_id: receiver.district_id,
-      ward_id: receiver.ward_id,
-      address_detail: receiver.address_detail
+      ...recipientData
     };
   } else {
     list.push({
       id: Date.now().toString(),
-      name: receiver.name,
-      phone: receiver.phone,
-      province_id: receiver.province_id,
-      district_id: receiver.district_id,
-      ward_id: receiver.ward_id,
-      address_detail: receiver.address_detail,
+      ...recipientData,
       created_at: new Date().toISOString()
     });
   }
@@ -1844,10 +1928,47 @@ onMounted(async () => {
         }
       }
       syncBulkDraftItems(form.bulk_estimated_quantity || 1);
-      if (form.sender.province_id) senderDistricts.value = await fetchDistrictsForProvince(form.sender.province_id);
-      if (form.sender.district_id) senderWards.value = await fetchWardsForDistrict(form.sender.district_id);
-      if (form.receiver.province_id) receiverDistricts.value = await fetchDistrictsForProvince(form.receiver.province_id);
-      if (form.receiver.district_id) receiverWards.value = await fetchWardsForDistrict(form.receiver.district_id);
+      
+      // Đồng bộ hóa ngược code tỉnh / xã người gửi
+      if (form.sender.province) {
+        const cleanProv = form.sender.province.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+        const provObj = senderProvinces.value.find(p => {
+          const pName = p.FullName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+          return pName === cleanProv;
+        });
+        if (provObj) {
+          selectedSenderProvinceCode.value = provObj.Code;
+          availableSenderWards.value = provObj.Wards || [];
+          if (form.sender.ward) {
+            const cleanWard = form.sender.ward.trim().toLowerCase();
+            const wardObj = availableSenderWards.value.find(w => w.FullName.trim().toLowerCase() === cleanWard);
+            if (wardObj) {
+              selectedSenderWardCode.value = wardObj.Code;
+            }
+          }
+        }
+      }
+
+      // Đồng bộ hóa ngược code tỉnh / xã người nhận
+      if (form.receiver.province) {
+        const cleanProv = form.receiver.province.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+        const provObj = receiverProvinces.value.find(p => {
+          const pName = p.FullName.replace(/^(Tỉnh|Thành phố|TP\.)\s+/i, '').trim().toLowerCase();
+          return pName === cleanProv;
+        });
+        if (provObj) {
+          selectedReceiverProvinceCode.value = provObj.Code;
+          availableReceiverWards.value = provObj.Wards || [];
+          if (form.receiver.ward) {
+            const cleanWard = form.receiver.ward.trim().toLowerCase();
+            const wardObj = availableReceiverWards.value.find(w => w.FullName.trim().toLowerCase() === cleanWard);
+            if (wardObj) {
+              selectedReceiverWardCode.value = wardObj.Code;
+            }
+          }
+        }
+      }
+      
       debouncedSimulate();
       showCreateForm.value = true;
       

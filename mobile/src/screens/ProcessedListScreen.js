@@ -42,7 +42,7 @@ export default function ProcessedListComponent({
     onClose();
     navigation.navigate("CreateOrder", {
       senderData: item.senderData || item.data?.sender || null,
-      receiverData: item.data?.receiver,
+      receiverData: item.receiverData || item.data?.receiver || null,
       trackingNumber: item.waybill_code || item.data?.tracking_number,
       username: user.username,
       queueId: item.id,
@@ -162,7 +162,7 @@ export default function ProcessedListComponent({
                   {item.waybill_code || item.data?.tracking_number}
                 </Text>
                 <Text style={styles.senderText} numberOfLines={1}>
-                  Gửi: {item.data?.sender?.name || "---"}
+                  Gửi: {item.senderData?.name || item.customer_name || item.data?.sender?.name || "---"}
                 </Text>
               </View>
             )}

@@ -70,3 +70,23 @@ export const getShipment = async (trackingNumber) => {
         // throw new Error('Lỗi không xác định. Vui lòng thử lại.');
     }
 };
+
+export const fetchWaybillDetails = async (waybillCode) => {
+    try {
+        const response = await apiClient.get(`/api/waybills/mobile/ocr/waybills/${waybillCode}`);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: error.message };
+    }
+};
+
+export const fetchCustomerDetails = async (customerId) => {
+    try {
+        const response = await apiClient.get(`/api/customers/${customerId}`);
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: error.message };
+    }
+};
+
+

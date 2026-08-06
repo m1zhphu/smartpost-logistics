@@ -72,17 +72,22 @@ export default function ShipperPickedOrdersScreen({ navigation }) {
         },
       });
     } else {
-      // Đơn lẻ → Mở Camera với cấu hình tự động điền
+      const senderName = item.sender_name || item.customer_name || "";
       navigation.navigate("ShipperCamera", {
-        waybillCode: item.waybill_code,
+        waybillCode: item.waybill_code || item.request_code,
         customer: {
-          customer_name: item.sender_name || "",
-          customer_id: item.customer_id || null, // Nếu có
+          customer_name: senderName,
+          customer_id: item.customer_id || null,
         },
         senderData: {
-          name: item.sender_name || "",
+          name: senderName,
           phone: item.sender_phone || "",
           address: item.pickup_address || "",
+        },
+        receiverData: {
+          name: item.receiver_name || "",
+          phone: item.receiver_phone || "",
+          address: item.receiver_address || "",
         }
       });
     }

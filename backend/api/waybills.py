@@ -40,7 +40,7 @@ def _read_image_urls(stored_urls: str | None, primary_url: str | None = None) ->
 
 
 def _require_ocr_admin_role(current_user: dict):
-    if current_user.get("role_id") not in [1, 2, 3, 7, 9]:
+    if current_user.get("role_id") not in [1, 2, 3, 7, 9] and current_user.get("actual_role_id") not in [1, 2, 3, 7, 9]:
         raise HTTPException(status_code=403, detail="Bạn không có quyền xử lý vận đơn OCR")
 
 
@@ -744,7 +744,7 @@ def _require_pickup_operator(current_user: dict):
 
 
 def _can_operate_hub(current_user: dict, hub_id: int | None) -> bool:
-    if current_user.get("role_id") == 1:
+    if current_user.get("role_id") == 1 or current_user.get("actual_role_id") == 1:
         return True
     return bool(hub_id and current_user.get("primary_hub_id") == hub_id)
 
@@ -912,7 +912,7 @@ def _waybill_ocr_payload(waybill: models.Waybills) -> dict:
 
 
 def _can_access_waybill_ocr(current_user: dict, waybill: models.Waybills) -> bool:
-    if current_user.get("role_id") == 1:
+    if current_user.get("role_id") == 1 or current_user.get("actual_role_id") == 1:
         return True
     hub_id = current_user.get("primary_hub_id")
     if not hub_id:
@@ -922,7 +922,7 @@ def _can_access_waybill_ocr(current_user: dict, waybill: models.Waybills) -> boo
 
 def _apply_hub_scope_for_ocr(query, current_user: dict, hub_id: int | None = None):
     role_id = current_user.get("role_id")
-    if role_id == 1:
+    if role_id == 1 or current_user.get("actual_role_id") == 1:
         if hub_id:
             return query.filter(or_(
                 models.Waybills.origin_hub_id == hub_id,
@@ -1580,6 +1580,56 @@ def get_mobile_ocr_bag_waybills(
     if not bag:
         raise HTTPException(status_code=404, detail="Khong tim thay tui thu tai buu cuc hien tai")
     return _bag_payload(db, bag)
+
+
+@router.get("/mobile/ocr/waybills/{waybill_code}")
+def get_mobile_ocr_waybill(
+    waybill_code: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Mobile bưu tá/kho: lấy thông tin chi tiết của vận đơn phục vụ tự động điền khi làm OCR"""
+    waybill = db.query(models.Waybills).filter(
+        models.Waybills.waybill_code == waybill_code,
+        models.Waybills.is_deleted == False,
+    ).first()
+    if not waybill:
+        req = db.query(models.BookingRequests).filter(
+            models.BookingRequests.request_code == waybill_code
+        ).first()
+        if req and req.waybills:
+            waybill = req.waybills[0]
+            
+    if not waybill:
+        raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
+    
+    return {
+        "waybill_id": waybill.waybill_id,
+        "waybill_code": waybill.waybill_code,
+        "receiver_name": waybill.receiver_name,
+        "receiver_phone": waybill.receiver_phone,
+        "receiver_address": waybill.receiver_address,
+        "receiver_province_name": waybill.receiver_province_name,
+        "receiver_ward_name": waybill.receiver_ward_name,
+        "receiver_province_id": waybill.receiver_province_id,
+        "receiver_ward_id": waybill.receiver_ward_id,
+        "sender_name": waybill.sender_name,
+        "sender_phone": waybill.sender_phone,
+        "sender_address": waybill.sender_address,
+        "sender_province_name": waybill.sender_province_name,
+        "sender_ward_name": waybill.sender_ward_name,
+        "sender_province_id": waybill.sender_province_id,
+        "sender_ward_id": waybill.sender_ward_id,
+        "status": waybill.status,
+        "actual_weight": float(waybill.actual_weight or 0),
+        "length": float(waybill.length or 0),
+        "width": float(waybill.width or 0),
+        "height": float(waybill.height or 0),
+        "cod_amount": float(waybill.cod_amount or 0),
+        "service_type": waybill.service_type,
+        "product_name": waybill.product_name,
+        "bill_image_url": waybill.bill_image_url,
+    }
 
 
 @router.patch("/mobile/ocr/waybills/{waybill_code}")
