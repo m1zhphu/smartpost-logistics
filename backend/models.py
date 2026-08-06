@@ -193,6 +193,7 @@ class Users(Base):
     is_online: Mapped[bool] = mapped_column(Boolean, server_default=text('false'), default=False)
     online_status_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    assigned_routes: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
     hubs_manager: Mapped[list['Hubs']] = relationship('Hubs', foreign_keys='[Hubs.manager_id]', back_populates='manager')
     department: Mapped[Optional['Departments']] = relationship('Departments', back_populates='users')

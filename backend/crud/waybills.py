@@ -325,8 +325,54 @@ def create_waybill_record(db: Session, data: dict, fee: float):
                 service_fee=0 
             )
             db.add(extra_srv)
+
+    # Tự động phân công bưu tá theo tuyến địa chỉ người gửi (Route Auto-Assignment Engine)
+    assigned_shipper = auto_assign_shipper_by_route(db, new_waybill)
+    if assigned_shipper:
+        # Tạo phiếu phân công cho bưu tá phụ trách tuyến
+        booking_req = models.BookingRequests(
+            waybill_id=new_waybill.waybill_id,
+            target_hub_id=new_waybill.origin_hub_id,
+            assigned_shipper_id=assigned_shipper.user_id,
+            request_type="PICKUP",
+            status="ASSIGNED",
+            created_at=datetime.utcnow()
+        )
+        db.add(booking_req)
             
     return new_waybill
+
+def auto_assign_shipper_by_route(db: Session, waybill: models.Waybills):
+    if not waybill:
+        return None
+    shippers = db.query(models.Users).filter(
+        models.Users.role_id == 4,
+        models.Users.is_active == True,
+        models.Users.is_deleted == False
+    ).all()
+    
+    sender_prov = (waybill.sender_province_name or "").lower()
+    sender_ward = (waybill.sender_ward_name or "").lower()
+    sender_addr = (waybill.sender_address or "").lower()
+
+    for shipper in shippers:
+        routes = shipper.assigned_routes or {}
+        provinces = [str(p).lower() for p in (routes.get("provinces") or [])]
+        wards = [str(w).lower() for w in (routes.get("wards") or [])]
+        
+        # 1. Khớp theo Mã/Tên Phường Xã phụ trách
+        if wards:
+            for w in wards:
+                if w and (w in sender_ward or w in sender_addr):
+                    return shipper
+        
+        # 2. Khớp theo Mã/Tên Tỉnh Thành phụ trách
+        if provinces:
+            for p in provinces:
+                if p and (p in sender_prov or p in sender_addr):
+                    return shipper
+                    
+    return None
 
 
 def create_customer_pickup_waybill(
@@ -496,6 +542,19 @@ def create_customer_pickup_waybill(
         note=f"Van don {waybill_code}",
     ))
     create_initial_log(db, waybill.waybill_id, assigned_origin_hub_id or origin_hub_id, creator_id)
+
+    # Ưu tiên 1: Gán điểm lấy hàng cố định cho Bưu tá phụ trách khách hàng (Vd: MB Bank -> Bưu tá A)
+    # Ưu tiên 2: Phân công tự động theo tuyến Tỉnh/Thành, Phường/Xã
+    assigned_shipper_id = customer.staff_in_charge_id if customer else None
+    if not assigned_shipper_id:
+        assigned_shipper = auto_assign_shipper_by_route(db, waybill)
+        if assigned_shipper:
+            assigned_shipper_id = assigned_shipper.user_id
+
+    if assigned_shipper_id:
+        booking.assigned_shipper_id = assigned_shipper_id
+        booking.status = "ASSIGNED"
+
     return booking, waybill, pickup_bag
 
 

@@ -33,6 +33,7 @@ class UserBase(BaseModel):
     managed_by_cskh_id: Optional[int] = None
     department_id: Optional[int] = None
     vehicle_plate: Optional[str] = None
+    assigned_routes: Optional[dict] = None
 
 class UserCreate(UserBase):
     password: str = Field(min_length=6, description="Mật khẩu tối thiểu 6 ký tự")
@@ -47,6 +48,7 @@ class UserUpdate(BaseModel):
     managed_by_cskh_id: Optional[int] = None
     department_id: Optional[int] = None
     vehicle_plate: Optional[str] = None
+    assigned_routes: Optional[dict] = None
     is_active: Optional[bool] = None
 
 class UserSummary(BaseModel):
@@ -64,6 +66,7 @@ class UserResponse(UserBase):
     online_status_updated_at: Optional[datetime] = None
     last_seen_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    assigned_routes: Optional[dict] = None
     
     # Nested objects for display
     role: Optional[RoleSchema] = None

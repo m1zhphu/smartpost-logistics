@@ -516,7 +516,7 @@
               </el-col>
             </el-row>
             <el-row :gutter="24">
-              <el-col :span="24">
+              <el-col :span="12">
                 <el-form-item label="Nhân viên quản lý khách hàng" prop="staff_in_charge_id">
                   <el-select
                     v-model="customerForm.staff_in_charge_id"
@@ -529,6 +529,24 @@
                       :key="staff.user_id"
                       :label="staff.full_name ? `${staff.full_name} (${staff.username})` : staff.username"
                       :value="staff.user_id"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="Bưu tá nhận đơn cố định (MB Bank...)" prop="assigned_shipper_id">
+                  <el-select
+                    v-model="customerForm.assigned_shipper_id"
+                    placeholder="Chọn Bưu tá gán cố định cho khách này"
+                    filterable
+                    clearable
+                    class="w-full"
+                  >
+                    <el-option
+                      v-for="shipper in shipperOptions"
+                      :key="shipper.user_id"
+                      :label="`${shipper.full_name || shipper.username} (${shipper.phone_number || 'Bưu tá'})`"
+                      :value="shipper.user_id"
                     />
                   </el-select>
                 </el-form-item>
@@ -935,6 +953,7 @@ const customers = ref([]);
 const unassignedCustomers = ref([]);
 const inactiveCustomers = ref([]);
 const staffOptions = ref([]);
+const shipperOptions = ref([]);
 const pricingPolicies = ref([]);
 const assignmentDrafts = reactive({});
 const assigningCustomerId = ref(null);
@@ -1102,6 +1121,7 @@ const customerForm = reactive({
   customer_type: 'PERSONAL',
   status: 'ACTIVE',
   staff_in_charge_id: null,
+  assigned_shipper_id: null,
   policy_id: null,
   name: '',            
   company_name: '',
@@ -1146,8 +1166,10 @@ const fetchStaffOptions = async () => {
     const res = await api.get('/api/users');
     const raw = Array.isArray(res.data) ? res.data : (res.data.items || res.data.data || []);
     staffOptions.value = raw.filter(user => user.is_active !== false && user.role_id !== 6 && user.role_id !== 4);
+    shipperOptions.value = raw.filter(user => user.is_active !== false && user.role_id === 4);
   } catch (err) {
     staffOptions.value = [];
+    shipperOptions.value = [];
     ElMessage.warning('Không thể lấy danh sách nhân viên quản lý');
   }
 };
@@ -1267,6 +1289,7 @@ const openDialog = async (row) => {
       customer_type: targetRow.customer_type === 'COMPANY' ? 'COMPANY' : 'PERSONAL',
       status: targetRow.status || 'ACTIVE',
       staff_in_charge_id: targetRow.staff_in_charge_id || null,
+      assigned_shipper_id: targetRow.assigned_shipper_id || null,
       policy_id: targetRow.policy_id || null,
       name: targetRow.transaction_name || targetRow.name || '',
       company_name: targetRow.company_name || '',
@@ -1292,6 +1315,7 @@ const openDialog = async (row) => {
     Object.assign(customerForm, {
       id: null, customer_code: '', customer_type: 'PERSONAL', status: 'ACTIVE',
       staff_in_charge_id: isCskh.value ? currentUser.value.user_id : null,
+      assigned_shipper_id: null,
       policy_id: null,
       name: '', company_name: '', representative_name: '', tax_code: '',
       phone: '', email: '', address: '', address_detail: '',

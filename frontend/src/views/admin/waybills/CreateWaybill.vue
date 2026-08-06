@@ -813,12 +813,14 @@ const handleCustomerChange = async (customerId) => {
     waybillForm.sender.ward = '';
     waybillForm.sender.address_detail = '';
     waybillForm.sender.old_province = '';
+    waybillForm.payment_method = 'SENDER_PAY';
     selectedSenderProvinceCode.value = null;
     selectedSenderWardCode.value = null;
     availableSenderWards.value = [];
     return;
   }
   
+  waybillForm.payment_method = 'SENDER_DEBT';
   const customer = customers.value.find(c => c.customer_id === customerId);
   if (!customer) return;
   

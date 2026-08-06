@@ -96,7 +96,7 @@ def get_user_by_username(db: Session, username: str):
 
 def update_user_record(db, user_id: int, data: dict):
     # Những cột được phép cập nhật
-    ALLOWED = {'full_name', 'email', 'phone_number', 'role_id', 'primary_hub_id', 'managed_by_cskh_id', 'department_id', 'vehicle_plate', 'is_active'}
+    ALLOWED = {'full_name', 'email', 'phone_number', 'role_id', 'primary_hub_id', 'managed_by_cskh_id', 'department_id', 'vehicle_plate', 'assigned_routes', 'is_active'}
     user = db.query(models.Users).filter(models.Users.user_id == user_id, models.Users.is_deleted == False).first()
     if not user:
         return None

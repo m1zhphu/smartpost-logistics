@@ -381,6 +381,54 @@
               </el-select>
             </el-form-item>
           </el-collapse-transition>
+          <el-collapse-transition>
+            <div v-if="userForm.role_id === 4" class="form-section route-assignment-section" style="margin-top: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1;">
+              <div class="section-header" style="font-weight: 600; color: #2b6cb0; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <el-icon><Location /></el-icon>
+                <span>Phân công Tuyến tự động (Tỉnh thành & Phường xã)</span>
+              </div>
+              <el-form-item label="Tỉnh / Thành phố phụ trách" prop="assigned_province_codes" class="mb-12">
+                <el-select
+                  v-model="userForm.assigned_province_codes"
+                  multiple
+                  filterable
+                  clearable
+                  collapse-tags
+                  collapse-tags-tooltip
+                  class="w-full"
+                  placeholder="Chọn một hoặc nhiều Tỉnh/Thành phố phụ trách"
+                  @change="handleAssignedProvinceChange"
+                >
+                  <el-option
+                    v-for="p in provinceOptions"
+                    :key="p.Code"
+                    :label="p.FullName"
+                    :value="String(p.Code)"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="Phường / Xã phụ trách" prop="assigned_ward_codes" class="mb-0">
+                <el-select
+                  v-model="userForm.assigned_ward_codes"
+                  multiple
+                  filterable
+                  clearable
+                  collapse-tags
+                  collapse-tags-tooltip
+                  class="w-full"
+                  placeholder="Chọn một hoặc nhiều Phường/Xã phụ trách"
+                  :disabled="!userForm.assigned_province_codes || !userForm.assigned_province_codes.length"
+                >
+                  <el-option
+                    v-for="w in availableAssignedWards"
+                    :key="w.Code"
+                    :label="`${w.FullName} (${w.ProvinceName || ''})`"
+                    :value="String(w.Code)"
+                  />
+                </el-select>
+              </el-form-item>
+            </div>
+          </el-collapse-transition>
         </el-form>
 
         <template #footer>
@@ -513,11 +561,71 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
+const ADDR_API = 'https://provinces.open-api.vn/api';
+
 const route = useRoute();
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user || {});
 const isMyShippersView = computed(() => currentUser.value?.role_id === 7 && (route.query.my_shippers === '1' || route.query.my_shippers === 'true'));
 const isProtectedUser = (row) => row?.role_id === 1 || row?.user_id === currentUser.value?.user_id;
+
+const provinceOptions = ref([]);
+const availableAssignedWards = ref([]);
+
+const fetchProvinces = async () => {
+  try {
+    const res = await fetch(`${ADDR_API}/p/`);
+    const data = await res.json();
+    provinceOptions.value = (data || []).map(p => ({ Code: String(p.code), FullName: p.name }));
+  } catch (err) {
+    console.error('Không thể lấy danh sách Tỉnh/Thành:', err);
+  }
+};
+
+import localProvincesData from '../../../../assets/data/vietnam_provinces.json';
+
+// Bảng tra cứu tức thì mã Phường/Xã -> Tỉnh/Thành cũ (trước sáp nhập)
+const wardCodeToOldProvinceMap = {};
+if (Array.isArray(localProvincesData)) {
+  localProvincesData.forEach(prov => {
+    if (Array.isArray(prov.Wards)) {
+      prov.Wards.forEach(w => {
+        wardCodeToOldProvinceMap[String(w.Code)] = prov.FullName;
+      });
+    }
+  });
+}
+
+const handleAssignedProvinceChange = async (selectedCodes) => {
+  if (!selectedCodes || !selectedCodes.length) {
+    availableAssignedWards.value = [];
+    userForm.assigned_ward_codes = [];
+    return;
+  }
+  try {
+    const wardPromises = selectedCodes.map(async (code) => {
+      const res = await fetch(`${ADDR_API}/p/${code}?depth=3`);
+      const data = await res.json();
+      const provName = data.name;
+      return (data.districts || []).flatMap(d => (d.wards || []).map(w => {
+        const oldProv = wardCodeToOldProvinceMap[String(w.code)];
+        let addressLabel = `${w.name}, ${d.name}, ${provName}`;
+        if (oldProv && oldProv !== provName) {
+          addressLabel = `${w.name}, ${d.name} | Mới: ${oldProv} | Cũ: ${provName}`;
+        }
+        return {
+          Code: String(w.code),
+          FullName: addressLabel,
+          ProvinceName: provName
+        };
+      }));
+    });
+    const results = await Promise.all(wardPromises);
+    availableAssignedWards.value = results.flat();
+  } catch (err) {
+    console.error('Không thể lấy danh sách Phường/Xã:', err);
+  }
+};
 
 const loading = ref(false);
 const saveLoading = ref(false);
@@ -608,6 +716,8 @@ const userForm = reactive({
   accessible_hub_ids: [],
   managed_by_cskh_id: null,
   vehicle_plate: '',
+  assigned_province_codes: [],
+  assigned_ward_codes: [],
   is_active: true
 });
 
@@ -680,7 +790,8 @@ const resetFilters = () => {
   // Bỏ fetchData() ở đây vì filteredUsers sẽ tự phản ứng tức thời
 };
 
-const openDialog = (row) => {
+const openDialog = async (row) => {
+  const routes = row?.assigned_routes || {};
   if (row) {
     Object.assign(userForm, {
       user_id: row.user_id,
@@ -696,9 +807,15 @@ const openDialog = (row) => {
         : [row.primary_hub_id || row.primary_hub?.hub_id].filter(Boolean),
       managed_by_cskh_id: row.managed_by_cskh_id || row.managed_by_cskh?.user_id || null,
       vehicle_plate: row.vehicle_plate || '',
+      assigned_province_codes: Array.isArray(routes.provinces) ? routes.provinces.map(String) : [],
+      assigned_ward_codes: Array.isArray(routes.wards) ? routes.wards.map(String) : [],
       is_active: row.is_active
     });
     rules.password[0].required = false; 
+    if (userForm.assigned_province_codes.length) {
+      await handleAssignedProvinceChange(userForm.assigned_province_codes);
+      userForm.assigned_ward_codes = Array.isArray(routes.wards) ? routes.wards.map(String) : [];
+    }
   } else {
     Object.assign(userForm, {
       user_id: null,
@@ -712,9 +829,12 @@ const openDialog = (row) => {
       accessible_hub_ids: [],
       managed_by_cskh_id: null,
       vehicle_plate: '',
+      assigned_province_codes: [],
+      assigned_ward_codes: [],
       is_active: true
     });
     rules.password[0].required = true;
+    availableAssignedWards.value = [];
   }
   dialogVisible.value = true;
 };
@@ -729,9 +849,17 @@ const handleSave = async () => {
         if (payload.primary_hub_id && !payload.accessible_hub_ids.includes(payload.primary_hub_id)) {
           payload.accessible_hub_ids = [payload.primary_hub_id, ...payload.accessible_hub_ids];
         }
-        if (payload.role_id !== 4) {
+        if (payload.role_id === 4) {
+          payload.assigned_routes = {
+            provinces: payload.assigned_province_codes || [],
+            wards: payload.assigned_ward_codes || []
+          };
+        } else {
           payload.managed_by_cskh_id = null;
+          payload.assigned_routes = null;
         }
+        delete payload.assigned_province_codes;
+        delete payload.assigned_ward_codes;
         if (!userForm.user_id && payload.role_id === 1) {
           ElMessage.warning('Hệ thống chỉ được có 1 tài khoản Super Admin');
           saveLoading.value = false;
@@ -849,7 +977,10 @@ const getRoleName = (id) => {
   return map[id] || 'N/A';
 };
 
-onMounted(fetchData);
+onMounted(() => {
+  fetchData();
+  fetchProvinces();
+});
 
 watch(() => filter.role_id, (newVal) => {
   if (newVal !== 4) {

@@ -251,7 +251,7 @@ const customerRoutes = [
         path: 'orders',
         name: 'CustomerOrders',
         component: () => import('../views/customer/CustomerOrders.vue'),
-        meta: { title: 'Yêu cầu của tôi' }
+        meta: { title: 'Quản lý vận đơn' }
       },
       {
         path: 'orders/:waybill_code',
