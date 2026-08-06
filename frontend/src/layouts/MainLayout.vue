@@ -354,7 +354,7 @@ const menuData = computed(() => {
           { label: 'Bảng điều khiển', path: '/customer/dashboard' },
         ]},
         { title: 'VẬN ĐƠN', items: [
-          { label: 'Tạo yêu cầu lấy hàng', path: '/customer/create' },
+          { label: 'Tạo vận đơn', path: '/customer/create' },
           { label: 'Bản nháp', path: '/customer/drafts' },
           { label: 'Hàng chờ tạo đơn trong ngày', path: '/customer/queue' },
           { label: 'Quản lý vận đơn', path: '/customer/orders' },
@@ -399,7 +399,7 @@ const currentPageTitle = computed(() => {
     'ServiceConfig': 'Cấu hình dịch vụ',
     'BillVerification': 'Duyệt Bill & Báo giá',
     'CustomerDashboard': 'Bảng điều khiển',
-    'CustomerCreatePickup': 'Tạo yêu cầu lấy hàng',
+    'CustomerCreatePickup': 'Tạo vận đơn',
     'CustomerDrafts': 'Bản nháp',
     'CustomerQueue': 'Hàng chờ tạo đơn',
     'CustomerOrders': 'Yêu cầu của tôi',

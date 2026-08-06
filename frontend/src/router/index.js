@@ -233,7 +233,7 @@ const customerRoutes = [
         path: 'create',
         name: 'CustomerCreatePickup',
         component: () => import('../views/customer/CustomerCreatePickup.vue'),
-        meta: { title: 'Tạo yêu cầu lấy hàng' }
+        meta: { title: 'Tạo vận đơn' }
       },
       {
         path: 'drafts',

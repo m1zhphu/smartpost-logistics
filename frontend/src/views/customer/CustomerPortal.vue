@@ -423,8 +423,8 @@
                     <el-icon><DocumentAdd /></el-icon>
                   </div>
                   <div class="action-desc">
-                    <h4>Yêu cầu gửi hàng</h4>
-                    <p>Tạo yêu cầu lấy hàng hoặc gửi bưu kiện mới đến các bưu cục SmartPost.</p>
+                    <h4>Tạo vận đơn</h4>
+                    <p>Nhập thông tin người gửi, người nhận để tạo vận đơn mới đến các bưu cục SmartPost.</p>
                   </div>
                 </el-card>
               </el-col>

@@ -77,8 +77,8 @@
                     <el-icon><DocumentAdd /></el-icon>
                   </div>
                   <div class="action-desc">
-                    <h4>Tạo yêu cầu lấy hàng</h4>
-                    <p>Tạo vận đơn lấy hàng hoặc gửi bưu kiện mới.</p>
+                    <h4>Tạo vận đơn</h4>
+                    <p>Nhập thông tin người gửi, người nhận để tạo vận đơn mới.</p>
                   </div>
                 </el-card>
               </el-col>

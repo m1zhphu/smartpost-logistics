@@ -10,8 +10,8 @@
                   <el-icon><ArrowLeft /></el-icon>
                 </el-button>
                 <div>
-                  <h2 class="section-title">Tạo yêu cầu gửi hàng mới</h2>
-                  <p class="section-subtitle">Nhập thông tin người gửi, người nhận và gói hàng để tạo vận đơn</p>
+                  <h2 class="section-title">Tạo vận đơn</h2>
+                  <p class="section-subtitle">Nhập thông tin người gửi, người nhận và gói hàng để tạo vận đơn mới</p>
                 </div>
               </div>
               <div class="form-header-actions">
@@ -40,17 +40,6 @@
               <!-- Left side of form: Input fields -->
               <el-col :xs="24" :sm="24" :md="isBulkMail ? 24 : 16">
                 <el-form :model="form" label-position="top">
-                  <div class="pickup-mode-bar mb-4">
-                    <div>
-                      <div class="pickup-mode-title">Hình thức gửi hàng</div>
-                      <div class="pickup-mode-hint">Chọn gửi một đơn hàng đầy đủ hoặc tạo một túi gồm nhiều thư/bưu phẩm.</div>
-                    </div>
-                    <el-radio-group v-model="form.pickup_mode">
-                      <el-radio-button v-for="option in pickupModeOptions" :key="option.value" :label="option.value">
-                        {{ option.label }}
-                      </el-radio-button>
-                    </el-radio-group>
-                  </div>
 
                   
                   <!-- SENDER & RECEIVER INFO -->
@@ -778,7 +767,7 @@ const pickupModeOptions = [
 
 // Form model
 const form = reactive({
-  pickup_mode: 'BULK_MAIL',
+  pickup_mode: 'SINGLE_WAYBILL',
   bulk_product_type: 'DOCUMENT',
   bulk_estimated_quantity: 1,
   bulk_draft_items: [
