@@ -22,10 +22,13 @@ def get_active_shipper(db: Session, shipper_id: int):
 
 def get_tasks_for_shipper(db: Session, shipper_id: int):
     """Lấy danh sách đơn hàng đang đi giao hoặc giao thất bại của 1 shipper"""
-    return db.query(models.Waybills).join(models.DeliveryResults).filter(
-        models.Waybills.status.in_([WaybillStatus.DELIVERING, WaybillStatus.DELIVERY_FAILED]),
-        models.DeliveryResults.shipper_id == shipper_id
-    ).order_by(models.DeliveryResults.delivery_id.desc()).all()
+    return db.query(models.Waybills).filter(
+        models.Waybills.status.in_(["OUT_FOR_DELIVERY", WaybillStatus.DELIVERING, WaybillStatus.DELIVERY_FAILED]),
+        (models.Waybills.holding_shipper_id == shipper_id) | (models.Waybills.waybill_id.in_(
+            db.query(models.DeliveryResults.waybill_id).filter(models.DeliveryResults.shipper_id == shipper_id)
+        )),
+        models.Waybills.is_deleted == False
+    ).order_by(models.Waybills.waybill_id.desc()).all()
 
 def get_latest_delivery_record(db: Session, waybill_id: int):
     """Lấy bản ghi giao hàng mới nhất của 1 vận đơn"""

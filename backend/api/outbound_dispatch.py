@@ -445,6 +445,22 @@ def mobile_outbound_delivery_scan(
             wb.holding_shipper_id = effective_shipper_id
             wb.version = (wb.version or 1) + 1
 
+            # Record in DeliveryResults for shipper task tracking
+            existing_dr = db.query(models.DeliveryResults).filter(
+                models.DeliveryResults.waybill_id == wb.waybill_id,
+                models.DeliveryResults.shipper_id == effective_shipper_id
+            ).first()
+            if not existing_dr:
+                db.add(models.DeliveryResults(
+                    waybill_id=wb.waybill_id,
+                    shipper_id=effective_shipper_id,
+                    status="OUT_FOR_DELIVERY",
+                    delivery_time=now
+                ))
+            else:
+                existing_dr.status = "OUT_FOR_DELIVERY"
+                existing_dr.delivery_time = now
+
             db.add(models.TrackingLogs(
                 waybill_id=wb.waybill_id,
                 status_id="OUT_FOR_DELIVERY",
