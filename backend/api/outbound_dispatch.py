@@ -215,6 +215,47 @@ def list_outbound_dispatch_slips(
     return result
 
 
+@router.get("/slips/{dispatch_id}")
+def get_outbound_dispatch_slip_detail(
+    dispatch_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy thông tin chi tiết của 1 phiếu xuất kho để in PDF / Phiếu xuất kho."""
+    slip = db.query(models.OutboundDispatchSlips).filter(models.OutboundDispatchSlips.dispatch_id == dispatch_id).first()
+    if not slip:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu xuất kho")
+
+    items = []
+    for it in slip.items:
+        if it.waybill:
+            items.append({
+                "waybill_code": it.waybill.waybill_code,
+                "receiver_name": it.waybill.receiver_name,
+                "receiver_phone": it.waybill.receiver_phone,
+                "receiver_address": it.waybill.receiver_address,
+                "receiver_province_name": it.waybill.receiver_province_name,
+                "weight": float(it.waybill.weight or 0),
+                "cod_amount": float(it.waybill.cod_amount or 0),
+                "note": it.waybill.note or ""
+            })
+
+    return {
+        "dispatch_id": slip.dispatch_id,
+        "dispatch_code": slip.dispatch_code,
+        "origin_hub_name": slip.origin_hub.hub_name if slip.origin_hub else f"Hub #{slip.origin_hub_id}",
+        "origin_hub_address": slip.origin_hub.address_detail if slip.origin_hub else "",
+        "dest_hub_name": slip.dest_hub.hub_name if slip.dest_hub else f"Hub #{slip.dest_hub_id}",
+        "dest_hub_address": slip.dest_hub.address_detail if slip.dest_hub else "",
+        "creator_name": slip.creator.full_name if slip.creator else "N/A",
+        "status": slip.status,
+        "waybill_count": slip.waybill_count,
+        "note": slip.note,
+        "created_at": slip.created_at,
+        "items": items
+    }
+
+
 # --- MOBILE APIS (Xử lý tại Bưu cục đến & Phát hàng) ---
 
 @router.post("/mobile/inbound-scan")
