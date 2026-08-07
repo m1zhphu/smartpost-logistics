@@ -10,7 +10,10 @@ class WaybillStatus:
     IN_HUB = "IN_HUB"             # Đã nhập kho
     BAGGED = "BAGGED"             # Đã đóng túi
     IN_TRANSIT = "IN_TRANSIT"     # Đang trên xe trung chuyển
+    DISPATCHED_TO_HUB = "DISPATCHED_TO_HUB" # Đang luân chuyển bưu cục
     ARRIVED = "ARRIVED"           # Đã đến kho đích
+    ARRIVED_DEST_HUB = "ARRIVED_DEST_HUB" # Đã nhập kho bưu cục phát
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY" # Đang đi giao hàng
     DELIVERING = "DELIVERING"     # Shipper đang đi giao
     DELIVERED = "DELIVERED"       # Giao thành công
     DELIVERY_FAILED = "DELIVERY_FAILED" # Giao thất bại
@@ -26,12 +29,15 @@ VALID_TRANSITIONS = {
     WaybillStatus.PICKED_PENDING_VERIFY: [WaybillStatus.READY_WAREHOUSE, WaybillStatus.IN_HUB, WaybillStatus.VERIFY_ERROR],
     WaybillStatus.VERIFY_ERROR: [WaybillStatus.PICKED_PENDING_VERIFY, WaybillStatus.CANCELLED],
     WaybillStatus.READY_WAREHOUSE: [WaybillStatus.IN_HUB],
-    WaybillStatus.IN_HUB: [WaybillStatus.BAGGED, WaybillStatus.DELIVERING],
-    WaybillStatus.BAGGED: [WaybillStatus.IN_TRANSIT],
-    WaybillStatus.IN_TRANSIT: [WaybillStatus.ARRIVED],
-    WaybillStatus.ARRIVED: [WaybillStatus.DELIVERING],
-    WaybillStatus.DELIVERING: [WaybillStatus.DELIVERED, WaybillStatus.DELIVERY_FAILED],
-    WaybillStatus.DELIVERY_FAILED: [WaybillStatus.DELIVERING, WaybillStatus.RETURNED],
+    WaybillStatus.IN_HUB: [WaybillStatus.BAGGED, WaybillStatus.DELIVERING, WaybillStatus.DISPATCHED_TO_HUB],
+    WaybillStatus.BAGGED: [WaybillStatus.IN_TRANSIT, WaybillStatus.DISPATCHED_TO_HUB],
+    WaybillStatus.IN_TRANSIT: [WaybillStatus.ARRIVED, WaybillStatus.ARRIVED_DEST_HUB],
+    WaybillStatus.DISPATCHED_TO_HUB: [WaybillStatus.ARRIVED, WaybillStatus.ARRIVED_DEST_HUB, WaybillStatus.IN_TRANSIT],
+    WaybillStatus.ARRIVED: [WaybillStatus.DELIVERING, WaybillStatus.ARRIVED_DEST_HUB, WaybillStatus.OUT_FOR_DELIVERY],
+    WaybillStatus.ARRIVED_DEST_HUB: [WaybillStatus.OUT_FOR_DELIVERY, WaybillStatus.DELIVERING],
+    WaybillStatus.OUT_FOR_DELIVERY: [WaybillStatus.DELIVERED, WaybillStatus.DELIVERY_FAILED, WaybillStatus.DELIVERING, WaybillStatus.ARRIVED_DEST_HUB],
+    WaybillStatus.DELIVERING: [WaybillStatus.DELIVERED, WaybillStatus.DELIVERY_FAILED, WaybillStatus.OUT_FOR_DELIVERY],
+    WaybillStatus.DELIVERY_FAILED: [WaybillStatus.DELIVERING, WaybillStatus.OUT_FOR_DELIVERY, WaybillStatus.RETURNED],
     WaybillStatus.DELIVERED: [WaybillStatus.SETTLED],
     # Các trạng thái Terminal (kết thúc) không được đi đâu tiếp
     WaybillStatus.SETTLED: [],
