@@ -1281,6 +1281,54 @@ def create_customer_pickup_waybill(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/customer/batch-pickups")
+def create_customer_batch_pickups_endpoint(
+    data: schema_wb.BatchCustomerPickupCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Khach hang tu dong day nhieu don va tong hop thanh tui thu theo diem lay hang."""
+    _require_customer_account(current_user)
+
+    customer = db.query(models.Customers).filter(
+        models.Customers.customer_id == current_user.get("customer_id"),
+        models.Customers.status == "ACTIVE",
+    ).first()
+    if not customer:
+        raise HTTPException(status_code=403, detail="Ho so khach hang khong con hoat dong")
+
+    if not data.items:
+        raise HTTPException(status_code=400, detail="Danh sach don hang khong duoc de trong")
+
+    try:
+        bookings = crud_wb.create_customer_batch_pickups(
+            db,
+            customer=customer,
+            items=data.items,
+            creator_id=current_user["user_id"],
+            source="PORTAL"
+        )
+        db.commit()
+
+        for booking in bookings:
+            realtime_manager.publish(["admin", f"customer:{customer.customer_id}", f"hub:{booking.target_hub_id}"], "pickup.created", {
+                "request_id": booking.request_id,
+                "request_code": booking.request_code,
+                "customer_id": customer.customer_id,
+                "pickup_status": booking.status,
+            })
+
+        return {
+            "status": "SUCCESS",
+            "message": f"Đã khởi tạo thành công {len(bookings)} yêu cầu lấy hàng / túi thư",
+            "request_codes": [b.request_code for b in bookings]
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/customer/bulk-mail-pickups", response_model=schema_wb.BulkMailPickupResponse)
 def create_customer_bulk_mail_pickup(
     data: schema_wb.BulkMailPickupCreate,
@@ -1498,13 +1546,14 @@ def list_mobile_ocr_customers(
         ) if request_ids else None
         waybill_count = waybill_query.count() if waybill_query else 0
         pending_ocr_count = waybill_query.filter(models.Waybills.ocr_status.in_(["PENDING", "INCOMPLETE"])).count() if waybill_query else 0
-        items.append({
-            **_customer_brief(customer),
-            "active_pickup_count": len(pickups),
-            "bag_count": bag_count,
-            "waybill_count": waybill_count,
-            "pending_ocr_count": pending_ocr_count,
-        })
+        if pending_ocr_count > 0:
+            items.append({
+                **_customer_brief(customer),
+                "active_pickup_count": len(pickups),
+                "bag_count": bag_count,
+                "waybill_count": waybill_count,
+                "pending_ocr_count": pending_ocr_count,
+            })
     return {"hub_id": scoped_hub_id, "items": items}
 
 
@@ -1539,10 +1588,19 @@ def list_mobile_ocr_customer_pickups(
     single_waybills = []
     for request in requests:
         if request.pickup_bag:
-            bags.append(_bag_payload(db, request.pickup_bag))
+            bag_data = _bag_payload(db, request.pickup_bag)
+            wb_items = bag_data.get("waybills", [])
+            pending_wb = [
+                w for w in wb_items
+                if w.get("verify_status") != "VERIFIED"
+                and w.get("ocr_status") not in ["SUCCESS", "CONVERTED", "VERIFIED", "REVIEW"]
+                and w.get("status") not in ["VERIFIED", "PICKED_VERIFIED", "PICKED_PENDING_VERIFY"]
+            ]
+            if pending_wb or len(wb_items) == 0:
+                bags.append(bag_data)
             continue
         for waybill in request.waybills:
-            if not waybill.is_deleted:
+            if not waybill.is_deleted and waybill.verify_status != "VERIFIED" and waybill.ocr_status not in ["SUCCESS", "CONVERTED", "VERIFIED", "REVIEW"] and waybill.status not in ["VERIFIED", "PICKED_VERIFIED", "PICKED_PENDING_VERIFY"]:
                 single_waybills.append({
                     **_bulk_waybill_item(waybill, 1),
                     "request_id": request.request_id,
@@ -1786,6 +1844,45 @@ def create_mobile_ocr_extra_waybills(
         "created_waybills": [_bulk_waybill_item(waybill) for waybill in created],
         "waybills": _get_bag_waybills(db, bag.bag_id),
     }
+
+
+@router.post("/mobile/ocr/bags/{bag_code}/complete")
+def complete_mobile_ocr_bag(
+    bag_code: str,
+    hub_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    scoped_hub_id = _mobile_ocr_hub_id(current_user, hub_id)
+    bag = db.query(models.Bags).filter(models.Bags.bag_code == bag_code).first()
+    if not bag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy túi thư")
+    
+    bag.status = "COMPLETED"
+    bag.materialization_status = "COMPLETED"
+    
+    req = bag.booking_request
+    if req:
+        req.status = "PICKED_VERIFIED"
+        req.materialization_status = "COMPLETED"
+        for wb in req.waybills or []:
+            if not wb.is_deleted:
+                wb.verify_status = "VERIFIED"
+                wb.ocr_status = "VERIFIED"
+                if wb.status in ["CREATED", "DRAFT", "PENDING_OCR", "PICKED_PENDING_VERIFY"]:
+                    wb.status = "PICKED_VERIFIED"
+    
+    for b_item in bag.bag_items or []:
+        if b_item.waybill:
+            wb = b_item.waybill
+            if not wb.is_deleted:
+                wb.verify_status = "VERIFIED"
+                wb.ocr_status = "VERIFIED"
+                if wb.status in ["CREATED", "DRAFT", "PENDING_OCR", "PICKED_PENDING_VERIFY"]:
+                    wb.status = "PICKED_VERIFIED"
+                    
+    db.commit()
+    return {"message": "Đã hoàn tất OCR túi thư thành công", "bag_code": bag_code}
 
 
 @router.post("/admin/pickups", response_model=schema_wb.CustomerPickupCreateResponse)

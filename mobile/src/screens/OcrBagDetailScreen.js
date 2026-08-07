@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { COLORS } from '../constants/colors';
-import { getOcrBagWaybills, createOcrExtraWaybills } from '../services/pickupService';
+import { getOcrBagWaybills, createOcrExtraWaybills, completeOcrBag } from '../services/pickupService';
 import styles from '../styles/OcrBagDetailScreenStyles';
 
 const PRIMARY = COLORS.primary || '#1B5E20';
@@ -88,13 +88,41 @@ export default function OcrBagDetailScreen({ route, navigation }) {
   const doneCount = waybills.filter(w => getWaybillOcrState(w) !== 'PENDING').length;
   const progressPct = waybills.length > 0 ? (doneCount / waybills.length) * 100 : 0;
 
+  const handleCompleteBagOcr = async () => {
+    setLoading(true);
+    const res = await completeOcrBag(bagCode);
+    setLoading(false);
+    if (res.success) {
+      Toast.show({
+        type: "success",
+        text1: "Hoàn tất OCR túi thư thành công!",
+        text2: `Túi ${bagCode} đã hoàn thành OCR.`,
+        visibilityTime: 2000,
+      });
+      setTimeout(() => {
+        navigation.goBack();
+      }, 300);
+    } else {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi hoàn tất OCR",
+        text2: res.message || "Vui lòng thử lại",
+      });
+    }
+  };
+
   const renderWaybill = ({ item, index }) => {
     const ocrState = getWaybillOcrState(item);
     const ocrCfg = OCR_STATUS_CONFIG[ocrState] || OCR_STATUS_CONFIG.PENDING;
     return (
       <TouchableOpacity
         style={[styles.waybillCard, ocrState !== 'PENDING' && styles.waybillCardDone]}
-        onPress={() => navigation.navigate('OcrWaybillDetail', { waybillCode: item.waybill_code, waybillData: item })}
+        onPress={() => navigation.navigate('ShipperCamera', { 
+          bagCode: bagCode, 
+          waybillCode: item.waybill_code, 
+          waybillData: item,
+          customer: bag?.customer || null
+        })}
         activeOpacity={0.8}
       >
         <View style={styles.waybillTop}>
@@ -202,6 +230,37 @@ export default function OcrBagDetailScreen({ route, navigation }) {
 
               <Text style={styles.listTitle}>Danh sách vận đơn ({waybills.length})</Text>
             </View>
+          }
+          ListFooterComponent={
+            doneCount > 0 && doneCount === waybills.length ? (
+              <View style={{ marginTop: 24, marginBottom: 40, paddingHorizontal: 16 }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "#10B981",
+                    paddingVertical: 16,
+                    borderRadius: 14,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    shadowColor: "#10B981",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 5,
+                  }}
+                  onPress={handleCompleteBagOcr}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="checkmark-done-circle" size={24} color="#FFF" />
+                  <Text style={{ color: "#FFF", fontWeight: "900", fontSize: 16 }}>
+                    Hoàn tất OCR túi thư
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ height: 40 }} />
+            )
           }
           ListEmptyComponent={
             <View style={styles.center}>

@@ -378,6 +378,15 @@ export const getOcrBagWaybills = async (bagCode) => {
     }
 };
 
+export const completeOcrBag = async (bagCode) => {
+    try {
+        const response = await apiClient.post(ADMIN_ENDPOINTS.OCR_COMPLETE_BAG(bagCode));
+        return { success: true, data: response.data };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+};
+
 export const patchOcrWaybill = async (waybillCode, data) => {
     console.log('[OCR] Bắt đầu xác nhận vận đơn', {
         waybillCode,
