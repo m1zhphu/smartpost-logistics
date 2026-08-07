@@ -10,11 +10,22 @@ export const scanInboundAtDestHub = async (code) => {
   }
 };
 
-export const scanOutboundDelivery = async (waybillCode) => {
+export const getPendingDeliveryWaybills = async () => {
   try {
-    const response = await apiClient.post('/api/outbound-dispatch/mobile/outbound-delivery-scan', {
-      waybill_code: waybillCode,
-    });
+    const response = await apiClient.get('/api/outbound-dispatch/mobile/pending-delivery-waybills');
+    return { success: true, data: response.data };
+  } catch (error) {
+    const msg = error.response?.data?.detail || error.message || 'Lỗi lấy danh sách đơn chờ xuất kho đi giao';
+    return { success: false, message: msg };
+  }
+};
+
+export const scanOutboundDelivery = async (waybillCodeOrCodes) => {
+  try {
+    const payload = Array.isArray(waybillCodeOrCodes)
+      ? { waybill_codes: waybillCodeOrCodes }
+      : { waybill_code: waybillCodeOrCodes };
+    const response = await apiClient.post('/api/outbound-dispatch/mobile/outbound-delivery-scan', payload);
     return { success: true, data: response.data };
   } catch (error) {
     const msg = error.response?.data?.detail || error.message || 'Lỗi xuất kho đi giao';

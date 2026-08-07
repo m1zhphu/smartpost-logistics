@@ -26,7 +26,8 @@ class MobileInboundScanRequest(BaseModel):
     code: str  # waybill_code or dispatch_code
 
 class MobileDeliveryScanRequest(BaseModel):
-    waybill_code: str
+    waybill_code: Optional[str] = None
+    waybill_codes: Optional[List[str]] = None
 
 class MobilePODRequest(BaseModel):
     waybill_code: str
@@ -273,12 +274,16 @@ def mobile_inbound_scan_at_dest_hub(
     # Search if code is a dispatch slip code or a waybill code
     slip = db.query(models.OutboundDispatchSlips).filter(models.OutboundDispatchSlips.dispatch_code == code).first()
     waybills_to_update = []
+    already_received = []
 
     if slip:
         items = db.query(models.OutboundDispatchItems).filter(models.OutboundDispatchItems.dispatch_id == slip.dispatch_id).all()
         for it in items:
             if it.waybill:
-                waybills_to_update.append(it.waybill)
+                if it.waybill.status in ["ARRIVED_DEST_HUB", "OUT_FOR_DELIVERY", "DELIVERED"]:
+                    already_received.append(it.waybill)
+                else:
+                    waybills_to_update.append(it.waybill)
         slip.status = "COMPLETED"
     else:
         wb = db.query(models.Waybills).filter(models.Waybills.waybill_code == code).first()
@@ -287,10 +292,21 @@ def mobile_inbound_scan_at_dest_hub(
             if req and req.waybills:
                 wb = req.waybills[0]
         if wb:
-            waybills_to_update.append(wb)
+            if wb.status in ["ARRIVED_DEST_HUB", "OUT_FOR_DELIVERY", "DELIVERED"]:
+                already_received.append(wb)
+            else:
+                waybills_to_update.append(wb)
 
-    if not waybills_to_update:
+    if not waybills_to_update and not already_received:
         raise HTTPException(status_code=404, detail="Không tìm thấy mã vận đơn hoặc phiếu xuất kho hợp lệ")
+
+    if not waybills_to_update and already_received:
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Tất cả {len(already_received)} đơn trong mã [{code}] đã được nhập kho bưu cục phát trước đó rồi",
+            "updated_waybills": [w.waybill_code for w in already_received]
+        }
 
     updated_codes = []
     for wb in waybills_to_update:
@@ -312,9 +328,41 @@ def mobile_inbound_scan_at_dest_hub(
     db.commit()
     return {
         "success": True,
-        "message": f"Đã quét nhập kho bưu cục phát thành công {len(updated_codes)} đơn",
+        "message": f"Đã quét nhập kho bưu cục phát thành công {len(updated_codes)} đơn mới",
         "updated_waybills": updated_codes
     }
+
+
+@router.get("/mobile/pending-delivery-waybills")
+def get_pending_delivery_waybills(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lấy danh sách các vận đơn đang lưu tại bưu cục (ARRIVED_DEST_HUB) chờ xuất kho đi giao"""
+    user_hub_id = current_user.get("primary_hub_id") or 1
+    query = db.query(models.Waybills).filter(
+        models.Waybills.status == "ARRIVED_DEST_HUB",
+        models.Waybills.holding_hub_id == user_hub_id,
+        models.Waybills.is_deleted == False
+    )
+
+    rows = query.order_by(models.Waybills.waybill_id.desc()).limit(150).all()
+    items = []
+    for wb in rows:
+        items.append({
+            "waybill_id": wb.waybill_id,
+            "waybill_code": wb.waybill_code,
+            "receiver_name": wb.receiver_name or "N/A",
+            "receiver_phone": wb.receiver_phone or "N/A",
+            "receiver_address": wb.receiver_address or "N/A",
+            "receiver_province_name": wb.receiver_province_name or "",
+            "weight": wb.weight,
+            "cod_amount": wb.cod_amount or 0,
+            "status": wb.status,
+            "created_at": wb.created_at
+        })
+
+    return {"total": len(items), "items": items}
 
 
 @router.post("/mobile/outbound-delivery-scan")
@@ -323,37 +371,46 @@ def mobile_outbound_delivery_scan(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Mobile Bưu tá: Quét xuất kho các đơn thuộc tuyến của mình để đi giao hàng"""
+    """Mobile Bưu tá: Quét/Chọn xuất kho các đơn thuộc tuyến của mình để đi giao hàng"""
     user_id = current_user["user_id"]
     now = datetime.utcnow()
-    code = payload.waybill_code.strip()
+    codes_to_process = []
+    if payload.waybill_codes:
+        codes_to_process = [c.strip() for c in payload.waybill_codes if c.strip()]
+    elif payload.waybill_code:
+        codes_to_process = [payload.waybill_code.strip()]
 
-    wb = db.query(models.Waybills).filter(models.Waybills.waybill_code == code).first()
-    if not wb:
-        req = db.query(models.BookingRequests).filter(models.BookingRequests.request_code == code).first()
-        if req and req.waybills:
-            wb = req.waybills[0]
+    if not codes_to_process:
+        raise HTTPException(status_code=400, detail="Vui lòng cung cấp mã vận đơn để xuất kho")
 
-    if not wb:
-        raise HTTPException(status_code=404, detail="Không tìm thấy vận đơn")
+    processed = []
+    for code in codes_to_process:
+        wb = db.query(models.Waybills).filter(models.Waybills.waybill_code == code).first()
+        if not wb:
+            req = db.query(models.BookingRequests).filter(models.BookingRequests.request_code == code).first()
+            if req and req.waybills:
+                wb = req.waybills[0]
 
-    wb.status = "OUT_FOR_DELIVERY"
-    wb.holding_shipper_id = user_id
-    wb.version = (wb.version or 1) + 1
+        if wb:
+            wb.status = "OUT_FOR_DELIVERY"
+            wb.holding_shipper_id = user_id
+            wb.version = (wb.version or 1) + 1
 
-    db.add(models.TrackingLogs(
-        waybill_id=wb.waybill_id,
-        status_id="OUT_FOR_DELIVERY",
-        user_id=user_id,
-        system_time=now,
-        note="Bưu tá đã xuất kho nhận đơn đi giao"
-    ))
+            db.add(models.TrackingLogs(
+                waybill_id=wb.waybill_id,
+                status_id="OUT_FOR_DELIVERY",
+                user_id=user_id,
+                system_time=now,
+                note="Bưu tá đã xuất kho nhận đơn đi giao"
+            ))
+            processed.append(wb.waybill_code)
+
     db.commit()
 
     return {
         "success": True,
-        "message": "Đã xuất kho đi giao thành công",
-        "waybill_code": wb.waybill_code
+        "message": f"Đã xuất kho đi giao thành công {len(processed)} vận đơn",
+        "processed_waybills": processed
     }
 
 
