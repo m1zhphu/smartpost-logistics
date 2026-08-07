@@ -22,9 +22,11 @@ UPLOAD_ROOT = os.path.join(BACKEND_DIR, "uploads")
 os.makedirs(os.path.join(UPLOAD_ROOT, "pod"), exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_ROOT, "bills"), exist_ok=True)
 
-# Tạo các bảng mới nếu chưa tồn tại
-if os.getenv("AUTO_CREATE_TABLES", "false").lower() == "true":
+# Tạo các bảng mới nếu chưa tồn tại trong Database
+try:
     models.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Warning creating tables: {e}")
 
 # Khởi tạo ứng dụng
 
