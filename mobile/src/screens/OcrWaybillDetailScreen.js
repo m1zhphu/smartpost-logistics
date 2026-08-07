@@ -265,7 +265,11 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
         ? `Còn thiếu: ${missingFields.join(", ")}`
         : `Trạng thái OCR: ${result.data?.ocr_status || "REVIEW"}`,
     });
-    navigation.goBack();
+    if (route.params?.bagCode) {
+      navigation.navigate("OcrBagDetail", { bagCode: route.params.bagCode });
+    } else {
+      navigation.goBack();
+    }
   };
 
   const renderField = (label, key, placeholder, opts = {}) => (
@@ -520,6 +524,41 @@ export default function OcrWaybillDetailScreen({ route, navigation }) {
               <Ionicons name="save-outline" size={18} color="#FFF" />
             )}
             <Text style={styles.saveButtonText}>Xác nhận và duyệt OCR</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              backgroundColor: "#F1F5F9",
+              paddingVertical: 14,
+              borderRadius: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginTop: 12,
+              marginBottom: 24,
+              borderWidth: 1,
+              borderColor: "#CBD5E1",
+            }}
+            onPress={() => {
+              if (route.params?.bagCode) {
+                navigation.navigate("OcrBagDetail", {
+                  bagCode: route.params.bagCode,
+                });
+              } else {
+                navigation.goBack();
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="arrow-back-circle-outline"
+              size={20}
+              color="#334155"
+            />
+            <Text style={{ color: "#334155", fontWeight: "800", fontSize: 14 }}>
+              Quay về danh sách đơn trong túi
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

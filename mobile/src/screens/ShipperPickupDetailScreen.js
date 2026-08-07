@@ -45,6 +45,7 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
   );
   const [actualQuantityInput, setActualQuantityInput] = useState("");
   const [varianceReason, setVarianceReason] = useState("");
+  const [expandedWaybillId, setExpandedWaybillId] = useState(null);
 
   const [showBillModal, setShowBillModal] = useState(false);
 
@@ -496,40 +497,200 @@ export default function ShipperPickupDetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>NGƯỜI NHẬN</Text>
-            <Row label="Tên:" value={detail.receiver_name || "---"} />
-            <Row label="SDT:" value={detail.receiver_phone || "---"} />
-            <ColumnRow
-              label="Địa chỉ nhận:"
-              value={detail.receiver_address || "---"}
-            />
-          </View>
+          {isBulkMail && bagWaybills.length > 0 ? (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>
+                DANH SÁCH VẬN ĐƠN TRONG TÚI ({bagWaybills.length})
+              </Text>
+              {bagWaybills.map((wb, idx) => {
+                const wbKey = wb.waybill_id || wb.waybill_code || idx;
+                const isExpanded = expandedWaybillId === wbKey;
+                return (
+                  <View
+                    key={wbKey}
+                    style={{
+                      backgroundColor: isExpanded ? "#F0FDF4" : "#F8FAFC",
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: isExpanded ? PRIMARY : "#E2E8F0",
+                      marginBottom: 10,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() =>
+                        setExpandedWaybillId(isExpanded ? null : wbKey)
+                      }
+                      style={{
+                        padding: 12,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                            marginBottom: 4,
+                          }}
+                        >
+                          <Ionicons
+                            name="document-text-outline"
+                            size={16}
+                            color={PRIMARY}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              fontWeight: "800",
+                              color: PRIMARY,
+                            }}
+                          >
+                            {wb.waybill_code || `Vận đơn #${idx + 1}`}
+                          </Text>
+                        </View>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            color: "#334155",
+                            fontWeight: "600",
+                          }}
+                        >
+                          Người nhận:{" "}
+                          <Text style={{ color: "#0F172A", fontWeight: "700" }}>
+                            {wb.receiver_name || "---"}
+                          </Text>
+                        </Text>
+                        {wb.receiver_phone ? (
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: "#64748B",
+                              marginTop: 2,
+                            }}
+                          >
+                            SĐT: {wb.receiver_phone}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Ionicons
+                        name={
+                          isExpanded
+                            ? "chevron-up-circle"
+                            : "chevron-down-circle"
+                        }
+                        size={24}
+                        color={PRIMARY}
+                      />
+                    </TouchableOpacity>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>KIỆN HÀNG</Text>
-            <Row
-              label="Loại hàng:"
-              value={detail.product_name || detail.product_type || "---"}
-            />
-            <Row
-              label={isBulkMail ? "Số thư dự kiến:" : "Số kiện:"}
-              value={expectedQuantity}
-            />
-            <Row
-              label="Khối lượng ước tính:"
-              value={formatWeight(detail.est_weight)}
-            />
-            <Row label="COD:" value={formatCurrency(detail.cod_amount)} />
-            <Row
-              label="Cước:"
-              value={`${getPriceStatusLabel(detail.price_status)} - ${formatCurrency(detail.estimated_total_amount)}`}
-            />
-            <ColumnRow
-              label="Ghi chú:"
-              value={detail.note || "Không có ghi chú"}
-            />
-          </View>
+                    {isExpanded && (
+                      <View
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingBottom: 12,
+                          paddingTop: 4,
+                          borderTopWidth: 1,
+                          borderTopColor: "#E2E8F0",
+                        }}
+                      >
+                        <Row
+                          label="Mã vận đơn:"
+                          value={wb.waybill_code || "---"}
+                          bold
+                          color={PRIMARY}
+                        />
+                        <Row
+                          label="Tên người nhận:"
+                          value={wb.receiver_name || "---"}
+                          bold
+                        />
+                        <Row
+                          label="SĐT người nhận:"
+                          value={wb.receiver_phone || "---"}
+                        />
+                        <ColumnRow
+                          label="Địa chỉ nhận:"
+                          value={
+                            wb.receiver_address ||
+                            [
+                              wb.receiver_ward_name,
+                              wb.receiver_province_name,
+                            ]
+                              .filter(Boolean)
+                              .join(", ") ||
+                            "---"
+                          }
+                        />
+                        <Row
+                          label="Loại hàng:"
+                          value={wb.product_name || wb.product_type || "Hàng hóa"}
+                        />
+                        <Row
+                          label="Khối lượng:"
+                          value={formatWeight(wb.weight || wb.actual_weight || 0)}
+                        />
+                        <Row
+                          label="Tiền COD:"
+                          value={formatCurrency(wb.cod_amount || 0)}
+                        />
+                        <Row
+                          label="Cước phí:"
+                          value={formatCurrency(
+                            wb.shipping_fee || wb.estimated_shipping_fee || 0,
+                          )}
+                        />
+                        {wb.note ? (
+                          <ColumnRow label="Ghi chú:" value={wb.note} />
+                        ) : null}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <>
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>NGƯỜI NHẬN</Text>
+                <Row label="Tên:" value={detail.receiver_name || "---"} />
+                <Row label="SDT:" value={detail.receiver_phone || "---"} />
+                <ColumnRow
+                  label="Địa chỉ nhận:"
+                  value={detail.receiver_address || "---"}
+                />
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>KIỆN HÀNG</Text>
+                <Row
+                  label="Loại hàng:"
+                  value={detail.product_name || detail.product_type || "---"}
+                />
+                <Row
+                  label={isBulkMail ? "Số thư dự kiến:" : "Số kiện:"}
+                  value={expectedQuantity}
+                />
+                <Row
+                  label="Khối lượng ước tính:"
+                  value={formatWeight(detail.est_weight)}
+                />
+                <Row label="COD:" value={formatCurrency(detail.cod_amount)} />
+                <Row
+                  label="Cước:"
+                  value={`${getPriceStatusLabel(detail.price_status)} - ${formatCurrency(detail.estimated_total_amount)}`}
+                />
+                <ColumnRow
+                  label="Ghi chú:"
+                  value={detail.note || "Không có ghi chú"}
+                />
+              </View>
+            </>
+          )}
 
           {isBulkMail ? (
             <View style={styles.card}>

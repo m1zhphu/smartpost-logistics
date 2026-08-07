@@ -130,6 +130,10 @@ class CustomerPickupCreate(BaseModel):
     delivery_method: str = Field(default="OUR_STAFF_DELIVERY")
     save_as_draft: bool = False
     customer_department_id: Optional[int] = None
+    target_hub_id: Optional[int] = None
+
+class BatchCustomerPickupCreate(BaseModel):
+    items: List[CustomerPickupCreate] = Field(min_length=1)
 
 
 
