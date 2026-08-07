@@ -316,14 +316,7 @@ export default function MobileDestHubScanScreen({ navigation, route }) {
                     }}
                   />
                 }
-                  refreshing={refreshing}
-                  onRefresh={() => {
-                    setRefreshing(true);
-                    fetchPendingWaybills();
-                  }}
-                />
-              }
-              renderItem={({ item }) => (
+                renderItem={({ item }) => (
                 <View style={styles.pendingCard}>
                   <View style={styles.pendingHeader}>
                     <Text style={styles.pendingCode}>{item.waybill_code}</Text>
