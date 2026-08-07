@@ -273,6 +273,7 @@ import { ElMessage } from 'element-plus'
 import { Promotion, Aim as Scan, Check, Refresh, WarningFilled, Printer, CircleCheckFilled } from '@element-plus/icons-vue'
 import apiClient from '@/api/axios'
 import logoUrl from '@/assets/CompanyLogo4.png'
+import { formatVietnamDateTime } from '@/utils/dateTime'
 
 const activeTab = ref('scan')
 const selectedDestHubId = ref(null)
@@ -450,7 +451,7 @@ const printDispatchSlip = async (slipData) => {
   }
 
   const items = detailData.items || []
-  const dateStr = detailData.created_at ? new Date(detailData.created_at).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN')
+  const dateStr = formatVietnamDateTime(detailData.created_at || new Date())
 
   const rowsHtml = items.map((it, idx) => `
     <tr>
@@ -598,7 +599,7 @@ const fetchHistorySlips = async () => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return 'N/A'
-  return new Date(dateStr).toLocaleString('vi-VN')
+  return formatVietnamDateTime(dateStr)
 }
 
 onMounted(() => {
