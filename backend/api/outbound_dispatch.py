@@ -339,16 +339,31 @@ def get_pending_delivery_waybills(
     current_user: dict = Depends(get_current_user)
 ):
     """Lấy danh sách các vận đơn đang lưu tại bưu cục (ARRIVED_DEST_HUB) chờ xuất kho đi giao"""
-    user_hub_id = current_user.get("primary_hub_id") or current_user.get("hub_id") or 1
+    user_role = current_user.get("role_id")
+    user_hub_id = current_user.get("primary_hub_id") or current_user.get("hub_id")
+
     query = db.query(models.Waybills).filter(
         models.Waybills.status == "ARRIVED_DEST_HUB",
-        models.Waybills.holding_hub_id == user_hub_id,
         models.Waybills.is_deleted == False
     )
 
     rows = query.order_by(models.Waybills.waybill_id.desc()).limit(150).all()
     items = []
     for wb in rows:
+        try:
+            w_val = float(getattr(wb, "actual_weight", None) or getattr(wb, "estimated_weight", None) or 0)
+        except Exception:
+            w_val = 0.0
+
+        try:
+            c_val = float(getattr(wb, "cod_amount", None) or 0)
+        except Exception:
+            c_val = 0.0
+
+        created_str = None
+        if wb.request and getattr(wb.request, "requested_pickup_time", None):
+            created_str = wb.request.requested_pickup_time.isoformat()
+
         items.append({
             "waybill_id": wb.waybill_id,
             "waybill_code": wb.waybill_code,
@@ -356,10 +371,10 @@ def get_pending_delivery_waybills(
             "receiver_phone": wb.receiver_phone or "N/A",
             "receiver_address": wb.receiver_address or "N/A",
             "receiver_province_name": wb.receiver_province_name or "",
-            "weight": float(wb.actual_weight or wb.estimated_weight or 0),
-            "cod_amount": float(wb.cod_amount or 0),
+            "weight": w_val,
+            "cod_amount": c_val,
             "status": wb.status,
-            "created_at": wb.request.requested_pickup_time if wb.request else None
+            "created_at": created_str
         })
 
     return {"total": len(items), "items": items}
