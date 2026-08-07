@@ -37,7 +37,7 @@
                 <el-option
                   v-for="hub in hubsList"
                   :key="hub.hub_id"
-                  :label="`${hub.hub_name} (${hub.province_name || 'N/A'})`"
+                  :label="`${hub.hub_name}${hub.address_detail ? ' (' + hub.address_detail + ')' : ''}`"
                   :value="hub.hub_id"
                 />
               </el-select>

@@ -87,10 +87,14 @@ def check_waybill_for_dispatch(
     if expected_hub_id and expected_hub_id != payload.dest_hub_id:
         warning = True
         warning_message = f"CẢNH BÁO: Đơn hàng thuộc bưu cục/tuyến [{expected_hub_name or f'Hub #{expected_hub_id}'}], không thuộc bưu cục xuất [{target_hub.hub_name}]!"
-    elif waybill.receiver_province_name and target_hub.province_name:
-        # Check province mismatch if hub_id not strictly set
-        if waybill.receiver_province_name.lower().strip() not in target_hub.hub_name.lower() and target_hub.province_name.lower() not in waybill.receiver_province_name.lower():
-            # Soft check
+    elif waybill.receiver_province_name:
+        rec_prov = waybill.receiver_province_name.lower().strip()
+        clean_prov = rec_prov.replace("thành phố", "").replace("tỉnh", "").strip()
+        hub_name_lower = target_hub.hub_name.lower().strip()
+        hub_addr_lower = (target_hub.address_detail or "").lower().strip()
+
+        matches = (clean_prov and (clean_prov in hub_name_lower or clean_prov in hub_addr_lower)) or (rec_prov in hub_name_lower or rec_prov in hub_addr_lower)
+        if not matches:
             warning = True
             warning_message = f"CẢNH BÁO: Đơn hàng gửi đi tỉnh [{waybill.receiver_province_name}], hãy kiểm tra xem có khớp bưu cục đích [{target_hub.hub_name}] không!"
 
