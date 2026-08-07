@@ -262,29 +262,17 @@ def get_outbound_dispatch_slip_detail(
 def resolve_delivery_shipper_for_waybill(db: Session, wb: models.Waybills) -> tuple[Optional[int], Optional[str], str]:
     """
     Quy tắc Tự Động Phân Công Bưu Tá Đi Giao Hàng Theo Tuyến Vận Chuyển:
-    1. Ưu tiên 1: Phân công theo Tuyến Vận Chuyển (Phường/Xã & Tỉnh/Thành người nhận)
-    2. Ưu tiên 2: Bưu tá gán cố định cho Khách hàng (nếu có)
-    3. Ưu tiên 3: Chờ bưu tá tuyến xuất kho / nhận tự do tại bưu cục phát
+    1. Phân công theo Tuyến Vận Chuyển (Phường/Xã & Tỉnh/Thành của Địa chỉ Người Nhận)
+    2. Nếu chưa gán tuyến: Chờ bưu tá tuyến xuất kho / nhận tự do tại bưu cục phát (UNASSIGNED)
     """
-    # 1. Route-based auto assignment (Receiver's Ward & Province)
+    # Route-based auto assignment (Receiver's Ward & Province)
     import crud.waybills as crud_wb
     receiver_full_text = f"{wb.receiver_address or ''}, {wb.receiver_ward_name or ''}, {wb.receiver_province_name or ''}"
     matched_shipper = crud_wb.auto_assign_shipper_by_route(db, pickup_address=receiver_full_text)
     if matched_shipper:
         return matched_shipper.user_id, matched_shipper.full_name or matched_shipper.username, "ROUTE_ASSIGNED"
 
-    # 2. Customer's fixed assigned shipper (fallback if customer configured)
-    customer = wb.customer
-    if customer and customer.assigned_shipper_id:
-        shipper = db.query(models.Users).filter(
-            models.Users.user_id == customer.assigned_shipper_id,
-            models.Users.role_id == 4,
-            models.Users.is_active == True
-        ).first()
-        if shipper:
-            return shipper.user_id, shipper.full_name or shipper.username, "CUSTOMER_FIXED"
-
-    # 3. Unassigned queue for manual dispatch / hub claim
+    # Unassigned queue for manual dispatch / hub claim
     return None, None, "UNASSIGNED"
 
 
