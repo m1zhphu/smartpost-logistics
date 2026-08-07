@@ -390,8 +390,10 @@ async def confirm_delivery_success(
     # SECURITY: Chặn Shipper xác nhận giùm đơn của người khác
     if current_user.get("role_id") != 1:
         delivery_record = crud_delivery.get_latest_delivery_record(db, waybill.waybill_id)
+        is_holder = (waybill.holding_shipper_id == current_user["user_id"])
+        is_rec_shipper = (delivery_record and delivery_record.shipper_id == current_user["user_id"])
         
-        if not delivery_record or delivery_record.shipper_id != current_user["user_id"]:
+        if not (is_holder or is_rec_shipper):
             raise HTTPException(status_code=403, detail="Bạn không được phân công giao đơn hàng này!")
 
     try:

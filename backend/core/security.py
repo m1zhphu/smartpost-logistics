@@ -91,6 +91,7 @@ def get_current_user(
     return {
         "user_id": user.user_id,
         "username": user.username,
+        "full_name": user.full_name,
         "role_id": role_id,
         "actual_role_id": user.role_id,
         "customer_id": user.customer_id,

@@ -461,12 +461,15 @@ def mobile_outbound_delivery_scan(
                 existing_dr.status = "OUT_FOR_DELIVERY"
                 existing_dr.delivery_time = now
 
+            eff_shipper = db.query(models.Users).filter(models.Users.user_id == effective_shipper_id).first()
+            shipper_disp_name = (eff_shipper.full_name or eff_shipper.username) if eff_shipper else "Bưu tá"
+
             db.add(models.TrackingLogs(
                 waybill_id=wb.waybill_id,
                 status_id="OUT_FOR_DELIVERY",
                 user_id=user_id,
                 system_time=now,
-                note=f"Xuất kho đi giao thành công. Bưu tá phụ trách giao: {assigned_shipper_name or current_user.get('full_name', 'Bưu tá')}"
+                note=f"Xuất kho đi giao thành công. Bưu tá phụ trách giao: {shipper_disp_name}"
             ))
             processed.append(wb.waybill_code)
 
