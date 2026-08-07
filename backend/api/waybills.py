@@ -1863,23 +1863,20 @@ def complete_mobile_ocr_bag(
     
     req = bag.booking_request
     if req:
-        req.status = "PICKED_VERIFIED"
-        req.materialization_status = "COMPLETED"
+        req.status = "PICKED_PENDING_VERIFY"
         for wb in req.waybills or []:
-            if not wb.is_deleted:
-                wb.verify_status = "VERIFIED"
-                wb.ocr_status = "VERIFIED"
-                if wb.status in ["CREATED", "DRAFT", "PENDING_OCR", "PICKED_PENDING_VERIFY"]:
-                    wb.status = "PICKED_VERIFIED"
+            if not wb.is_deleted and wb.ocr_status not in ["VERIFIED", "SUCCESS"]:
+                wb.ocr_status = "REVIEW"
+                if wb.status in ["CREATED", "DRAFT", "PENDING_OCR"]:
+                    wb.status = "PICKED_PENDING_VERIFY"
     
     for b_item in bag.bag_items or []:
         if b_item.waybill:
             wb = b_item.waybill
-            if not wb.is_deleted:
-                wb.verify_status = "VERIFIED"
-                wb.ocr_status = "VERIFIED"
-                if wb.status in ["CREATED", "DRAFT", "PENDING_OCR", "PICKED_PENDING_VERIFY"]:
-                    wb.status = "PICKED_VERIFIED"
+            if not wb.is_deleted and wb.ocr_status not in ["VERIFIED", "SUCCESS"]:
+                wb.ocr_status = "REVIEW"
+                if wb.status in ["CREATED", "DRAFT", "PENDING_OCR"]:
+                    wb.status = "PICKED_PENDING_VERIFY"
                     
     db.commit()
     return {"message": "Đã hoàn tất OCR túi thư thành công", "bag_code": bag_code}
