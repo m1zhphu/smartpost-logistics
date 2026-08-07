@@ -259,6 +259,35 @@ def get_outbound_dispatch_slip_detail(
 
 # --- MOBILE APIS (Xử lý tại Bưu cục đến & Phát hàng) ---
 
+def resolve_delivery_shipper_for_waybill(db: Session, wb: models.Waybills) -> tuple[Optional[int], Optional[str], str]:
+    """
+    Quy tắc 3 Cấp Độ Tự Động Phân Công Bưu Tá Đi Giao Hàng:
+    1. Ưu tiên 1: Bưu tá gán cố định cho Khách hàng (assigned_shipper_id)
+    2. Ưu tiên 2: Phân công theo Tuyến Vận Chuyển (Tỉnh/Thành & Phường/Xã người nhận)
+    3. Ưu tiên 3: Chờ gán bưu tá thủ công / Bưu tá nhận tại bưu cục (Unassigned)
+    """
+    # Tier 1: Fixed assigned shipper for Customer
+    customer = wb.customer
+    if customer and customer.assigned_shipper_id:
+        shipper = db.query(models.Users).filter(
+            models.Users.user_id == customer.assigned_shipper_id,
+            models.Users.role_id == 4,
+            models.Users.is_active == True
+        ).first()
+        if shipper:
+            return shipper.user_id, shipper.full_name or shipper.username, "TIER_1_FIXED"
+
+    # Tier 2: Route-based auto assignment (Receiver's Ward & Province)
+    import crud.waybills as crud_wb
+    receiver_full_text = f"{wb.receiver_address or ''}, {wb.receiver_ward_name or ''}, {wb.receiver_province_name or ''}"
+    matched_shipper = crud_wb.auto_assign_shipper_by_route(db, pickup_address=receiver_full_text)
+    if matched_shipper:
+        return matched_shipper.user_id, matched_shipper.full_name or matched_shipper.username, "TIER_2_ROUTE"
+
+    # Tier 3: Unassigned queue for manual dispatch / hub claim
+    return None, None, "TIER_3_UNASSIGNED"
+
+
 @router.post("/mobile/inbound-scan")
 def mobile_inbound_scan_at_dest_hub(
     payload: MobileInboundScanRequest,
@@ -312,8 +341,12 @@ def mobile_inbound_scan_at_dest_hub(
     for wb in waybills_to_update:
         wb.status = "ARRIVED_DEST_HUB"
         wb.holding_hub_id = user_hub_id
-        wb.holding_shipper_id = None
         wb.version = (wb.version or 1) + 1
+
+        # Run 3-Tier Delivery Shipper Auto-Assignment
+        assigned_shipper_id, assigned_shipper_name, tier = resolve_delivery_shipper_for_waybill(db, wb)
+        if assigned_shipper_id:
+            wb.holding_shipper_id = assigned_shipper_id
 
         db.add(models.TrackingLogs(
             waybill_id=wb.waybill_id,
@@ -321,7 +354,7 @@ def mobile_inbound_scan_at_dest_hub(
             hub_id=user_hub_id,
             user_id=user_id,
             system_time=now,
-            note="Nhập kho thành công tại bưu cục phát"
+            note=f"Nhập kho thành công tại bưu cục phát. Phân công đi giao: {assigned_shipper_name or 'Chờ gán bưu tá (Ưu tiên 3)'}"
         ))
         updated_codes.append(wb.waybill_code)
 
@@ -340,7 +373,7 @@ def get_pending_delivery_waybills(
 ):
     """Lấy danh sách các vận đơn đang lưu tại bưu cục (ARRIVED_DEST_HUB) chờ xuất kho đi giao"""
     user_role = current_user.get("role_id")
-    user_hub_id = current_user.get("primary_hub_id") or current_user.get("hub_id")
+    curr_user_id = current_user.get("user_id")
 
     query = db.query(models.Waybills).filter(
         models.Waybills.status == "ARRIVED_DEST_HUB",
@@ -364,6 +397,11 @@ def get_pending_delivery_waybills(
         if wb.request and getattr(wb.request, "requested_pickup_time", None):
             created_str = wb.request.requested_pickup_time.isoformat()
 
+        # 3-Tier Delivery Shipper Assignment Check
+        assigned_shipper_id, assigned_shipper_name, tier_type = resolve_delivery_shipper_for_waybill(db, wb)
+        effective_shipper_id = wb.holding_shipper_id or assigned_shipper_id
+        is_assigned_to_me = (effective_shipper_id == curr_user_id) if curr_user_id else False
+
         items.append({
             "waybill_id": wb.waybill_id,
             "waybill_code": wb.waybill_code,
@@ -374,7 +412,11 @@ def get_pending_delivery_waybills(
             "weight": w_val,
             "cod_amount": c_val,
             "status": wb.status,
-            "created_at": created_str
+            "created_at": created_str,
+            "assigned_shipper_id": effective_shipper_id,
+            "assigned_shipper_name": assigned_shipper_name,
+            "assignment_tier": tier_type,
+            "is_assigned_to_me": is_assigned_to_me
         })
 
     return {"total": len(items), "items": items}

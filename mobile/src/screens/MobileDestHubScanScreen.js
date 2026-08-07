@@ -298,7 +298,19 @@ export default function MobileDestHubScanScreen({ navigation, route }) {
                 <View style={styles.pendingCard}>
                   <View style={styles.pendingHeader}>
                     <Text style={styles.pendingCode}>{item.waybill_code}</Text>
-                    <Text style={styles.pendingTag}>Chờ xuất đi giao</Text>
+                    {item.is_assigned_to_me ? (
+                      <Text style={[styles.pendingTag, { backgroundColor: "#DCFCE7", color: "#15803D" }]}>
+                        ⭐ Tuyến của bạn
+                      </Text>
+                    ) : item.assigned_shipper_name ? (
+                      <Text style={[styles.pendingTag, { backgroundColor: "#DBEAFE", color: "#1E40AF" }]}>
+                        👤 {item.assigned_shipper_name}
+                      </Text>
+                    ) : (
+                      <Text style={[styles.pendingTag, { backgroundColor: "#FEF3C7", color: "#B45309" }]}>
+                        🔍 Ưu tiên 3 (Chờ gán)
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.pendingBody}>
                     <Text style={styles.pendingReceiver}>
