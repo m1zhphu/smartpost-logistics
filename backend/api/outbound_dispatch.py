@@ -339,7 +339,7 @@ def get_pending_delivery_waybills(
     current_user: dict = Depends(get_current_user)
 ):
     """Lấy danh sách các vận đơn đang lưu tại bưu cục (ARRIVED_DEST_HUB) chờ xuất kho đi giao"""
-    user_hub_id = current_user.get("primary_hub_id") or 1
+    user_hub_id = current_user.get("primary_hub_id") or current_user.get("hub_id") or 1
     query = db.query(models.Waybills).filter(
         models.Waybills.status == "ARRIVED_DEST_HUB",
         models.Waybills.holding_hub_id == user_hub_id,
@@ -356,10 +356,10 @@ def get_pending_delivery_waybills(
             "receiver_phone": wb.receiver_phone or "N/A",
             "receiver_address": wb.receiver_address or "N/A",
             "receiver_province_name": wb.receiver_province_name or "",
-            "weight": wb.weight,
-            "cod_amount": wb.cod_amount or 0,
+            "weight": float(wb.actual_weight or wb.estimated_weight or 0),
+            "cod_amount": float(wb.cod_amount or 0),
             "status": wb.status,
-            "created_at": wb.created_at
+            "created_at": wb.request.requested_pickup_time if wb.request else None
         })
 
     return {"total": len(items), "items": items}
