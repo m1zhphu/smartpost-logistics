@@ -1,7 +1,7 @@
 # File: main.py
 # Trigger reload to load websockets library
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from api import auth, hubs, waybills, warehouse, delivery, accounting, pricing, users, dashboard, printing, customers
+from api import auth, hubs, waybills, warehouse, delivery, accounting, pricing, users, dashboard, printing, customers, outbound_dispatch
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from crud.delivery import scan_overdue_waybills
@@ -65,6 +65,7 @@ app.include_router(dashboard.router)
 app.include_router(printing.router)
 app.include_router(uploads.router)
 app.include_router(customers.router)
+app.include_router(outbound_dispatch.router)
 
 @app.get("/", tags=["Root"])
 async def root():

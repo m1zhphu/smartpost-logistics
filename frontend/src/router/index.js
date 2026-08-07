@@ -112,6 +112,12 @@ const adminRoutes = [
         component: () => import('../views/admin/warehouse/Bagging.vue'),
       },
       {
+        path: 'warehouse/outbound-dispatch',
+        name: 'OutboundDispatchScan',
+        component: () => import('../views/admin/warehouse/OutboundDispatchScan.vue'),
+        meta: { requiresAuth: true, title: 'Quét xuất kho đi bưu cục' }
+      },
+      {
         path: 'warehouse/manifest',
         name: 'ManifestScan',
         component: () => import('../views/admin/warehouse/ManifestScan.vue'),

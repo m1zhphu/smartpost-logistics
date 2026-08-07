@@ -46,6 +46,7 @@ import OcrPickupListScreen from './src/screens/OcrPickupListScreen';
 import OcrBagDetailScreen from './src/screens/OcrBagDetailScreen';
 import OcrWaybillDetailScreen from './src/screens/OcrWaybillDetailScreen';
 import ShipperPickedOrdersScreen from './src/screens/ShipperPickedOrdersScreen';
+import MobileDestHubScanScreen from './src/screens/MobileDestHubScanScreen';
 
 import { QueueProvider } from './src/context/QueueContext';
 import { UserProvider, navigationRef } from './src/context/UserContext';
@@ -148,6 +149,7 @@ export default function App() {
             <Stack.Screen name="OcrBagDetail" component={OcrBagDetailScreen} />
             <Stack.Screen name="OcrWaybillDetail" component={OcrWaybillDetailScreen} />
             <Stack.Screen name="ShipperPickedOrders" component={ShipperPickedOrdersScreen} />
+            <Stack.Screen name="MobileDestHubScan" component={MobileDestHubScanScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         <Toast config={toastConfig} position="top" topOffset={60} />

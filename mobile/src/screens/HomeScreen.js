@@ -188,6 +188,12 @@ export default function HomeScreen({ navigation }) {
               title="Đơn chờ OCR" desc="Đơn đã lấy, cần scan"
               onPress={() => handleFeaturePress("ShipperPickedOrders")}
             />
+            <GCard
+              badgeText="BƯU CỤC" badgeColor="#047857" badgeBg="#D1FAE5"
+              icon="business-outline" iconColor="#059669" iconBg="#D1FAE5"
+              title="Nhập/Xuất bưu cục" desc="Xử lý tại bưu cục đến"
+              onPress={() => handleFeaturePress("MobileDestHubScan")}
+            />
           </View>
         </View>
 

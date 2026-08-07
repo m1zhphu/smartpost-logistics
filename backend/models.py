@@ -1227,3 +1227,50 @@ class StatementAdjustments(Base):
     reason: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_by: Mapped[int] = mapped_column(Integer)
+
+
+class OutboundDispatchSlips(Base):
+    """Phiếu xuất kho đi bưu cục đích (Luồng nghiệp vụ mới)"""
+    __tablename__ = 'outbound_dispatch_slips'
+    __table_args__ = (
+        ForeignKeyConstraint(['origin_hub_id'], ['hubs.hub_id'], name='fk_dispatch_origin_hub'),
+        ForeignKeyConstraint(['dest_hub_id'], ['hubs.hub_id'], name='fk_dispatch_dest_hub'),
+        ForeignKeyConstraint(['created_by_user_id'], ['users.user_id'], name='fk_dispatch_creator'),
+        PrimaryKeyConstraint('dispatch_id', name='outbound_dispatch_slips_pkey'),
+        UniqueConstraint('dispatch_code', name='outbound_dispatch_slips_code_key')
+    )
+
+    dispatch_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dispatch_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    origin_hub_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    dest_hub_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_by_user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), server_default=text("'CREATED'")) # CREATED, IN_TRANSIT, COMPLETED
+    waybill_count: Mapped[int] = mapped_column(Integer, server_default=text('0'))
+    note: Mapped[Optional[str]] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    origin_hub = relationship('Hubs', foreign_keys=[origin_hub_id])
+    dest_hub = relationship('Hubs', foreign_keys=[dest_hub_id])
+    creator = relationship('Users', foreign_keys=[created_by_user_id])
+    items = relationship('OutboundDispatchItems', back_populates='dispatch_slip', cascade='all, delete-orphan')
+
+
+class OutboundDispatchItems(Base):
+    """Chi tiết các vận đơn trong Phiếu xuất kho đi bưu cục"""
+    __tablename__ = 'outbound_dispatch_items'
+    __table_args__ = (
+        ForeignKeyConstraint(['dispatch_id'], ['outbound_dispatch_slips.dispatch_id'], name='fk_dispatch_items_slip'),
+        ForeignKeyConstraint(['waybill_id'], ['waybills.waybill_id'], name='fk_dispatch_items_waybill'),
+        PrimaryKeyConstraint('item_id', name='outbound_dispatch_items_pkey'),
+    )
+
+    item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dispatch_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    waybill_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), server_default=text("'DISPATCHED'"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    dispatch_slip = relationship('OutboundDispatchSlips', back_populates='items')
+    waybill = relationship('Waybills', foreign_keys=[waybill_id])
+

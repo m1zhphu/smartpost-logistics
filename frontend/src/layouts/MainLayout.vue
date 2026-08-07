@@ -296,11 +296,13 @@ const menuData = computed(() => {
       children: [
         { title: 'VẬN HÀNH KHO', items: [
           // { label: 'Quét Nhập kho', path: '/admin/warehouse/scan-in' },
+          { label: 'Xuất kho đi bưu cục', path: '/admin/warehouse/outbound-dispatch' },
           { label: 'Đóng túi', path: '/admin/warehouse/bagging' },
           { label: 'Danh sách túi', path: '/admin/warehouse/bags' },
           { label: 'Túi gom lấy hàng', path: '/admin/warehouse/pickup-bags' },
-          { label: 'Lên/Xuống xe', path: '/admin/warehouse/manifest' },
-          { label: 'Lịch sử Chuyến xe', path: '/admin/warehouse/manifests' }
+          // Tạm ẩn hai menu lập chuyến xe theo quy trình mới:
+          // { label: 'Lên/Xuống xe', path: '/admin/warehouse/manifest' },
+          // { label: 'Lịch sử Chuyến xe', path: '/admin/warehouse/manifests' }
         ]}
       ]
     },
@@ -382,6 +384,7 @@ const currentPageTitle = computed(() => {
     'CreateInternalWaybill': 'Gửi thư nội bộ',
     'ScanIn': 'Quét nhập kho',
     'Bagging': 'Đóng túi',
+    'OutboundDispatchScan': 'Quét xuất kho đi bưu cục',
     'ManifestScan': 'Lên/Xuống xe',
     'ManifestList': 'Lịch sử chuyến xe',
     'BagList': 'Danh sách túi hàng',
