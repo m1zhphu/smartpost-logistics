@@ -449,8 +449,11 @@ def mobile_outbound_delivery_scan(
                 wb = req.waybills[0]
 
         if wb:
+            assigned_shipper_id, assigned_shipper_name, _ = resolve_delivery_shipper_for_waybill(db, wb)
+            effective_shipper_id = assigned_shipper_id or user_id
+            
             wb.status = "OUT_FOR_DELIVERY"
-            wb.holding_shipper_id = user_id
+            wb.holding_shipper_id = effective_shipper_id
             wb.version = (wb.version or 1) + 1
 
             db.add(models.TrackingLogs(
@@ -458,7 +461,7 @@ def mobile_outbound_delivery_scan(
                 status_id="OUT_FOR_DELIVERY",
                 user_id=user_id,
                 system_time=now,
-                note="Bưu tá đã xuất kho nhận đơn đi giao"
+                note=f"Xuất kho đi giao thành công. Bưu tá phụ trách giao: {assigned_shipper_name or current_user.get('full_name', 'Bưu tá')}"
             ))
             processed.append(wb.waybill_code)
 
