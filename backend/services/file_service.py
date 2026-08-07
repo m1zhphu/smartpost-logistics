@@ -15,28 +15,29 @@ BILL_UPLOAD_DIR = os.path.join(UPLOAD_ROOT, "bills")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(BILL_UPLOAD_DIR, exist_ok=True)
 
-# Configure Cloudinary if environment variables are set
-CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
-CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
-CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
-CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+def _init_cloudinary() -> bool:
+    cloudinary_url = os.getenv("CLOUDINARY_URL")
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key = os.getenv("CLOUDINARY_API_KEY")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
 
-IS_CLOUDINARY_CONFIGURED = False
-
-if CLOUDINARY_URL:
-    IS_CLOUDINARY_CONFIGURED = True
-elif CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
-    cloudinary.config(
-        cloud_name=CLOUDINARY_CLOUD_NAME,
-        api_key=CLOUDINARY_API_KEY,
-        api_secret=CLOUDINARY_API_SECRET,
-        secure=True
-    )
-    IS_CLOUDINARY_CONFIGURED = True
+    if cloudinary_url:
+        os.environ["CLOUDINARY_URL"] = cloudinary_url
+        cloudinary.config(cloudinary_url=cloudinary_url, secure=True)
+        return True
+    elif cloud_name and api_key and api_secret:
+        cloudinary.config(
+            cloud_name=cloud_name,
+            api_key=api_key,
+            api_secret=api_secret,
+            secure=True
+        )
+        return True
+    return False
 
 def _upload_to_cloudinary(file: UploadFile, folder: str) -> str | None:
     """Uploads file to Cloudinary and returns the secure URL, or None if not configured or failed."""
-    if not IS_CLOUDINARY_CONFIGURED:
+    if not _init_cloudinary():
         return None
     try:
         file.file.seek(0)
@@ -44,8 +45,10 @@ def _upload_to_cloudinary(file: UploadFile, folder: str) -> str | None:
             file.file,
             folder=f"smartpost/{folder}"
         )
+        file.file.seek(0)
         return upload_result.get("secure_url")
     except Exception as e:
+        file.file.seek(0)
         print(f"Cloudinary upload failed: {e}. Falling back to local storage.")
         return None
 
