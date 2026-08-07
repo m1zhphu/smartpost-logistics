@@ -1449,7 +1449,7 @@ def list_mobile_ocr_customers(
     scoped_hub_id = _mobile_ocr_hub_id(current_user, hub_id)
     filters = [
         models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
-        models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
+        models.BookingRequests.status.in_(["ASSIGNED", "ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
     ]
     if current_user.get("role_id") == 4:
         filters.append(
@@ -1479,7 +1479,7 @@ def list_mobile_ocr_customers(
         pickup_filters = [
             models.BookingRequests.customer_id == customer.customer_id,
             models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
-            models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
+            models.BookingRequests.status.in_(["ASSIGNED", "ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
         ]
         if current_user.get("role_id") == 4:
             pickup_filters.append(
@@ -1523,7 +1523,7 @@ def list_mobile_ocr_customer_pickups(
     req_filters = [
         models.BookingRequests.customer_id == customer_id,
         models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"]),
-        models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
+        models.BookingRequests.status.in_(["ASSIGNED", "ASSIGNED_PICKUP", "PICKED", "RECEIVED", "PENDING_CONFIRMATION"]),
     ]
     if current_user.get("role_id") == 4:
         req_filters.append(
