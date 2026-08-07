@@ -340,12 +340,17 @@ def get_booking_request_by_code(db: Session, code: str) -> models.BookingRequest
 def get_booking_requests(db: Session, status: str = None, assigned_shipper_id: int = None, hub_id: int = None) -> list[models.BookingRequests]:
     query = db.query(models.BookingRequests)
     if status:
-        query = query.filter(models.BookingRequests.status == status)
+        if status in ["ASSIGNED", "ASSIGNED_PICKUP"]:
+            query = query.filter(models.BookingRequests.status.in_(["ASSIGNED", "ASSIGNED_PICKUP"]))
+        elif status in ["DISPATCHED", "DISPATCHED_TO_HUB"]:
+            query = query.filter(models.BookingRequests.status.in_(["DISPATCHED", "DISPATCHED_TO_HUB"]))
+        else:
+            query = query.filter(models.BookingRequests.status == status)
     if assigned_shipper_id:
         query = query.filter(models.BookingRequests.assigned_shipper_id == assigned_shipper_id)
     if hub_id:
         query = query.filter(models.BookingRequests.target_hub_id == hub_id)
-    return query.all()
+    return query.order_by(models.BookingRequests.request_id.desc()).all()
 
 
 def get_online_pickup_requests(db: Session, status: str = None, hub_id: int = None) -> list[models.BookingRequests]:
@@ -353,7 +358,12 @@ def get_online_pickup_requests(db: Session, status: str = None, hub_id: int = No
         models.BookingRequests.source.in_(["PORTAL", "HOTLINE", "CSKH", "ADMIN"])
     )
     if status:
-        query = query.filter(models.BookingRequests.status == status)
+        if status in ["ASSIGNED", "ASSIGNED_PICKUP"]:
+            query = query.filter(models.BookingRequests.status.in_(["ASSIGNED", "ASSIGNED_PICKUP"]))
+        elif status in ["DISPATCHED", "DISPATCHED_TO_HUB"]:
+            query = query.filter(models.BookingRequests.status.in_(["DISPATCHED", "DISPATCHED_TO_HUB"]))
+        else:
+            query = query.filter(models.BookingRequests.status == status)
     if hub_id:
         query = query.filter(models.BookingRequests.target_hub_id == hub_id)
     return query.order_by(models.BookingRequests.request_id.desc()).all()
