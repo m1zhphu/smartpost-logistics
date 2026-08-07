@@ -33,6 +33,7 @@ export default function MobileDestHubScanScreen({ navigation, route }) {
   const [pendingWaybills, setPendingWaybills] = useState([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [routeFilterTab, setRouteFilterTab] = useState("MY_ROUTE");
 
   const inputRef = useRef(null);
 
@@ -253,40 +254,68 @@ export default function MobileDestHubScanScreen({ navigation, route }) {
       )}
 
       {/* TAB 2: PENDING WAYBILLS WAITING AT DESTINATION HUB FOR OUTBOUND DELIVERY */}
-      {scanMode === "OUTBOUND_DELIVERY" && (
-        <View style={styles.listContainer}>
-          <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Đơn chờ xuất kho đi giao tại bưu cục</Text>
-            <Text style={styles.listCount}>{pendingWaybills.length} đơn</Text>
-          </View>
+      {scanMode === "OUTBOUND_DELIVERY" && (() => {
+        const myRouteItems = pendingWaybills.filter((w) => w.is_my_route || w.is_assigned_to_me);
+        const displayedWaybills = routeFilterTab === "MY_ROUTE" ? (myRouteItems.length > 0 ? myRouteItems : pendingWaybills) : pendingWaybills;
 
-          {pendingWaybills.length > 0 && (
-            <TouchableOpacity
-              style={styles.batchBtn}
-              onPress={handleDispatchAllPending}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="paper-plane" size={16} color="#FFF" />
-              <Text style={styles.batchBtnText}>
-                Xuất kho đi giao tất cả ({pendingWaybills.length} đơn)
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {loadingPending ? (
-            <View style={{ padding: 20, alignItems: "center" }}>
-              <ActivityIndicator size="large" color={PRIMARY} />
-              <Text style={{ marginTop: 8, color: "#64748B", fontSize: 12 }}>
-                Đang tải các vận đơn tại bưu cục phát...
-              </Text>
+        return (
+          <View style={styles.listContainer}>
+            {/* SUB-TAB ROUTE FILTER SEGMENT */}
+            <View style={styles.subTabRow}>
+              <TouchableOpacity
+                style={[styles.subTabBtn, routeFilterTab === "MY_ROUTE" && styles.subTabBtnActive]}
+                onPress={() => setRouteFilterTab("MY_ROUTE")}
+              >
+                <Ionicons name="location" size={14} color={routeFilterTab === "MY_ROUTE" ? "#FFF" : "#64748B"} />
+                <Text style={[styles.subTabText, routeFilterTab === "MY_ROUTE" && styles.subTabTextActive]}>
+                  Tuyến của tôi ({myRouteItems.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.subTabBtn, routeFilterTab === "ALL" && styles.subTabBtnActive]}
+                onPress={() => setRouteFilterTab("ALL")}
+              >
+                <Ionicons name="globe" size={14} color={routeFilterTab === "ALL" ? "#FFF" : "#64748B"} />
+                <Text style={[styles.subTabText, routeFilterTab === "ALL" && styles.subTabTextActive]}>
+                  Tất cả đơn bưu cục ({pendingWaybills.length})
+                </Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <FlatList
-              data={pendingWaybills}
-              keyExtractor={(item) => item.waybill_id.toString()}
-              refreshControl={
-                <RefreshControl
+
+            {displayedWaybills.length > 0 && (
+              <TouchableOpacity
+                style={styles.batchBtn}
+                onPress={() => handleDispatchAllPending()}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="paper-plane" size={16} color="#FFF" />
+                <Text style={styles.batchBtnText}>
+                  Xuất kho đi giao {routeFilterTab === "MY_ROUTE" && myRouteItems.length > 0 ? "tuyến của tôi" : "tất cả"} ({displayedWaybills.length} đơn)
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {loadingPending ? (
+              <View style={{ padding: 20, alignItems: "center" }}>
+                <ActivityIndicator size="large" color={PRIMARY} />
+                <Text style={{ marginTop: 8, color: "#64748B", fontSize: 12 }}>
+                  Đang tải các vận đơn tại bưu cục phát...
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={displayedWaybills}
+                keyExtractor={(item) => item.waybill_id.toString()}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={() => {
+                      setRefreshing(true);
+                      fetchPendingWaybills();
+                    }}
+                  />
+                }
                   refreshing={refreshing}
                   onRefresh={() => {
                     setRefreshing(true);
@@ -344,7 +373,8 @@ export default function MobileDestHubScanScreen({ navigation, route }) {
             />
           )}
         </View>
-      )}
+        );
+      })()}
     </KeyboardAvoidingView>
   );
 }
@@ -479,4 +509,31 @@ const styles = StyleSheet.create({
   emptyCard: { backgroundColor: "#FFF", padding: 24, borderRadius: 12, alignItems: "center", marginTop: 20 },
   emptyTitle: { fontSize: 14, fontWeight: "700", color: "#334155", marginTop: 8 },
   emptyText: { fontSize: 12, color: "#64748B", textAlign: "center", marginTop: 4 },
+  subTabRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+  subTabBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#E2E8F0",
+  },
+  subTabBtnActive: {
+    backgroundColor: PRIMARY,
+  },
+  subTabText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  subTabTextActive: {
+    color: "#FFF",
+  },
 });

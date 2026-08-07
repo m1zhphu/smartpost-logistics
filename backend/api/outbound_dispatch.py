@@ -261,12 +261,19 @@ def get_outbound_dispatch_slip_detail(
 
 def resolve_delivery_shipper_for_waybill(db: Session, wb: models.Waybills) -> tuple[Optional[int], Optional[str], str]:
     """
-    Quy tắc 3 Cấp Độ Tự Động Phân Công Bưu Tá Đi Giao Hàng:
-    1. Ưu tiên 1: Bưu tá gán cố định cho Khách hàng (assigned_shipper_id)
-    2. Ưu tiên 2: Phân công theo Tuyến Vận Chuyển (Tỉnh/Thành & Phường/Xã người nhận)
-    3. Ưu tiên 3: Chờ gán bưu tá thủ công / Bưu tá nhận tại bưu cục (Unassigned)
+    Quy tắc Tự Động Phân Công Bưu Tá Đi Giao Hàng Theo Tuyến Vận Chuyển:
+    1. Ưu tiên 1: Phân công theo Tuyến Vận Chuyển (Phường/Xã & Tỉnh/Thành người nhận)
+    2. Ưu tiên 2: Bưu tá gán cố định cho Khách hàng (nếu có)
+    3. Ưu tiên 3: Chờ bưu tá tuyến xuất kho / nhận tự do tại bưu cục phát
     """
-    # Tier 1: Fixed assigned shipper for Customer
+    # 1. Route-based auto assignment (Receiver's Ward & Province)
+    import crud.waybills as crud_wb
+    receiver_full_text = f"{wb.receiver_address or ''}, {wb.receiver_ward_name or ''}, {wb.receiver_province_name or ''}"
+    matched_shipper = crud_wb.auto_assign_shipper_by_route(db, pickup_address=receiver_full_text)
+    if matched_shipper:
+        return matched_shipper.user_id, matched_shipper.full_name or matched_shipper.username, "ROUTE_ASSIGNED"
+
+    # 2. Customer's fixed assigned shipper (fallback if customer configured)
     customer = wb.customer
     if customer and customer.assigned_shipper_id:
         shipper = db.query(models.Users).filter(
@@ -275,17 +282,10 @@ def resolve_delivery_shipper_for_waybill(db: Session, wb: models.Waybills) -> tu
             models.Users.is_active == True
         ).first()
         if shipper:
-            return shipper.user_id, shipper.full_name or shipper.username, "TIER_1_FIXED"
+            return shipper.user_id, shipper.full_name or shipper.username, "CUSTOMER_FIXED"
 
-    # Tier 2: Route-based auto assignment (Receiver's Ward & Province)
-    import crud.waybills as crud_wb
-    receiver_full_text = f"{wb.receiver_address or ''}, {wb.receiver_ward_name or ''}, {wb.receiver_province_name or ''}"
-    matched_shipper = crud_wb.auto_assign_shipper_by_route(db, pickup_address=receiver_full_text)
-    if matched_shipper:
-        return matched_shipper.user_id, matched_shipper.full_name or matched_shipper.username, "TIER_2_ROUTE"
-
-    # Tier 3: Unassigned queue for manual dispatch / hub claim
-    return None, None, "TIER_3_UNASSIGNED"
+    # 3. Unassigned queue for manual dispatch / hub claim
+    return None, None, "UNASSIGNED"
 
 
 @router.post("/mobile/inbound-scan")
@@ -397,7 +397,7 @@ def get_pending_delivery_waybills(
         if wb.request and getattr(wb.request, "requested_pickup_time", None):
             created_str = wb.request.requested_pickup_time.isoformat()
 
-        # 3-Tier Delivery Shipper Assignment Check
+        # Delivery Shipper Route Assignment Check
         assigned_shipper_id, assigned_shipper_name, tier_type = resolve_delivery_shipper_for_waybill(db, wb)
         effective_shipper_id = wb.holding_shipper_id or assigned_shipper_id
         is_assigned_to_me = (effective_shipper_id == curr_user_id) if curr_user_id else False
@@ -416,7 +416,8 @@ def get_pending_delivery_waybills(
             "assigned_shipper_id": effective_shipper_id,
             "assigned_shipper_name": assigned_shipper_name,
             "assignment_tier": tier_type,
-            "is_assigned_to_me": is_assigned_to_me
+            "is_assigned_to_me": is_assigned_to_me,
+            "is_my_route": is_assigned_to_me
         })
 
     return {"total": len(items), "items": items}
