@@ -337,6 +337,40 @@
                       </template>
                     </el-table-column>
 
+                    <!-- Ảnh lấy hàng -->
+                    <el-table-column label="Ảnh lấy hàng" min-width="120" align="center">
+                      <template #default="{ row }">
+                        <div v-if="getPickupImages(row).length > 0" style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                          <el-image
+                            :src="resolveMediaUrl(getPickupImages(row)[0])"
+                            :preview-src-list="getPickupImages(row).map(u => resolveMediaUrl(u))"
+                            fit="cover"
+                            style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;"
+                            preview-teleported
+                          />
+                          <span v-if="getPickupImages(row).length > 1" style="font-size: 10px; color: #64748b; font-weight: 600;">+{{ getPickupImages(row).length - 1 }}</span>
+                        </div>
+                        <span v-else style="color: #94a3b8; font-style: italic; font-size: 11px;">Chưa có</span>
+                      </template>
+                    </el-table-column>
+
+                    <!-- Ảnh giao hàng -->
+                    <el-table-column label="Ảnh giao hàng" min-width="120" align="center">
+                      <template #default="{ row }">
+                        <div v-if="getPodImages(row).length > 0" style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                          <el-image
+                            :src="resolveMediaUrl(getPodImages(row)[0])"
+                            :preview-src-list="getPodImages(row).map(u => resolveMediaUrl(u))"
+                            fit="cover"
+                            style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;"
+                            preview-teleported
+                          />
+                          <span v-if="getPodImages(row).length > 1" style="font-size: 10px; color: #64748b; font-weight: 600;">+{{ getPodImages(row).length - 1 }}</span>
+                        </div>
+                        <span v-else style="color: #94a3b8; font-style: italic; font-size: 11px;">Chưa có</span>
+                      </template>
+                    </el-table-column>
+
                     <!-- Tài chính -->
                     <el-table-column label="Tài chính (VNĐ)" min-width="220" align="right">
                       <template #default="{ row }">
@@ -583,6 +617,40 @@
                   <div><b>Trọng lượng:</b> {{ row.actual_weight }} kg</div>
                   <div v-if="row.length"><b>Kích thước:</b> {{ row.length }}x{{ row.width }}x{{ row.height }}</div>
                 </div>
+              </template>
+            </el-table-column>
+
+            <!-- Ảnh lấy hàng -->
+            <el-table-column label="Ảnh lấy hàng" min-width="120" align="center">
+              <template #default="{ row }">
+                <div v-if="getPickupImages(row).length > 0" style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                  <el-image
+                    :src="resolveMediaUrl(getPickupImages(row)[0])"
+                    :preview-src-list="getPickupImages(row).map(u => resolveMediaUrl(u))"
+                    fit="cover"
+                    style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;"
+                    preview-teleported
+                  />
+                  <span v-if="getPickupImages(row).length > 1" style="font-size: 10px; color: #64748b; font-weight: 600;">+{{ getPickupImages(row).length - 1 }}</span>
+                </div>
+                <span v-else style="color: #94a3b8; font-style: italic; font-size: 11px;">Chưa có</span>
+              </template>
+            </el-table-column>
+
+            <!-- Ảnh giao hàng -->
+            <el-table-column label="Ảnh giao hàng" min-width="120" align="center">
+              <template #default="{ row }">
+                <div v-if="getPodImages(row).length > 0" style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                  <el-image
+                    :src="resolveMediaUrl(getPodImages(row)[0])"
+                    :preview-src-list="getPodImages(row).map(u => resolveMediaUrl(u))"
+                    fit="cover"
+                    style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;"
+                    preview-teleported
+                  />
+                  <span v-if="getPodImages(row).length > 1" style="font-size: 10px; color: #64748b; font-weight: 600;">+{{ getPodImages(row).length - 1 }}</span>
+                </div>
+                <span v-else style="color: #94a3b8; font-style: italic; font-size: 11px;">Chưa có</span>
               </template>
             </el-table-column>
 
