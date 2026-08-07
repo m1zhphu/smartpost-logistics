@@ -30,6 +30,7 @@ class CustomerCreate(BaseModel):
     representative_name: Optional[str] = None
     tax_code: Optional[str] = None
     staff_in_charge_id: int
+    assigned_shipper_id: Optional[int] = None
     policy_id: Optional[int] = None
     phone: str
     email: Optional[str] = None
@@ -57,6 +58,8 @@ class CustomerSelfUpdate(BaseModel):
     company_name: Optional[str] = None
     representative_name: Optional[str] = None
     tax_code: Optional[str] = None
+    staff_in_charge_id: Optional[int] = None
+    assigned_shipper_id: Optional[int] = None
     phone: Optional[str] = None
     phone_number: Optional[str] = None
     email: Optional[str] = None

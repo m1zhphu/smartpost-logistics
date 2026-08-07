@@ -46,7 +46,8 @@ def _customer_policy_payload(customer):
     }
 
 def _customer_account_payload(customer):
-    account = customer.user_accounts[0] if customer.user_accounts else None
+    active_accounts = [u for u in (customer.user_accounts or []) if u.is_active and not getattr(u, 'is_deleted', False)]
+    account = active_accounts[0] if active_accounts else (customer.user_accounts[0] if customer.user_accounts else None)
     return {
         "account_user_id": account.user_id if account else None,
         "username": account.username if account else None,
@@ -84,6 +85,8 @@ def _customer_response_payload(customer):
         "staff_in_charge_id": customer.staff_in_charge_id,
         "staff_in_charge_name": customer.staff_in_charge.full_name if customer.staff_in_charge else None,
         "staff_in_charge_primary_hub_id": customer.staff_in_charge.primary_hub_id if customer.staff_in_charge else None,
+        "assigned_shipper_id": customer.assigned_shipper_id,
+        "assigned_shipper_name": customer.assigned_shipper.full_name if customer.assigned_shipper else None,
         "province_id": customer.province_id,
         "district_id": customer.district_id,
         "ward_id": customer.ward_id,
@@ -239,45 +242,7 @@ def get_customer_by_code(customer_code: str, db: Session = Depends(get_db), curr
         raise HTTPException(status_code=400, detail="Hồ sơ khách hàng không còn hoạt động")
     
     _ensure_customer_scope(customer, current_user)
-
-    bank = None
-    if customer.bank_accounts:
-        bank = customer.bank_accounts[0] if isinstance(customer.bank_accounts, list) else customer.bank_accounts
-
-    policy_payload = _customer_policy_payload(customer)
-    return {
-        "id": customer.customer_id,
-        "customer_id": customer.customer_id,
-        "customer_code": customer.customer_code,
-        "name": customer.company_name or customer.transaction_name or customer.customer_code,
-        "company_name": customer.company_name,
-        "transaction_name": customer.transaction_name,
-        "email": customer.email,
-        "phone": customer.phone_number,
-        "customer_type": customer.customer_type,
-        "status": customer.status,
-        "address": customer.address_detail,
-        "country": customer.country,
-        "province": customer.province_name,
-        "province_name": customer.province_name,
-        "ward": customer.ward_name,
-        "ward_name": customer.ward_name,
-        "street_address": customer.street_address,
-        "representative_name": customer.representative_name,
-        "tax_code": customer.tax_code,
-        **policy_payload,
-        "staff_in_charge_id": customer.staff_in_charge_id,
-        "staff_in_charge_name": customer.staff_in_charge.full_name if customer.staff_in_charge else None,
-        "province_id": customer.province_id,
-        "district_id": customer.district_id,
-        "ward_id": customer.ward_id,
-        "bank_name": bank.bank_name if bank else None,
-        "bank_number": bank.account_number if bank else None,
-        "bank_owner": bank.account_name if bank else None,
-        "account_number": bank.account_number if bank else None,
-        "account_name": bank.account_name if bank else None,
-        **_customer_account_payload(customer),
-    }
+    return _customer_response_payload(customer)
 
 
 @router.get("/{customer_id}")
@@ -289,44 +254,7 @@ def get_customer_by_id(customer_id: int, db: Session = Depends(get_db), current_
     if customer.status != "ACTIVE":
         raise HTTPException(status_code=400, detail="Hồ sơ khách hàng không còn hoạt động")
     
-    bank = None
-    if customer.bank_accounts:
-        bank = customer.bank_accounts[0] if isinstance(customer.bank_accounts, list) else customer.bank_accounts
-
-    policy_payload = _customer_policy_payload(customer)
-    return {
-        "id": customer.customer_id,
-        "customer_id": customer.customer_id,
-        "customer_code": customer.customer_code,
-        "name": customer.company_name or customer.transaction_name or customer.customer_code,
-        "company_name": customer.company_name,
-        "transaction_name": customer.transaction_name,
-        "email": customer.email,
-        "phone": customer.phone_number,
-        "customer_type": customer.customer_type,
-        "status": customer.status,
-        "address": customer.address_detail,
-        "country": customer.country,
-        "province": customer.province_name,
-        "province_name": customer.province_name,
-        "ward": customer.ward_name,
-        "ward_name": customer.ward_name,
-        "street_address": customer.street_address,
-        "representative_name": customer.representative_name,
-        "tax_code": customer.tax_code,
-        **policy_payload,
-        "staff_in_charge_id": customer.staff_in_charge_id,
-        "staff_in_charge_name": customer.staff_in_charge.full_name if customer.staff_in_charge else None,
-        "province_id": customer.province_id,
-        "district_id": customer.district_id,
-        "ward_id": customer.ward_id,
-        "bank_name": bank.bank_name if bank else None,
-        "bank_number": bank.account_number if bank else None,
-        "bank_owner": bank.account_name if bank else None,
-        "account_number": bank.account_number if bank else None,
-        "account_name": bank.account_name if bank else None,
-        **_customer_account_payload(customer),
-    }
+    return _customer_response_payload(customer)
 
 
 @router.get("", response_model=List[dict])

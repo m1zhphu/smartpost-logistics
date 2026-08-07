@@ -213,6 +213,7 @@ def create_customer_record(db: Session, data_dict: dict):
         "transaction_name":    data_dict.get("name") or data_dict.get("transaction_name"),
         "representative_name": data_dict.get("representative_name"),
         "staff_in_charge_id":  data_dict.get("staff_in_charge_id"),
+        "assigned_shipper_id": data_dict.get("assigned_shipper_id"),
         "tax_code":            data_dict.get("tax_code"),
         "email":               data_dict.get("email"),
         "phone_number":        data_dict.get("phone") or data_dict.get("phone_number"),
@@ -265,6 +266,8 @@ def update_customer_record(db: Session, customer: models.Customers, data_dict: d
     customer.transaction_name = data_dict.get("name") or customer.transaction_name
     customer.representative_name = data_dict.get("representative_name") or customer.representative_name
     customer.staff_in_charge_id = data_dict.get("staff_in_charge_id") or customer.staff_in_charge_id
+    if "assigned_shipper_id" in data_dict:
+        customer.assigned_shipper_id = data_dict.get("assigned_shipper_id")
     customer.tax_code = data_dict.get("tax_code") or customer.tax_code
     customer.email = data_dict.get("email") or customer.email
     customer.phone_number = data_dict.get("phone") or customer.phone_number

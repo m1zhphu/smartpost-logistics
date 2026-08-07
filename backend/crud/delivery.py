@@ -294,6 +294,7 @@ def create_booking_request(db: Session, data: schema_delivery.BookingRequestCrea
     pickup_address = data.pickup_address
     target_hub_id = data.target_hub_id
     
+    cust = None
     if data.customer_id:
         cust = db.query(models.Customers).filter(models.Customers.customer_id == data.customer_id).first()
         if cust:
@@ -304,6 +305,18 @@ def create_booking_request(db: Session, data: schema_delivery.BookingRequestCrea
             if not target_hub_id and cust.staff_in_charge and cust.staff_in_charge.primary_hub_id:
                 target_hub_id = cust.staff_in_charge.primary_hub_id
                 
+    assigned_shipper_id = cust.assigned_shipper_id if (cust and cust.assigned_shipper_id) else None
+    if not assigned_shipper_id and cust and cust.staff_in_charge and cust.staff_in_charge.role_id == 4:
+        assigned_shipper_id = cust.staff_in_charge_id
+
+    if not assigned_shipper_id and pickup_address:
+        import crud.waybills as crud_wb
+        matched_shipper = crud_wb.auto_assign_shipper_by_route(db, pickup_address=pickup_address)
+        if matched_shipper:
+            assigned_shipper_id = matched_shipper.user_id
+
+    initial_status = "ASSIGNED" if assigned_shipper_id else "WAIT_PICKUP"
+
     db_req = models.BookingRequests(
         request_code=req_code,
         source=data.source,
@@ -315,7 +328,8 @@ def create_booking_request(db: Session, data: schema_delivery.BookingRequestCrea
         product_type=data.product_type,
         est_weight=data.est_weight,
         is_vehicle_required=data.is_vehicle_required,
-        status="WAIT_PICKUP",
+        status=initial_status,
+        assigned_shipper_id=assigned_shipper_id,
         est_quantity=data.est_quantity,
         priority=data.priority,
         sla_deadline=data.sla_deadline,
@@ -532,9 +546,12 @@ def get_mobile_pickup_tasks_for_shipper(db: Session, shipper_id: int, status: st
         models.BookingRequests.assigned_shipper_id == shipper_id,
     )
     if status:
-        query = query.filter(models.BookingRequests.status == status)
+        if status in ["ASSIGNED", "ASSIGNED_PICKUP"]:
+            query = query.filter(models.BookingRequests.status.in_(["ASSIGNED", "ASSIGNED_PICKUP"]))
+        else:
+            query = query.filter(models.BookingRequests.status == status)
     else:
-        query = query.filter(models.BookingRequests.status.in_(["ASSIGNED_PICKUP", "PICKED"]))
+        query = query.filter(models.BookingRequests.status.in_(["ASSIGNED", "ASSIGNED_PICKUP", "PICKED"]))
     rows = query.order_by(models.BookingRequests.pickup_assigned_at.desc().nullslast(), models.BookingRequests.request_id.desc()).all()
     return [mobile_pickup_task_payload(row) for row in rows]
 

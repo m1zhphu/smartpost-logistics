@@ -341,11 +341,13 @@ class Customers(Base):
     old_province: Mapped[Optional[str]] = mapped_column(String(150))
     parent_customer_id: Mapped[Optional[int]] = mapped_column(Integer)
     staff_in_charge_id: Mapped[Optional[int]] = mapped_column(Integer)
+    assigned_shipper_id: Mapped[Optional[int]] = mapped_column(Integer)
     status: Mapped[Optional[str]] = mapped_column(String(20), server_default=text("'ACTIVE'::character varying"))
 
     parent_customer: Mapped[Optional['Customers']] = relationship('Customers', remote_side=[customer_id], back_populates='parent_customer_reverse')
     parent_customer_reverse: Mapped[list['Customers']] = relationship('Customers', remote_side=[parent_customer_id], back_populates='parent_customer')
     staff_in_charge: Mapped[Optional['Users']] = relationship('Users', foreign_keys=[staff_in_charge_id], back_populates='customers')
+    assigned_shipper: Mapped[Optional['Users']] = relationship('Users', primaryjoin='Customers.assigned_shipper_id == Users.user_id', foreign_keys=[assigned_shipper_id])
     user_accounts: Mapped[list['Users']] = relationship('Users', foreign_keys='[Users.customer_id]', back_populates='customer_account')
     bank_accounts: Mapped[Optional['BankAccounts']] = relationship('BankAccounts', uselist=False, back_populates='customer')
     booking_requests: Mapped[list['BookingRequests']] = relationship('BookingRequests', back_populates='customer')

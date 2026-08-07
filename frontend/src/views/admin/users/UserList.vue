@@ -569,62 +569,49 @@ const currentUser = computed(() => authStore.user || {});
 const isMyShippersView = computed(() => currentUser.value?.role_id === 7 && (route.query.my_shippers === '1' || route.query.my_shippers === 'true'));
 const isProtectedUser = (row) => row?.role_id === 1 || row?.user_id === currentUser.value?.user_id;
 
+import localProvincesData from '../../../../assets/data/vietnam_provinces.json';
+
 const provinceOptions = ref([]);
 const availableAssignedWards = ref([]);
 
 const fetchProvinces = async () => {
-  try {
-    const res = await fetch(`${ADDR_API}/p/`);
-    const data = await res.json();
-    provinceOptions.value = (data || []).map(p => ({ Code: String(p.code), FullName: p.name }));
-  } catch (err) {
-    console.error('Không thể lấy danh sách Tỉnh/Thành:', err);
+  if (Array.isArray(localProvincesData)) {
+    provinceOptions.value = localProvincesData.map(p => ({
+      Code: String(p.Code),
+      FullName: p.FullName || p.Name
+    }));
   }
 };
 
-import localProvincesData from '../../../../assets/data/vietnam_provinces.json';
-
-// Bảng tra cứu tức thì mã Phường/Xã -> Tỉnh/Thành cũ (trước sáp nhập)
-const wardCodeToOldProvinceMap = {};
-if (Array.isArray(localProvincesData)) {
-  localProvincesData.forEach(prov => {
-    if (Array.isArray(prov.Wards)) {
-      prov.Wards.forEach(w => {
-        wardCodeToOldProvinceMap[String(w.Code)] = prov.FullName;
-      });
-    }
-  });
-}
-
-const handleAssignedProvinceChange = async (selectedCodes) => {
+const handleAssignedProvinceChange = (selectedCodes) => {
   if (!selectedCodes || !selectedCodes.length) {
     availableAssignedWards.value = [];
     userForm.assigned_ward_codes = [];
     return;
   }
-  try {
-    const wardPromises = selectedCodes.map(async (code) => {
-      const res = await fetch(`${ADDR_API}/p/${code}?depth=3`);
-      const data = await res.json();
-      const provName = data.name;
-      return (data.districts || []).flatMap(d => (d.wards || []).map(w => {
-        const oldProv = wardCodeToOldProvinceMap[String(w.code)];
-        let addressLabel = `${w.name}, ${d.name}, ${provName}`;
-        if (oldProv && oldProv !== provName) {
-          addressLabel = `${w.name}, ${d.name} | Mới: ${oldProv} | Cũ: ${provName}`;
-        }
-        return {
-          Code: String(w.code),
-          FullName: addressLabel,
-          ProvinceName: provName
-        };
-      }));
+  const selectedCodeStrs = selectedCodes.map(c => String(c));
+  const wardsList = [];
+  
+  if (Array.isArray(localProvincesData)) {
+    localProvincesData.forEach(prov => {
+      if (selectedCodeStrs.includes(String(prov.Code)) && Array.isArray(prov.Wards)) {
+        prov.Wards.forEach(w => {
+          let addressLabel = `${w.FullName || w.Name}`;
+          if (w.DistrictName) addressLabel += `, ${w.DistrictName}`;
+          if (prov.FullName || prov.Name) addressLabel += `, ${prov.FullName || prov.Name}`;
+          if (w.OldProvince && w.OldProvince !== (prov.FullName || prov.Name)) {
+            addressLabel += ` | Đơn vị cũ: ${w.OldProvince}`;
+          }
+          wardsList.push({
+            Code: String(w.Code),
+            FullName: addressLabel,
+            ProvinceName: prov.FullName || prov.Name
+          });
+        });
+      }
     });
-    const results = await Promise.all(wardPromises);
-    availableAssignedWards.value = results.flat();
-  } catch (err) {
-    console.error('Không thể lấy danh sách Phường/Xã:', err);
   }
+  availableAssignedWards.value = wardsList;
 };
 
 const loading = ref(false);

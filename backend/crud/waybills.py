@@ -342,34 +342,89 @@ def create_waybill_record(db: Session, data: dict, fee: float):
             
     return new_waybill
 
-def auto_assign_shipper_by_route(db: Session, waybill: models.Waybills):
-    if not waybill:
-        return None
+import os
+import json
+
+_WARD_CODE_MAP = None
+_PROVINCE_CODE_MAP = None
+
+def _get_address_code_maps():
+    global _WARD_CODE_MAP, _PROVINCE_CODE_MAP
+    if _WARD_CODE_MAP is not None and _PROVINCE_CODE_MAP is not None:
+        return _WARD_CODE_MAP, _PROVINCE_CODE_MAP
+    
+    _WARD_CODE_MAP = {}
+    _PROVINCE_CODE_MAP = {}
+    
+    possible_paths = [
+        os.path.join("..", "frontend", "assets", "data", "vietnam_provinces.json"),
+        os.path.join("..", "mobile", "src", "utils", "vietnam_provinces.json"),
+        os.path.join("assets", "data", "vietnam_provinces.json"),
+        os.path.join("vietnam_provinces.json"),
+    ]
+    json_path = None
+    for p in possible_paths:
+        if os.path.exists(p):
+            json_path = p
+            break
+            
+    if json_path:
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    for prov in data:
+                        p_code = str(prov.get("Code", ""))
+                        p_name = (prov.get("FullName") or prov.get("Name") or "").lower()
+                        if p_code and p_name:
+                            _PROVINCE_CODE_MAP[p_code] = p_name
+                            
+                        wards = prov.get("Wards") or []
+                        for w in wards:
+                            w_code = str(w.get("Code", ""))
+                            w_name = (w.get("FullName") or w.get("Name") or "").lower()
+                            if w_code and w_name:
+                                _WARD_CODE_MAP[w_code] = w_name
+        except Exception as e:
+            print("Error loading vietnam_provinces.json for route matching:", e)
+            
+    return _WARD_CODE_MAP, _PROVINCE_CODE_MAP
+
+
+def auto_assign_shipper_by_route(db: Session, waybill: models.Waybills = None, pickup_address: str = None):
     shippers = db.query(models.Users).filter(
         models.Users.role_id == 4,
         models.Users.is_active == True,
         models.Users.is_deleted == False
     ).all()
     
-    sender_prov = (waybill.sender_province_name or "").lower()
-    sender_ward = (waybill.sender_ward_name or "").lower()
-    sender_addr = (waybill.sender_address or "").lower()
+    if not shippers:
+        return None
+        
+    ward_map, prov_map = _get_address_code_maps()
+    
+    sender_prov = ((waybill.sender_province_name if waybill else "") or "").lower()
+    sender_ward = ((waybill.sender_ward_name if waybill else "") or "").lower()
+    sender_addr = ((waybill.sender_address if waybill else pickup_address) or "").lower()
+    full_text = f"{sender_ward} {sender_prov} {sender_addr}".strip()
 
     for shipper in shippers:
         routes = shipper.assigned_routes or {}
-        provinces = [str(p).lower() for p in (routes.get("provinces") or [])]
         wards = [str(w).lower() for w in (routes.get("wards") or [])]
+        provinces = [str(p).lower() for p in (routes.get("provinces") or [])]
         
-        # 1. Khớp theo Mã/Tên Phường Xã phụ trách
+        # 1. Khớp theo Phường/Xã (Mã code hoặc Tên phường/xã)
         if wards:
             for w in wards:
-                if w and (w in sender_ward or w in sender_addr):
+                w_name = ward_map.get(w)
+                if w and (w in full_text or (w_name and w_name in full_text)):
                     return shipper
         
-        # 2. Khớp theo Mã/Tên Tỉnh Thành phụ trách
+        # 2. Khớp theo Tỉnh/Thành (Mã code hoặc Tên tỉnh/thành)
         if provinces:
             for p in provinces:
-                if p and (p in sender_prov or p in sender_addr):
+                p_name = prov_map.get(p)
+                if p and (p in full_text or (p_name and p_name in full_text)):
                     return shipper
                     
     return None
@@ -543,9 +598,12 @@ def create_customer_pickup_waybill(
     ))
     create_initial_log(db, waybill.waybill_id, assigned_origin_hub_id or origin_hub_id, creator_id)
 
-    # Ưu tiên 1: Gán điểm lấy hàng cố định cho Bưu tá phụ trách khách hàng (Vd: MB Bank -> Bưu tá A)
+    # Ưu tiên 1: Gán điểm lấy hàng cố định cho Bưu tá phụ trách khách hàng (Vd: MB Bank -> Bưu tá A, role_id == 4)
     # Ưu tiên 2: Phân công tự động theo tuyến Tỉnh/Thành, Phường/Xã
-    assigned_shipper_id = customer.staff_in_charge_id if customer else None
+    assigned_shipper_id = customer.assigned_shipper_id if (customer and customer.assigned_shipper_id) else None
+    if not assigned_shipper_id and customer and customer.staff_in_charge and customer.staff_in_charge.role_id == 4:
+        assigned_shipper_id = customer.staff_in_charge_id
+
     if not assigned_shipper_id:
         assigned_shipper = auto_assign_shipper_by_route(db, waybill)
         if assigned_shipper:
